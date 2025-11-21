@@ -43,6 +43,18 @@ Next.js と Nivo を使用して、複雑な予算フローをインタラクテ
    - `npm run normalize` (CSV正規化)
    - `npm run generate-sankey` (サンキー図用データ生成)
 
+### データファイルの圧縮解除
+
+生成されたJSONデータは圧縮された状態（`.gz`形式）で保存されています。開発サーバー起動時に自動的に解凍されますが、手動で解凍する場合は以下のコマンドを実行してください。
+
+```bash
+npm run decompress
+# または
+./scripts/decompress-data.sh
+```
+
+このコマンドは `public/data/*.json.gz` ファイルを解凍し、同じディレクトリに `.json` ファイルを生成します。
+
 ### 開発サーバーの起動
 
 ```bash

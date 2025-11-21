@@ -37,7 +37,7 @@ export default function SankeyBudgetDrilldown({ data }: Props) {
           from: 'color',
           modifiers: [['darker', 1]],
         }}
-        tooltip={({ node }) => (
+        nodeTooltip={({ node }) => (
           <div className="bg-white dark:bg-gray-800 px-3 py-2 rounded shadow-lg border border-gray-200 dark:border-gray-700">
             <strong className="text-gray-900 dark:text-gray-100">{node.id}</strong>
             <div className="text-sm text-gray-600 dark:text-gray-400">

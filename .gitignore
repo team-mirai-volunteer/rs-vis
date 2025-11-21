@@ -32,8 +32,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# preprocessed data (extracted from public_data.tar.gz during build)
-/public/data/
+# preprocessed data (extracted from .gz during build)
+/public/data/*
+# Allow compressed data files
+!/public/data/*.gz
 
 # raw CSV data (939MB)
 /data/

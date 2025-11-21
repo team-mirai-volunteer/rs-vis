@@ -1,17 +1,18 @@
 {
-  "name": "rs-vis",
+  "name": "marumie-rssystem",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm run generate-sankey && next build",
+    "prebuild": "bash scripts/decompress-data.sh",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "normalize": "python3 scripts/normalize_csv.py",
-    "generate-sankey": "tsx scripts/generate-budget-sankey.ts && tsx scripts/generate-spending-sankey.ts",
     "generate-structured": "tsx scripts/generate-structured-json.ts",
     "generate-preset": "tsx scripts/generate-preset-json.ts",
-    "setup": "npm install && npm run normalize && npm run generate-sankey"
+    "compress-data": "gzip -9 -k public/data/rs2024-structured.json",
+    "setup": "npm install && npm run normalize && npm run generate-structured && npm run generate-preset"
   },
   "dependencies": {
     "@nivo/sankey": "^0.87.0",

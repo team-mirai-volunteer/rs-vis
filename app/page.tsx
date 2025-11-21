@@ -12,19 +12,21 @@ export default function Home() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-          {/* サンキー図（Top3） */}
+          {/* インタラクティブサンキー図 */}
           <Link href="/sankey">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 hover:shadow-xl transition-shadow cursor-pointer border-2 border-transparent hover:border-blue-500">
               <h2 className="text-2xl font-semibold mb-3 text-blue-600 dark:text-blue-400">
-                📊 サンキー図（Top3）
+                📊 インタラクティブサンキー図
               </h2>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                府省庁 → 事業 → 支出先の予算フローを再帰的Top3選択で可視化します。
+                予算総計 → 府省庁（予算） → 事業（予算） → 事業（支出） → 支出先の5列フローを動的に可視化します。
               </p>
               <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                <li>• Top3府省庁 × 各府省庁のTop3事業 × 各事業のTop3支出先</li>
-                <li>• カバー率: 約50%（全予算の半分を可視化）</li>
-                <li>• 軽量プリセット（14KB）で高速表示</li>
+                <li>• <strong>府省庁ビュー</strong>: 府省庁ノードをクリックで詳細表示</li>
+                <li>• <strong>事業ビュー</strong>: 事業ノードをクリックで支出先を詳細表示</li>
+                <li>• <strong>支出ビュー</strong>: 支出先ノードをクリックで支出元（事業・府省庁）を逆向き表示</li>
+                <li>• TopN設定: 各ビューごとに表示数を調整可能（デフォルト: 全体3、詳細10）</li>
+                <li>• カバー率: 約50%（73.58兆円 / 146.63兆円）</li>
               </ul>
             </div>
           </Link>
