@@ -1,34 +1,134 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ResponsiveSankey } from '@nivo/sankey';
 import type { RS2024PresetData } from '@/types/preset';
+import type { RS2024StructuredData } from '@/types/structured';
+import ProjectListModal from '@/client/components/ProjectListModal';
 
-export default function SankeyPage() {
+function SankeyContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [data, setData] = useState<RS2024PresetData | null>(null);
+  const [structuredData, setStructuredData] = useState<RS2024StructuredData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   // Navigation State
   const [offset, setOffset] = useState(0);
+  const [projectOffset, setProjectOffset] = useState(0); // For paginating projects within ministry view
   const [viewMode, setViewMode] = useState<'global' | 'ministry' | 'project' | 'spending'>('global');
   const [selectedMinistry, setSelectedMinistry] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Settings State
-  const [topN, setTopN] = useState(3); // Global view: Number of ministries
-  const [ministryTopN, setMinistryTopN] = useState(5); // Ministry view: Number of projects/spendings
-  const [projectViewTopN, setProjectViewTopN] = useState(10); // Project view: Number of spendings
-  const [spendingViewTopN, setSpendingViewTopN] = useState(10); // Spending view: Number of projects
+  // Settings State (ビュー別に整理)
+  // 全体ビュー
+  const [globalMinistryTopN, setGlobalMinistryTopN] = useState(10); // 府省庁TopN
+  const [globalSpendingTopN, setGlobalSpendingTopN] = useState(10); // 支出先TopN
+
+  // 府省庁ビュー
+  const [ministryProjectTopN, setMinistryProjectTopN] = useState(10); // 事業TopN
+  const [ministrySpendingTopN, setMinistrySpendingTopN] = useState(10); // 支出先TopN
+
+  // 事業ビュー
+  const [projectSpendingTopN, setProjectSpendingTopN] = useState(20); // 支出先TopN
+
+  // 支出ビュー
+  const [spendingProjectTopN, setSpendingProjectTopN] = useState(15); // 支出元事業TopN
+  const [spendingMinistryTopN, setSpendingMinistryTopN] = useState(10); // 支出元府省庁TopN
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isProjectListOpen, setIsProjectListOpen] = useState(false);
+  const [projectListFilters, setProjectListFilters] = useState<{
+    ministries?: string[];
+    projectName?: string;
+    spendingName?: string;
+    groupByProject?: boolean;
+  } | undefined>(undefined);
 
   // Temporary settings state for dialog
-  const [tempTopN, setTempTopN] = useState(topN);
-  const [tempMinistryTopN, setTempMinistryTopN] = useState(ministryTopN);
-  const [tempProjectViewTopN, setTempProjectViewTopN] = useState(projectViewTopN);
-  const [tempSpendingViewTopN, setTempSpendingViewTopN] = useState(spendingViewTopN);
+  const [tempGlobalMinistryTopN, setTempGlobalMinistryTopN] = useState(globalMinistryTopN);
+  const [tempGlobalSpendingTopN, setTempGlobalSpendingTopN] = useState(globalSpendingTopN);
+  const [tempMinistryProjectTopN, setTempMinistryProjectTopN] = useState(ministryProjectTopN);
+  const [tempMinistrySpendingTopN, setTempMinistrySpendingTopN] = useState(ministrySpendingTopN);
+  const [tempProjectSpendingTopN, setTempProjectSpendingTopN] = useState(projectSpendingTopN);
+  const [tempSpendingProjectTopN, setTempSpendingProjectTopN] = useState(spendingProjectTopN);
+  const [tempSpendingMinistryTopN, setTempSpendingMinistryTopN] = useState(spendingMinistryTopN);
+
+  // Initialize state from URL parameters on mount
+  useEffect(() => {
+    if (isInitialized) return;
+
+    const ministry = searchParams.get('ministry');
+    const project = searchParams.get('project');
+    const recipient = searchParams.get('recipient');
+    const offsetParam = searchParams.get('offset');
+    const projectOffsetParam = searchParams.get('projectOffset');
+
+    if (recipient) {
+      setViewMode('spending');
+      setSelectedRecipient(recipient);
+    } else if (project) {
+      setViewMode('project');
+      setSelectedProject(project);
+    } else if (ministry) {
+      setViewMode('ministry');
+      setSelectedMinistry(ministry);
+      if (projectOffsetParam) {
+        setProjectOffset(parseInt(projectOffsetParam) || 0);
+      }
+    } else if (offsetParam) {
+      setOffset(parseInt(offsetParam) || 0);
+    }
+
+    setIsInitialized(true);
+  }, [searchParams, isInitialized]);
+
+  // Update URL when view state changes
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const params = new URLSearchParams();
+
+    if (viewMode === 'spending' && selectedRecipient) {
+      params.set('recipient', selectedRecipient);
+    } else if (viewMode === 'project' && selectedProject) {
+      params.set('project', selectedProject);
+    } else if (viewMode === 'ministry' && selectedMinistry) {
+      params.set('ministry', selectedMinistry);
+      if (projectOffset > 0) {
+        params.set('projectOffset', projectOffset.toString());
+      }
+    } else if (viewMode === 'global' && offset > 0) {
+      params.set('offset', offset.toString());
+    }
+
+    const newUrl = params.toString() ? `/sankey?${params.toString()}` : '/sankey';
+    router.push(newUrl);
+  }, [viewMode, selectedMinistry, selectedProject, selectedRecipient, offset, projectOffset, router, isInitialized]);
+
+  // Load structured data once for breadcrumb total amounts
+  useEffect(() => {
+    async function loadStructuredData() {
+      try {
+        const response = await fetch('/data/rs2024-structured.json');
+        if (!response.ok) {
+          throw new Error('Failed to load structured data');
+        }
+        const json: RS2024StructuredData = await response.json();
+        setStructuredData(json);
+      } catch (err) {
+        console.error('Failed to load structured data:', err);
+      }
+    }
+
+    loadStructuredData();
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -38,19 +138,22 @@ export default function SankeyPage() {
 
         if (viewMode === 'global') {
           params.set('offset', offset.toString());
-          params.set('limit', topN.toString());
+          params.set('limit', globalMinistryTopN.toString());
           params.set('projectLimit', '3'); // Fixed for global view to avoid clutter
-          params.set('spendingLimit', '3');
+          params.set('spendingLimit', globalSpendingTopN.toString());
         } else if (viewMode === 'ministry' && selectedMinistry) {
           params.set('ministryName', selectedMinistry);
-          params.set('projectLimit', ministryTopN.toString());
-          params.set('spendingLimit', ministryTopN.toString());
+          params.set('projectLimit', ministryProjectTopN.toString());
+          params.set('spendingLimit', ministrySpendingTopN.toString());
+          params.set('projectOffset', projectOffset.toString());
         } else if (viewMode === 'project' && selectedProject) {
           params.set('projectName', selectedProject);
-          params.set('spendingLimit', projectViewTopN.toString());
+          params.set('spendingLimit', projectSpendingTopN.toString());
         } else if (viewMode === 'spending' && selectedRecipient) {
           params.set('recipientName', selectedRecipient);
-          params.set('projectLimit', spendingViewTopN.toString());
+          params.set('projectLimit', spendingProjectTopN.toString());
+          params.set('projectOffset', projectOffset.toString());
+          params.set('limit', spendingMinistryTopN.toString());
         }
 
         const response = await fetch(`/api/sankey?${params.toString()}`);
@@ -67,7 +170,7 @@ export default function SankeyPage() {
     }
 
     loadData();
-  }, [offset, topN, ministryTopN, projectViewTopN, spendingViewTopN, viewMode, selectedMinistry, selectedProject, selectedRecipient]);
+  }, [offset, projectOffset, globalMinistryTopN, globalSpendingTopN, ministryProjectTopN, ministrySpendingTopN, projectSpendingTopN, spendingProjectTopN, spendingMinistryTopN, viewMode, selectedMinistry, selectedProject, selectedRecipient]);
 
   // スマホ判定
   useEffect(() => {
@@ -86,58 +189,94 @@ export default function SankeyPage() {
 
     // Handle "Other Ministries" drill-down
     if (actualNode.id === 'ministry-budget-other') {
-      setOffset(prev => prev + topN);
+      setOffset(prev => prev + globalMinistryTopN);
       return;
     }
 
-    // Handle "Total Budget" back navigation
-    if (actualNode.id === 'total-budget') {
-      if (viewMode === 'ministry') {
+    // Handle "Total Budget" (予算総計) - but NOT in Project View where it represents a ministry
+    if (actualNode.id === 'total-budget' && viewMode !== 'project') {
+      if (viewMode === 'global') {
+        // 全体ビュー: 事業一覧を開く（府省庁:すべて、支出先まとめ:維持）
+        setProjectListFilters({
+          ministries: undefined, // All
+          projectName: '',
+          spendingName: '',
+          groupByProject: undefined // Keep previous
+        });
+        setIsProjectListOpen(true);
+      } else if (viewMode === 'ministry') {
         setViewMode('global');
         setSelectedMinistry(null);
       } else if (offset > 0) {
-        setOffset(prev => Math.max(0, prev - topN));
+        setOffset(prev => Math.max(0, prev - globalMinistryTopN));
       }
       return;
     }
 
     // Handle Ministry nodes
-    if (actualNode.type === 'ministry-budget' && actualNode.id !== 'total-budget' && actualNode.id !== 'ministry-budget-other') {
+    // In Project View, the 'total-budget' node displays the ministry name and should be clickable
+    const isMinistryNode = actualNode.type === 'ministry-budget' &&
+      actualNode.id !== 'ministry-budget-other' &&
+      (actualNode.id !== 'total-budget' || viewMode === 'project');
+
+    if (isMinistryNode) {
       if (viewMode === 'ministry') {
-        // In Ministry View, clicking the ministry node goes back to Global
-        setViewMode('global');
-        setSelectedMinistry(null);
+        // 府省庁ビュー: 事業一覧を開く（府省庁:選択中、支出先まとめ:維持）
+        setProjectListFilters({
+          ministries: [actualNode.name],
+          projectName: '',
+          spendingName: '',
+          groupByProject: undefined // Keep previous
+        });
+        setIsProjectListOpen(true);
+      } else if (viewMode === 'project') {
+        // 事業ビュー: 府省庁ビューへ遷移
+        setViewMode('ministry');
+        setSelectedMinistry(actualNode.name);
+        setProjectOffset(0);
       } else if (viewMode === 'spending') {
-        // In Spending View, clicking a ministry goes to Ministry View
+        // 支出ビュー: 府省庁ビューへ遷移
         setViewMode('ministry');
         setSelectedMinistry(actualNode.name);
+        setProjectOffset(0);
       } else {
-        // In Global/Project View, clicking a ministry goes to Ministry View
+        // Global View: Go to Ministry View (Standard behavior)
         setViewMode('ministry');
         setSelectedMinistry(actualNode.name);
+        setProjectOffset(0);
       }
       return;
     }
 
     // Handle Project nodes
     if (actualNode.type === 'project-budget' || actualNode.type === 'project-spending') {
-      if (actualNode.name === 'その他の事業') return; // Ignore "Other Projects"
+      // Special handling for "事業(TopN以外)" and "事業(TopN以外府省庁)" aggregate nodes
+      if (actualNode.name.match(/^事業\(Top\d+以外.*\)$/)) {
+        if (viewMode === 'global') {
+          setOffset(prev => prev + globalMinistryTopN);
+        } else if (viewMode === 'ministry') {
+          setProjectOffset(prev => prev + ministryProjectTopN);
+        } else if (viewMode === 'spending') {
+          setProjectOffset(prev => prev + spendingProjectTopN);
+        }
+        return;
+      }
 
       if (viewMode === 'project') {
-        // In Project View, clicking the project node goes back to previous view
-        if (selectedMinistry) {
-          setViewMode('ministry');
-          setSelectedProject(null);
-        } else {
-          setViewMode('global');
-          setSelectedProject(null);
-        }
+        // 事業ビュー: 事業一覧を開く（府省庁:すべて、事業名:選択中、支出先まとめ:維持）
+        setProjectListFilters({
+          ministries: undefined, // All (or should it be restricted to current ministry if selected? User said "府省庁フィルタすべて")
+          projectName: actualNode.name,
+          spendingName: '',
+          groupByProject: undefined // Keep previous
+        });
+        setIsProjectListOpen(true);
       } else if (viewMode === 'spending') {
-        // In Spending View, clicking a project goes to Project View
+        // 支出ビュー: 事業ビューへ遷移
         setViewMode('project');
         setSelectedProject(actualNode.name);
       } else {
-        // In Global/Ministry View, clicking a project goes to Project View
+        // Global/Ministry View: Go to Project View (Standard behavior)
         setViewMode('project');
         setSelectedProject(actualNode.name);
       }
@@ -146,22 +285,30 @@ export default function SankeyPage() {
 
     // Handle Recipient nodes
     if (actualNode.type === 'recipient') {
-      if (actualNode.name === 'その他' || actualNode.name === 'その他の支出先') return; // Ignore "Other Recipients"
+      // Special handling for "その他"
+      if (actualNode.name === 'その他') {
+        setViewMode('spending');
+        setSelectedRecipient('その他');
+        return;
+      }
+
+      // Handle "支出先(TopN以外)"
+      if (actualNode.name.match(/^支出先\(Top\d+以外\)$/)) {
+        setOffset(prev => prev + globalMinistryTopN);
+        return;
+      }
 
       if (viewMode === 'spending') {
-        // In Spending View, clicking the recipient node goes back to previous view
-        if (selectedProject) {
-          setViewMode('project');
-          setSelectedRecipient(null);
-        } else if (selectedMinistry) {
-          setViewMode('ministry');
-          setSelectedRecipient(null);
-        } else {
-          setViewMode('global');
-          setSelectedRecipient(null);
-        }
+        // 支出ビュー: 事業一覧を開く（府省庁:すべて、支出先:選択中、支出先まとめ:OFF）
+        setProjectListFilters({
+          ministries: undefined, // All
+          projectName: '',
+          spendingName: actualNode.name,
+          groupByProject: false // OFF
+        });
+        setIsProjectListOpen(true);
       } else {
-        // In any other view, clicking a recipient goes to Spending View
+        // Other views: Go to Spending View (Standard behavior)
         setViewMode('spending');
         setSelectedRecipient(actualNode.name);
       }
@@ -171,30 +318,66 @@ export default function SankeyPage() {
 
   const handleReset = () => {
     setOffset(0);
+    setProjectOffset(0);
     setViewMode('global');
     setSelectedMinistry(null);
     setSelectedProject(null);
     setSelectedRecipient(null);
   };
 
+  const handleSelectProject = (projectName: string) => {
+    setViewMode('project');
+    setSelectedProject(projectName);
+    setSelectedMinistry(null);
+    setSelectedRecipient(null);
+    setProjectOffset(0);
+    setOffset(0);
+  };
+
+  const handleSelectMinistry = (ministryName: string) => {
+    setViewMode('ministry');
+    setSelectedMinistry(ministryName);
+    setSelectedProject(null);
+    setSelectedRecipient(null);
+    setProjectOffset(0);
+    setOffset(0);
+  };
+
+  const handleSelectRecipient = (recipientName: string) => {
+    setViewMode('spending');
+    setSelectedRecipient(recipientName);
+    setSelectedProject(null);
+    setSelectedMinistry(null);
+    setProjectOffset(0);
+    setOffset(0);
+  };
+
   const openSettings = () => {
-    setTempTopN(topN);
-    setTempMinistryTopN(ministryTopN);
-    setTempProjectViewTopN(projectViewTopN);
-    setTempSpendingViewTopN(spendingViewTopN);
+    setTempGlobalMinistryTopN(globalMinistryTopN);
+    setTempGlobalSpendingTopN(globalSpendingTopN);
+    setTempMinistryProjectTopN(ministryProjectTopN);
+    setTempMinistrySpendingTopN(ministrySpendingTopN);
+    setTempProjectSpendingTopN(projectSpendingTopN);
+    setTempSpendingProjectTopN(spendingProjectTopN);
+    setTempSpendingMinistryTopN(spendingMinistryTopN);
     setIsSettingsOpen(true);
   };
 
   const saveSettings = () => {
-    setTopN(tempTopN);
-    setMinistryTopN(tempMinistryTopN);
-    setProjectViewTopN(tempProjectViewTopN);
-    setSpendingViewTopN(tempSpendingViewTopN);
+    setGlobalMinistryTopN(tempGlobalMinistryTopN);
+    setGlobalSpendingTopN(tempGlobalSpendingTopN);
+    setMinistryProjectTopN(tempMinistryProjectTopN);
+    setMinistrySpendingTopN(tempMinistrySpendingTopN);
+    setProjectSpendingTopN(tempProjectSpendingTopN);
+    setSpendingProjectTopN(tempSpendingProjectTopN);
+    setSpendingMinistryTopN(tempSpendingMinistryTopN);
     setIsSettingsOpen(false);
-    // Reset offset if TopN changes to avoid weird states?
-    // Maybe safest to reset offset to 0 if TopN changes.
-    if (tempTopN !== topN) {
+    // Reset offset if TopN changes to avoid weird states
+    if (tempGlobalMinistryTopN !== globalMinistryTopN) {
       setOffset(0);
+    }
+    if (tempMinistryProjectTopN !== ministryProjectTopN) {
+      setProjectOffset(0);
     }
   };
 
@@ -230,33 +413,149 @@ export default function SankeyPage() {
   const { metadata, sankey } = data;
 
   // 金額を兆円、億円、万円で表示（3桁カンマ区切り）
-  const formatCurrency = (value: number) => {
-    if (value >= 1e12) {
-      const trillions = value / 1e12;
+  // Helper function to convert dummy values (0.001) to actual values (0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getActualValue = (value: number | undefined, nodeOrDetails?: any): number | undefined => {
+    if (value === undefined || value === null) return value;
+
+    // If value is 0.001 (dummy value), check if it should be 0
+    if (value === 0.001) {
+      // Check if this node has totalBudget === 0 in details
+      if (nodeOrDetails?.details?.totalBudget === 0) {
+        return 0;
+      }
+      // For other cases with dummy value, also return 0
+      return 0;
+    }
+
+    return value;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formatCurrency = (value: number | undefined, nodeOrDetails?: any) => {
+    // Convert dummy values to actual values
+    const actualValue = getActualValue(value, nodeOrDetails);
+
+    if (actualValue === undefined || actualValue === null) return '---';
+    if (actualValue >= 1e12) {
+      const trillions = actualValue / 1e12;
       return `${trillions.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}兆円`;
-    } else if (value >= 1e8) {
-      const hundreds = value / 1e8;
+    } else if (actualValue >= 1e8) {
+      const hundreds = actualValue / 1e8;
       return `${hundreds.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}億円`;
-    } else if (value >= 1e4) {
-      const tenThousands = value / 1e4;
+    } else if (actualValue >= 1e4) {
+      const tenThousands = actualValue / 1e4;
       return `${tenThousands.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}万円`;
     } else {
-      return `${value.toLocaleString('ja-JP')}円`;
+      return `${actualValue.toLocaleString('ja-JP')}円`;
     }
   };
 
+  // Build breadcrumb items
+  const getBreadcrumbs = () => {
+    const breadcrumbs: Array<{ label: string; amount: number | undefined; onClick: () => void }> = [];
+
+    // Total Budget (always present)
+    breadcrumbs.push({
+      label: '予算総計',
+      amount: metadata.summary.totalBudget,
+      onClick: handleReset,
+    });
+
+    // Ministry level
+    if (selectedMinistry && structuredData) {
+      // Get total budget for selected ministry from budgetTree
+      const ministry = structuredData.budgetTree.ministries.find(m => m.name === selectedMinistry);
+      const ministryAmount = ministry?.totalBudget || metadata.summary.selectedBudget;
+
+      breadcrumbs.push({
+        label: selectedMinistry,
+        amount: ministryAmount,
+        onClick: () => {
+          setViewMode('ministry');
+          setSelectedProject(null);
+          setSelectedRecipient(null);
+        },
+      });
+    }
+
+    // Project level
+    if (selectedProject && structuredData) {
+      // Get total budget for selected project from budgets array
+      const project = structuredData.budgets.find(b => b.projectName === selectedProject);
+      const projectAmount = project?.totalBudget;
+
+      breadcrumbs.push({
+        label: selectedProject,
+        amount: projectAmount,
+        onClick: () => {
+          setViewMode('project');
+          setSelectedRecipient(null);
+        },
+      });
+    }
+
+    // Recipient level
+    if (selectedRecipient && structuredData) {
+      // Get total spending amount for selected recipient from spendings array
+      const recipient = structuredData.spendings.find(s => s.spendingName === selectedRecipient);
+      const recipientAmount = recipient?.totalSpendingAmount;
+
+      breadcrumbs.push({
+        label: selectedRecipient,
+        amount: recipientAmount,
+        onClick: () => {
+          // Already at this level, no action
+        },
+      });
+    }
+
+    return breadcrumbs;
+  };
+
+  const breadcrumbs = data ? getBreadcrumbs() : [];
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+      {/* 固定ボタン */}
+      <div className="fixed top-4 right-4 z-40 flex gap-2">
+        <button
+          onClick={() => setIsProjectListOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-lg"
+          aria-label="事業一覧"
+        >
+          事業一覧
+        </button>
+        <button
+          onClick={openSettings}
+          className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-lg"
+          aria-label="設定"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+        {(offset > 0 || viewMode === 'ministry') && (
+          <button
+            onClick={handleReset}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shadow-lg"
+          >
+            Topへ戻る
+          </button>
+        )}
+      </div>
+
       <div className="max-w-7xl mx-auto">
         {/* ヘッダー */}
-        <div className="mb-8 flex justify-between items-start">
+        <div className="mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               RS2024 サンキー図
               {viewMode === 'ministry' && `（${selectedMinistry}）`}
               {viewMode === 'project' && `（${selectedProject}）`}
               {viewMode === 'spending' && `（${selectedRecipient}）`}
-              {viewMode === 'global' && `（Top${topN}）`}
+              {viewMode === 'global' && `（Top${globalMinistryTopN}）`}
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               {viewMode === 'global'
@@ -265,32 +564,12 @@ export default function SankeyPage() {
                   ? `${selectedMinistry}の事業と支出先`
                   : viewMode === 'project'
                     ? `${selectedProject}の支出先`
-                    : `${selectedRecipient}への支出元（支出先 → 事業 → 府省庁）`}
+                    : `${selectedRecipient}への支出元（府省庁 → 事業 → 支出先）`}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
               <span className="text-green-600">■</span> 予算ベースの世界 |
               <span className="text-red-600">■</span> 支出ベースの世界
             </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={openSettings}
-              className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              aria-label="設定"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-            </button>
-            {(offset > 0 || viewMode === 'ministry') && (
-              <button
-                onClick={handleReset}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              >
-                Topへ戻る
-              </button>
-            )}
           </div>
         </div>
 
@@ -322,6 +601,37 @@ export default function SankeyPage() {
           </div>
         </div>
 
+        {/* パンくずリスト */}
+        <div className="mb-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {breadcrumbs.map((crumb, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <button
+                  onClick={crumb.onClick}
+                  className={`px-4 py-3 rounded-lg shadow transition-colors ${index === breadcrumbs.length - 1
+                    ? 'bg-blue-600 text-white cursor-default'
+                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  disabled={index === breadcrumbs.length - 1}
+                >
+                  <div className="text-sm font-semibold">{crumb.label}</div>
+                  <div className="text-xs mt-1">{formatCurrency(crumb.amount)}</div>
+                </button>
+                {index < breadcrumbs.length - 1 && (
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* サンキー図 */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 relative">
           {loading && (
@@ -348,17 +658,21 @@ export default function SankeyPage() {
                 }
                 align="justify"
                 sort="input"
+                nodeInnerPadding={0}
                 colors={(node) => {
                   const nodeData = sankey.nodes.find(n => n.id === node.id);
                   const type = nodeData?.type;
                   const name = nodeData?.name || '';
 
-                  // "その他"ノードはすべてグレー
-                  if (name.startsWith('その他')) {
+                  // TopN以外ノードと"その他"ノードはすべてグレー
+                  if (name.startsWith('その他') ||
+                    name.match(/^府省庁\(Top\d+以外.*\)$/) ||
+                    name.match(/^事業\(Top\d+以外.*\)$/) ||
+                    name.match(/^支出先\(Top\d+以外.*\)$/)) {
                     return '#6b7280'; // グレー系
                   }
 
-                  // 予算系（緑系）、支出系（赤系）、その他（グレー）
+                  // 予算系（緑系）、支出系（赤系）
                   if (type === 'ministry-budget' || type === 'project-budget') {
                     return '#10b981'; // 緑系
                   } else if (type === 'project-spending' || type === 'recipient') {
@@ -368,8 +682,8 @@ export default function SankeyPage() {
                 }}
                 nodeOpacity={1}
                 nodeHoverOthersOpacity={0.35}
-                nodeThickness={18}
-                nodeSpacing={24}
+                nodeThickness={44}
+                nodeSpacing={22}
                 nodeBorderWidth={0}
                 nodeBorderColor={{
                   from: 'color',
@@ -378,7 +692,7 @@ export default function SankeyPage() {
                 linkOpacity={0.5}
                 linkHoverOthersOpacity={0.1}
                 linkContract={3}
-                enableLinkGradient={true}
+                enableLinkGradient={false}
                 labelPosition="outside"
                 labelOrientation="horizontal"
                 labelPadding={16}
@@ -397,53 +711,87 @@ export default function SankeyPage() {
                       const actualNode = sankey.nodes.find(n => n.id === node.id);
                       const name = actualNode?.name || node.id;
                       const nodeType = actualNode?.type || '';
-                      const amount = formatCurrency(node.value);
+
+                      // For nodes with dummy value (0.001), show actual amount (0円)
+                      let displayAmount = node.value;
+                      if (node.value === 0.001) {
+                        // Check if this is truly a zero-budget case
+                        if (nodeType === 'project-budget' &&
+                          actualNode?.details &&
+                          'totalBudget' in actualNode.details &&
+                          actualNode.details.totalBudget === 0) {
+                          displayAmount = 0;
+                        } else if (nodeType === 'ministry-budget') {
+                          // Ministry nodes shouldn't have dummy values, but handle just in case
+                          displayAmount = 0;
+                        }
+                      }
+                      const amount = formatCurrency(displayAmount);
 
                       let displayName = name;
                       if (nodeType === 'project-budget') {
-                        displayName = name.length > 15 ? name.substring(0, 15) + '...' : name;
+                        displayName = name.length > 10 ? name.substring(0, 10) + '...' : name;
                       } else if (nodeType === 'project-spending') {
-                        displayName = name.length > 15 ? name.substring(0, 15) + '...' : name;
-                      } else if (name.length > 18) {
-                        displayName = name.substring(0, 18) + '...';
+                        displayName = name.length > 10 ? name.substring(0, 10) + '...' : name;
+                      } else if (name.length > 10) {
+                        displayName = name.substring(0, 10) + '...';
                       }
 
                       // Position based on node type: budget nodes on left, spending nodes on right
                       const isBudgetNode = nodeType === 'ministry-budget' || nodeType === 'project-budget';
-                      const x = isBudgetNode ? node.x - 16 : node.x + node.width + 16;
+                      const x = isBudgetNode ? node.x - 4 : node.x + node.width + 4;
                       const textAnchor = isBudgetNode ? 'end' : 'start';
 
-                      // Clickable indication
+                      // X position for amount label (centered above node)
+                      const amountX = node.x + node.width / 2;
+
+                      // Clickable indication - now "その他" nodes are also clickable
+                      const nodeName = actualNode?.name || '';
                       const isClickable =
                         node.id === 'ministry-budget-other' ||
-                        (node.id === 'total-budget' && (offset > 0 || viewMode !== 'global')) ||
+                        node.id === 'total-budget' ||
                         (nodeType === 'ministry-budget' && node.id !== 'total-budget' && node.id !== 'ministry-budget-other') ||
-                        ((nodeType === 'project-budget' || nodeType === 'project-spending') && !name.startsWith('その他')) ||
-                        (nodeType === 'recipient' && !name.startsWith('その他'));
+                        ((nodeType === 'project-budget' || nodeType === 'project-spending') && !nodeName.match(/^事業\(Top\d+以外.*\)$/)) ||
+                        (nodeType === 'recipient');
 
                       const cursorStyle = isClickable ? 'pointer' : 'default';
                       const fontWeight = isClickable ? 'bold' : 500;
                       const color = isClickable ? '#2563eb' : '#1f2937'; // Blue if clickable
 
                       return (
-                        <g
-                          key={node.id}
-                          transform={`translate(${x}, ${node.y + node.height / 2})`}
-                          style={{ cursor: cursorStyle }}
-                          onClick={() => isClickable && handleNodeClick(node)}
-                        >
+                        <g key={node.id} style={{ cursor: cursorStyle }}>
+                          {/* 金額ラベル（ノードの真上中央に配置） */}
                           <text
+                            x={amountX}
+                            y={node.y - 6}
+                            textAnchor="middle"
+                            dominantBaseline="auto"
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              fill: '#1f2937',
+                              pointerEvents: 'none',
+                            }}
+                          >
+                            {amount}
+                          </text>
+
+                          {/* 名前ラベル（ノードの中央横に配置） */}
+                          <text
+                            x={x}
+                            y={node.y + node.height / 2}
                             textAnchor={textAnchor}
                             dominantBaseline="middle"
                             style={{
                               fill: color,
                               fontSize: 12,
                               fontWeight: fontWeight,
-                              pointerEvents: isClickable ? 'auto' : 'none', // Allow click only if clickable
+                              pointerEvents: isClickable ? 'auto' : 'none',
+                              cursor: cursorStyle,
                             }}
+                            onClick={() => isClickable && handleNodeClick(node)}
                           >
-                            <tspan x={0} dy="-0.6em">{displayName}</tspan>
-                            <tspan x={0} dy="1.2em" style={{ fontSize: 11, fontWeight: 400, fill: '#1f2937' }}>{amount}</tspan>
+                            {displayName}
                           </text>
                         </g>
                       );
@@ -461,38 +809,14 @@ export default function SankeyPage() {
                   const nodeType = actualNode.type || '';
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const details = actualNode.details as any;
-                  const value = formatCurrency(node.value);
+                  const value = formatCurrency(node.value, actualNode);
 
                   // ノードタイプに応じてタイトルを調整
                   let title = name;
                   if (nodeType === 'project-budget') {
-                    title = `${name} (予算)`;
+                    title = `(予算) ${name}`;
                   } else if (nodeType === 'project-spending') {
-                    title = `${name} (支出)`;
-                  }
-
-                  if (node.id === 'ministry-budget-other') {
-                    title += ' (クリックで詳細を表示)';
-                  } else if (node.id === 'total-budget' && (offset > 0 || viewMode !== 'global')) {
-                    title += ' (クリックで戻る)';
-                  } else if (nodeType === 'ministry-budget' && node.id !== 'total-budget' && node.id !== 'ministry-budget-other') {
-                    if (viewMode === 'ministry') {
-                      title += ' (クリックで全体ビューへ戻る)';
-                    } else {
-                      title += ' (クリックで府省庁詳細を表示)';
-                    }
-                  } else if ((nodeType === 'project-budget' || nodeType === 'project-spending') && !name.startsWith('その他')) {
-                    if (viewMode === 'project') {
-                      title += ' (クリックで前のビューへ戻る)';
-                    } else {
-                      title += ' (クリックで事業詳細を表示)';
-                    }
-                  } else if (nodeType === 'recipient' && !name.startsWith('その他')) {
-                    if (viewMode === 'spending') {
-                      title += ' (クリックで前のビューへ戻る)';
-                    } else {
-                      title += ' (クリックで支出元を表示)';
-                    }
+                    title = `(支出) ${name}`;
                   }
 
                   return (
@@ -569,11 +893,108 @@ export default function SankeyPage() {
                 }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 linkTooltip={({ link }: any) => {
+                  // Find actual nodes and link data
+                  const sourceNode = sankey.nodes.find(n => n.id === link.source.id);
+                  const targetNode = sankey.nodes.find(n => n.id === link.target.id);
+                  const actualLink = sankey.links.find(l => l.source === link.source.id && l.target === link.target.id);
+
+                  const sourceName = sourceNode?.name || link.source.id;
+                  const targetName = targetNode?.name || link.target.id;
+                  const sourceValue = formatCurrency(link.source.value, sourceNode);
+                  const targetValue = formatCurrency(link.target.value, targetNode);
+                  const linkValue = formatCurrency(link.value, sourceNode);
+
+                  // 事業(予算) → 事業(支出) のリンクかどうかチェック
+                  const isProjectBudgetToSpending =
+                    sourceNode?.type === 'project-budget' &&
+                    targetNode?.type === 'project-spending';
+
+                  // タイトルとラベルを決定
+                  let title = '';
+                  let sourceLabel = '送信元';
+                  let targetLabel = '送信先';
+
+                  if (isProjectBudgetToSpending) {
+                    // 事業ノード間のリンク
+                    title = sourceName; // 事業名をタイトルに
+                    sourceLabel = '予算';
+                    targetLabel = '支出';
+                  } else {
+                    // その他のリンク：ノードタイプに基づいてタイトルを決定
+                    if (sourceNode?.type === 'ministry-budget') {
+                      title = `${sourceName} → 事業`;
+                    } else if (sourceNode?.type === 'project-spending') {
+                      title = `${sourceName} → 支出先`;
+                    } else {
+                      title = '資金の流れ';
+                    }
+                  }
+
                   return (
-                    <div className="bg-white dark:bg-gray-800 px-3 py-2 rounded shadow-lg border border-gray-200 dark:border-gray-700">
-                      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {formatCurrency(link.source.value)} → {formatCurrency(link.target.value)}
+                    <div className="bg-white dark:bg-gray-800 px-4 py-3 rounded shadow-lg border border-gray-200 dark:border-gray-700 max-w-md">
+                      {/* タイトル */}
+                      <div className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-2 border-b border-gray-200 dark:border-gray-600 pb-2">
+                        {title}
                       </div>
+
+                      {/* 送信元 */}
+                      <div className="mb-2">
+                        {isProjectBudgetToSpending && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{sourceLabel}</div>
+                        )}
+                        {!isProjectBudgetToSpending && (
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {sourceName}
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {sourceValue}
+                        </div>
+                      </div>
+
+                      {/* 矢印と流れる金額 */}
+                      <div className="text-center my-2">
+                        <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                          ↓ 
+                        </div>
+                      </div>
+
+                      {/* 送信先 */}
+                      <div className="mb-2">
+                        {isProjectBudgetToSpending && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{targetLabel}</div>
+                        )}
+                        {!isProjectBudgetToSpending && (
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                            {targetName}
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {targetValue}
+                        </div>
+                      </div>
+
+                      {/* リンク詳細情報 */}
+                      {actualLink?.details && (actualLink.details.contractMethod || actualLink.details.blockName) && (
+                        <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+                          {actualLink.details.contractMethod && (
+                            <div className="mb-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">契約方式: </span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                {actualLink.details.contractMethod}
+                              </span>
+                            </div>
+                          )}
+                          {actualLink.details.blockName && (
+                            <div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">支出ブロック: </span>
+                              <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                {actualLink.details.blockName}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 }}
@@ -602,67 +1023,133 @@ export default function SankeyPage() {
       {/* 設定ダイアログ */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">表示設定</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-gray-100">TopN表示設定</h2>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                TopN (府省庁一覧)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={tempTopN}
-                onChange={(e) => setTempTopN(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-500 mt-1">全体ビューで表示する府省庁の数</p>
+            {/* 全体ビュー */}
+            <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">全体ビュー</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    府省庁TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={tempGlobalMinistryTopN}
+                    onChange={(e) => setTempGlobalMinistryTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 10</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    支出先TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={tempGlobalSpendingTopN}
+                    onChange={(e) => setTempGlobalSpendingTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 10</p>
+                </div>
+              </div>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                TopN (府省庁詳細)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={tempMinistryTopN}
-                onChange={(e) => setTempMinistryTopN(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-500 mt-1">府省庁個別ビューで表示する事業・支出先の数</p>
+            {/* 府省庁ビュー */}
+            <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">府省庁ビュー</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    事業TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={tempMinistryProjectTopN}
+                    onChange={(e) => setTempMinistryProjectTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 10</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    支出先TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={tempMinistrySpendingTopN}
+                    onChange={(e) => setTempMinistrySpendingTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 10</p>
+                </div>
+              </div>
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                TopN (事業ビュー)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={tempProjectViewTopN}
-                onChange={(e) => setTempProjectViewTopN(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-500 mt-1">事業個別ビューで表示する支出先の数</p>
+            {/* 事業ビュー */}
+            <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">事業ビュー</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    支出先TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={tempProjectSpendingTopN}
+                    onChange={(e) => setTempProjectSpendingTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 20</p>
+                </div>
+              </div>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                TopN (支出ビュー)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={tempSpendingViewTopN}
-                onChange={(e) => setTempSpendingViewTopN(parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              />
-              <p className="text-xs text-gray-500 mt-1">支出先個別ビューで表示する事業の数</p>
+            {/* 支出ビュー */}
+            <div className="mb-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-200">支出ビュー</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    支出元事業TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={tempSpendingProjectTopN}
+                    onChange={(e) => setTempSpendingProjectTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 15</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    支出元府省庁TopN
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={tempSpendingMinistryTopN}
+                    onChange={(e) => setTempSpendingMinistryTopN(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">デフォルト: 10</p>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -682,6 +1169,31 @@ export default function SankeyPage() {
           </div>
         </div>
       )}
+
+      {/* 事業一覧ダイアログ */}
+      <ProjectListModal
+        isOpen={isProjectListOpen}
+        onClose={() => setIsProjectListOpen(false)}
+        onSelectProject={handleSelectProject}
+        onSelectMinistry={handleSelectMinistry}
+        onSelectRecipient={handleSelectRecipient}
+        initialFilters={projectListFilters}
+      />
     </div>
+  );
+}
+
+export default function SankeyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-gray-100"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">読み込み中...</p>
+        </div>
+      </div>
+    }>
+      <SankeyContent />
+    </Suspense>
   );
 }

@@ -1,54 +1,55 @@
-# Dynamic Sankey Diagram Enhancements Walkthrough
+# Top View Visualization Fix and Optimization
 
-## Overview
-We have successfully transformed the static Sankey diagram into a fully dynamic, interactive visualization. The application now fetches data on-demand from the server, allowing for scalable exploration of the large budget dataset.
+## Problem
+The user reported that the "Top View" failed when trying to show "All Ministries".
+1.  **Flow Discontinuity**: "All Ministries" were shown, but "Other Projects" were missing, causing dead-end nodes.
+2.  **Node Clutter**: Enabling "Other Projects" per ministry created too many nodes (~74 extra nodes), making the diagram unreadable.
+3.  **Duplicate Keys**: A bug was introduced where recipient nodes were added twice, causing React rendering errors.
 
-## Key Features
+## Solution
+We modified `sankey-generator.ts` to implement a **Global Aggregation Strategy** for the Global View:
 
-### 1. Dynamic Data Loading
-- **API-Driven**: Data is no longer hardcoded. The `/api/sankey` endpoint generates Sankey data based on real-time parameters.
-- **Performance**: The large source data is cached on the server, ensuring fast response times for subsequent requests.
+1.  **Global "Other Projects" Node**:
+    - Instead of creating an "Other Projects" node for *each* ministry, we create a **single** `project-budget-other-global` node.
+    - All ministries link their remaining budget (not used by Top Projects) to this single node.
+    - This reduces "Other Projects" nodes from ~37 to 1.
 
-### 2. Interactive Drill-Down & Navigation
-- **"Other Ministries" Drill-Down**: Clicking the "その他の府省庁" (Other Ministries) node loads the next set of ministries (pagination).
-- **Ministry View**: Clicking a specific ministry node (e.g., "デジタル庁") switches to a focused view of that ministry's projects and spendings.
-- **Back Navigation**:
-  - Clicking the **"予算総計" (Total Budget)** node acts as a "Back" button, taking you up one level (e.g., from Ministry View back to Global View, or to the previous page of ministries).
-  - A **"Topへ戻る" (Go to Top)** button is available in the header to instantly reset to the initial view.
+2.  **Global "Other Recipients" Node**:
+    - Similarly, we create a **single** `recipient-other-aggregated` node.
+    - The `project-spending-other-global` node links to this.
+    - Any remaining spending from Top Projects (that didn't go to Top Recipients) also links to this.
 
-### 3. Configurable Display Settings
-- **Settings Dialog**: Click the settings icon (⚙️) in the header to open the configuration dialog.
-- **Customizable Limits**:
-  - **TopN (Global)**: Control how many ministries are shown in the main view (default: 3).
-  - **TopN (Ministry)**: Control how many projects and spendings are shown in the Ministry View (default: 5).
+3.  **Updated Defaults**:
+    - Default "Top N Payees" set to 5.
 
-### 4. Visual Refinements
-- **Clean UI**: Removed the magnifying glass icon from nodes for a cleaner look.
-- **Tooltips**: Enhanced tooltips provide detailed budget and spending information.
+4.  **Bug Fix**:
+    - Removed redundant `nodes.push(...recipientNodes)` call that was causing duplicate keys.
 
-## Verification Steps
+## Node Structure (Global View)
+The resulting Sankey diagram now follows this clean structure:
+- **Layer 1**: Total Budget (1 node)
+- **Layer 2**: All Ministries (37 nodes)
+- **Layer 3**: 
+    - Top Projects (~5 nodes)
+    - Other Projects (1 aggregated node)
+- **Layer 4**:
+    - Top Projects Spending (~5 nodes)
+    - Other Projects Spending (1 aggregated node)
+- **Layer 5**:
+    - Top Recipients (5 nodes)
+    - Other Recipients (1 aggregated node)
 
-1.  **Restart Development Server**:
-    > [!IMPORTANT]
-    > You may see `ENOENT` errors in your terminal. This is because a production build (`npm run build`) was run while the development server (`npm run dev`) was active.
-    > **Please stop the running `npm run dev` process (Ctrl+C) and start it again.**
+## Changes
 
-2.  **Test Global Navigation**:
-    - Open the Sankey page.
-    - Click "その他の府省庁" and verify that new ministries appear.
-    - Click "予算総計" and verify it returns to the previous list.
+### `app/lib/sankey-generator.ts`
+- **`buildSankeyData`**:
+    - Added `isGlobalView` check.
+    - Implemented logic to aggregate "Other Projects" budget and spending across all ministries when in Global View.
+    - Implemented logic to aggregate "Other Recipients" flow from the global "Other Projects" node and Top Projects remainders.
+    - Fixed duplicate node insertion bug.
 
-3.  **Test Ministry View**:
-    - Click on a specific ministry (e.g., "厚生労働省").
-    - Verify the chart updates to show only that ministry's budget flow.
-    - Verify the title changes to reflect the selected ministry.
-    - Click "予算総計" to return to the global view.
+### `app/api/sankey/route.ts` & `app/sankey/page.tsx`
+- Default `spendingLimit` (Top N) updated to 5.
 
-4.  **Test Settings**:
-    - Open the settings dialog.
-    - Change "TopN (府省庁一覧)" to 5.
-    - Save and verify that 5 ministries are now displayed.
-
-## Next Steps
-- Explore the data and adjust the default TopN values if needed.
-- Consider adding more granular filters (e.g., by Account Category) in the future.
+## Result
+The visualization now meets the user's requirement for a concise "Top View" that shows the flow from the entire budget down to the specific Top N recipients, without overwhelming the user with hundreds of minor nodes.

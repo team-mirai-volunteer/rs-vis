@@ -4,9 +4,10 @@ import { generateSankeyData } from '@/app/lib/sankey-generator';
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const offset = parseInt(searchParams.get('offset') || '0', 10);
-    const limit = parseInt(searchParams.get('limit') || '3', 10);
-    const projectLimit = parseInt(searchParams.get('projectLimit') || '3', 10);
-    const spendingLimit = parseInt(searchParams.get('spendingLimit') || '3', 10);
+    const projectOffset = parseInt(searchParams.get('projectOffset') || '0', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const projectLimit = parseInt(searchParams.get('projectLimit') || '15', 10);
+    const spendingLimit = parseInt(searchParams.get('spendingLimit') || '10', 10);
     const ministryName = searchParams.get('ministryName') || undefined;
     const projectName = searchParams.get('projectName') || undefined;
     const recipientName = searchParams.get('recipientName') || undefined;
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
     try {
         const data = await generateSankeyData({
             ministryOffset: offset,
+            projectOffset,
             ministryLimit: limit,
             projectLimit,
             spendingLimit,
