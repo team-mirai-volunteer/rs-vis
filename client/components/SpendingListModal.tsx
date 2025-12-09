@@ -3,57 +3,62 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { RS2024StructuredData, BudgetRecord, SpendingRecord } from '@/types/structured';
 
-export interface ProjectListFilters {
+export interface SpendingListFilters {
   ministries?: string[];
   projectName?: string;
   spendingName?: string;
-  groupByProject?: boolean;
+  groupBySpending?: boolean; // 事業名でまとめる
 }
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSelectProject: (projectName: string) => void;
+  onSelectRecipient: (recipientName: string) => void;
   onSelectMinistry?: (ministryName: string) => void;
-  onSelectRecipient?: (recipientName: string) => void;
-  initialFilters?: ProjectListFilters;
+  onSelectProject?: (projectName: string) => void;
+  initialFilters?: SpendingListFilters;
 }
 
 interface SpendingDetail {
-  projectId: number;
-  ministry: string;
-  projectName: string;
   spendingName: string;
+  projectName: string;
+  ministry: string;
   totalBudget: number;
   totalSpendingAmount: number;
   executionRate: number;
-  spendingCount?: number; // まとめる場合の支出先件数
+  projectCount?: number; // まとめる場合の事業件数
+  ministryBreakdown?: MinistryBreakdown[]; // まとめる場合の府省庁別内訳
 }
 
-type SortColumn = 'ministry' | 'projectName' | 'spendingName' | 'totalBudget' | 'totalSpendingAmount' | 'executionRate' | 'spendingCount';
+type SortColumn = 'spendingName' | 'projectName' | 'ministry' | 'totalBudget' | 'totalSpendingAmount' | 'executionRate' | 'projectCount';
 type SortDirection = 'asc' | 'desc';
 type SearchMode = 'contains' | 'exact' | 'prefix';
 
-export default function ProjectListModal({ isOpen, onClose, onSelectProject, onSelectMinistry, onSelectRecipient, initialFilters }: Props) {
+interface MinistryBreakdown {
+  ministry: string;
+  amount: number;
+}
+
+export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, onSelectMinistry, onSelectProject, initialFilters }: Props) {
   const [allData, setAllData] = useState<BudgetRecord[]>([]);
   const [spendingsData, setSpendingsData] = useState<SpendingRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sortColumn, setSortColumn] = useState<SortColumn>('totalBudget');
+  const [sortColumn, setSortColumn] = useState<SortColumn>('totalSpendingAmount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [projectNameFilter, setProjectNameFilter] = useState('');
   const [spendingNameFilter, setSpendingNameFilter] = useState('');
-  const [projectNameSearchMode, setProjectNameSearchMode] = useState<SearchMode>('contains');
+  const [projectNameFilter, setProjectNameFilter] = useState('');
   const [spendingNameSearchMode, setSpendingNameSearchMode] = useState<SearchMode>('contains');
+  const [projectNameSearchMode, setProjectNameSearchMode] = useState<SearchMode>('contains');
   const [selectedMinistries, setSelectedMinistries] = useState<string[]>([]);
   const [availableMinistries, setAvailableMinistries] = useState<string[]>([]);
-  const [groupByProject, setGroupByProject] = useState(true);
+  const [groupBySpending, setGroupBySpending] = useState(true); // 事業名でまとめる
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(100);
   const [isFilterExpanded, setIsFilterExpanded] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768; // PC: 展開, モバイル: 折りたたみ
+      return window.innerWidth >= 768;
     }
     return true;
   });
@@ -62,6 +67,15 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
   const [budgetMax, setBudgetMax] = useState<string>('');
   const [spendingMin, setSpendingMin] = useState<string>('');
   const [spendingMax, setSpendingMax] = useState<string>('');
+  const [ministryBreakdownModal, setMinistryBreakdownModal] = useState<{
+    isOpen: boolean;
+    spendingName: string;
+    ministries: MinistryBreakdown[];
+  }>({
+    isOpen: false,
+    spendingName: '',
+    ministries: [],
+  });
 
   // データ読み込みと府省庁リスト初期化
   useEffect(() => {
@@ -84,7 +98,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
 
         // 府省庁リスト作成（予算額の降順）
         const ministries = Array.from(ministryBudgets.entries())
-          .sort((a, b) => b[1] - a[1]) // 予算額の降順
+          .sort((a, b) => b[1] - a[1])
           .map(([name]) => name);
 
         setAvailableMinistries(ministries);
@@ -94,13 +108,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
           if (initialFilters.ministries) {
             setSelectedMinistries(initialFilters.ministries);
           } else {
-            setSelectedMinistries(ministries); // Default to all if not specified
-          }
-
-          if (initialFilters.projectName !== undefined) {
-            setProjectNameFilter(initialFilters.projectName);
-          } else {
-            setProjectNameFilter('');
+            setSelectedMinistries(ministries);
           }
 
           if (initialFilters.spendingName !== undefined) {
@@ -109,35 +117,17 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
             setSpendingNameFilter('');
           }
 
-          if (initialFilters.groupByProject !== undefined) {
-            setGroupByProject(initialFilters.groupByProject);
+          if (initialFilters.projectName !== undefined) {
+            setProjectNameFilter(initialFilters.projectName);
+          } else {
+            setProjectNameFilter('');
           }
-          // If groupByProject is not specified, keep current state (or default)
+
+          if (initialFilters.groupBySpending !== undefined) {
+            setGroupBySpending(initialFilters.groupBySpending);
+          }
         } else {
-          // No initial filters, reset to defaults
           setSelectedMinistries(ministries);
-          setProjectNameFilter('');
-          setSpendingNameFilter('');
-          // Keep groupByProject as is or reset? Usually reset is safer for "fresh open"
-          // But user requirement says "Keep previous" for some cases.
-          // The parent component will pass undefined if it wants to keep previous, 
-          // but here we are mounting/opening. 
-          // If the modal is kept mounted but hidden, state persists.
-          // If unmounted, state resets.
-          // This component seems to be conditionally rendered or just hidden?
-          // In page.tsx: <ProjectListModal isOpen={isProjectListOpen} ... />
-          // It is always rendered but isOpen controls visibility (return null if !isOpen).
-          // So state is lost when closed.
-          // So "Keep previous" implies we need to pass the *previous* state back in, 
-          // OR we need to change how this component works (don't return null).
-          // Let's check line 287: if (!isOpen) return null;
-          // Yes, state is lost.
-          // To support "Keep previous", the parent needs to manage the state or we need to not unmount.
-          // However, the user requirement says "Keep previous setting" for "groupByProject" in some cases.
-          // Since we are re-implementing the opening logic, we can pass the desired state from parent.
-          // But wait, if the parent doesn't know the *user's last choice* inside the modal, it can't pass it back.
-          // We might need to lift the state up or change `if (!isOpen) return null` to `style={{display: isOpen ? 'block' : 'none'}}`.
-          // Changing to display:none is easier to preserve state.
         }
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -148,40 +138,6 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
 
     loadData();
   }, [isOpen, initialFilters]);
-
-  // ドロップダウン外クリックで閉じる
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // 府省庁トグル
-  const toggleMinistry = (ministry: string) => {
-    setSelectedMinistries((prev) =>
-      prev.includes(ministry) ? prev.filter((m) => m !== ministry) : [...prev, ministry]
-    );
-  };
-
-  // 全選択/全解除
-  const toggleAllMinistries = () => {
-    if (selectedMinistries.length === availableMinistries.length) {
-      setSelectedMinistries([]);
-    } else {
-      setSelectedMinistries(availableMinistries);
-    }
-  };
-
-  // ドロップダウン表示テキスト
-  const getDropdownDisplayText = () => {
-    if (selectedMinistries.length === 0) return '表示対象なし';
-    if (selectedMinistries.length === 1) return selectedMinistries[0];
-    return `選択中 (${selectedMinistries.length}/${availableMinistries.length})`;
-  };
 
   // 金額入力をパース（日本語単位対応）
   const parseAmountInput = (input: string): number | null => {
@@ -210,147 +166,191 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
     }
   };
 
-  // フィルタリング、支出先展開、ソート
-  const sortedData = useMemo(() => {
-    // 府省庁でフィルタ
-    const filteredByMinistry = allData.filter((item) => selectedMinistries.includes(item.ministry));
+  // フィルタリング＆集計ロジック
+  const processedData = useMemo(() => {
+    const result: SpendingDetail[] = [];
+    const spendingMap = new Map<number, SpendingRecord>();
 
-    // 支出先をまとめるかどうかで処理を分岐
-    let details: SpendingDetail[] = [];
+    // SpendingRecordをMapに格納
+    spendingsData.forEach(s => {
+      spendingMap.set(s.spendingId, s);
+    });
 
-    if (groupByProject) {
-      // まとめる場合：事業ごとに1行
-      details = filteredByMinistry.map(item => ({
-        projectId: item.projectId,
-        ministry: item.ministry,
-        projectName: item.projectName,
-        spendingName: '', // まとめる場合は空
-        totalBudget: item.totalBudget,
-        totalSpendingAmount: item.totalSpendingAmount,
-        executionRate: item.executionRate,
-        spendingCount: item.spendingIds.length,
-      }));
-    } else {
-      // 展開する場合：支出先ごとに1行
-      // SpendingRecordから実際の支出先データを取得して展開
-      const spendingMap = new Map<number, SpendingRecord>();
-      spendingsData.forEach(s => spendingMap.set(s.spendingId, s));
+    // フィルタリング対象の事業を取得
+    // フィルタリング関数
+    const checkMatch = (text: string, filter: string, mode: SearchMode) => {
+      if (!filter) return true;
+      const t = text.toLowerCase();
+      const f = filter.toLowerCase();
+      switch (mode) {
+        case 'exact': return t === f;
+        case 'prefix': return t.startsWith(f);
+        case 'contains': default: return t.includes(f);
+      }
+    };
 
-      filteredByMinistry.forEach(budget => {
-        budget.spendingIds.forEach(spendingId => {
-          const spending = spendingMap.get(spendingId);
-          if (!spending) return;
+    const filteredProjects = allData.filter((project) => {
+      // 府省庁フィルタ
+      if (!selectedMinistries.includes(project.ministry)) return false;
 
-          // この支出先がこの事業からいくら受け取っているかを計算
-          const projectSpending = spending.projects.find(p => p.projectId === budget.projectId);
-          const spendingAmount = projectSpending?.amount || 0;
+      // 事業名フィルタ
+      if (projectNameFilter && !checkMatch(project.projectName, projectNameFilter, projectNameSearchMode)) {
+        return false;
+      }
 
-          details.push({
-            projectId: budget.projectId,
-            ministry: budget.ministry,
-            projectName: budget.projectName,
-            spendingName: spending.spendingName,
-            totalBudget: budget.totalBudget,
-            totalSpendingAmount: spendingAmount, // この事業からこの支出先への支出額
-            executionRate: budget.totalBudget > 0 ? (spendingAmount / budget.totalBudget) * 100 : 0,
-          });
+      return true;
+    });
+
+    // 支出先ごとにデータを作成
+    filteredProjects.forEach(project => {
+      project.spendingIds.forEach(spendingId => {
+        const spending = spendingMap.get(spendingId);
+        if (!spending) return;
+
+        // 支出先名フィルタ
+        if (spendingNameFilter && !checkMatch(spending.spendingName, spendingNameFilter, spendingNameSearchMode)) {
+          return;
+        }
+
+        // この事業からの支出額を取得
+        const projectSpending = spending.projects.find(p => p.projectId === project.projectId);
+        if (!projectSpending) return;
+
+        result.push({
+          spendingName: spending.spendingName,
+          projectName: project.projectName,
+          ministry: project.ministry,
+          totalBudget: project.totalBudget,
+          totalSpendingAmount: projectSpending.amount,
+          executionRate: project.executionRate,
         });
+      });
+    });
+
+    // 事業名でまとめる場合
+    if (groupBySpending) {
+      const grouped = new Map<string, SpendingDetail & { ministryAmounts: Map<string, number> }>();
+
+      result.forEach(item => {
+        const key = item.spendingName;
+        const existing = grouped.get(key);
+
+        if (existing) {
+          existing.totalBudget += item.totalBudget;
+          existing.totalSpendingAmount += item.totalSpendingAmount;
+          existing.projectCount = (existing.projectCount || 1) + 1;
+          // 府省庁ごとの支出額を記録
+          const currentAmount = existing.ministryAmounts.get(item.ministry) || 0;
+          existing.ministryAmounts.set(item.ministry, currentAmount + item.totalSpendingAmount);
+          // 執行率は加重平均で再計算
+          existing.executionRate = existing.totalBudget > 0
+            ? (existing.totalSpendingAmount / existing.totalBudget) * 100
+            : 0;
+        } else {
+          const ministryAmounts = new Map<string, number>();
+          ministryAmounts.set(item.ministry, item.totalSpendingAmount);
+          grouped.set(key, {
+            ...item,
+            projectCount: 1,
+            ministryAmounts,
+          });
+        }
+      });
+
+      // 最も割合が大きい府省庁を計算して表示文字列を作成
+      return Array.from(grouped.values()).map(item => {
+        const sortedMinistries = Array.from(item.ministryAmounts.entries())
+          .sort((a, b) => b[1] - a[1]);
+
+        const topMinistry = sortedMinistries[0]?.[0] || '';
+        const otherCount = sortedMinistries.length - 1;
+
+        const ministryDisplay = otherCount > 0
+          ? `${topMinistry} 他${otherCount}件`
+          : topMinistry;
+
+        // 府省庁別内訳データを作成
+        const ministryBreakdown: MinistryBreakdown[] = sortedMinistries.map(([ministry, amount]) => ({
+          ministry,
+          amount,
+        }));
+
+        return {
+          spendingName: item.spendingName,
+          projectName: item.projectName,
+          ministry: ministryDisplay,
+          totalBudget: item.totalBudget,
+          totalSpendingAmount: item.totalSpendingAmount,
+          executionRate: item.executionRate,
+          projectCount: item.projectCount,
+          ministryBreakdown,
+        };
       });
     }
 
-    // テキストフィルタ
-    details = details.filter((item) => {
-      const checkMatch = (text: string, filter: string, mode: SearchMode) => {
-        if (!filter) return true;
-        const t = text.toLowerCase();
-        const f = filter.toLowerCase();
-        switch (mode) {
-          case 'exact': return t === f;
-          case 'prefix': return t.startsWith(f);
-          case 'contains': default: return t.includes(f);
-        }
-      };
+    return result;
+  }, [allData, spendingsData, selectedMinistries, projectNameFilter, spendingNameFilter, groupBySpending, projectNameSearchMode, spendingNameSearchMode]);
 
-      const matchProject = checkMatch(item.projectName, projectNameFilter, projectNameSearchMode);
-      const matchSpending = groupByProject || checkMatch(item.spendingName, spendingNameFilter, spendingNameSearchMode);
+  // 金額範囲フィルタ
+  const amountFilteredData = useMemo(() => {
+    const budgetMinVal = parseAmountInput(budgetMin) ?? -Infinity;
+    const budgetMaxVal = parseAmountInput(budgetMax) ?? Infinity;
+    const spendingMinVal = parseAmountInput(spendingMin) ?? -Infinity;
+    const spendingMaxVal = parseAmountInput(spendingMax) ?? Infinity;
 
-      // 金額範囲フィルタ（千円単位）
-      const budgetMinVal = parseAmountInput(budgetMin) ?? -Infinity;
-      const budgetMaxVal = parseAmountInput(budgetMax) ?? Infinity;
-      const spendingMinVal = parseAmountInput(spendingMin) ?? -Infinity;
-      const spendingMaxVal = parseAmountInput(spendingMax) ?? Infinity;
-
+    return processedData.filter(item => {
       const matchBudget = item.totalBudget >= budgetMinVal && item.totalBudget <= budgetMaxVal;
-      const matchSpendingAmount = item.totalSpendingAmount >= spendingMinVal && item.totalSpendingAmount <= spendingMaxVal;
-
-      return matchProject && matchSpending && matchBudget && matchSpendingAmount;
+      const matchSpending = item.totalSpendingAmount >= spendingMinVal && item.totalSpendingAmount <= spendingMaxVal;
+      return matchBudget && matchSpending;
     });
+  }, [processedData, budgetMin, budgetMax, spendingMin, spendingMax]);
 
-    // ソート
-    const sorted = [...details].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortColumn) {
-        case 'ministry':
-          aValue = a.ministry;
-          bValue = b.ministry;
-          break;
-        case 'projectName':
-          aValue = a.projectName;
-          bValue = b.projectName;
-          break;
-        case 'spendingName':
-          aValue = a.spendingName;
-          bValue = b.spendingName;
-          break;
-        case 'totalBudget':
-          aValue = a.totalBudget;
-          bValue = b.totalBudget;
-          break;
-        case 'totalSpendingAmount':
-          aValue = a.totalSpendingAmount;
-          bValue = b.totalSpendingAmount;
-          break;
-        case 'executionRate':
-          aValue = a.executionRate;
-          bValue = b.executionRate;
-          break;
-        case 'spendingCount':
-          aValue = a.spendingCount || 0;
-          bValue = b.spendingCount || 0;
-          break;
-        default:
-          return 0;
+  // ソート
+  const sortedData = useMemo(() => {
+    return [...amountFilteredData].sort((a, b) => {
+      // projectNameでソートする場合、groupBySpendingがOnならprojectCountでソート
+      let column = sortColumn;
+      if (sortColumn === 'projectName' && groupBySpending) {
+        const aCount = a.projectCount || 0;
+        const bCount = b.projectCount || 0;
+        return sortDirection === 'asc' ? aCount - bCount : bCount - aCount;
       }
 
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
+      if (sortColumn === 'projectCount') {
+        const aCount = a.projectCount || 0;
+        const bCount = b.projectCount || 0;
+        return sortDirection === 'asc' ? aCount - bCount : bCount - aCount;
+      }
+
+      let aVal: string | number | undefined = a[column];
+      let bVal: string | number | undefined = b[column];
+
+      if (aVal === undefined) aVal = 0;
+      if (bVal === undefined) bVal = 0;
+
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
         return sortDirection === 'asc'
-          ? aValue.localeCompare(bValue, 'ja')
-          : bValue.localeCompare(aValue, 'ja');
+          ? aVal.localeCompare(bVal, 'ja')
+          : bVal.localeCompare(aVal, 'ja');
       }
 
-      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-    });
+      // Ensure both are numbers for subtraction
+      const aNum = typeof aVal === 'number' ? aVal : 0;
+      const bNum = typeof bVal === 'number' ? bVal : 0;
 
-    return sorted;
-  }, [allData, spendingsData, selectedMinistries, groupByProject, sortColumn, sortDirection, projectNameFilter, spendingNameFilter, projectNameSearchMode, spendingNameSearchMode, budgetMin, budgetMax, spendingMin, spendingMax]);
+      return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+    });
+  }, [amountFilteredData, sortColumn, sortDirection, groupBySpending]);
 
   // ページネーション
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return sortedData.slice(startIndex, endIndex);
+    return sortedData.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedData, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
 
-  // フィルタ変更時にページを1にリセット
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [projectNameFilter, spendingNameFilter, selectedMinistries, groupByProject, sortColumn, sortDirection]);
-
-  // ソートハンドラー
+  // ソート変更ハンドラ
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -358,51 +358,101 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
       setSortColumn(column);
       setSortDirection('desc');
     }
+    setCurrentPage(1);
   };
 
-  // ソートインジケーター
+  // フィルタ変更時にページを1にリセット
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [spendingNameFilter, projectNameFilter, selectedMinistries, groupBySpending, sortColumn, sortDirection, budgetMin, budgetMax, spendingMin, spendingMax]);
+
+  // ドロップダウン外クリック検知
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ページ変更時にトップにスクロール
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMinistries, projectNameFilter, spendingNameFilter, groupBySpending]);
+
+  // 全支出先数の計算
+  const totalSpendingCount = useMemo(() => {
+    return spendingsData.length;
+  }, [spendingsData]);
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1e12) {
+      return `${(value / 1e12).toFixed(2)}兆円`;
+    } else if (value >= 1e8) {
+      return `${(value / 1e8).toFixed(2)}億円`;
+    } else if (value >= 1e4) {
+      return `${(value / 1e4).toFixed(2)}万円`;
+    }
+    return `${value.toLocaleString()}円`;
+  };
+
   const getSortIndicator = (column: SortColumn) => {
     if (sortColumn !== column) return '⇅';
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
-  // 金額フォーマット
-  const formatCurrency = (value: number) => {
-    if (value >= 1e12) {
-      const trillions = value / 1e12;
-      return `${trillions.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}兆円`;
-    } else if (value >= 1e8) {
-      const hundreds = value / 1e8;
-      return `${hundreds.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}億円`;
-    } else if (value >= 1e4) {
-      const tenThousands = value / 1e4;
-      return `${tenThousands.toLocaleString('ja-JP', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}万円`;
+  const getDropdownDisplayText = () => {
+    if (selectedMinistries.length === 0) {
+      return '表示対象なし';
+    } else if (selectedMinistries.length === 1) {
+      return selectedMinistries[0];
     } else {
-      return `${value.toLocaleString('ja-JP')}円`;
+      return `選択中 (${selectedMinistries.length}/${availableMinistries.length})`;
     }
   };
 
-  // セルクリックハンドラー
-  const handleMinistryClick = (ministryName: string) => {
+  const toggleAllMinistries = () => {
+    if (selectedMinistries.length === availableMinistries.length) {
+      setSelectedMinistries([]);
+    } else {
+      setSelectedMinistries(availableMinistries);
+    }
+  };
+
+  const toggleMinistry = (ministry: string) => {
+    if (selectedMinistries.includes(ministry)) {
+      setSelectedMinistries(selectedMinistries.filter((m) => m !== ministry));
+    } else {
+      setSelectedMinistries([...selectedMinistries, ministry]);
+    }
+  };
+
+  const handleMinistryClick = (item: SpendingDetail) => {
+    if (groupBySpending && item.ministryBreakdown && item.ministryBreakdown.length > 1) {
+      // 複数府省庁がある場合はモーダルを表示
+      setMinistryBreakdownModal({
+        isOpen: true,
+        spendingName: item.spendingName,
+        ministries: item.ministryBreakdown,
+      });
+    } else if (onSelectMinistry) {
+      // 単一府省庁の場合は直接遷移
+      const ministry = item.ministryBreakdown?.[0]?.ministry || item.ministry;
+      onSelectMinistry(ministry);
+      onClose();
+    }
+  };
+
+  const handleMinistryBreakdownSelect = (ministry: string) => {
+    setMinistryBreakdownModal({ isOpen: false, spendingName: '', ministries: [] });
     if (onSelectMinistry) {
-      onSelectMinistry(ministryName);
+      onSelectMinistry(ministry);
       onClose();
     }
   };
-
-  const handleProjectClick = (projectName: string) => {
-    onSelectProject(projectName);
-    onClose();
-  };
-
-  const handleRecipientClick = (recipientName: string) => {
-    if (onSelectRecipient) {
-      onSelectRecipient(recipientName);
-      onClose();
-    }
-  };
-
-  // if (!isOpen) return null; // Stateを維持するためにアンマウントしない
 
   return (
     <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-200 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
@@ -410,7 +460,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
         {/* ヘッダー */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-start mb-2">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">事業一覧</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">支出先一覧</h2>
             <button
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
@@ -419,22 +469,47 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
             </button>
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            全{allData.length.toLocaleString()}事業
-            {sortedData.length !== allData.length && ` （フィルター後: ${sortedData.length.toLocaleString()}件）`}
+            全{totalSpendingCount.toLocaleString()}支出先
+            {sortedData.length !== totalSpendingCount && ` （フィルター後: ${sortedData.length.toLocaleString()}件）`}
             <br />
             {(() => {
-              // 支出先展開時は同じ事業が複数行になるため、予算は重複カウントしないよう事業IDでユニーク化
-              const uniqueProjects = new Map<number, { budget: number; spending: number }>();
-              sortedData.forEach(item => {
-                if (!uniqueProjects.has(item.projectId)) {
-                  uniqueProjects.set(item.projectId, { budget: item.totalBudget, spending: 0 });
-                }
-                const proj = uniqueProjects.get(item.projectId)!;
-                proj.spending += item.totalSpendingAmount;
+              // 事業名まとめOFF時は同じ事業が複数行になる可能性があるため、予算は重複カウントしない
+              // まとめON時は支出先ごとに集計済みだが、同じ事業が複数の支出先に出ている場合は重複する
+              // 正確な合計を出すため、元データ(allData)から関連事業を特定して集計
+              const relatedProjectIds = new Set<number>();
+
+              // sortedDataに含まれる事業を特定
+              if (groupBySpending) {
+                // まとめON: processedDataの生成過程を追う必要があるが、
+                // sortedDataからは元の事業IDが取れないため、
+                // 表示されている支出先名から逆引きする
+                const displayedSpendingNames = new Set(sortedData.map(item => item.spendingName));
+                spendingsData.forEach(spending => {
+                  if (displayedSpendingNames.has(spending.spendingName)) {
+                    spending.projects.forEach(p => relatedProjectIds.add(p.projectId));
+                  }
+                });
+              } else {
+                // まとめOFF: sortedDataの各行がそのまま事業を表す
+                sortedData.forEach(item => {
+                  // projectNameから事業を特定
+                  const project = allData.find(p =>
+                    p.projectName === item.projectName && p.ministry === item.ministry
+                  );
+                  if (project) relatedProjectIds.add(project.projectId);
+                });
+              }
+
+              // 関連事業の予算合計
+              let totalBudget = 0;
+              relatedProjectIds.forEach(projectId => {
+                const project = allData.find(p => p.projectId === projectId);
+                if (project) totalBudget += project.totalBudget;
               });
 
-              const totalBudget = Array.from(uniqueProjects.values()).reduce((sum, p) => sum + p.budget, 0);
-              const totalSpending = Array.from(uniqueProjects.values()).reduce((sum, p) => sum + p.spending, 0);
+              // 支出合計は単純に合計（まとめON/OFFで既に正しく集計されている）
+              const totalSpending = sortedData.reduce((sum, item) => sum + item.totalSpendingAmount, 0);
+
               return `予算: ${formatCurrency(totalBudget)} / 支出: ${formatCurrency(totalSpending)}`;
             })()}
           </div>
@@ -457,7 +532,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
           {isFilterExpanded && (
             <div className="px-4 pb-4">
               <div className="flex flex-col gap-3">
-                {/* 1行目: 府省庁フィルタと支出先まとめチェックボックス */}
+                {/* 1行目: 府省庁フィルタと事業名まとめチェックボックス */}
                 <div className="flex items-center gap-3 flex-wrap">
                   {/* 府省庁フィルタ（カスタムドロップダウン） */}
                   <div className="w-64 relative" ref={dropdownRef}>
@@ -502,56 +577,23 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
                     )}
                   </div>
 
-                  {/* 支出先まとめチェックボックス */}
+                  {/* 事業名まとめチェックボックス */}
                   <div className="flex items-center gap-2 mt-5">
                     <input
                       type="checkbox"
-                      id="groupByProject"
-                      checked={groupByProject}
-                      onChange={(e) => setGroupByProject(e.target.checked)}
+                      id="groupBySpending"
+                      checked={groupBySpending}
+                      onChange={(e) => setGroupBySpending(e.target.checked)}
                       className="w-4 h-4"
                     />
-                    <label htmlFor="groupByProject" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                      支出先をまとめる
+                    <label htmlFor="groupBySpending" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                      事業名をまとめる
                     </label>
                   </div>
                 </div>
 
                 {/* 2行目: テキスト検索（検索モード付き） */}
                 <div className="flex items-center gap-3 flex-wrap w-full">
-                  {/* 事業名フィルタ */}
-                  <div className="flex-1 min-w-[250px]">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">事業名</label>
-                      <select
-                        value={projectNameSearchMode}
-                        onChange={(e) => setProjectNameSearchMode(e.target.value as SearchMode)}
-                        className="text-xs border-none bg-transparent text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                      >
-                        <option value="contains">含む</option>
-                        <option value="exact">完全一致</option>
-                        <option value="prefix">前方一致</option>
-                      </select>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={projectNameFilter}
-                        onChange={(e) => setProjectNameFilter(e.target.value)}
-                        placeholder="事業名で検索"
-                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {projectNameFilter && (
-                        <button
-                          onClick={() => setProjectNameFilter('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
                   {/* 支出先フィルタ */}
                   <div className="flex-1 min-w-[250px]">
                     <div className="flex items-center justify-between mb-1">
@@ -559,8 +601,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
                       <select
                         value={spendingNameSearchMode}
                         onChange={(e) => setSpendingNameSearchMode(e.target.value as SearchMode)}
-                        disabled={groupByProject}
-                        className="text-xs border-none bg-transparent text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs border-none bg-transparent text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                       >
                         <option value="contains">含む</option>
                         <option value="exact">完全一致</option>
@@ -573,12 +614,46 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
                         value={spendingNameFilter}
                         onChange={(e) => setSpendingNameFilter(e.target.value)}
                         placeholder="支出先で検索"
-                        disabled={groupByProject}
-                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
-                      {spendingNameFilter && !groupByProject && (
+                      {spendingNameFilter && (
                         <button
                           onClick={() => setSpendingNameFilter('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 事業名フィルタ */}
+                  <div className="flex-1 min-w-[250px]">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-gray-700 dark:text-gray-300">事業名</label>
+                      <select
+                        value={projectNameSearchMode}
+                        onChange={(e) => setProjectNameSearchMode(e.target.value as SearchMode)}
+                        disabled={groupBySpending}
+                        className="text-xs border-none bg-transparent text-gray-500 focus:ring-0 cursor-pointer hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="contains">含む</option>
+                        <option value="exact">完全一致</option>
+                        <option value="prefix">前方一致</option>
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={projectNameFilter}
+                        onChange={(e) => setProjectNameFilter(e.target.value)}
+                        placeholder="事業名で検索"
+                        disabled={groupBySpending}
+                        className="w-full px-3 py-2 pr-8 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      {projectNameFilter && !groupBySpending && (
+                        <button
+                          onClick={() => setProjectNameFilter('')}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                         >
                           ✕
@@ -651,7 +726,7 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
           )}
         </div>
 
-        {/* データテーブル */}
+        {/* テーブル */}
         <div className="flex-1 overflow-auto">
           {loading ? (
             <div className="flex items-center justify-center h-full text-gray-600 dark:text-gray-400">
@@ -662,22 +737,22 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
               <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700 z-[5] shadow-sm">
                 <tr className="border-b-2 border-gray-300 dark:border-gray-600">
                   <th
+                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[300px]"
+                    onClick={() => handleSort('spendingName')}
+                  >
+                    支出先 {getSortIndicator('spendingName')}
+                  </th>
+                  <th
+                    className={`px-4 py-2 text-left ${groupBySpending ? 'whitespace-nowrap w-28 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'min-w-[250px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+                    onClick={() => handleSort(groupBySpending ? 'projectCount' : 'projectName')}
+                  >
+                    {groupBySpending ? `事業件数 ${getSortIndicator('projectCount')}` : `事業名 ${getSortIndicator('projectName')}`}
+                  </th>
+                  <th
                     className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap"
                     onClick={() => handleSort('ministry')}
                   >
                     府省庁 {getSortIndicator('ministry')}
-                  </th>
-                  <th
-                    className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 min-w-[300px]"
-                    onClick={() => handleSort('projectName')}
-                  >
-                    事業名 {getSortIndicator('projectName')}
-                  </th>
-                  <th
-                    className={`px-4 py-2 text-left ${groupByProject ? 'whitespace-nowrap w-28 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'min-w-[250px] cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-                    onClick={() => handleSort(groupByProject ? 'spendingCount' : 'spendingName')}
-                  >
-                    {groupByProject ? `支出先件数 ${getSortIndicator('spendingCount')}` : `支出先 ${getSortIndicator('spendingName')}`}
                   </th>
                   <th
                     className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap"
@@ -702,26 +777,34 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
               <tbody>
                 {paginatedData.map((item, idx) => (
                   <tr
-                    key={`${item.projectId}-${idx}`}
+                    key={`${item.spendingName}-${idx}`}
                     className="border-t border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900"
                   >
                     <td
+                      className="px-4 py-2 text-gray-900 dark:text-white cursor-pointer hover:underline"
+                      onClick={() => {
+                        onSelectRecipient(item.spendingName);
+                        onClose();
+                      }}
+                    >
+                      {item.spendingName}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-gray-900 dark:text-white ${!groupBySpending && item.projectName ? 'cursor-pointer hover:underline' : ''}`}
+                      onClick={() => {
+                        if (!groupBySpending && item.projectName && onSelectProject) {
+                          onSelectProject(item.projectName);
+                          onClose();
+                        }
+                      }}
+                    >
+                      {groupBySpending ? (item.projectCount || 0).toLocaleString() : item.projectName}
+                    </td>
+                    <td
                       className="px-4 py-2 whitespace-nowrap text-gray-900 dark:text-white cursor-pointer hover:underline"
-                      onClick={() => handleMinistryClick(item.ministry)}
+                      onClick={() => handleMinistryClick(item)}
                     >
                       {item.ministry}
-                    </td>
-                    <td
-                      className="px-4 py-2 text-gray-900 dark:text-white cursor-pointer hover:underline"
-                      onClick={() => handleProjectClick(item.projectName)}
-                    >
-                      {item.projectName}
-                    </td>
-                    <td
-                      className={`px-4 py-2 text-gray-900 dark:text-white ${!groupByProject && item.spendingName ? 'cursor-pointer hover:underline' : ''}`}
-                      onClick={() => !groupByProject && item.spendingName && handleRecipientClick(item.spendingName)}
-                    >
-                      {groupByProject ? (item.spendingCount || 0).toLocaleString() : item.spendingName}
                     </td>
                     <td className="px-4 py-2 text-right whitespace-nowrap text-gray-900 dark:text-white">
                       {formatCurrency(item.totalBudget)}
@@ -795,6 +878,69 @@ export default function ProjectListModal({ isOpen, onClose, onSelectProject, onS
           </button>
         </div>
       </div>
-    </div >
+
+      {/* 府省庁別内訳モーダル */}
+      {ministryBreakdownModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col">
+            {/* ヘッダー */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">府省庁別支出額</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {ministryBreakdownModal.spendingName}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setMinistryBreakdownModal({ isOpen: false, spendingName: '', ministries: [] })}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* 府省庁リスト */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700 z-[5] shadow-sm">
+                  <tr className="border-b-2 border-gray-300 dark:border-gray-600">
+                    <th className="px-4 py-2 text-left">府省庁</th>
+                    <th className="px-4 py-2 text-right">支出額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ministryBreakdownModal.ministries.map((m, idx) => (
+                    <tr
+                      key={idx}
+                      className="border-t border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900 cursor-pointer"
+                      onClick={() => handleMinistryBreakdownSelect(m.ministry)}
+                    >
+                      <td className="px-4 py-2 text-gray-900 dark:text-white hover:underline">
+                        {m.ministry}
+                      </td>
+                      <td className="px-4 py-2 text-right text-gray-900 dark:text-white">
+                        {formatCurrency(m.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* フッター */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <button
+                onClick={() => setMinistryBreakdownModal({ isOpen: false, spendingName: '', ministries: [] })}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

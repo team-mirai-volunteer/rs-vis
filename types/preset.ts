@@ -34,6 +34,7 @@ export interface PresetMetadata {
     totalBudget: number;           // 元データの総予算額
     selectedBudget: number;        // 選択されたデータの総予算額
     coverageRate: number;          // カバー率（%、0-100）
+    ministryTotalProjects?: number; // 府省庁ビュー: 選択した府省庁の総事業数
   };
 }
 

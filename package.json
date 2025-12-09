@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@nivo/sankey": "^0.87.0",
-    "next": "^15.1.4",
+    "next": "^15.1.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
