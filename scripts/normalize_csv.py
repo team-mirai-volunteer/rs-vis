@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-RSシステム2024年度CSV正規化スクリプト
+RSシステム CSV正規化スクリプト
 
-前提: data/download/RS_2024/ に手動でZIPファイルをダウンロード済み
+使用法:
+  python3 scripts/normalize_csv.py [--year YEAR]
+  デフォルト: --year 2024
+
+前提: data/download/RS_{YEAR}/ に手動でZIPファイルをダウンロード済み
 
 処理フロー:
-1. data/download/RS_2024/ 内のZIPファイルを解凍
+1. data/download/RS_{YEAR}/ 内のZIPファイルを解凍
 2. 解凍したCSVファイルを正規化
    - neologdnによる正規化（最優先）
    - 丸数字の変換
@@ -14,14 +18,15 @@ RSシステム2024年度CSV正規化スクリプト
    - 全角括弧→半角括弧変換
    - ハイフン・長音の修正
    - 連続空白の削除
-3. 正規化したCSVを data/year_2024/ へ出力
-4. data/download/RS_2024/ 内のZIP以外のファイルを削除
+3. 正規化したCSVを data/year_{YEAR}/ へ出力
+4. data/download/RS_{YEAR}/ 内のZIP以外のファイルを削除
 """
 
 import os
 import sys
 import csv
 import re
+import argparse
 import unicodedata
 import zipfile
 from pathlib import Path
@@ -36,8 +41,9 @@ except ImportError:
     print('   pip3 install neologdn でインストールしてください')
     NEOLOGDN_AVAILABLE = False
 
-INPUT_DIR = Path(__file__).parent.parent / 'data' / 'download' / 'RS_2024'
-OUTPUT_DIR = Path(__file__).parent.parent / 'data' / 'year_2024'
+# 年度は main() で argparse から設定する（モジュールレベルでは仮置き）
+INPUT_DIR: Path = Path()
+OUTPUT_DIR: Path = Path()
 
 # 和暦→西暦変換マップ
 ERA_TO_YEAR = {
@@ -130,6 +136,18 @@ def normalize_text(text: str) -> str:
 
     return text
 
+def fix_zip_filename(raw: str) -> str:
+    """ZIPエントリのファイル名文字化けを修正する。
+    UTF-8フラグ未設定のZIPはPythonがcp437として読む。
+    日本語ZIPはcp932(Shift-JIS)で格納されているため、
+    cp437バイト列に戻してcp932として再デコードする。
+    """
+    try:
+        return raw.encode('cp437').decode('cp932')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return raw  # 変換失敗時は元の文字列を使用
+
+
 def extract_all_zips(directory: Path) -> List[Path]:
     """ディレクトリ内のすべてのZIPファイルを解凍"""
     zip_files = list(directory.glob('*.zip'))
@@ -146,8 +164,12 @@ def extract_all_zips(directory: Path) -> List[Path]:
         try:
             print(f'📦 解凍中: {zip_path.name}')
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(directory)
-                extracted_files.extend([directory / name for name in zip_ref.namelist()])
+                for info in zip_ref.infolist():
+                    # UTF-8フラグ未設定の場合、cp932(Shift-JIS)として再デコード
+                    if not (info.flag_bits & 0x800):
+                        info.filename = fix_zip_filename(info.filename)
+                    zip_ref.extract(info, directory)
+                    extracted_files.append(directory / info.filename)
             print(f'   ✅ 完了')
         except Exception as e:
             print(f'   ❌ エラー: {e}')
@@ -203,8 +225,18 @@ def cleanup_non_zip_files(directory: Path):
 
 def main():
     """メイン処理"""
+    global INPUT_DIR, OUTPUT_DIR
+
+    parser = argparse.ArgumentParser(description='RSシステム CSV 正規化スクリプト')
+    parser.add_argument('--year', type=int, default=2024, help='対象年度 (例: 2025, デフォルト: 2024)')
+    args = parser.parse_args()
+    year = args.year
+
+    INPUT_DIR = Path(__file__).parent.parent / 'data' / 'download' / f'RS_{year}'
+    OUTPUT_DIR = Path(__file__).parent.parent / 'data' / f'year_{year}'
+
     print('=' * 60)
-    print('RSシステム2024年度 CSV 正規化スクリプト')
+    print(f'RSシステム{year}年度 CSV 正規化スクリプト')
     print('=' * 60)
 
     if not NEOLOGDN_AVAILABLE:

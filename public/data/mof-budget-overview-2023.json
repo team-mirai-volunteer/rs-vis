@@ -1,0 +1,155 @@
+{
+  "fiscalYear": 2023,
+  "dataType": "budget",
+  "generalAccount": {
+    "total": 114380000000000,
+    "revenue": {
+      "taxes": {
+        "consumptionTax": 23380000000000,
+        "incomeTax": 21050000000000,
+        "corporateTax": 14600000000000,
+        "inheritanceTax": 2780000000000,
+        "gasolineTax": 2000000000000,
+        "sakeTax": 1180000000000,
+        "customsDuty": 1120000000000,
+        "tobaccoTax": 940000000000,
+        "petroleumCoalTax": 650000000000,
+        "automobileWeightTax": 380000000000,
+        "powerDevelopmentTax": 320000000000,
+        "otherTaxes": 60000000000,
+        "total": 68460000000000
+      },
+      "publicBonds": 35620000000000,
+      "stampRevenue": 980000000000,
+      "otherRevenue": 9320000000000,
+      "total": 114380000000000
+    },
+    "expenditure": {
+      "rsTarget": 72560000000000,
+      "debtService": 25250000000000,
+      "localAllocationTax": 16400000000000,
+      "reserves": 190000000000,
+      "total": 114400000000000
+    }
+  },
+  "specialAccount": {
+    "total": 443430000000000,
+    "revenue": {
+      "insurancePremiums": {
+        "pension": 37750000000000,
+        "labor": 3650000000000,
+        "other": 8770000000000,
+        "total": 50170000000000
+      },
+      "transferFromGeneral": {
+        "total": 32808963296000,
+        "totalIncludingDebt": 58057963296000,
+        "breakdown": {
+          "pension": {
+            "total": 15100000000000,
+            "details": {
+              "basicPension": 12200000000000,
+              "nurseryBenefit": 1374000000000,
+              "childAllowance": 1029000000000,
+              "pensionAdministration": 497000000000
+            }
+          },
+          "localAllocationTax": {
+            "total": 16451000000000,
+            "details": {
+              "generalTransfer": 16182000000000,
+              "specialTransfer": 217000000000,
+              "trafficViolationFund": 52000000000
+            }
+          },
+          "debtRetirement": {
+            "total": 25249000000000,
+            "details": {
+              "ordinaryBondRedemption": 24764000000000,
+              "pensionBondRedemption": 272000000000,
+              "investmentBondRedemption": 213000000000
+            }
+          },
+          "energy": {
+            "total": 813000000000,
+            "details": {
+              "petroleumCoalTax": 520000000000,
+              "powerDevelopmentTax": 293000000000
+            }
+          },
+          "foodSupply": 315486380000,
+          "laborInsurance": 35162866000,
+          "automotiveSafety": 33559546000,
+          "reconstruction": 29794771000,
+          "forestryDebtManagement": 29114372000,
+          "patent": 1845361000
+        }
+      },
+      "publicBonds": 165120000000000,
+      "transferFromOther": 81320000000000,
+      "other": 114310000000000,
+      "total": 443430000000000
+    },
+    "expenditure": {
+      "accounts": {
+        "pension": {
+          "total": 99510000000000,
+          "rsTarget": 68520000000000,
+          "rsExcluded": 30990000000000
+        },
+        "labor": {
+          "total": 8660000000000,
+          "rsTarget": 4350000000000,
+          "rsExcluded": 4310000000000
+        },
+        "energy": {
+          "total": 14060000000000,
+          "rsTarget": 1510000000000,
+          "rsExcluded": 12550000000000
+        },
+        "food": {
+          "total": 1530000000000,
+          "rsTarget": 1050000000000,
+          "rsExcluded": 480000000000
+        },
+        "reconstruction": {
+          "total": 730000000000,
+          "rsTarget": 540000000000,
+          "rsExcluded": 190000000000
+        },
+        "forex": {
+          "total": 2420000000000,
+          "rsTarget": 0,
+          "rsExcluded": 2420000000000
+        },
+        "debtRetirement": {
+          "total": 239470000000000,
+          "rsTarget": 0,
+          "rsExcluded": 239470000000000
+        },
+        "allocationTax": {
+          "total": 49540000000000,
+          "rsTarget": 0,
+          "rsExcluded": 49540000000000
+        },
+        "filp": {
+          "total": 24940000000000,
+          "rsTarget": 20000000000,
+          "rsExcluded": 24920000000000
+        },
+        "others": {
+          "total": 2570000000000,
+          "rsTarget": 2570000000000,
+          "rsExcluded": 0
+        }
+      },
+      "rsTarget": {
+        "total": 78560000000000
+      },
+      "rsExcluded": {
+        "total": 364870000000000
+      },
+      "total": 443430000000000
+    }
+  }
+}

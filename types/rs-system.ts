@@ -120,6 +120,35 @@ export interface SpendingInfo {
 export type CSVRow = Record<string, string>;
 
 /**
+ * 5-2_RS_2024_支出先_支出ブロックのつながり.csv
+ * 支出ブロック間の資金フロー
+ */
+export interface SpendingBlockFlowInfo {
+  シート種別: string;
+  事業年度: string;
+  予算事業ID: string;
+  事業名: string;
+  府省庁の建制順: string;
+  政策所管府省庁: string;
+  府省庁: string;
+  '局・庁': string;
+  部: string;
+  課: string;
+  室: string;
+  班: string;
+  係: string;
+  支出元の支出先ブロック: string;
+  支出元の支出先ブロック名: string;
+  担当組織からの支出: string;           // "TRUE" or "FALSE"
+  支出先の支出先ブロック: string;
+  支出先の支出先ブロック名: string;
+  資金の流れの補足情報: string;
+  国自らが支出する間接経費: string;
+  国自らが支出する間接経費の項目: string;
+  国自らが支出する間接経費の金額: string;
+}
+
+/**
  * 組織階層パス
  */
 export interface HierarchyPath {

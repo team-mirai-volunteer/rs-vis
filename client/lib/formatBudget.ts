@@ -107,3 +107,31 @@ export function formatBudgetShort(amount: number): string {
     return `${Math.round(yen).toLocaleString()}円`;
   }
 }
+
+/**
+ * 金額を日本語形式でフォーマット（円単位入力版、「約」なし）
+ * MOF予算データ等、既に円単位のデータ用
+ * @param yen 金額（円単位）
+ * @returns フォーマットされた文字列
+ * @example
+ * formatBudgetFromYen(1234567890000) // "1.23兆円" (整数部1桁 → 小数第二位)
+ * formatBudgetFromYen(123456789000) // "1234.57億円" (整数部4桁 → 小数第二位)
+ */
+export function formatBudgetFromYen(yen: number): string {
+  if (yen >= 1_000_000_000_000) {
+    // 兆円単位
+    const trillion = yen / 1_000_000_000_000;
+    return `${trillion.toFixed(2)}兆円`;
+  } else if (yen >= 100_000_000) {
+    // 億円単位
+    const billion = yen / 100_000_000;
+    return `${billion.toFixed(2)}億円`;
+  } else if (yen >= 10_000) {
+    // 万円単位
+    const manYen = yen / 10_000;
+    return `${manYen.toFixed(2)}万円`;
+  } else {
+    // 円単位
+    return `${Math.round(yen).toLocaleString()}円`;
+  }
+}

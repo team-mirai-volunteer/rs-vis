@@ -6,6 +6,9 @@
 export interface SankeyNode {
   id: string;
   nodeColor?: string;
+  name?: string;
+  value?: number;
+  type?: string;
 }
 
 export interface SankeyLink {
@@ -27,4 +30,4 @@ export type TopNValue = 5 | 10 | 20 | 50;
 /**
  * TopN設定のキー
  */
-export type TopNSettingsKey = 'budget-drilldown' | 'spending-bottomup';
+export type TopNSettingsKey = 'budget-drilldown' | 'spending-bottomup' | 'subcontract-recipients';

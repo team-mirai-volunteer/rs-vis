@@ -5,9 +5,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const projectOffset = parseInt(searchParams.get('projectOffset') || '0', 10);
     const projectDrilldownLevel = parseInt(searchParams.get('projectDrilldownLevel') || '0', 10);
+    const spendingDrilldownLevel = parseInt(searchParams.get('spendingDrilldownLevel') || '0', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const projectLimit = parseInt(searchParams.get('projectLimit') || '15', 10);
     const spendingLimit = parseInt(searchParams.get('spendingLimit') || '10', 10);
+    const subcontractLimit = parseInt(searchParams.get('subcontractLimit') || '10', 10);
     const ministryName = searchParams.get('ministry') || searchParams.get('ministryName') || undefined;
     const projectName = searchParams.get('project') || searchParams.get('projectName') || undefined;
     const recipientName = searchParams.get('recipient') || searchParams.get('recipientName') || undefined;
@@ -18,9 +20,11 @@ export async function GET(request: NextRequest) {
             ministryOffset: 0, // Not used in drilldown mode - drilldownLevel is used instead
             projectOffset, // Deprecated: use projectDrilldownLevel instead
             projectDrilldownLevel,
+            spendingDrilldownLevel,
             ministryLimit: limit,
             projectLimit,
             spendingLimit,
+            subcontractLimit,
             targetMinistryName: ministryName,
             targetProjectName: projectName,
             targetRecipientName: recipientName,

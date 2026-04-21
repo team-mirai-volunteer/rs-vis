@@ -25,12 +25,14 @@ interface SpendingDetail {
   ministry: string;
   totalBudget: number;
   totalSpendingAmount: number;
-  executionRate: number;
+  outflowAmount?: number; // 再委託額
   projectCount?: number; // まとめる場合の事業件数
   ministryBreakdown?: MinistryBreakdown[]; // まとめる場合の府省庁別内訳
+  sourceBlockName?: string; // 委託元ブロック名（間接支出の場合のみ）
+  blockName?: string; // 支出先ブロック名（複数ブロック表示時の識別用）
 }
 
-type SortColumn = 'spendingName' | 'projectName' | 'ministry' | 'totalBudget' | 'totalSpendingAmount' | 'executionRate' | 'projectCount';
+type SortColumn = 'spendingName' | 'projectName' | 'ministry' | 'totalBudget' | 'totalSpendingAmount' | 'projectCount';
 type SortDirection = 'asc' | 'desc';
 type SearchMode = 'contains' | 'exact' | 'prefix';
 
@@ -212,24 +214,34 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
           return;
         }
 
-        // この事業からの支出額を取得
-        const projectSpending = spending.projects.find(p => p.projectId === project.projectId);
-        if (!projectSpending) return;
+        // この事業からの支出額を取得（同一会社が複数チェーンで出現する場合は各チェーンを別行に）
+        const projectSpendings = spending.projects.filter(p => p.projectId === project.projectId);
+        if (projectSpendings.length === 0) return;
 
-        result.push({
-          spendingName: spending.spendingName,
-          projectName: project.projectName,
-          ministry: project.ministry,
-          totalBudget: project.totalBudget,
-          totalSpendingAmount: projectSpending.amount,
-          executionRate: project.executionRate,
-        });
+        for (const projectSpending of projectSpendings) {
+          // ブロック番号（sourceBlockNumber）で絞り込み、このブロック分の再委託額のみを計算する
+          // （projectId のみで絞ると同一会社の複数ブロック全体の合計が全行に重複するため）
+          const outflowAmount = spending.outflows
+            ?.filter(f => f.projectId === project.projectId && f.sourceBlockNumber === projectSpending.blockNumber)
+            .reduce((sum, f) => sum + f.amount, 0) ?? 0;
+
+          result.push({
+            spendingName: spending.spendingName,
+            projectName: project.projectName,
+            ministry: project.ministry,
+            totalBudget: project.totalBudget,
+            totalSpendingAmount: projectSpending.amount,
+            outflowAmount: outflowAmount > 0 ? outflowAmount : undefined,
+            sourceBlockName: projectSpending.sourceChainPath,
+            blockName: projectSpending.blockName,
+          });
+        }
       });
     });
 
     // 事業名でまとめる場合
     if (groupBySpending) {
-      const grouped = new Map<string, SpendingDetail & { ministryAmounts: Map<string, number> }>();
+      const grouped = new Map<string, SpendingDetail & { ministryAmounts: Map<string, number>; sourcesSet: Set<string> }>();
 
       result.forEach(item => {
         const key = item.spendingName;
@@ -242,17 +254,22 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
           // 府省庁ごとの支出額を記録
           const currentAmount = existing.ministryAmounts.get(item.ministry) || 0;
           existing.ministryAmounts.set(item.ministry, currentAmount + item.totalSpendingAmount);
-          // 執行率は加重平均で再計算
-          existing.executionRate = existing.totalBudget > 0
-            ? (existing.totalSpendingAmount / existing.totalBudget) * 100
-            : 0;
+          // 再委託額を集計
+          if (item.outflowAmount) {
+            existing.outflowAmount = (existing.outflowAmount ?? 0) + item.outflowAmount;
+          }
+          // 委託元を収集
+          if (item.sourceBlockName) existing.sourcesSet.add(item.sourceBlockName);
         } else {
           const ministryAmounts = new Map<string, number>();
           ministryAmounts.set(item.ministry, item.totalSpendingAmount);
+          const sourcesSet = new Set<string>();
+          if (item.sourceBlockName) sourcesSet.add(item.sourceBlockName);
           grouped.set(key, {
             ...item,
             projectCount: 1,
             ministryAmounts,
+            sourcesSet,
           });
         }
       });
@@ -275,15 +292,23 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
           amount,
         }));
 
+        // 委託元表示
+        const sources = Array.from(item.sourcesSet);
+        const sourceBlockName = sources.length === 0 ? undefined
+          : sources.length === 1 ? sources[0]
+          : '複数';
+
         return {
           spendingName: item.spendingName,
           projectName: item.projectName,
           ministry: ministryDisplay,
           totalBudget: item.totalBudget,
           totalSpendingAmount: item.totalSpendingAmount,
-          executionRate: item.executionRate,
+          outflowAmount: item.outflowAmount,
           projectCount: item.projectCount,
           ministryBreakdown,
+          sourceBlockName,
+          blockName: undefined,
         };
       });
     }
@@ -431,6 +456,7 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
   };
 
   const handleMinistryClick = (item: SpendingDetail) => {
+    if (window.getSelection()?.toString()) return;
     if (groupBySpending && item.ministryBreakdown && item.ministryBreakdown.length > 1) {
       // 複数府省庁がある場合はモーダルを表示
       setMinistryBreakdownModal({
@@ -447,6 +473,7 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
   };
 
   const handleMinistryBreakdownSelect = (ministry: string) => {
+    if (window.getSelection()?.toString()) return;
     setMinistryBreakdownModal({ isOpen: false, spendingName: '', ministries: [] });
     if (onSelectMinistry) {
       onSelectMinistry(ministry);
@@ -455,8 +482,8 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
   };
 
   return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-200 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] h-[90vh] flex flex-col">
+    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-200 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* ヘッダー */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-start mb-2">
@@ -766,11 +793,11 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
                   >
                     支出 {getSortIndicator('totalSpendingAmount')}
                   </th>
-                  <th
-                    className="px-4 py-2 text-right cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 whitespace-nowrap"
-                    onClick={() => handleSort('executionRate')}
-                  >
-                    執行率 {getSortIndicator('executionRate')}
+                  <th className="px-4 py-2 text-right whitespace-nowrap text-orange-600 dark:text-orange-400">
+                    再委託
+                  </th>
+                  <th className="px-4 py-2 text-left whitespace-nowrap">
+                    委託元
                   </th>
                 </tr>
               </thead>
@@ -783,15 +810,22 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
                     <td
                       className="px-4 py-2 text-gray-900 dark:text-white cursor-pointer hover:underline"
                       onClick={() => {
+                        if (window.getSelection()?.toString()) return;
                         onSelectRecipient(item.spendingName);
                         onClose();
                       }}
                     >
                       {item.spendingName}
+                      {!groupBySpending && item.blockName && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">
+                          {item.blockName}
+                        </div>
+                      )}
                     </td>
                     <td
                       className={`px-4 py-2 text-gray-900 dark:text-white ${!groupBySpending && item.projectName ? 'cursor-pointer hover:underline' : ''}`}
                       onClick={() => {
+                        if (window.getSelection()?.toString()) return;
                         if (!groupBySpending && item.projectName && onSelectProject) {
                           onSelectProject(item.projectName);
                           onClose();
@@ -812,8 +846,32 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
                     <td className="px-4 py-2 text-right whitespace-nowrap text-gray-900 dark:text-white">
                       {formatCurrency(item.totalSpendingAmount)}
                     </td>
-                    <td className="px-4 py-2 text-right whitespace-nowrap text-gray-900 dark:text-white">
-                      {item.executionRate.toFixed(1)}%
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      {item.outflowAmount ? (() => {
+                        const rate = item.totalSpendingAmount > 0
+                          ? item.outflowAmount / item.totalSpendingAmount * 100
+                          : 0;
+                        return (
+                          <div className="text-orange-600 dark:text-orange-400">
+                            <div>{formatCurrency(item.outflowAmount)}</div>
+                            {rate > 100 ? (
+                              <span
+                                className="text-xs cursor-help underline decoration-dotted"
+                                title="再委託額が受取額を超えています。都道府県・市区町村等の地方負担分（共同負担）が含まれる可能性があります。"
+                              >
+                                ※
+                              </span>
+                            ) : (
+                              <div className="text-xs">({rate.toFixed(1)}%)</div>
+                            )}
+                          </div>
+                        );
+                      })() : (
+                        <span className="text-gray-400 dark:text-gray-600">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500 dark:text-gray-400 text-xs">
+                      {item.sourceBlockName || ''}
                     </td>
                   </tr>
                 ))}
@@ -881,8 +939,8 @@ export default function SpendingListModal({ isOpen, onClose, onSelectRecipient, 
 
       {/* 府省庁別内訳モーダル */}
       {ministryBreakdownModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]" onClick={() => setMinistryBreakdownModal({ isOpen: false, spendingName: '', ministries: [] })}>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
             {/* ヘッダー */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-start mb-2">

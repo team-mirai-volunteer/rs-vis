@@ -1,0 +1,102 @@
+country_code,country_name,canonical_name,name,name_type
+us,アメリカ合衆国,米空軍省,米空軍省,canonical
+us,アメリカ合衆国,米空軍省,アメリカ空軍省,alias
+us,アメリカ合衆国,米空軍省,在日米空軍,alias
+us,アメリカ合衆国,米海軍省,米海軍省,canonical
+us,アメリカ合衆国,米海軍省,アメリカ海軍省,alias
+us,アメリカ合衆国,米海軍省,在日米海軍,alias
+us,アメリカ合衆国,米陸軍省,米陸軍省,canonical
+us,アメリカ合衆国,米陸軍省,アメリカ陸軍省,alias
+us,アメリカ合衆国,米陸軍省,在日米陸軍,alias
+us,アメリカ合衆国,在日米軍司令部,在日米軍司令部,canonical
+us,アメリカ合衆国,在日米軍司令部,在日米軍,alias
+us,アメリカ合衆国,米国航空宇宙局(NASA)ジョンソン宇宙センター,米国航空宇宙局(NASA)ジョンソン宇宙センター,canonical
+us,アメリカ合衆国,米国航空宇宙局(NASA)ジョンソン宇宙センター,NASA,alias
+us,アメリカ合衆国,米国航空宇宙局(NASA)ジョンソン宇宙センター,アメリカ航空宇宙局,alias
+us,アメリカ合衆国,日米教育委員会,日米教育委員会,canonical
+us,アメリカ合衆国,日米教育委員会,フルブライト委員会,alias
+intl,国際機関,米州開発銀行,米州開発銀行,canonical
+intl,国際機関,米州開発銀行,IDB,alias
+intl,国際機関,米州開発銀行,Inter-American Development Bank,alias
+uz,ウズベキスタン共和国,ナヴォイウラン国営企業,ナヴォイウラン国営企業,canonical
+uz,ウズベキスタン共和国,ナヴォイウラン国営企業,Navoiyuran State Company,alias
+uz,ウズベキスタン共和国,ナヴォイウラン国営企業,Navoiyuran State Enterprise,alias
+us,アメリカ合衆国,カリフォルニア大学,カリフォルニア大学,canonical
+us,アメリカ合衆国,カリフォルニア大学,THE REGENTS OF THE UNIVERSITY OF CALIFORNIA,alias
+gb,イギリス,マンチェスター大学,マンチェスター大学,canonical
+gb,イギリス,マンチェスター大学,The University of Manchester,alias
+us,アメリカ合衆国,ロスアラモス国立研究所,ロスアラモス国立研究所,canonical
+us,アメリカ合衆国,ロスアラモス国立研究所,Los Alamos National Laboratory,alias
+sg,シンガポール,シンガポール国立大学,シンガポール国立大学,canonical
+sg,シンガポール,シンガポール国立大学,National University of Singapore,alias
+tw,台湾,台湾貿易センター(TAITRA),台湾貿易センター(TAITRA),canonical
+tw,台湾,台湾貿易センター(TAITRA),TAIWAN EXTERNAL TRADE DEVELOPMENT COUNCIL,alias
+tw,台湾,台湾貿易センター(TAITRA),TAITRA,alias
+us,アメリカ合衆国,ローレンス・バークレー国立研究所,ローレンス・バークレー国立研究所,canonical
+us,アメリカ合衆国,ローレンス・バークレー国立研究所,Lawrence Berkeley National Labs,alias
+us,アメリカ合衆国,ローレンス・バークレー国立研究所,Lawrence Berkeley National Laboratory,alias
+us,アメリカ合衆国,東西センター(East-West Center),東西センター(East-West Center),canonical
+us,アメリカ合衆国,東西センター(East-West Center),East-West Center,alias
+us,アメリカ合衆国,米国エネルギー省,米国エネルギー省,canonical
+us,アメリカ合衆国,米国エネルギー省,U.S.Department of Energy,alias
+us,アメリカ合衆国,米国エネルギー省,U.S. Department of Energy,alias
+us,アメリカ合衆国,米国エネルギー省,US Department of Energy,alias
+et,エチオピア連邦民主共和国,エチオピア観光局(GAET),エチオピア観光局,canonical
+et,エチオピア連邦民主共和国,エチオピア観光局(GAET),GAET,alias
+et,エチオピア連邦民主共和国,エチオピア観光局(GAET),Ethiopian Tourism Organization,alias
+br,ブラジル連邦共和国,ブラジル連邦リオデジャネイロ大学・コッペテック基金,UFRJ/COPPETEC,alias
+br,ブラジル連邦共和国,ブラジル連邦リオデジャネイロ大学・コッペテック基金,Universidade Federal do Rio de Janeiro,alias
+at,オーストリア共和国,ウィーン自然資源大学(BOKU),ウィーン自然資源大学(BOKU),canonical
+at,オーストリア共和国,ウィーン自然資源大学(BOKU),"University of Natural Resources and Life Sciences, Vienna",alias
+at,オーストリア共和国,ウィーン自然資源大学(BOKU),BOKU Wien,alias
+eu,欧州連合,欧州海上安全機関(EMSA),欧州海上安全機関(EMSA),canonical
+eu,欧州連合,欧州海上安全機関(EMSA),European Maritime Safety Agency,alias
+eu,欧州連合,欧州海上安全機関(EMSA),EMSA,alias
+au,オーストラリア,オーストラリア連邦内務省,オーストラリア連邦内務省,canonical
+au,オーストラリア,オーストラリア連邦内務省,AUSTRALIAN GOVERNMENT DEPARTMENT OF HOME AFFAIRS,alias
+au,オーストラリア,オーストラリア連邦内務省,Department of Home Affairs,alias
+pt,ポルトガル共和国,リスボン大学院大学(Iscte),リスボン大学院大学(Iscte),canonical
+pt,ポルトガル共和国,リスボン大学院大学(Iscte),Iscte ーUniversity Institute of Lisbon,alias
+pt,ポルトガル共和国,リスボン大学院大学(Iscte),Iscte - University Institute of Lisbon,alias
+pt,ポルトガル共和国,リスボン大学院大学(Iscte),ISCTE,alias
+et,エチオピア連邦民主共和国,エチオピア国防産業エンジニアリング公社(METEC/GAET),エチオピア国防産業エンジニアリング公社(METEC/GAET),canonical
+et,エチオピア連邦民主共和国,エチオピア国防産業エンジニアリング公社(METEC/GAET),GAET (Defense Economic Technical Industry Corporation),alias
+et,エチオピア連邦民主共和国,エチオピア国防産業エンジニアリング公社(METEC/GAET),GAET (Defense Economic Technical Industry Corporat,alias
+vn,ベトナム社会主義共和国,ベトナム石油公社研究所(VPI),ベトナム石油公社研究所(VPI),canonical
+vn,ベトナム社会主義共和国,ベトナム石油公社研究所(VPI),Vitnem Petroleum Institute,alias
+vn,ベトナム社会主義共和国,ベトナム石油公社研究所(VPI),Vietnam Petroleum Institute,alias
+vn,ベトナム社会主義共和国,ベトナム石油公社研究所(VPI),VPI,alias
+us,アメリカ合衆国,スタンフォード大学,スタンフォード大学,canonical
+us,アメリカ合衆国,スタンフォード大学,Stanford University,alias
+nl,オランダ王国,フローニンゲン大学,フローニンゲン大学,canonical
+nl,オランダ王国,フローニンゲン大学,University of Groningen,alias
+us,アメリカ合衆国,ウィスコンシン大学,ウィスコンシン大学,canonical
+us,アメリカ合衆国,ウィスコンシン大学,University of Wisconsin,alias
+id,インドネシア共和国,バンドン工科大学(ITB),バンドン工科大学(ITB),canonical
+id,インドネシア共和国,バンドン工科大学(ITB),Institut Teknologi Bandung,alias
+id,インドネシア共和国,バンドン工科大学(ITB),ITB,alias
+us,アメリカ合衆国,電力研究所(EPRI),電力研究所(EPRI),canonical
+us,アメリカ合衆国,電力研究所(EPRI),ELECTRIC POWER RESEARCH INSTITUTE,alias
+us,アメリカ合衆国,電力研究所(EPRI),EPRI,alias
+us,アメリカ合衆国,カリフォルニア大学サンタバーバラ校(UCSB),カリフォルニア大学サンタバーバラ校(UCSB),canonical
+us,アメリカ合衆国,カリフォルニア大学サンタバーバラ校(UCSB),"University of California, Santa Barbara",alias
+us,アメリカ合衆国,カリフォルニア大学サンタバーバラ校(UCSB),"University of California, Santa BarbaraUniversity of California, Santa Barbara",alias
+us,アメリカ合衆国,米国防情報システム局(DISA),米国(DISA),canonical
+us,アメリカ合衆国,米国防情報システム局(DISA),DISA,alias
+us,アメリカ合衆国,米国防情報システム局(DISA),Defense Information Systems Agency,alias
+us,アメリカ合衆国,バテル・エナジー・アライアンス(アイダホ国立研究所),バテル・エナジー・アライアンス社,canonical
+us,アメリカ合衆国,バテル・エナジー・アライアンス(アイダホ国立研究所),Battelle Energy Alliance,alias
+us,アメリカ合衆国,バテル・エナジー・アライアンス(アイダホ国立研究所),Battelle Energy Alliance LLC,alias
+us,アメリカ合衆国,モンタナ大学マンスフィールド・センター,モンタナ大学マンスフィールド・センター,canonical
+us,アメリカ合衆国,モンタナ大学マンスフィールド・センター,Mansfield Center University of Montana,alias
+fr,フランス共和国,フランス放射線防護・原子力安全研究所(IRSN),フランス放射線防護・原子力安全研究所,canonical
+fr,フランス共和国,フランス放射線防護・原子力安全研究所(IRSN),IRSN,alias
+fr,フランス共和国,フランス放射線防護・原子力安全研究所(IRSN),Institut de Radioprotection et de Sûreté Nucléaire,alias
+au,オーストラリア,豪州国際問題研究所(AIIA),豪州国際問題研究所,canonical
+au,オーストラリア,豪州国際問題研究所(AIIA),Australian Institute of International Affairs,alias
+au,オーストラリア,豪州国際問題研究所(AIIA),AIIA,alias
+be,ベルギー王国,ベルギー原子力研究所(SCK-CEN),ベルギー原子力研究所,canonical
+be,ベルギー王国,ベルギー原子力研究所(SCK-CEN),SCK-CEN,alias
+us,アメリカ合衆国,米国原子力規制委員会(NRC),米国原子力規制委員会,canonical
+us,アメリカ合衆国,米国原子力規制委員会(NRC),US Nuclear Regulatory Commission,alias
+us,アメリカ合衆国,米国原子力規制委員会(NRC),NRC,alias

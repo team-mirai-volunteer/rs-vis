@@ -2,6 +2,8 @@
  * RS2024プリセットJSONデータの型定義
  */
 
+import type { SpendingTags, FundingSources } from './structured';
+
 // トップレベル構造
 export interface RS2024PresetData {
   metadata: PresetMetadata;
@@ -35,6 +37,7 @@ export interface PresetMetadata {
     selectedBudget: number;        // 選択されたデータの総予算額
     coverageRate: number;          // カバー率（%、0-100）
     ministryTotalProjects?: number; // 府省庁ビュー: 選択した府省庁の総事業数
+    totalFilteredSpendings?: number; // Global View: フィルタ後の支出先総数（スライダー用）
   };
 }
 
@@ -48,20 +51,21 @@ export interface SankeyData {
 export interface SankeyNode {
   id: string;                     // ノードの一意識別子
   name: string;                   // ノード表示名
-  type: 'ministry-budget' | 'project-budget' | 'project-spending' | 'recipient' | 'other';  // ノードタイプ
+  type: 'ministry-budget' | 'project-budget' | 'project-spending' | 'recipient' | 'subcontract-recipient' | 'other';  // ノードタイプ
   value: number;                  // ノードの値（予算額または支出額、円）
 
   // 元データへの参照
   originalId?: number;            // 元データのID（ministryId, projectId, spendingId）
 
   // 追加情報（ツールチップ等で使用）
-  details?: MinistryNodeDetails | ProjectBudgetNodeDetails | ProjectSpendingNodeDetails | RecipientNodeDetails;
+  details?: MinistryNodeDetails | ProjectBudgetNodeDetails | ProjectSpendingNodeDetails | RecipientNodeDetails | SubcontractRecipientNodeDetails;
 }
 
 // 府省庁ノードの詳細
 export interface MinistryNodeDetails {
   projectCount: number;           // 事業数
   bureauCount: number;            // 局・庁数
+  fundingSources?: FundingSources; // 財源構成（MOFデータより）
 }
 
 // 事業（予算）ノードの詳細
@@ -77,6 +81,7 @@ export interface ProjectBudgetNodeDetails {
   executedAmount: number;         // 執行額(合計)
   carryoverToNext: number;        // 翌年度への繰越し(合計)
   accountCategory: string;        // 会計区分（一般会計、特別会計）
+  actualValue?: number;           // ダミー値使用時の実際の金額（ラベル表示用）
 }
 
 // 事業（支出）ノードの詳細
@@ -86,6 +91,7 @@ export interface ProjectSpendingNodeDetails {
   fiscalYear: number;             // 会計年度
   executionRate: number;          // 執行率（%）
   spendingCount: number;          // 支出先数
+  actualValue?: number;           // ダミー値使用時の実際の金額（ラベル表示用）
 }
 
 // 支出先ノードの詳細
@@ -93,6 +99,24 @@ export interface RecipientNodeDetails {
   corporateNumber: string;        // 法人番号
   location: string;               // 所在地
   projectCount: number;           // 支出元事業数
+  actualValue?: number;           // ダミー値使用時の実際の金額（ラベル表示用）
+  tags?: SpendingTags;            // タグ情報（組織種別・業種）
+}
+
+// 再委託先ノードの詳細
+export interface SubcontractRecipientNodeDetails {
+  flowTypes?: string;             // 資金の流れの種類（例: "間接補助金, 委託"）
+  sourceRecipient?: string;       // 支出元の支出先名
+  projects?: {                    // 関連する事業のリスト
+    projectId: number;
+    projectName: string;
+    amount: number;
+  }[];
+  actualValue?: number;           // ダミー値使用時の実際の金額（ラベル表示用）
+  tags?: SpendingTags;            // タグ情報（組織種別・業種）
+  // Global View aggregated subcontract node fields
+  isGlobalSubcontractAgg?: boolean; // 全体ビューの集約ノードフラグ
+  spendingId?: number;            // 集約元の支出先ID（クリック時のデータ取得用）
 }
 
 // サンキーリンク

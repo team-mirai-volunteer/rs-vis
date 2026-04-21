@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { readShiftJISCSV, parseAmount } from './csv-reader';
 import { buildHierarchyPath, hierarchyPathToString } from '../client/lib/buildHierarchyPath';
+import { classifySpending } from './tag-classifier';
 import type { HierarchyPath } from '../types/rs-system';
 import type {
   RS2024StructuredData,
@@ -16,6 +17,7 @@ import type {
   BudgetRecord,
   SpendingRecord,
   SpendingProject,
+  SpendingBlockFlow,
   Statistics,
   MinistryNode,
   BureauNode,
@@ -24,12 +26,14 @@ import type {
   OfficeNode,
   GroupNode,
   SectionNode,
+  EntityType,
 } from '../types/structured';
 import type {
   OrganizationInfo,
   BudgetSummary,
   ProjectOverview,
   SpendingInfo,
+  SpendingBlockFlowInfo,
 } from '../types/rs-system';
 
 const DATA_DIR = path.join(__dirname, '../data/year_2024');
@@ -95,8 +99,9 @@ async function main() {
   const overviewPath = path.join(DATA_DIR, '1-2_RS_2024_基本情報_事業概要等.csv');
   const budgetPath = path.join(DATA_DIR, '2-1_RS_2024_予算・執行_サマリ.csv');
   const spendingPath = path.join(DATA_DIR, '5-1_RS_2024_支出先_支出情報.csv');
+  const blockFlowPath = path.join(DATA_DIR, '5-2_RS_2024_支出先_支出ブロックのつながり.csv');
 
-  const requiredFiles = [orgPath, overviewPath, budgetPath, spendingPath];
+  const requiredFiles = [orgPath, overviewPath, budgetPath, spendingPath, blockFlowPath];
   for (const file of requiredFiles) {
     if (!fs.existsSync(file)) {
       console.error(`❌ 必要なCSVファイルが見つかりません: ${file}`);
@@ -109,11 +114,13 @@ async function main() {
   const overviewRows = readShiftJISCSV(overviewPath) as unknown as ProjectOverview[];
   const budgetRows = readShiftJISCSV(budgetPath) as unknown as BudgetSummary[];
   const spendingRows = readShiftJISCSV(spendingPath) as unknown as SpendingInfo[];
+  const blockFlowRows = readShiftJISCSV(blockFlowPath) as unknown as SpendingBlockFlowInfo[];
 
   console.log(`✓ 組織情報: ${orgRows.length}行`);
   console.log(`✓ 事業概要: ${overviewRows.length}行`);
   console.log(`✓ 予算情報: ${budgetRows.length}行`);
-  console.log(`✓ 支出情報: ${spendingRows.length}行\n`);
+  console.log(`✓ 支出情報: ${spendingRows.length}行`);
+  console.log(`✓ 支出ブロックフロー: ${blockFlowRows.length}行\n`);
 
   // データ処理
   console.log('データ処理中...');
@@ -146,11 +153,33 @@ async function main() {
   console.log(`✓ 2024年度予算レコード数: ${currentYearRecords.length}`);
   console.log(`✓ 過去年度予算レコード数: ${historicalYearRecords.length}`);
 
-  // 3. 支出レコード構築
+  // 3. 支出ブロックフローマップ構築
+  console.log('支出ブロックフローマップ構築中...');
+  const blockFlowMap = buildBlockFlowMap(blockFlowRows, spendingRows);
+  console.log(`✓ 直接支出ブロック数: ${blockFlowMap.isDirectFromGov.size}`);
+  console.log(`✓ 間接支出フロー数: ${Array.from(blockFlowMap.outflows.values()).reduce((sum, flows) => sum + flows.length, 0)}`);
+
+  // 4. エンティティ名正規化辞書読み込み
+  const entityDictPath = path.join(__dirname, '../public/data/entity-normalization.json');
+  let entityDict: Record<string, { displayName: string; entityType: string; parentName?: string }> = {};
+  if (fs.existsSync(entityDictPath)) {
+    try {
+      entityDict = JSON.parse(fs.readFileSync(entityDictPath, 'utf-8'));
+      console.log(`✓ エンティティ辞書読み込み: ${Object.keys(entityDict).length.toLocaleString()}件`);
+    } catch {
+      console.warn('⚠️ エンティティ辞書の読み込みに失敗しました（スキップ）');
+    }
+  } else {
+    console.log('⚠️ エンティティ辞書が未生成です（npm run generate-entity-dict を実行してください）');
+  }
+
+  // 5. 支出レコード構築
   console.log('支出レコード構築中...');
-  const { spendingRecords, projectSpendingMap } = buildSpendingRecords(
+  const { spendingRecords, projectSpendingMap, directSpendingTotal } = buildSpendingRecords(
     spendingRows,
-    currentYearRecords
+    currentYearRecords,
+    blockFlowMap,
+    entityDict
   );
   console.log(`✓ 支出レコード数: ${spendingRecords.length}`);
 
@@ -175,7 +204,7 @@ async function main() {
     totalProjects: currentYearRecords.length,
     totalRecipients: spendingRecords.length,
     totalBudgetAmount: currentYearRecords.reduce((sum, b) => sum + b.totalBudget, 0),
-    totalSpendingAmount: spendingRecords.reduce((sum, s) => sum + s.totalSpendingAmount, 0),
+    totalSpendingAmount: directSpendingTotal,  // 直接支出のみ（二重計上防止）
   };
 
   // 8. 構造化データ生成（2024年度 + 過去年度）
@@ -337,8 +366,9 @@ function buildBudgetRecords(
       totalSpendingAmount: 0,
     };
 
-    // 2024年度と過去年度を分離
-    if (budget.fiscalYear === TARGET_FISCAL_YEAR) {
+    // 2024年度事業には2023年度予算を使用（過去年度は履歴として保持）
+    // 事業年度2024に対して予算年度2023のデータを使用する
+    if (budget.fiscalYear === TARGET_FISCAL_YEAR - 1) {
       currentYearRecords.push(record);
     } else {
       historicalYearRecords.push(record);
@@ -356,29 +386,200 @@ function buildBudgetRecords(
 }
 
 /**
+ * 支出ブロックフローのマップを構築
+ */
+interface BlockFlowMap {
+  // key: "projectId_blockNumber" (例: "7259_A")
+  // value: outflows（この支出先から他への流出）
+  outflows: Map<string, SpendingBlockFlow[]>;
+
+  // key: "projectId_blockNumber"
+  // value: isDirectFromGov（政府から直接支出か）
+  isDirectFromGov: Map<string, boolean>;
+
+  // key: "projectId_blockNumber" (間接支出ブロック)
+  // value: 委託元の支出先ブロック名（sourceBlockName）
+  inflows: Map<string, string>;
+
+  // key: "projectId_blockNumber" (間接支出ブロック)
+  // value: 委託元の支出先ブロック番号（チェーン探索用）
+  inflowsNumber: Map<string, string>;
+}
+
+function buildBlockFlowMap(flowRows: SpendingBlockFlowInfo[], spendingRows: SpendingInfo[]): BlockFlowMap {
+  const outflows = new Map<string, SpendingBlockFlow[]>();
+  const isDirectFromGov = new Map<string, boolean>();
+  const inflows = new Map<string, string>(); // targetKey → 委託元のブロック名
+  const inflowsNumber = new Map<string, string>(); // targetKey → 委託元のブロック番号（チェーン探索用）
+
+  // ブロックごとの金額マップを構築（5-1 CSVから）
+  const blockAmountMap = new Map<string, number>();
+
+  // ブロックごとの個別支出先リストを構築（5-1 CSVから）
+  const blockRecipientsMap = new Map<string, Array<{
+    name: string;
+    corporateNumber: string;
+    amount: number;
+  }>>();
+
+  for (const row of spendingRows) {
+    const projectId = row.予算事業ID;
+    const blockNumber = row.支出先ブロック番号;
+    if (!projectId || !blockNumber) continue;
+
+    const key = `${projectId}_${blockNumber}`;
+
+    // ブロックの合計金額を取得
+    const blockAmount = parseAmount(row.ブロックの合計支出額);
+    const existing = blockAmountMap.get(key) || 0;
+    if (blockAmount > existing) {
+      blockAmountMap.set(key, blockAmount);
+    }
+
+    // 個別支出先を収集（支出先名がある場合）
+    const recipientName = row.支出先名?.trim();
+    if (recipientName) {
+      const amount = parseAmount(row.金額);
+      if (amount > 0) {
+        if (!blockRecipientsMap.has(key)) {
+          blockRecipientsMap.set(key, []);
+        }
+        blockRecipientsMap.get(key)!.push({
+          name: recipientName,
+          corporateNumber: row.法人番号?.trim() || '',
+          amount: amount,
+        });
+      }
+    }
+  }
+
+  for (const row of flowRows) {
+    const projectIdStr = row.予算事業ID;
+    const projectId = parseInt(projectIdStr, 10);
+    const sourceBlock = row.支出元の支出先ブロック;
+    const targetBlock = row.支出先の支出先ブロック;
+    const isDirectStr = row.担当組織からの支出;
+
+    if (!projectIdStr || !targetBlock || isNaN(projectId)) continue;
+
+    // 支出先ブロックが政府から直接支出かどうか
+    if (isDirectStr === 'TRUE') {
+      const key = `${projectIdStr}_${targetBlock}`;
+      isDirectFromGov.set(key, true);
+    }
+
+    // 支出元ブロックがある場合（再委託等）
+    if (sourceBlock && isDirectStr === 'FALSE') {
+      const sourceKey = `${projectIdStr}_${sourceBlock}`;
+      const targetKey = `${projectIdStr}_${targetBlock}`;
+      // 逆引きマップ: 委託先ブロック → 委託元ブロック名/番号
+      inflows.set(targetKey, row.支出元の支出先ブロック名);
+      inflowsNumber.set(targetKey, sourceBlock);
+      const amount = blockAmountMap.get(targetKey) || 0;
+      const recipients = blockRecipientsMap.get(targetKey) || [];
+
+      if (!outflows.has(sourceKey)) {
+        outflows.set(sourceKey, []);
+      }
+      outflows.get(sourceKey)!.push({
+        projectId: projectId,
+        projectName: row.事業名,
+        sourceBlockNumber: sourceBlock,
+        sourceBlockName: row.支出元の支出先ブロック名,
+        targetBlockNumber: targetBlock,
+        targetBlockName: row.支出先の支出先ブロック名,
+        flowType: row.資金の流れの補足情報 || '再委託',
+        amount: amount,
+        recipients: recipients.length > 0 ? recipients : undefined,
+        isDirectFromGov: false,
+      });
+    }
+  }
+
+  return { outflows, isDirectFromGov, inflows, inflowsNumber };
+}
+
+/**
+ * ブロックから政府直接支出ブロックまでのフルチェーンパスを計算
+ * 例: block D (← C ← A=博報堂) → "株式会社博報堂 → EYストラテジー..."
+ */
+function computeSourceChainPath(
+  projectId: number,
+  blockNumber: string,
+  blockFlowMap: BlockFlowMap
+): string | undefined {
+  const pathNames: string[] = [];
+  let currentBlockNumber = blockNumber;
+  const visited = new Set<string>();
+
+  while (true) {
+    const currentKey = `${projectId}_${currentBlockNumber}`;
+    if (visited.has(currentKey)) break; // サイクル防止
+    visited.add(currentKey);
+
+    const sourceBlockName = blockFlowMap.inflows.get(currentKey);
+    const sourceBlockNumber = blockFlowMap.inflowsNumber.get(currentKey);
+
+    if (!sourceBlockName || !sourceBlockNumber) break;
+
+    pathNames.unshift(sourceBlockName);
+    currentBlockNumber = sourceBlockNumber;
+  }
+
+  return pathNames.length > 0 ? pathNames.join(' → ') : undefined;
+}
+
+/**
  * 支出レコードを構築
  */
 function buildSpendingRecords(
   spendingRows: SpendingInfo[],
-  budgetRecords: BudgetRecord[]
+  budgetRecords: BudgetRecord[],
+  blockFlowMap: BlockFlowMap,
+  entityDict: Record<string, { displayName: string; entityType: string; parentName?: string }>
 ): {
   spendingRecords: SpendingRecord[];
   projectSpendingMap: Map<number, number[]>;
+  directSpendingTotal: number;
 } {
+  // 直接支出の合計（メタデータ用、二重計上防止）
+  let directSpendingTotal = 0;
+
   // 支出先キー（名前+法人番号）ごとに集計
+  // blocks Map key = `${projectId}_${blockNumber}` でブロック単位に分割
   const spendingMap = new Map<string, {
     name: string;
     corporateNumber: string;
     location: string;
     corporateType: string;
-    projects: Map<number, {
+    blocks: Map<string, {         // key = `${projectId}_${blockNumber}`
+      projectId: number;
+      blockNumber: string;
+      blockName: string;
       amount: number;
-      blockNumbers: Set<string>;
-      blockNames: Set<string>;
       contractSummaries: Set<string>;
       contractMethods: Set<string>;
+      isDirectFromGov: boolean;
+      sourceChainPath?: string;   // フルチェーンパス（間接の場合）
     }>;
   }>();
+
+  // 間接支出ブロックの除外統計
+  let indirectBlockCount = 0;
+  let indirectBlockAmount = 0;
+
+  // 事前パス: 支出先ブロック名マップを構築（ブロック集計行から取得）
+  // 集計行は支出先名が空で支出先ブロック名が記入されている行
+  const blockNameMap = new Map<string, string>(); // key = `${projectId}_${blockNumber}`
+  for (const row of spendingRows) {
+    const projectId = parseInt(row.予算事業ID, 10);
+    if (isNaN(projectId)) continue;
+    if (!row.支出先ブロック番号 || !row.支出先ブロック名) continue;
+    const key = `${projectId}_${row.支出先ブロック番号}`;
+    if (!blockNameMap.has(key)) {
+      blockNameMap.set(key, row.支出先ブロック名.trim());
+    }
+  }
 
   for (const row of spendingRows) {
     const projectId = parseInt(row.予算事業ID, 10);
@@ -390,6 +591,28 @@ function buildSpendingRecords(
     const amount = parseAmount(row.金額);
     if (amount <= 0) continue;
 
+    // ブロックキーを決定
+    const blockNumber = row.支出先ブロック番号 || 'DIRECT';
+    const blockKey = `${projectId}_${blockNumber}`;
+
+    // ブロックの直接/間接フラグを確認（統計・メタデータ用）
+    let blockIsDirect = true;
+    let blockSourceChainPath: string | undefined;
+    if (row.支出先ブロック番号) {
+      const isBlockDirect = blockFlowMap.isDirectFromGov.get(blockKey) === true;
+      if (!isBlockDirect) {
+        indirectBlockCount++;
+        indirectBlockAmount += amount;
+        blockIsDirect = false;
+        blockSourceChainPath = computeSourceChainPath(projectId, blockNumber, blockFlowMap);
+      } else {
+        directSpendingTotal += amount;
+      }
+    } else {
+      // ブロック番号なし = 直接支出として扱う
+      directSpendingTotal += amount;
+    }
+
     const key = getSpendingKey(spendingName, row.法人番号 || '');
 
     if (!spendingMap.has(key)) {
@@ -398,70 +621,167 @@ function buildSpendingRecords(
         corporateNumber: row.法人番号 || '',
         location: row.所在地 || '',
         corporateType: row.法人種別 || '',
-        projects: new Map(),
+        blocks: new Map(),
       });
     }
 
     const spending = spendingMap.get(key)!;
-    if (!spending.projects.has(projectId)) {
-      spending.projects.set(projectId, {
+    if (!spending.blocks.has(blockKey)) {
+      spending.blocks.set(blockKey, {
+        projectId,
+        blockNumber: row.支出先ブロック番号 || '',
+        blockName: blockNameMap.get(blockKey) || row.支出先ブロック名 || '',
         amount: 0,
-        blockNumbers: new Set(),
-        blockNames: new Set(),
         contractSummaries: new Set(),
         contractMethods: new Set(),
+        isDirectFromGov: blockIsDirect,
+        sourceChainPath: blockIsDirect ? undefined : blockSourceChainPath,
       });
     }
 
-    const project = spending.projects.get(projectId)!;
-    project.amount += amount;
-    if (row.支出先ブロック番号) project.blockNumbers.add(row.支出先ブロック番号);
-    if (row.支出先ブロック名) project.blockNames.add(row.支出先ブロック名);
-    if (row.契約概要) project.contractSummaries.add(row.契約概要);
-    if (row.契約方式等) project.contractMethods.add(row.契約方式等);
+    const block = spending.blocks.get(blockKey)!;
+    block.amount += amount;
+    if (row.契約概要) block.contractSummaries.add(row.契約概要);
+    if (row.契約方式等) block.contractMethods.add(row.契約方式等);
   }
 
   // SpendingRecordに変換
   const spendingRecords: SpendingRecord[] = [];
-  const projectSpendingMap = new Map<number, number[]>();
+  // Set を使って同一 spendingId の重複を防ぐ（同一会社が複数ブロックで同一プロジェクトに現れる場合）
+  const projectSpendingSetMap = new Map<number, Set<number>>();
   let spendingId = 1;
 
   for (const [_key, spending] of spendingMap.entries()) {
     const currentSpendingId = spendingId++;
     const projects: SpendingProject[] = [];
 
-    for (const [projectId, proj] of spending.projects.entries()) {
+    for (const [_blockKey, block] of spending.blocks.entries()) {
       projects.push({
-        projectId,
-        amount: proj.amount,
-        blockNumber: Array.from(proj.blockNumbers).join(', '),
-        blockName: Array.from(proj.blockNames).join(', '),
-        contractSummary: Array.from(proj.contractSummaries).join(', '),
-        contractMethod: Array.from(proj.contractMethods).join(', '),
+        projectId: block.projectId,
+        amount: block.amount,
+        blockNumber: block.blockNumber,
+        blockName: block.blockName,
+        contractSummary: Array.from(block.contractSummaries).join(', '),
+        contractMethod: Array.from(block.contractMethods).join(', '),
+        isDirectFromGov: block.isDirectFromGov,
+        sourceChainPath: block.isDirectFromGov ? undefined : block.sourceChainPath,
       });
 
-      // プロジェクト→支出先のマッピング
-      if (!projectSpendingMap.has(projectId)) {
-        projectSpendingMap.set(projectId, []);
+      // プロジェクト→支出先のマッピング（Set で重複排除）
+      if (!projectSpendingSetMap.has(block.projectId)) {
+        projectSpendingSetMap.set(block.projectId, new Set());
       }
-      projectSpendingMap.get(projectId)!.push(currentSpendingId);
+      projectSpendingSetMap.get(block.projectId)!.add(currentSpendingId);
     }
 
-    spendingRecords.push({
+    const dictEntry = entityDict[spending.name];
+    const record: SpendingRecord = {
       spendingId: currentSpendingId,
       spendingName: spending.name,
+      ...(dictEntry?.displayName ? { displayName: dictEntry.displayName } : {}),
+      ...(dictEntry?.entityType ? { entityType: dictEntry.entityType as EntityType } : {}),
+      ...(dictEntry?.parentName ? { parentName: dictEntry.parentName } : {}),
       corporateNumber: spending.corporateNumber,
       location: spending.location,
       corporateType: spending.corporateType,
       totalSpendingAmount: projects.reduce((sum, p) => sum + p.amount, 0),
       projectCount: projects.length,
       projects: projects.sort((a, b) => b.amount - a.amount),
-    });
+    };
+
+    // タグを自動付与
+    record.tags = classifySpending(record);
+
+    spendingRecords.push(record);
   }
+
+  // Set → Array に変換して projectSpendingMap を構築
+  const projectSpendingMap = new Map<number, number[]>();
+  for (const [projectId, idSet] of projectSpendingSetMap) {
+    projectSpendingMap.set(projectId, Array.from(idSet));
+  }
+
+  // 会社名正規化（法人格・「ほか」等を除去してコア名を抽出）
+  function normalizeCompanyName(name: string): string {
+    return name
+      .replace(/^(一般社団法人|公益財団法人|公益社団法人|特定非営利活動法人|NPO法人|独立行政法人|学校法人|医療法人|社会福祉法人|宗教法人|弁護士法人|税理士法人|監査法人|有限責任監査法人)/, '')
+      .replace(/^(株式会社|有限会社|合同会社|合資会社|合名会社)/, '')
+      .replace(/(株式会社|有限会社|合同会社|合資会社|合名会社)$/, '')
+      .replace(/ほか.*$/, '')
+      .replace(/他\d+$/, '')  // 数字付き「他N」のみ除去（「株式会社XXX他」の誤除去防止）
+      .replace(/[・\s]/g, '')
+      .trim();
+  }
+
+  // 辞書の displayName を取得（辞書未登録の場合は normalizeCompanyName の結果を使う）
+  function getDisplayName(name: string): string {
+    return entityDict[name]?.displayName || normalizeCompanyName(name);
+  }
+
+  // SpendingRecordにoutflowsを追加
+  // ブロック単位のoutflowを「代表企業」のみに紐づける。
+  // ブロック名（sourceBlockName）に会社名が含まれる場合のみ割り当てる。
+  // これにより、ブロック内の全社に同一outflowが付くという重複集計を防ぐ。
+  // （例: PID=5603 Block E「トランスコスモス株式会社ほか」→ トランス・コスモスのみに付け、
+  //       同ブロックのパソナ等には付けない）
+  for (const record of spendingRecords) {
+    const outflows: SpendingBlockFlow[] = [];
+
+    // 同一支出先が同一プロジェクトの複数ブロックに登録されている場合、
+    // 複数ブロックが同じターゲットブロックへ接続していると同一アウトフローが重複追加される。
+    // (例: PID=18672 で福島県がB/D/E/F/H/Iの6ブロックに存在し、各ブロックが
+    //      同じBlock K「地方公共団体(43市町村等)」547億へ接続 → 6回重複)
+    // (projectId, targetBlockNumber) をキーに重複排除する。
+    const seenOutflowKeys = new Set<string>();
+    const normalizedRecordName = normalizeCompanyName(record.spendingName);
+
+    for (const project of record.projects) {
+      if (!project.blockNumber) continue;
+      const blockKey = `${project.projectId}_${project.blockNumber}`;
+      const flows = blockFlowMap.outflows.get(blockKey) || [];
+      for (const flow of flows) {
+        // ブロック代表企業チェック: flowのsourceBlockNameと会社名が一致する場合のみ追加
+        // （ブロック内の全社に同一金額が付く重複集計を防ぐ）
+        const normalizedSourceBlock = normalizeCompanyName(flow.sourceBlockName);
+
+        // 1. 辞書ベースマッチング（優先）: 両方の displayName が一致すれば確定マッチ
+        //    これにより「JTB」が「JTB埼玉支店」ブロックにマッチする偽陽性を防ぐ
+        const recordDisplayName = getDisplayName(record.spendingName);
+        const blockDisplayName = getDisplayName(flow.sourceBlockName);
+        const dictMatch =
+          recordDisplayName.length > 0 && blockDisplayName.length > 0 &&
+          recordDisplayName === blockDisplayName;
+
+        // 2. フォールバック: 従来のサブストリング一致（辞書未登録の場合）
+        const substringMatch =
+          !(record.spendingName in entityDict) &&
+          normalizedSourceBlock.length > 0 && normalizedRecordName.length > 0 &&
+          (normalizedSourceBlock.includes(normalizedRecordName) ||
+           normalizedRecordName.includes(normalizedSourceBlock));
+
+        const isRepresentative = dictMatch || substringMatch;
+        if (!isRepresentative) continue;
+
+        const dedupeKey = `${flow.projectId}_${flow.targetBlockNumber}`;
+        if (seenOutflowKeys.has(dedupeKey)) continue;
+        seenOutflowKeys.add(dedupeKey);
+        outflows.push(flow);
+      }
+    }
+
+    if (outflows.length > 0) {
+      record.outflows = outflows;
+    }
+  }
+
+  // 間接支出除外の統計を出力
+  console.log(`✓ 間接支出ブロック除外数: ${indirectBlockCount}件`);
+  console.log(`✓ 間接支出除外金額: ${(indirectBlockAmount / 1e12).toFixed(2)}兆円`);
 
   return {
     spendingRecords: spendingRecords.sort((a, b) => b.totalSpendingAmount - a.totalSpendingAmount),
     projectSpendingMap,
+    directSpendingTotal,
   };
 }
 
@@ -483,14 +803,17 @@ function linkBudgetAndSpending(
     const spendingIds = projectSpendingMap.get(budget.projectId) || [];
     budget.spendingIds = spendingIds;
 
-    // この事業の総支出額を支出レコードから計算
+    // この事業の総支出額を支出レコードから計算（直接支出ブロックのみ、二重計上防止）
     let totalSpending = 0;
     for (const spendingId of spendingIds) {
       const spending = spendingMap.get(spendingId);
       if (spending) {
-        const project = spending.projects.find(p => p.projectId === budget.projectId);
-        if (project) {
-          totalSpending += project.amount;
+        // 同一projectIdのブロックが複数ある場合、直接支出のもののみ合算
+        const directProjects = spending.projects.filter(
+          p => p.projectId === budget.projectId && p.isDirectFromGov !== false
+        );
+        for (const p of directProjects) {
+          totalSpending += p.amount;
         }
       }
     }

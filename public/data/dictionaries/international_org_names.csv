@@ -1,0 +1,414 @@
+org_id,org_type,canonical_name,name,name_type
+un,国連システム,国際連合,国際連合,canonical
+un,国連システム,国際連合,国連,alias
+un,国連システム,国際連合,国連事務局,alias
+un,国連システム,国際連合,国際連合事務局,alias
+un,国連システム,国際連合,UNITED NATIONS,alias
+un,国連システム,国際連合,United Nations,alias
+undp,国連システム,国際連合開発計画,国際連合開発計画,canonical
+undp,国連システム,国際連合開発計画,国連開発計画(UNDP),alias
+undp,国連システム,国際連合開発計画,UNDP,alias
+undp,国連システム,国際連合開発計画,国連開発計画,alias
+unido,国連システム,国際連合工業開発機関,国際連合工業開発機関,canonical
+unido,国連システム,国際連合工業開発機関,国連工業開発機関(UNIDO),alias
+unido,国連システム,国際連合工業開発機関,UNIDO,alias
+wfp,国連システム,国際連合世界食糧計画,国際連合世界食糧計画,canonical
+wfp,国連システム,国際連合世界食糧計画,国連世界食糧計画,alias
+wfp,国連システム,国際連合世界食糧計画,世界食糧計画(WFP),alias
+unicef,国連システム,国際連合児童基金,国際連合児童基金,canonical
+unicef,国連システム,国際連合児童基金,国連児童基金(UNICEF),alias
+unicef,国連システム,国際連合児童基金,UNICEF,alias
+unhcr,国連システム,国際連合難民高等弁務官事務所,国際連合難民高等弁務官事務所,canonical
+unhcr,国連システム,国際連合難民高等弁務官事務所,国連難民高等弁務官事務所(UNHCR),alias
+fao,国連システム,国際連合食糧農業機関,国際連合食糧農業機関,canonical
+fao,国連システム,国際連合食糧農業機関,国際連合食糧農業機関事務局,alias
+fao,国連システム,国際連合食糧農業機関,国連食糧農業機関(FAO),alias
+fao,国連システム,国際連合食糧農業機関,FAO,alias
+unesco,国連システム,国際連合教育科学文化機関,国際連合教育科学文化機関,canonical
+unesco,国連システム,国際連合教育科学文化機関,国連教育科学文化機関(UNESCO),alias
+unesco,国連システム,国際連合教育科学文化機関,UNESCO,alias
+unfpa,国連システム,国際連合人口基金,国際連合人口基金,canonical
+unfpa,国連システム,国際連合人口基金,国連人口基金(UNFPA),alias
+unep,国連システム,国際連合環境計画,国際連合環境計画,canonical
+unep,国連システム,国際連合環境計画,国連環境計画(UNEP),alias
+unep,国連システム,国際連合環境計画,UNEP,alias
+unep,国連システム,国際連合環境計画,国連環境計画,alias
+unep,国連システム,国際連合環境計画,日本国連環境計画,alias
+unep,国連システム,国際連合環境計画,国連環境計画アジア太平洋事務所,alias
+unep,国連システム,国際連合環境計画,EANET事務局(国連環境計画(UNEP)アジア太平洋事務所),alias
+unep,国連システム,国際連合環境計画,国連環境計画(UNEP)国際環境技術センター(IETC),alias
+unhabitat,国連システム,国際連合人間居住計画(UN-Habitat),国際連合人間居住計画(UN-Habitat),canonical
+unhabitat,国連システム,国際連合人間居住計画(UN-Habitat),国連人間居住計画,alias
+unhabitat,国連システム,国際連合人間居住計画(UN-Habitat),国際連合人間居住計画(UNーHabitat),alias
+unhabitat,国連システム,国際連合人間居住計画(UN-Habitat),国連人間の安全保障ユニット,alias
+unops,国連システム,国際連合プロジェクト・サービス機関,国際連合プロジェクト・サービス機関,canonical
+unops,国連システム,国際連合プロジェクト・サービス機関,国連プロジェクト・サービス機関(UNOPS),alias
+unodc,国連システム,国際連合薬物犯罪事務所,国際連合薬物犯罪事務所,canonical
+unodc,国連システム,国際連合薬物犯罪事務所,国際連合薬物犯罪事務所(UNODC),alias
+unodc,国連システム,国際連合薬物犯罪事務所,国連薬物犯罪事務所(UNODC),alias
+unodc,国連システム,国際連合薬物犯罪事務所,国連薬物犯罪事務所,alias
+unrwa,国連システム,国際連合パレスチナ難民救済事業機関,国際連合パレスチナ難民救済事業機関,canonical
+unrwa,国連システム,国際連合パレスチナ難民救済事業機関,国連パレスチナ難民救済事業機関(UNRWA),alias
+unwomen,国連システム,国連女性機関,国連女性機関,canonical
+unwomen,国連システム,国連女性機関,国連女性機関(UN Women),alias
+unitar,国連システム,国連訓練調査研究所(UNITAR),国連訓練調査研究所(UNITAR),canonical
+unitar,国連システム,国連訓練調査研究所(UNITAR),国連訓練調査研究所,alias
+undrr,国連システム,国連防災機関,国連防災機関,canonical
+undrr,国連システム,国連防災機関,国連防災機関(UNDRR)事務局,alias
+undrr,国連システム,国連防災機関,国連防災機関(UNDRR),alias
+unctad,国連システム,国連貿易開発会議,国連貿易開発会議,canonical
+unctad,国連システム,国連貿易開発会議,国連貿易開発会議(UNCTAD),alias
+unu,国連システム,国際連合大学,国際連合大学,canonical
+unu,国連システム,国際連合大学,国連大学,alias
+unu,国連システム,国際連合大学,国連大学サステイナビリティ高等研究所,alias
+dppa,国連システム,国連政務平和構築局(DPPA),国連政務平和構築局(DPPA),canonical
+dppa,国連システム,国連政務平和構築局(DPPA),国連平和構築支援オフィス(PBSO),alias
+dppa,国連システム,国連政務平和構築局(DPPA),国連平和活動局,alias
+unicri,国連システム,国連地域間犯罪司法研究所(UNICRI),国連地域間犯罪司法研究所(UNICRI),canonical
+unicri,国連システム,国連地域間犯罪司法研究所(UNICRI),国連地域間犯罪司法研究所,alias
+unsd,国連システム,国連統計部,国連統計部,canonical
+unsd,国連システム,国連統計部,国連経済社会局(UNDESA),alias
+uncef_trust,国連システム,国連特別目的信託基金,国連特別目的信託基金,canonical
+uncef_trust,国連システム,国連特別目的信託基金,国連総会議長信託基金,alias
+uncef_trust,国連システム,国連特別目的信託基金,国連中央緊急対応基金,alias
+uncef_trust,国連システム,国連特別目的信託基金,国際連合中央緊急対応基金,alias
+un_misc,国連システム,国連事務局、UNICEF等派遣先国際機関,国連事務局、UNICEF等派遣先国際機関,canonical
+un_misc,国連システム,国連事務局、UNICEF等派遣先国際機関,UNDP、ICAO等の派遣先国際機関,alias
+un_misc,国連システム,国連事務局、UNICEF等派遣先国際機関,国連事務局、UNICEF等派遣先国際機関,alias
+unaids,国連システム,国連合同エイズ計画,国連合同エイズ計画,canonical
+unaids,国連システム,国連合同エイズ計画,国連合同エイズ計画(UNAIDS),alias
+unsc,国連システム,国際連合安全保障理事会,国際連合安全保障理事会,canonical
+unsc,国連システム,国際連合安全保障理事会,国連安全保安局,alias
+un_disarm,国連システム,国連軍縮部,国連軍縮部,canonical
+un_disarm,国連システム,国連軍縮部,国際連合軍縮部,alias
+un_disarm,国連システム,国連軍縮部,国連軍縮部,alias
+un_pko,国連システム,国連平和活動,国連平和活動,canonical
+un_pko,国連システム,国連平和活動,国連アフガニスタン支援ミッション,alias
+un_regional,国連システム,国際連合地域開発センター,国際連合地域開発センター,canonical
+un_regional,国連システム,国際連合地域開発センター,国連地域開発センター,alias
+un_regional,国連システム,国際連合地域開発センター,国連アジア太平洋統計社会委員会,alias
+un_regional,国連システム,国際連合地域開発センター,アフリカ経済委員会,alias
+un_regional,国連システム,国際連合地域開発センター,国際連合欧州本部,alias
+worldbank,国際開発金融機関,国際復興開発銀行,国際復興開発銀行,canonical
+worldbank,国際開発金融機関,国際復興開発銀行,世界銀行,alias
+worldbank,国際開発金融機関,国際復興開発銀行,World Bank,alias
+ifc,国際開発金融機関,国際金融公社,国際金融公社,canonical
+ifc,国際開発金融機関,国際金融公社,IFC,alias
+adb,国際開発金融機関,アジア開発銀行,アジア開発銀行,canonical
+adb,国際開発金融機関,アジア開発銀行,アジア開発銀行信託基金,alias
+adb,国際開発金融機関,アジア開発銀行,ADB,alias
+afdb,国際開発金融機関,アフリカ開発銀行,アフリカ開発銀行,canonical
+afdb,国際開発金融機関,アフリカ開発銀行,AfDB,alias
+iadb,国際開発金融機関,米州開発銀行,米州開発銀行,canonical
+iadb,国際開発金融機関,米州開発銀行,IDB,alias
+iadb,国際開発金融機関,米州開発銀行,Inter-American Development Bank,alias
+ebrd,国際開発金融機関,欧州復興開発銀行,欧州復興開発銀行,canonical
+ebrd,国際開発金融機関,欧州復興開発銀行,EBRD,alias
+iaea,国連専門機関,国際原子力機関,国際原子力機関,canonical
+iaea,国連専門機関,国際原子力機関,国際原子力機関(IAEA),alias
+iaea,国連専門機関,国際原子力機関,IAEA,alias
+ilo,国連専門機関,国際労働機関,国際労働機関,canonical
+ilo,国連専門機関,国際労働機関,国際労働機関(ILO),alias
+ilo,国連専門機関,国際労働機関,ILO,alias
+imf,国連専門機関,国際通貨基金,国際通貨基金,canonical
+imf,国連専門機関,国際通貨基金,IMF,alias
+who,国連専門機関,世界保健機関(WHO),世界保健機関(WHO),canonical
+who,国連専門機関,世界保健機関(WHO),WHO,alias
+who,国連専門機関,世界保健機関(WHO),世界保健機関,alias
+icao,国連専門機関,国際民間航空機関,国際民間航空機関,canonical
+icao,国連専門機関,国際民間航空機関,国際民間航空機関(ICAO),alias
+icao,国連専門機関,国際民間航空機関,ICAO,alias
+itu,国連専門機関,国際電気通信連合,国際電気通信連合,canonical
+itu,国連専門機関,国際電気通信連合,ITU,alias
+imo,国連専門機関,国際海事機関,国際海事機関,canonical
+imo,国連専門機関,国際海事機関,IMO,alias
+wipo,国連専門機関,世界知的所有権機関,世界知的所有権機関,canonical
+wipo,国連専門機関,世界知的所有権機関,WIPO,alias
+ifad,国連専門機関,国際農業開発基金,国際農業開発基金,canonical
+ifad,国連専門機関,国際農業開発基金,IFAD,alias
+upuu,国連専門機関,万国郵便連合,万国郵便連合,canonical
+upuu,国連専門機関,万国郵便連合,UPU,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構(OECD),canonical
+oecd,経済協力機関,経済協力開発機構(OECD),OECD,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構,alias
+oecd,経済協力機関,経済協力開発機構(OECD),OECD(経済協力開発機構),alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構(OECD事務局),alias
+oecd,経済協力機関,経済協力開発機構(OECD),OECD事務局,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構・開発援助委員会(OECD・DAC),alias
+oecd,経済協力機関,経済協力開発機構(OECD),ITE－OECD,alias
+oecd,経済協力機関,経済協力開発機構(OECD),ITEーOECD,alias
+oecd,経済協力機関,経済協力開発機構(OECD),OECD(経済協力開発機構)開発センター,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構原子力機関(OECD/NEA),alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構原子力機関,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済協力開発機構事務局,alias
+oecd,経済協力機関,経済協力開発機構(OECD),経済開発協力機構,alias
+asean,経済協力機関,東南アジア諸国連合(ASEAN)事務局,東南アジア諸国連合(ASEAN)事務局,canonical
+asean,経済協力機関,東南アジア諸国連合(ASEAN)事務局,ASEAN事務局,alias
+asean,経済協力機関,東南アジア諸国連合(ASEAN)事務局,日アセアン経済産業協力委員会,alias
+itf,経済協力機関,ITF(国際交通フォーラム),ITF(国際交通フォーラム),canonical
+itf,経済協力機関,ITF(国際交通フォーラム),国際交通フォーラム(ITF),alias
+iea,経済協力機関,国際エネルギー機関,国際エネルギー機関,canonical
+iea,経済協力機関,国際エネルギー機関,国際エネルギー機関(IEA),alias
+iea,経済協力機関,国際エネルギー機関,IEA,alias
+iea,経済協力機関,国際エネルギー機関,国際エネルギー機関事務局,alias
+iea,経済協力機関,国際エネルギー機関,国際エネルギー・フォーラム,alias
+iea,経済協力機関,国際エネルギー機関,国際エネルギーフォーラム,alias
+iea,経済協力機関,国際エネルギー機関,国際エネルギー・フォーラム事務局,alias
+icc,その他国際機関,国際刑事裁判所,国際刑事裁判所,canonical
+icc,その他国際機関,国際刑事裁判所,国際刑事裁判所被害者信託基金(ICCTFV),alias
+interpol,その他国際機関,国際刑事警察機構(ICPO),国際刑事警察機構(ICPO),canonical
+interpol,その他国際機関,国際刑事警察機構(ICPO),ICPO,alias
+interpol,その他国際機関,国際刑事警察機構(ICPO),Interpol,alias
+iter,その他国際機関,ITER(国際熱核融合エネルギー)機構,ITER(国際熱核融合エネルギー)機構,canonical
+iter,その他国際機関,ITER(国際熱核融合エネルギー)機構,ITER機構,alias
+irena,その他国際機関,国際再生可能エネルギー機関,国際再生可能エネルギー機関,canonical
+irena,その他国際機関,国際再生可能エネルギー機関,国際再生可能エネルギー機関(IRENA),alias
+irena,その他国際機関,国際再生可能エネルギー機関,IRENA,alias
+irena,その他国際機関,国際再生可能エネルギー機関,国際再生可能エネルギー機関事務局,alias
+irena,その他国際機関,国際再生可能エネルギー機関,国際再生可能エネルギー機関拠出金,alias
+cgiar,その他国際機関,国際農業研究協議グループ(CGIAR),国際農業研究協議グループ(CGIAR),canonical
+cgiar,その他国際機関,国際農業研究協議グループ(CGIAR),CGIAR,alias
+cgiar,その他国際機関,国際農業研究協議グループ(CGIAR),国際農業研究機関,alias
+hfsp,その他国際機関,国際ヒューマン・フロンティア・サイエンス・プログラム機構,国際ヒューマン・フロンティア・サイエンス・プログラム機構,canonical
+hfsp,その他国際機関,国際ヒューマン・フロンティア・サイエンス・プログラム機構,HFSP,alias
+itto,その他国際機関,国際熱帯木材機関(ITTO),国際熱帯木材機関(ITTO),canonical
+itto,その他国際機関,国際熱帯木材機関(ITTO),国際熱帯木材機関,alias
+itto,その他国際機関,国際熱帯木材機関(ITTO),ITTO,alias
+itlos,その他国際機関,国際海洋法裁判所(ITLOS),国際海洋法裁判所(ITLOS),canonical
+itlos,その他国際機関,国際海洋法裁判所(ITLOS),ITLOS,alias
+isa,その他国際機関,国際海底機構(ISA),国際海底機構(ISA),canonical
+isa,その他国際機関,国際海底機構(ISA),国際海底機構,alias
+isa,その他国際機関,国際海底機構(ISA),ISA,alias
+iom,その他国際機関,国際移住機関,国際移住機関,canonical
+iom,その他国際機関,国際移住機関,IOM,alias
+icrc,その他国際機関,赤十字国際委員会,赤十字国際委員会,canonical
+icrc,その他国際機関,赤十字国際委員会,ICRC,alias
+ifrcs,その他国際機関,国際赤十字・赤新月社連盟,国際赤十字・赤新月社連盟,canonical
+ifrcs,その他国際機関,国際赤十字・赤新月社連盟,国際赤十字赤新月社連盟,alias
+ifrcs,その他国際機関,国際赤十字・赤新月社連盟,IFRC,alias
+au,その他国際機関,アフリカ連合(AU),アフリカ連合(AU),canonical
+au,その他国際機関,アフリカ連合(AU),AU,alias
+au,その他国際機関,アフリカ連合(AU),アフリカ連合,alias
+iiasa,その他国際機関,国際応用システム分析研究所(IIASA),国際応用システム分析研究所(IIASA),canonical
+iiasa,その他国際機関,国際応用システム分析研究所(IIASA),国際応用分析システム研究所(IIASA),alias
+iiasa,その他国際機関,国際応用システム分析研究所(IIASA),IIASA,alias
+iucn,その他国際機関,国際自然保護連合(IUCN),国際自然保護連合(IUCN),canonical
+iucn,その他国際機関,国際自然保護連合(IUCN),国際自然保護連合,alias
+iucn,その他国際機関,国際自然保護連合(IUCN),IUCN,alias
+bimco,その他国際機関,国際海事機関,国際海事機関,canonical
+bimco,その他国際機関,国際海事機関,国際航路標識協会,alias
+iais,その他国際機関,保険監督者国際機構(IAIS),保険監督者国際機構(IAIS),canonical
+iais,その他国際機関,保険監督者国際機構(IAIS),IAIS,alias
+iosco,その他国際機関,証券監督者国際機構(IOSCO),証券監督者国際機構(IOSCO),canonical
+iosco,その他国際機関,証券監督者国際機構(IOSCO),証券監督者国際機構,alias
+iosco,その他国際機関,証券監督者国際機構(IOSCO),IOSCO,alias
+bipm,その他国際機関,国際度量衡中央事務局,国際度量衡中央事務局,canonical
+bipm,その他国際機関,国際度量衡中央事務局,BIPM,alias
+ippf,その他国際機関,国際家族計画連盟(IPPF),国際家族計画連盟(IPPF),canonical
+ippf,その他国際機関,国際家族計画連盟(IPPF),IPPF,alias
+ippf,その他国際機関,国際家族計画連盟(IPPF),IPPF日本信託基金,alias
+ippf,その他国際機関,国際家族計画連盟(IPPF),インターカントリーなNGO支援信託基金,alias
+unsc_other,その他国際機関,その他国際機関,その他国際機関,canonical
+unsc_other,その他国際機関,その他国際機関,国際機関A,alias
+unsc_other,その他国際機関,その他国際機関,国際機関B,alias
+unsc_other,その他国際機関,その他国際機関,国際機関C,alias
+unsc_other,その他国際機関,その他国際機関,国際機関D,alias
+unsc_other,その他国際機関,その他国際機関,国際機関E,alias
+unsc_other,その他国際機関,その他国際機関,国際機関F,alias
+unsc_other,その他国際機関,その他国際機関,国際機関G,alias
+unsc_other,その他国際機関,その他国際機関,国際機関H,alias
+unsc_other,その他国際機関,その他国際機関,国際機関I,alias
+unsc_other,その他国際機関,その他国際機関,国際機関J,alias
+iarc,その他国際機関,国際がん研究機関(IARC),国際がん研究機関(IARC),canonical
+iarc,その他国際機関,国際がん研究機関(IARC),IARC,alias
+iso,その他国際機関,国際標準化機構,国際標準化機構,canonical
+iso,その他国際機関,国際標準化機構,ISO,alias
+hague,その他国際機関,ハーグ国際私法会議事務局,ハーグ国際私法会議事務局,canonical
+hague,その他国際機関,ハーグ国際私法会議事務局,ハーグ国際私法会議,alias
+unidroit,その他国際機関,私法統一国際協会事務局,私法統一国際協会事務局,canonical
+unidroit,その他国際機関,私法統一国際協会事務局,ハーグ国際私法会議事務局,alias
+iccrom,その他国際機関,文化財保存修復研究国際センター(ICCROM),文化財保存修復研究国際センター(ICCROM),canonical
+iccrom,その他国際機関,文化財保存修復研究国際センター(ICCROM),ICCROM,alias
+iwc,その他国際機関,国際捕鯨委員会,国際捕鯨委員会,canonical
+iwc,その他国際機関,国際捕鯨委員会,IWC,alias
+cites_like,その他国際機関,大型クラゲ国際共同調査共同調査機関,大型クラゲ国際共同調査共同調査機関,canonical
+wto,その他国際機関,世界貿易機関(WTO),世界貿易機関(WTO),canonical
+wto,その他国際機関,世界貿易機関(WTO),世界貿易機関,alias
+wto,その他国際機関,世界貿易機関(WTO),WTO,alias
+wmo,その他国際機関,世界気象機関(WMO),世界気象機関(WMO),canonical
+wmo,その他国際機関,世界気象機関(WMO),世界気象機関,alias
+wmo,その他国際機関,世界気象機関(WMO),WMO,alias
+opcw,その他国際機関,化学兵器禁止機関(OPCW),化学兵器禁止機関(OPCW),canonical
+opcw,その他国際機関,化学兵器禁止機関(OPCW),化学兵器禁止機関,alias
+opcw,その他国際機関,化学兵器禁止機関(OPCW),OPCW,alias
+wco,その他国際機関,世界税関機構(WCO),世界税関機構(WCO),canonical
+wco,その他国際機関,世界税関機構(WCO),関税協力理事会,alias
+wco,その他国際機関,世界税関機構(WCO),WCO,alias
+apo,その他国際機関,アジア生産性機構(APO),アジア生産性機構(APO),canonical
+apo,その他国際機関,アジア生産性機構(APO),アジア生産性機構,alias
+apo,その他国際機関,アジア生産性機構(APO),APO,alias
+unesco,国連専門機関,国際連合教育科学文化機関,ユネスコ,alias
+amazon_fund,その他国際機関,アマゾン基金,アマゾン基金,canonical
+gpe_fund,その他国際機関,教育のためのグローバル・パートナーシップ(GPE),教育のためのグローバル・パートナーシップ(GPE),canonical
+gpe_fund,その他国際機関,教育のためのグローバル・パートナーシップ(GPE),教育を後回しにはできない基金,alias
+gpe_fund,その他国際機関,教育のためのグローバル・パートナーシップ(GPE),GPE基金,alias
+ceip,その他国際機関,カーネギー国際平和財団,カーネギー国際平和財団政策プログラム,canonical
+iiss,その他国際機関,国際戦略研究所アジア(IISS),国際戦略研究所アジア(IISS),canonical
+iiss,その他国際機関,国際戦略研究所アジア(IISS),IISS,alias
+gcerf,その他国際機関,世界コミュニティエンゲージメント・レジリエンス基金(GCERF),世界コミュニティエンゲージメント・レジリエンス基金(GCERF),canonical
+gcerf,その他国際機関,世界コミュニティエンゲージメント・レジリエンス基金(GCERF),GCERF,alias
+ait,その他国際機関,アジア工科大学院(AIT),アジア工科大学院(AIT),canonical
+ait,その他国際機関,アジア工科大学院(AIT),Asian Institute of Technology(AIT),alias
+ait,その他国際機関,アジア工科大学院(AIT),Asian Institute of Technology,alias
+isc,その他国際機関,国際科学会議(ISC),国際科学会議(ISC),canonical
+isc,その他国際機関,国際科学会議(ISC),INTERNATIONAL SCIENCE COUNCIL,alias
+isc,その他国際機関,国際科学会議(ISC),International Science Council,alias
+ace,その他国際機関,ASEANエネルギーセンター(ACE),ASEANエネルギーセンター(ACE),canonical
+ace,その他国際機関,ASEANエネルギーセンター(ACE),ASEAN Centre for Energy,alias
+iwmc,その他国際機関,世界保全信託(IWMC),世界保全信託(IWMC),canonical
+iwmc,その他国際機関,世界保全信託(IWMC),IWMC World Conservation Trust,alias
+fatf,その他国際機関,金融活動作業部会(FATF),金融活動作業部会(FATF),canonical
+fatf,その他国際機関,金融活動作業部会(FATF),FATF,alias
+fatf,その他国際機関,金融活動作業部会(FATF),Financial Action Task Force,alias
+mfo,その他国際機関,多国籍軍・監視団(MFO),多国籍軍・監視団(MFO),canonical
+mfo,その他国際機関,多国籍軍・監視団(MFO),Multinational Force and Observers,alias
+mfo,その他国際機関,多国籍軍・監視団(MFO),MFO,alias
+iau,その他国際機関,国際天文学連合(IAU),国際天文学連合(IAU),canonical
+iau,その他国際機関,国際天文学連合(IAU),INTERNATIONAL ASTRONOMICAL UNION,alias
+iau,その他国際機関,国際天文学連合(IAU),International Astronomical Union,alias
+cleanairasia,その他国際機関,クリーン・エア・アジア(Clean Air Asia),クリーン・エア・アジア(Clean Air Asia),canonical
+cleanairasia,その他国際機関,クリーン・エア・アジア(Clean Air Asia),クリーン・エア・アジア,alias
+cleanairasia,その他国際機関,クリーン・エア・アジア(Clean Air Asia),Clean Air Asia,alias
+ipcc,国連システム,気候変動に関する政府間パネル(IPCC),気候変動に関する政府間パネル(IPCC),canonical
+ipcc,国連システム,気候変動に関する政府間パネル(IPCC),IPCC,alias
+ipcc,国連システム,気候変動に関する政府間パネル(IPCC),IPCC(World Meteorological Organization),alias
+ctsamvm,その他国際機関,停戦・移行期安全保障取り決め監視検証メカニズム(CTSAMVM),停戦・移行期安全保障取り決め監視検証メカニズム(CTSAMVM),canonical
+ctsamvm,その他国際機関,停戦・移行期安全保障取り決め監視検証メカニズム(CTSAMVM),CTSAMVM,alias
+uhc2030,その他国際機関,ユニバーサル・ヘルス・カバレッジ2030国際保健パートナーシップ(UHC2030),ユニバーサル・ヘルス・カバレッジ2030国際保健パートナーシップ(UHC2030),canonical
+uhc2030,その他国際機関,ユニバーサル・ヘルス・カバレッジ2030国際保健パートナーシップ(UHC2030),UHC2030,alias
+gardp,その他国際機関,世界抗菌薬研究開発パートナーシップ(GARDP),世界抗菌薬研究開発パートナーシップ(GARDP),canonical
+gardp,その他国際機関,世界抗菌薬研究開発パートナーシップ(GARDP),GARDP,alias
+gardp,その他国際機関,世界抗菌薬研究開発パートナーシップ(GARDP),Global Antibiotic Research and Development Partnership,alias
+egmont,その他国際機関,エグモント・グループ(Egmont Group),エグモント・グループ,canonical
+egmont,その他国際機関,エグモント・グループ(Egmont Group),Egmont Group,alias
+egmont,その他国際機関,エグモント・グループ(Egmont Group),Egmont Group of Financial Intelligence Units,alias
+iugg,その他国際機関,国際測地学・地球物理学連合(IUGG),国際測地学・地球物理学連合(IUGG),canonical
+iugg,その他国際機関,国際測地学・地球物理学連合(IUGG),INTERNATIONAL UNION OF GEODESY AND GEOPHYSICS,alias
+iugg,その他国際機関,国際測地学・地球物理学連合(IUGG),IUGG,alias
+apg_aml,その他国際機関,アジア太平洋マネーロンダリング対策グループ(APG),アジア太平洋マネーロンダリング対策グループ(APG),canonical
+apg_aml,その他国際機関,アジア太平洋マネーロンダリング対策グループ(APG),APG,alias
+apg_aml,その他国際機関,アジア太平洋マネーロンダリング対策グループ(APG),アジア・太平洋マネー・ローンダリング対策グループ(APG),alias
+apg_aml,その他国際機関,アジア太平洋マネーロンダリング対策グループ(APG),Asia Pacific Group on Money Laundering,alias
+aiesec,その他国際機関,AIESEC(国際学生交流組織),AIESEC,canonical
+ait,その他国際機関,アジア工科大学院(AIT),Asian Institute оf Technology,alias
+ait,その他国際機関,アジア工科大学院(AIT),AIT,alias
+ait,その他国際機関,アジア工科大学院(AIT),アジア工科大学院,alias
+unitaid,その他国際機関,ユニットエイド(Unitaid),ユニットエイド(Unitaid),canonical
+unitaid,その他国際機関,ユニットエイド(Unitaid),Unitaid,alias
+wa_wassenaar,その他国際機関,ワッセナー・アレンジメント(WA),ワッセナー・アレンジメント(WA),canonical
+wa_wassenaar,その他国際機関,ワッセナー・アレンジメント(WA),WA,alias
+wa_wassenaar,その他国際機関,ワッセナー・アレンジメント(WA),Wassenaar Arrangement,alias
+scar,その他国際機関,南極研究科学委員会(SCAR),南極研究科学委員会(SCAR),canonical
+scar,その他国際機関,南極研究科学委員会(SCAR),SCIENTIFIC COMMITTEE ON ANTARCTIC RESEARCH,alias
+scar,その他国際機関,南極研究科学委員会(SCAR),SCAR,alias
+igu,その他国際機関,国際地理学連合(IGU),国際地理学連合(IGU),canonical
+igu,その他国際機関,国際地理学連合(IGU),INTERNATIONAL GEOGRAPHICAL UNION,alias
+igu,その他国際機関,国際地理学連合(IGU),IGU,alias
+iuss,その他国際機関,国際土壌科学連合(IUSS),国際土壌科学連合(IUSS),canonical
+iuss,その他国際機関,国際土壌科学連合(IUSS),INTERNATIONAL UNION OF SOIL SCIENCES,alias
+iuss,その他国際機関,国際土壌科学連合(IUSS),IUSS,alias
+ursi,その他国際機関,国際電波科学連合(URSI),国際電波科学連合(URSI),canonical
+ursi,その他国際機関,国際電波科学連合(URSI),UNION RADIOーSCIENTIFIQUE INTERNATIONALE,alias
+ursi,その他国際機関,国際電波科学連合(URSI),UNION RADIO-SCIENTIFIQUE INTERNATIONALE,alias
+ursi,その他国際機関,国際電波科学連合(URSI),URSI,alias
+apec_psu,その他国際機関,APECポリシー・サポート・ユニット(PSU),APECポリシー・サポート・ユニット(PSU),canonical
+apec_psu,その他国際機関,APECポリシー・サポート・ユニット(PSU),APEC Policy Support Unit,alias
+apec_psu,その他国際機関,APECポリシー・サポート・ユニット(PSU),PSU,alias
+cimmyt,その他国際機関,国際トウモロコシ・コムギ改良センター(CIMMYT),国際トウモロコシ・コムギ改良センター(CIMMYT),canonical
+cimmyt,その他国際機関,国際トウモロコシ・コムギ改良センター(CIMMYT),CIMMYT,alias
+cimmyt,その他国際機関,国際トウモロコシ・コムギ改良センター(CIMMYT),International Maize and Wheat Improvement Center,alias
+iubs,その他国際機関,国際生物科学連合(IUBS),国際生物科学連合(IUBS),canonical
+iubs,その他国際機関,国際生物科学連合(IUBS),INTERNATIONAL UNION OF BIOLOGICAL SCIENCES,alias
+iubs,その他国際機関,国際生物科学連合(IUBS),IUBS,alias
+ifac,その他国際機関,国際自動制御連盟(IFAC),国際自動制御連盟(IFAC),canonical
+ifac,その他国際機関,国際自動制御連盟(IFAC),INTERNATIONAL FEDERATION OF AUTOMATIC CONTROL,alias
+ifac,その他国際機関,国際自動制御連盟(IFAC),IFAC,alias
+iata,その他国際機関,国際航空運送協会(IATA),国際航空運送協会(IATA),canonical
+iata,その他国際機関,国際航空運送協会(IATA),International Air Transport Association,alias
+iata,その他国際機関,国際航空運送協会(IATA),IATA,alias
+iums,その他国際機関,国際微生物学会連合(IUMS),国際微生物学会連合(IUMS),canonical
+iums,その他国際機関,国際微生物学会連合(IUMS),INTERNATIONAL UNION OF MICROBIOLOGICAL SOCIETIES,alias
+iums,その他国際機関,国際微生物学会連合(IUMS),IUMS,alias
+unwto,国連システム,世界観光機関(UNWTO),世界観光機関(UNWTO),canonical
+unwto,国連システム,世界観光機関(UNWTO),UNWTO,alias
+unwto,国連システム,世界観光機関(UNWTO),UN Tourism,alias
+unwto,国連システム,世界観光機関(UNWTO),世界観光機関(UN Tourism),alias
+unwto,国連システム,世界観光機関(UNWTO),世界観光機関(UN Tourism)アジア太平洋センター,alias
+gdf_tb,その他国際機関,世界抗結核薬基金(GDF),世界抗結核薬基金(GDF),canonical
+gdf_tb,その他国際機関,世界抗結核薬基金(GDF),GDF,alias
+gdf_tb,その他国際機関,世界抗結核薬基金(GDF),Global Drug Facility,alias
+afs,その他国際機関,AFS Intercultural Programs(AFS国際本部),AFS国際本部,canonical
+afs,その他国際機関,AFS Intercultural Programs(AFS国際本部),AFS,alias
+afs,その他国際機関,AFS Intercultural Programs(AFS国際本部),AFS Intercultural Programs,alias
+ifrs,その他国際機関,IFRS財団,国際会計基準(IFRS)財団,canonical
+ifrs,その他国際機関,IFRS財団,IFRS財団,alias
+ifrs,その他国際機関,IFRS財団,IFRS Foundation,alias
+nowpap,国連システム,北西太平洋地域海行動計画(NOWPAP),北西太平洋地域海行動計画(NOWPAP),canonical
+nowpap,国連システム,北西太平洋地域海行動計画(NOWPAP),NOWPAP,alias
+asef,その他国際機関,アジア欧州財団(ASEF),アジア欧州財団(ASEF),canonical
+asef,その他国際機関,アジア欧州財団(ASEF),ASEF,alias
+asef,その他国際機関,アジア欧州財団(ASEF),Asia-Europe Foundation,alias
+asef,その他国際機関,アジア欧州財団(ASEF),アジア欧州財団,alias
+unwto,国連システム,世界観光機関(UNWTO),世界観光機関,alias
+iec,その他国際機関,国際電気標準会議(IEC),国際電気標準会議,canonical
+iec,その他国際機関,国際電気標準会議(IEC),IEC,alias
+iec,その他国際機関,国際電気標準会議(IEC),International Electrotechnical Commission,alias
+upov,その他国際機関,植物新品種保護国際同盟(UPOV),植物新品種保護国際同盟,canonical
+upov,その他国際機関,植物新品種保護国際同盟(UPOV),UPOV,alias
+upov,その他国際機関,植物新品種保護国際同盟(UPOV),Union Internationale pour la Protection des Obtentions Végétales,alias
+ibo,その他国際機関,国際バカロレア機構(IBO),国際バカロレア機構,canonical
+ibo,その他国際機関,国際バカロレア機構(IBO),IBO,alias
+ibo,その他国際機関,国際バカロレア機構(IBO),International Baccalaureate Organization,alias
+ibo,その他国際機関,国際バカロレア機構(IBO),International Baccalaureate,alias
+iwmi,その他国際機関,国際水管理研究所(IWMI),国際水管理研究所,canonical
+iwmi,その他国際機関,国際水管理研究所(IWMI),IWMI,alias
+iwmi,その他国際機関,国際水管理研究所(IWMI),International Water Management Institute,alias
+recaap,その他国際機関,ReCAAP情報共有センター,アジア海賊対策地域協力協定情報収集センター,canonical
+recaap,その他国際機関,ReCAAP情報共有センター,ReCAAP Information Sharing Centre,alias
+oiml,その他国際機関,国際法定計量機関(OIML),国際法定計量機関,canonical
+oiml,その他国際機関,国際法定計量機関(OIML),OIML,alias
+wins,その他国際機関,世界核セキュリティ協会(WINS),世界核セキュリティ協会(WINS),canonical
+wins,その他国際機関,世界核セキュリティ協会(WINS),WINS,alias
+wins,その他国際機関,世界核セキュリティ協会(WINS),World Institute for Nuclear Security,alias
+iho,その他国際機関,国際水路機関(IHO),国際水路機関,canonical
+iho,その他国際機関,国際水路機関(IHO),IHO,alias
+iho,その他国際機関,国際水路機関(IHO),International Hydrographic Organization,alias
+piob,その他国際機関,公益監視委員会(PIOB),公益監視委員会(PIOB),canonical
+piob,その他国際機関,公益監視委員会(PIOB),PIOB,alias
+iias,その他国際機関,国際行政学会(IIAS),国際行政学会事務局,canonical
+iias,その他国際機関,国際行政学会(IIAS),IIAS,alias
+worldveg,その他国際機関,世界野菜センター(WorldVeg),世界蔬菜センター,canonical
+worldveg,その他国際機関,世界野菜センター(WorldVeg),WorldVeg,alias
+worldveg,その他国際機関,世界野菜センター(WorldVeg),AVRDC,alias
+wetlands_int,その他国際機関,ウェットランズ・インターナショナル,国際湿地保全連合,canonical
+wetlands_int,その他国際機関,ウェットランズ・インターナショナル,Wetlands International,alias
+pices,その他国際機関,北太平洋海洋科学機関(PICES),北太平洋海洋科学機関,canonical
+pices,その他国際機関,北太平洋海洋科学機関(PICES),PICES,alias
+clcs,国連システム,大陸棚限界委員会(CLCS),大陸棚限界委員会(CLCS),canonical
+clcs,国連システム,大陸棚限界委員会(CLCS),CLCS,alias
+apec_abac,その他国際機関,APECビジネス諮問委員会(ABAC),APECビジネス諮問委員会(ABAC),canonical
+apec_abac,その他国際機関,APECビジネス諮問委員会(ABAC),ABAC,alias
+nickel_inst,その他国際機関,国際ニッケル研究会(ニッケル協会),国際ニッケル研究会,canonical
+nickel_inst,その他国際機関,国際ニッケル研究会(ニッケル協会),Nickel Institute,alias
+iif,その他国際機関,国際金融協会(IIF),国際金融協会(IIF),canonical
+iif,その他国際機関,国際金融協会(IIF),IIF,alias
+iif,その他国際機関,国際金融協会(IIF),Institute of International Finance,alias
+ccac,その他国際機関,気候・クリーンエア連合(CCAC),短寿命気候汚染物質(SLCPs)に関する国際パートナーシップ,canonical
+ccac,その他国際機関,気候・クリーンエア連合(CCAC),CCAC,alias
+ccac,その他国際機関,気候・クリーンエア連合(CCAC),Climate and Clean Air Coalition,alias
+wada,その他国際機関,世界ドーピング防止機構(WADA),世界ドーピング防止機構,canonical
+wada,その他国際機関,世界ドーピング防止機構(WADA),WADA,alias
+wada,その他国際機関,世界ドーピング防止機構(WADA),World Anti-Doping Agency,alias
+gsf,その他国際機関,紛争関連性的暴力生存者グローバル基金(GSF),紛争関連の性的暴力生存者のためのグローバル基金,canonical
+gsf,その他国際機関,紛争関連性的暴力生存者グローバル基金(GSF),Global Survivors Fund,alias
+gsf,その他国際機関,紛争関連性的暴力生存者グローバル基金(GSF),GSF,alias
