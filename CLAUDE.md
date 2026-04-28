@@ -62,6 +62,16 @@ npm run build-houjin-lookup  # SQLite → data/houjin-lookup.json（約4秒）
 | [app/lib/sankey-generator.ts](app/lib/sankey-generator.ts) | Sankey生成コアロジック |
 | [app/api/sankey/route.ts](app/api/sankey/route.ts) | 動的Sankeyデータエンドポイント |
 
+### /sankey-svg（SVGベース直接支出版）
+
+| File | Purpose |
+|------|---------|
+| [app/sankey-svg/page.tsx](app/sankey-svg/page.tsx) | メインUI・状態管理・フィルタ・描画（TopN・予算/支出フィルタ・府省庁フィルタ・Pin・ミニマップ・検索） |
+| [client/components/SankeySvg/MinimapOverlay.tsx](client/components/SankeySvg/MinimapOverlay.tsx) | ミニマップオーバーレイ |
+| [app/lib/sankey-svg-filter.ts](app/lib/sankey-svg-filter.ts) | グラフフィルタリングロジック（r-no-spending 昇格含む） |
+| [app/lib/sankey-svg-constants.ts](app/lib/sankey-svg-constants.ts) | 色定数・レイアウト定数 |
+| [scripts/generate-sankey-svg-data.ts](scripts/generate-sankey-svg-data.ts) | 1-1/2-1/5-1/5-2 CSV → graph.json 生成（r-no-spending ノード含む） |
+
 ### /sankey2（事前計算版）
 
 | File | Purpose |
@@ -106,6 +116,7 @@ npm run build-houjin-lookup  # SQLite → data/houjin-lookup.json（約4秒）
 | 修正対象 | 読むべきガイド |
 |---------|---------------|
 | Sankey生成ロジック・UI・ノード処理 | [docs/sankey-architecture-guide.md](docs/sankey-architecture-guide.md) |
+| sankey-svg フィルタ・レイアウト・ノード処理 | [app/lib/sankey-svg-filter.ts](app/lib/sankey-svg-filter.ts) + [app/lib/sankey-svg-constants.ts](app/lib/sankey-svg-constants.ts) |
 | データパイプライン・CSV処理・JSON生成 | [docs/data-pipeline-guide.md](docs/data-pipeline-guide.md) |
 | APIエンドポイント仕様 | [docs/api-guide.md](docs/api-guide.md) |
 

@@ -97,6 +97,8 @@ public/data/sankey-svg-{YEAR}-graph.json.gz（Git管理）
 
 **5-2が必要な理由**: `担当組織からの支出=TRUE` の判定で直接支出先を絞り込む
 
+**特殊ノード `r-no-spending`**: 予算あり・直接支出先なし事業（2024: 264件 / 2025: 292件）は `r-no-spending`（「支出先なし」）ノードに接続される。`generate-sankey-svg-data.ts` が recipientMap へ `__no-spending__` エントリを追加し、`sankey-svg-filter.ts` が集約ノード処理時に考慮する。
+
 ---
 
 ### 2-3. `/sankey2`（事前計算レイアウトSankey図）
