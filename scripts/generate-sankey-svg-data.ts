@@ -4,7 +4,11 @@
  * 5-1 CSV（支出情報）+ 5-2 CSV（ブロックのつながり）から、
  * 直接支出先のみのサンキー図用データを生成する。
  *
- * 直接支出の判定: 5-2 CSVの「担当組織からの支出=TRUE」
+ * 直接支出の判定: 5-2 CSVの「担当組織からの支出」フラグに基づく
+ *   - FALSE: 明示的な再委託（間接支出）→ 除外
+ *   - TRUE: 担当組織からの直接支出 → 採用
+ *   - 5-2 に未登録 / 空欄: 担当組織が直接支出 → 採用
+ *   - FALSE と TRUE の両方: TRUE（直接）を優先
  *
  * 使用法:
  *   tsx scripts/generate-sankey-svg-data.ts [YEAR]
@@ -48,6 +52,7 @@ interface SankeyNode {
   type: NodeType;
   value: number;       // 1円単位
   aggregated?: boolean; // TopN以外の集約ノード（クライアント側で付与）
+  skipLinkOverride?: boolean; // レイアウトエンジンによるリンク合計上書きを抑制
   projectId?: number;   // project-budget/project-spending のみ
   ministry?: string;    // ministry / project のみ
 }
@@ -129,25 +134,30 @@ function main() {
   }
   console.log(`  予算データ: ${budgetMap.size.toLocaleString()} 事業`);
 
-  // 4. 直接支出ブロックセットの構築（5-2 CSV）
+  // 4. 再委託ブロックセットの構築（5-2 CSV）
+  // 判定方針: 「担当組織からの支出=FALSE」は明示的な再委託（間接）→ 除外
+  //           「TRUE」または 5-2 に登場しないブロックは担当組織が直接支出 → 含める
+  //           FALSE と TRUE の両方がある場合は TRUE（直接）を優先
   console.log('\n[3/5] 直接支出ブロック判定（5-2 CSV）');
-  const directBlocks = new Set<string>(); // "pid:block" 形式
+  const indirectOnlyBlocks = new Set<string>(); // FALSE のみで TRUE がない "pid:block"
+  const directBlocks = new Set<string>();        // 少なくとも1つ TRUE がある "pid:block"
   let totalBlockRows = 0;
-  let directBlockRows = 0;
   for (const row of blockRows) {
     totalBlockRows++;
-    const isDirect = row['担当組織からの支出'] === 'TRUE';
-    if (!isDirect) continue;
-
     const pid = row['予算事業ID'];
     const block = (row['支出先の支出先ブロック'] || '').trim();
     if (!pid || !block) continue;
 
-    directBlocks.add(`${pid}:${block}`);
-    directBlockRows++;
+    const key = `${pid}:${block}`;
+    if (row['担当組織からの支出'] === 'TRUE') {
+      directBlocks.add(key);
+      indirectOnlyBlocks.delete(key); // TRUE があれば間接扱いを解除
+    } else if (row['担当組織からの支出'] === 'FALSE' && !directBlocks.has(key)) {
+      indirectOnlyBlocks.add(key);
+    }
   }
   console.log(`  5-2 CSV: ${totalBlockRows.toLocaleString()} 行`);
-  console.log(`  直接支出ブロック: ${directBlocks.size.toLocaleString()} ペア（${directBlockRows.toLocaleString()} 行）`);
+  console.log(`  再委託ブロック（間接）: ${indirectOnlyBlocks.size.toLocaleString()} ペア`);
 
   // 5. 支出データ集計（直接支出先のみ）
   console.log('\n[4/5] 支出データ集計（直接支出先のみ）');
@@ -185,9 +195,9 @@ function main() {
     const block = (row['支出先ブロック番号'] || '').trim();
     if (!block) { skippedNoBlock++; continue; }
 
-    // 直接支出ブロック判定
+    // 直接支出ブロック判定: 明示的に再委託（FALSE のみ）のブロックを除外
     const key = `${pid}:${block}`;
-    if (!directBlocks.has(key)) {
+    if (indirectOnlyBlocks.has(key)) {
       indirectRows++;
       indirectTotalAmount += amount;
       continue;
@@ -307,19 +317,33 @@ function main() {
         value: flowValue,
       });
     }
-  }
-  console.log(`  事業: ${projectCount.toLocaleString()}`);
 
-  // 6d. 支出先ノード + エッジ（金額降順で連番IDを付与）
-  const sortedRecipients = Array.from(recipientMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  for (let i = 0; i < sortedRecipients.length; i++) {
-    const recipient = sortedRecipients[i];
-    const recipientId = `r-${i + 1}`;
+    // 予算あり・直接支出先なし → 支出先なしエントリに追加
+    if (budgetAmount > 0 && spendingAmount === 0) {
+      let noSpending = recipientMap.get('__no-spending__');
+      if (!noSpending) {
+        noSpending = { name: '支出先なし', totalAmount: 0, projectAmounts: new Map() };
+        recipientMap.set('__no-spending__', noSpending);
+      }
+      noSpending.projectAmounts.set(pid, 0);
+    }
+  }
+  const noSpendingCount = recipientMap.get('__no-spending__')?.projectAmounts.size ?? 0;
+  console.log(`  事業: ${projectCount.toLocaleString()}`);
+  console.log(`  直接支出先なし事業: ${noSpendingCount.toLocaleString()}`);
+
+  // 6d. 支出先ノード + エッジ（金額降順で連番ID。支出先なしは固定ID r-no-spending）
+  const sortedRecipients = Array.from(recipientMap.entries()).sort(([, a], [, b]) => b.totalAmount - a.totalAmount);
+  let recipientSeq = 0;
+  for (const [key, recipient] of sortedRecipients) {
+    const isNoSpending = key === '__no-spending__';
+    const recipientId = isNoSpending ? 'r-no-spending' : `r-${++recipientSeq}`;
     nodes.push({
       id: recipientId,
       name: recipient.name,
       type: 'recipient',
       value: recipient.totalAmount,
+      ...(isNoSpending ? { skipLinkOverride: true } : {}),
     });
 
     for (const [pid, amount] of recipient.projectAmounts) {
@@ -330,7 +354,8 @@ function main() {
       });
     }
   }
-  console.log(`  支出先: ${recipientMap.size.toLocaleString()}`);
+  const realRecipientCount = recipientMap.size - (recipientMap.has('__no-spending__') ? 1 : 0);
+  console.log(`  支出先: ${realRecipientCount.toLocaleString()}`);
   console.log(`  エッジ: ${edges.length.toLocaleString()}`);
 
   // 7. 出力
@@ -344,7 +369,7 @@ function main() {
       indirectSpending: indirectTotalAmount,
       ministryCount: ministryBudgets.size,
       projectCount,
-      recipientCount: recipientMap.size,
+      recipientCount: realRecipientCount,
       edgeCount: edges.length,
     },
     nodes,
@@ -369,7 +394,7 @@ function main() {
   console.log(`  間接支出:   ${(indirectTotalAmount / 1e12).toFixed(2)} 兆円 (${(indirectTotalAmount * 100 / (directTotalAmount + indirectTotalAmount)).toFixed(1)}%)`);
   console.log(`  府省庁:     ${ministryBudgets.size}`);
   console.log(`  事業:       ${projectCount.toLocaleString()}`);
-  console.log(`  直接支出先: ${recipientMap.size.toLocaleString()}`);
+  console.log(`  直接支出先: ${realRecipientCount.toLocaleString()}`);
 
   // ノード・エッジの整合性チェック
   const nodeIds = new Set(nodes.map(n => n.id));
