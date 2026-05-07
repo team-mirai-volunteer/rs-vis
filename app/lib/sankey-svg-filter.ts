@@ -721,7 +721,7 @@ export function filterTopN(
 
 // ── Custom Layout Engine ──
 
-export function computeLayout(filteredNodes: RawNode[], filteredEdges: RawEdge[], containerWidth: number, containerHeight: number, minNodeGap: number = NODE_PAD) {
+export function computeLayout(filteredNodes: RawNode[], filteredEdges: RawEdge[], containerWidth: number, containerHeight: number, minNodeGap: number = NODE_PAD, extraRecipientGapSVG: number = 0, extraMinistryGapSVG: number = 0) {
   const innerW = containerWidth - MARGIN.left - MARGIN.right;
   const innerH = containerHeight - MARGIN.top - MARGIN.bottom;
   const usedCols = new Set<number>();
@@ -809,7 +809,7 @@ export function computeLayout(filteredNodes: RawNode[], filteredEdges: RawEdge[]
 
   for (const [col, colNodes] of columns) {
     for (const node of colNodes) {
-      node.x0 = col * colSpacing;
+      node.x0 = col * colSpacing + (col >= 2 ? extraMinistryGapSVG : 0);
       node.x1 = node.x0 + NODE_W;
     }
     let y = 0;
@@ -864,10 +864,11 @@ export function computeLayout(filteredNodes: RawNode[], filteredEdges: RawEdge[]
 
   // ── Project node merging: position spending adjacent to budget, shift recipients ──
   // 1. Shift recipient nodes left by one colSpacing (project-spending col visually merges into budget col)
+  //    extraRecipientGapSVG adds extra space between project-spending and recipient labels
   for (const node of nodes) {
     if (node.type === 'recipient') {
-      node.x0 -= colSpacing;
-      node.x1 -= colSpacing;
+      node.x0 -= colSpacing - extraRecipientGapSVG;
+      node.x1 -= colSpacing - extraRecipientGapSVG;
     }
   }
   // 2. Move project-spending nodes to be horizontally adjacent to their paired budget node (top-aligned)
@@ -922,6 +923,6 @@ export function computeLayout(filteredNodes: RawNode[], filteredEdges: RawEdge[]
     contentMaxY = Math.max(contentMaxY, node.y1);
   }
 
-  const LABEL_SPACE = 200; // approximate space for rightmost column labels
-  return { nodes, links, ky, maxCol, innerW, innerH, contentW: contentMaxX + NODE_W + LABEL_SPACE, contentH: contentMaxY };
+  const LABEL_SPACE = 200;
+  return { nodes, links, ky, maxCol, innerW, innerH, colSpacing, contentW: contentMaxX + NODE_W + LABEL_SPACE, contentH: contentMaxY };
 }

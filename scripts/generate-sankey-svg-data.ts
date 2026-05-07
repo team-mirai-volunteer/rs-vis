@@ -55,6 +55,7 @@ interface SankeyNode {
   skipLinkOverride?: boolean; // レイアウトエンジンによるリンク合計上書きを抑制
   projectId?: number;   // project-budget/project-spending のみ
   ministry?: string;    // ministry / project のみ
+  accountCategory?: 'general' | 'special' | 'both'; // project-budget のみ
 }
 
 interface SankeyEdge {
@@ -118,14 +119,26 @@ function main() {
   }
   console.log(`  組織情報: ${orgMap.size.toLocaleString()} 事業`);
 
-  // 3. 予算データ集計（予算年度=TARGET_BUDGET_YEAR のみ）
+  // 3. 予算データ集計（予算年度=TARGET_BUDGET_YEAR のみ）& 会計区分マップ構築
   const budgetMap = new Map<number, { totalBudget: number; executedAmount: number }>();
+  const accountCategoryMap = new Map<number, 'general' | 'special' | 'both'>();
   for (const row of budgetRows) {
     const pid = parseInt(row['予算事業ID'], 10);
     if (isNaN(pid)) continue;
+    if (!orgMap.has(pid)) continue;
+
+    // 会計区分マップ（予算年度問わず全行から収集）
+    const cat = (row['会計区分'] || '').trim();
+    if (cat === '一般会計') {
+      const existing = accountCategoryMap.get(pid);
+      accountCategoryMap.set(pid, existing === 'special' ? 'both' : existing ?? 'general');
+    } else if (cat === '特別会計') {
+      const existing = accountCategoryMap.get(pid);
+      accountCategoryMap.set(pid, existing === 'general' ? 'both' : existing ?? 'special');
+    }
+
     const fiscalYear = parseInt(row['予算年度'], 10);
     if (fiscalYear !== TARGET_BUDGET_YEAR) continue;
-    if (!orgMap.has(pid)) continue;
 
     const existing = budgetMap.get(pid) || { totalBudget: 0, executedAmount: 0 };
     existing.totalBudget += parseAmount(row['計(歳出予算現額合計)']);
@@ -280,6 +293,7 @@ function main() {
     const spendingNodeId = `project-spending-${pid}`;
 
     // 事業(予算)ノード
+    const ac = accountCategoryMap.get(pid);
     nodes.push({
       id: budgetNodeId,
       name: org.projectName,
@@ -287,6 +301,7 @@ function main() {
       value: budgetAmount,
       projectId: pid,
       ministry: org.ministry,
+      ...(ac !== undefined ? { accountCategory: ac } : {}),
     });
 
     // 事業(支出)ノード — 直接支出額のみ

@@ -2,19 +2,20 @@ import type { SubcontractGraph, BlockNode, BlockEdge } from '@/types/subcontract
 
 // ─── 定数 ──────────────────────────────────────────────
 
-export const NODE_W = 200;
-export const NODE_MIN_H = 90;
-export const NODE_PAD = 16;
-export const COL_GAP = 160;
-export const ROW_PAD = 12;
-export const ROOT_W = 160;
-export const ROOT_H = 60;
-export const SVG_MARGIN = { top: 24, right: 32, bottom: 32, left: 32 };
+export const NODE_W = 236;
+export const NODE_MIN_H = 126;
+export const NODE_PAD = 14;
+export const COL_GAP = 28;
+export const ROW_PAD = 22;
+export const DEPTH_GAP = 92;
+export const ROOT_W = 300;
+export const ROOT_H = 136;
+export const SVG_MARGIN = { top: 28, right: 36, bottom: 40, left: 36 };
 
-export const COLOR_DIRECT = '#3b82f6';
-export const COLOR_SUBCONTRACT = '#f97316';
-export const COLOR_ROOT = '#6b7280';
-export const COLOR_EDGE = 'rgba(100,116,139,0.35)';
+export const COLOR_DIRECT = '#d94545';
+export const COLOR_SUBCONTRACT = '#e07040';
+export const COLOR_ROOT = '#3a9a5c';
+export const COLOR_EDGE = 'rgba(217,69,69,0.42)';
 
 // ─── 型 ──────────────────────────────────────────────
 
@@ -102,18 +103,37 @@ function computeDepths(flows: BlockEdge[]): Map<string, number> {
   return depthMap;
 }
 
-/** ノードの高さを金額から算出（最小高さあり、比例スケール） */
-function blockHeight(graph: SubcontractGraph, totalAmount: number): number {
-  const maxAmount = Math.max(...graph.blocks.map((b) => b.totalAmount), 1);
-  const maxH = 300;
-  const scaled = NODE_MIN_H + (totalAmount / maxAmount) * (maxH - NODE_MIN_H);
-  return Math.max(NODE_MIN_H, Math.round(scaled));
+function mergeParallelFlows(flows: BlockEdge[]): BlockEdge[] {
+  const byPair = new Map<string, BlockEdge & { noteSet: Set<string> }>();
+
+  for (const flow of flows) {
+    const key = `${flow.sourceBlock ?? '__root__'}->${flow.targetBlock}`;
+    const existing = byPair.get(key);
+    if (!existing) {
+      const noteSet = new Set<string>();
+      if (flow.note?.trim()) noteSet.add(flow.note.trim());
+      byPair.set(key, { ...flow, noteSet });
+      continue;
+    }
+    if (flow.note?.trim()) existing.noteSet.add(flow.note.trim());
+  }
+
+  return [...byPair.values()].map(({ noteSet, ...flow }) => ({
+    ...flow,
+    note: noteSet.size > 0 ? [...noteSet].join(' / ') : undefined,
+  }));
 }
 
 // ─── メインレイアウト関数 ──────────────────────────────────────────────
 
 export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLayout {
   const depthMap = computeDepths(graph.flows);
+  const mergedFlows = mergeParallelFlows(graph.flows);
+
+  function rowWidthForDepth(nodeCount: number): number {
+    const safeCount = Math.max(1, nodeCount);
+    return safeCount * NODE_W + Math.max(0, safeCount - 1) * COL_GAP;
+  }
 
   // ブロックノードをマップ化
   const blockById = new Map<string, BlockNode>();
@@ -133,7 +153,7 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
 
   // 各ブロックの「即時親」リスト（順方向エッジのみ: sourceDepth < targetDepth）
   const immediateParents = new Map<string, string[]>();
-  for (const f of graph.flows) {
+  for (const f of mergedFlows) {
     if (f.sourceBlock === null) continue;
     const sd = depthMap.get(f.sourceBlock) ?? -1;
     const td = depthMap.get(f.targetBlock) ?? -1;
@@ -164,52 +184,49 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
     nodes.forEach((b, i) => blockPosition.set(b.blockId, i));
   }
 
-  const maxDepth = depthMap.size > 0 ? Math.max(...depthMap.values()) : 1;
-
-  // X座標: 深さ0=担当組織, 深さ1以降=ブロック
-  // 担当組織 x=0, depth1 x=ROOT_W+COL_GAP, depth2 x=ROOT_W+COL_GAP+NODE_W+COL_GAP ...
-  function depthToX(depth: number): number {
-    if (depth === 0) return SVG_MARGIN.left;
-    return SVG_MARGIN.left + ROOT_W + COL_GAP + (depth - 1) * (NODE_W + COL_GAP);
-  }
-
-  // Y座標計算 (各深さの列ごとに上から積み上げ)
+  // Y座標計算: depthごとに横一列で並べ、上から下へ流す。
+  // 同一階層内で折り返すとリンク矢印が上下に交差して読みにくいため、
+  // 横幅は使うが階層の意味が崩れない配置を優先する。
   const layoutBlocks: LayoutBlock[] = [];
-  const yNextByDepth = new Map<number, number>();
+  let currentY = SVG_MARGIN.top + ROOT_H + DEPTH_GAP;
+  let maxRowWidth = ROOT_W;
 
   for (const [depth, nodes] of [...byDepth.entries()].sort((a, b) => a[0] - b[0])) {
-    let y = SVG_MARGIN.top;
-    for (const node of nodes) {
-      const h = blockHeight(graph, node.totalAmount);
+    const cardsPerRow = Math.max(1, nodes.length);
+    const rowWidth = cardsPerRow * NODE_W + Math.max(0, cardsPerRow - 1) * COL_GAP;
+    maxRowWidth = Math.max(maxRowWidth, rowWidth);
+
+    nodes.forEach((node, i) => {
       layoutBlocks.push({
         blockId: node.blockId,
         blockName: node.blockName,
         totalAmount: node.totalAmount,
         isDirect: node.isDirect,
         depth,
-        x: depthToX(depth),
-        y,
+        x: SVG_MARGIN.left + i * (NODE_W + COL_GAP),
+        y: currentY,
         w: NODE_W,
-        h,
+        h: NODE_MIN_H,
         node,
       });
-      y += h + ROW_PAD;
-    }
-    yNextByDepth.set(depth, y);
+    });
+
+    currentY += NODE_MIN_H + DEPTH_GAP;
   }
 
-  // 担当組織ルートノード（Y中央）
-  const depth1Nodes = byDepth.get(1) ?? [];
-  const depth1TotalHeight = depth1Nodes.reduce((sum, n) => sum + blockHeight(graph, n.totalAmount) + ROW_PAD, 0) - ROW_PAD;
-  const rootY = SVG_MARGIN.top + Math.max(0, (depth1TotalHeight - ROOT_H) / 2);
+  const contentWidth = maxRowWidth;
 
   const root: LayoutRoot = {
-    label: graph.ministry,
-    x: SVG_MARGIN.left,
-    y: rootY,
+    label: graph.projectName,
+    x: SVG_MARGIN.left + Math.max(0, (contentWidth - ROOT_W) / 2),
+    y: SVG_MARGIN.top,
     w: ROOT_W,
     h: ROOT_H,
   };
+
+  for (const lb of layoutBlocks) {
+    lb.x += Math.max(0, (contentWidth - rowWidthForDepth(byDepth.get(lb.depth)?.length ?? 1)) / 2);
+  }
 
   // LayoutBlock → マップ
   const layoutById = new Map<string, LayoutBlock>();
@@ -217,20 +234,19 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
 
   // エッジ計算
   const edges: LayoutEdge[] = [];
-  for (const f of graph.flows) {
+  for (const f of mergedFlows) {
     const target = layoutById.get(f.targetBlock);
     if (!target) continue;
 
     const isSelfLoop = f.sourceBlock === f.targetBlock;
 
     if (f.sourceBlock === null) {
-      // ルート → ブロック（常に順方向）
       edges.push({
         ...f,
-        x1: root.x + root.w,
-        y1: root.y + root.h / 2,
-        x2: target.x,
-        y2: target.y + target.h / 2,
+        x1: root.x + root.w / 2,
+        y1: root.y + root.h,
+        x2: target.x + target.w / 2,
+        y2: target.y,
         isBackEdge: false,
         isSelfLoop: false,
       });
@@ -242,7 +258,6 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
       const isBackEdge = isSelfLoop || source.depth > target.depth;
 
       if (isSelfLoop) {
-        // 自己ループ: ノード右端から出てループして戻る
         edges.push({
           ...f,
           x1: source.x + source.w,
@@ -253,7 +268,6 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
           isSelfLoop: true,
         });
       } else if (isBackEdge) {
-        // バックエッジ: ノード左端から左側オフセットの弧を描画（backEdgePath で計算）
         edges.push({
           ...f,
           x1: source.x,
@@ -264,13 +278,12 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
           isSelfLoop: false,
         });
       } else {
-        // 順方向エッジ
         edges.push({
           ...f,
-          x1: source.x + source.w,
-          y1: source.y + source.h / 2,
-          x2: target.x,
-          y2: target.y + target.h / 2,
+          x1: source.x + source.w / 2,
+          y1: source.y + source.h,
+          x2: target.x + target.w / 2,
+          y2: target.y,
           isBackEdge: false,
           isSelfLoop: false,
         });
@@ -279,7 +292,7 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
   }
 
   // SVGサイズ
-  const maxX = SVG_MARGIN.left + ROOT_W + COL_GAP + maxDepth * (NODE_W + COL_GAP) + SVG_MARGIN.right;
+  const maxX = SVG_MARGIN.left + contentWidth + SVG_MARGIN.right;
   const maxY = Math.max(
     ...layoutBlocks.map((lb) => lb.y + lb.h),
     root.y + root.h,
