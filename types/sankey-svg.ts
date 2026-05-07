@@ -18,6 +18,8 @@ export interface RawNode {
   aggregated?: boolean;
   projectId?: number;
   ministry?: string;
+  /** 会計区分 — project-budget ノードのみ付与 */
+  accountCategory?: 'general' | 'special' | 'both';
 }
 
 export interface RawEdge {
