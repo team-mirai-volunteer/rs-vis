@@ -44,9 +44,9 @@ export const TYPE_COLORS: Record<string, string> = {
 
 export const TYPE_LABELS: Record<string, string> = {
   'total': '予算総計',
-  'ministry': '府省庁',
-  'project-budget': '事業（予算）',
-  'project-spending': '事業（支出）',
+  'ministry': '省庁',
+  'project-budget': '事業',
+  'project-spending': '事業',
   'recipient': '支出先',
 };
 
@@ -79,9 +79,11 @@ export function ribbonPath(link: LayoutLink): string {
 // ── Formatting ──
 
 export function formatYen(value: number): string {
-  if (value >= 1e12) return `${(value / 1e12).toFixed(2)}兆円`;
-  if (value >= 1e10) return `${Math.round(value / 1e8).toLocaleString()}億円`;
-  if (value >= 1e8) return `${(value / 1e8).toFixed(2)}億円`;
-  if (value >= 1e4) return `${Math.round(value / 1e4).toLocaleString()}万円`;
+  const sign = value < 0 ? '-' : '';
+  const abs = Math.abs(value);
+  if (abs >= 1e12) return `${sign}${(abs / 1e12).toFixed(2)}兆円`;
+  if (abs >= 1e10) return `${sign}${Math.round(abs / 1e8).toLocaleString()}億円`;
+  if (abs >= 1e8) return `${sign}${(abs / 1e8).toFixed(2)}億円`;
+  if (abs >= 1e4) return `${sign}${Math.round(abs / 1e4).toLocaleString()}万円`;
   return `${Math.round(value).toLocaleString()}円`;
 }

@@ -20,6 +20,7 @@
  * 使用CSV:
  *   1-1: 組織情報（府省庁階層）
  *   2-1: 予算・執行サマリ（事業別予算額・執行額）
+ *   2-2: 予算・執行 予算種別・歳出予算項目（会計区分別の予算内訳）
  *   5-1: 支出先・支出情報（支出先名・金額）
  *   5-2: 支出先・支出ブロックのつながり（直接支出判定用）
  */
@@ -28,6 +29,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { readShiftJISCSV, parseAmount } from '@/scripts/csv-reader';
 import type { CSVRow } from '@/types/rs-system';
+import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
 
 // ─── 年度設定 ──────────────────────────────────────────────
 const YEAR = parseInt(process.argv[2] || '2024', 10);
@@ -56,6 +58,8 @@ interface SankeyNode {
   projectId?: number;   // project-budget/project-spending のみ
   ministry?: string;    // ministry / project のみ
   accountCategory?: 'general' | 'special' | 'both'; // project-budget のみ
+  budgetSummary?: BudgetSummary; // project-budget のみ
+  budgetBreakdown?: BudgetBreakdownItem[]; // project-budget のみ
 }
 
 interface SankeyEdge {
@@ -103,6 +107,7 @@ function main() {
   console.log('[1/5] CSV読み込み');
   const orgRows = loadCSV(`1-1_RS_${YEAR}_基本情報_組織情報.csv`);
   const budgetRows = loadCSV(`2-1_RS_${YEAR}_予算・執行_サマリ.csv`);
+  const budgetItemRows = loadCSV(`2-2_RS_${YEAR}_予算・執行_予算種別・歳出予算項目.csv`);
   const spendingRows = loadCSV(`5-1_RS_${YEAR}_支出先_支出情報.csv`);
   const blockRows = loadCSV(`5-2_RS_${YEAR}_支出先_支出ブロックのつながり.csv`);
 
@@ -120,14 +125,17 @@ function main() {
   console.log(`  組織情報: ${orgMap.size.toLocaleString()} 事業`);
 
   // 3. 予算データ集計（予算年度=TARGET_BUDGET_YEAR のみ）& 会計区分マップ構築
-  const budgetMap = new Map<number, { totalBudget: number; executedAmount: number }>();
+  const budgetMap = new Map<number, BudgetSummary>();
   const accountCategoryMap = new Map<number, 'general' | 'special' | 'both'>();
   for (const row of budgetRows) {
     const pid = parseInt(row['予算事業ID'], 10);
     if (isNaN(pid)) continue;
     if (!orgMap.has(pid)) continue;
 
-    // 会計区分マップ（予算年度問わず全行から収集）
+    const fiscalYear = parseInt(row['予算年度'], 10);
+    if (fiscalYear !== TARGET_BUDGET_YEAR) continue;
+
+    // 会計区分マップ（表示対象の予算年度のみから収集）
     const cat = (row['会計区分'] || '').trim();
     if (cat === '一般会計') {
       const existing = accountCategoryMap.get(pid);
@@ -137,15 +145,89 @@ function main() {
       accountCategoryMap.set(pid, existing === 'general' ? 'both' : existing ?? 'special');
     }
 
+    const existing = budgetMap.get(pid) || {
+      fiscalYear: TARGET_BUDGET_YEAR,
+      initialBudget: 0,
+      supplementaryBudget: 0,
+      carryoverBudget: 0,
+      reserveFund: 0,
+      totalBudget: 0,
+      executedAmount: 0,
+      executionRate: null,
+      carryoverToNext: 0,
+      nextYearRequest: 0,
+      accountSummaries: [],
+    };
+    const totalBudget = parseAmount(row['計(歳出予算現額合計)']);
+    const executedAmount = parseAmount(row['執行額(合計)']);
+    existing.initialBudget += parseAmount(row['当初予算(合計)']);
+    existing.supplementaryBudget += parseAmount(row['補正予算(合計)']);
+    existing.carryoverBudget += parseAmount(row['前年度からの繰越し(合計)']);
+    existing.reserveFund += parseAmount(row['予備費等(合計)']);
+    existing.totalBudget += totalBudget;
+    existing.executedAmount += executedAmount;
+    existing.carryoverToNext += parseAmount(row['翌年度への繰越し(合計)']);
+    existing.nextYearRequest += parseAmount(row['翌年度要求額(合計)']);
+    if (cat === '一般会計' || cat === '特別会計') {
+      const accountTotalBudget = parseAmount(row['歳出予算現額']);
+      const accountExecutedAmount = parseAmount(row['執行額']);
+      let accountSummary = existing.accountSummaries.find(item => item.accountCategory === cat);
+      if (!accountSummary) {
+        accountSummary = { accountCategory: cat, totalBudget: 0, executedAmount: 0 };
+        existing.accountSummaries.push(accountSummary);
+      }
+      accountSummary.totalBudget += accountTotalBudget;
+      accountSummary.executedAmount += accountExecutedAmount;
+    }
+    budgetMap.set(pid, existing);
+  }
+  for (const summary of budgetMap.values()) {
+    summary.executionRate = summary.totalBudget > 0
+      ? (summary.executedAmount / summary.totalBudget) * 100
+      : null;
+    summary.accountSummaries.sort((a, b) => b.totalBudget - a.totalBudget);
+  }
+  console.log(`  予算データ: ${budgetMap.size.toLocaleString()} 事業`);
+
+  // 3b. 会計区分・歳出項目ごとの予算内訳（2-2 CSV、予算年度=TARGET_BUDGET_YEAR のみ）
+  const budgetBreakdownMap = new Map<number, BudgetBreakdownItem[]>();
+  let budgetItemTargetRows = 0;
+  let budgetItemAmountTotal = 0;
+  for (const row of budgetItemRows) {
+    const pid = parseInt(row['予算事業ID'], 10);
+    if (isNaN(pid)) continue;
+    if (!orgMap.has(pid)) continue;
+
     const fiscalYear = parseInt(row['予算年度'], 10);
     if (fiscalYear !== TARGET_BUDGET_YEAR) continue;
 
-    const existing = budgetMap.get(pid) || { totalBudget: 0, executedAmount: 0 };
-    existing.totalBudget += parseAmount(row['計(歳出予算現額合計)']);
-    existing.executedAmount += parseAmount(row['執行額(合計)']);
-    budgetMap.set(pid, existing);
+    budgetItemTargetRows++;
+    const amount = parseAmount(row['予算額(歳出予算項目ごと)']);
+    const nextYearRequestAmount = parseAmount(row['翌年度要求額(歳出予算項目ごと)']);
+    budgetItemAmountTotal += amount;
+
+    const item: BudgetBreakdownItem = {
+      fiscalYear,
+      accountCategory: row['会計区分'] || '',
+      account: row['会計'] || '',
+      subAccount: row['勘定'] || '',
+      budgetType: row['予算種別'] || '',
+      jurisdiction: row['所管'] || '',
+      organizationAccount: row['組織・勘定'] || '',
+      item: row['項'] || '',
+      subItem: row['目'] || '',
+      note: row['歳出予算項目の補足情報'] || row['備考(歳出予算項目ごと)'] || '',
+      amount,
+      nextYearRequestAmount,
+    };
+
+    if (!budgetBreakdownMap.has(pid)) budgetBreakdownMap.set(pid, []);
+    budgetBreakdownMap.get(pid)!.push(item);
   }
-  console.log(`  予算データ: ${budgetMap.size.toLocaleString()} 事業`);
+  for (const entries of budgetBreakdownMap.values()) {
+    entries.sort((a, b) => b.amount - a.amount);
+  }
+  console.log(`  予算内訳データ: ${budgetBreakdownMap.size.toLocaleString()} 事業 / ${budgetItemTargetRows.toLocaleString()} 行 / ${(budgetItemAmountTotal / 1e12).toFixed(2)} 兆円`);
 
   // 4. 再委託ブロックセットの構築（5-2 CSV）
   // 判定方針: 「担当組織からの支出=FALSE」は明示的な再委託（間接）→ 除外
@@ -302,6 +384,8 @@ function main() {
       projectId: pid,
       ministry: org.ministry,
       ...(ac !== undefined ? { accountCategory: ac } : {}),
+      ...(budget !== undefined ? { budgetSummary: budget } : {}),
+      ...(budgetBreakdownMap.has(pid) ? { budgetBreakdown: budgetBreakdownMap.get(pid) } : {}),
     });
 
     // 事業(支出)ノード — 直接支出額のみ

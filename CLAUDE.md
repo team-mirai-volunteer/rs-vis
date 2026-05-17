@@ -41,7 +41,7 @@ npm run build-houjin-lookup  # SQLite → data/houjin-lookup.json（約4秒）
 | Data Pipeline | `scripts/` | CSV処理のみ。UIやAPIロジック禁止 |
 | Domain Logic | `app/lib/` | Pure Sankey生成。HTTP・React禁止 |
 | API Layer | `app/api/` | HTTPハンドラ。ロジックは `app/lib/` に委譲 |
-| UI Components | `client/components/` | 再利用可能UI。直接APIコール禁止 |
+| UI Components | `client/components/` / `components/` | 再利用可能UI。直接APIコール禁止（`components/` はフィルタUI等の共通部品） |
 | Pages | `app/*/page.tsx` | 状態管理・API呼び出し・レイアウトのみ |
 | Types | `types/` | 全レイヤー共通の型定義 |
 
@@ -66,11 +66,14 @@ npm run build-houjin-lookup  # SQLite → data/houjin-lookup.json（約4秒）
 
 | File | Purpose |
 |------|---------|
-| [app/sankey-svg/page.tsx](app/sankey-svg/page.tsx) | メインUI・状態管理・フィルタ・描画（TopN・予算/支出フィルタ・府省庁フィルタ・Pin・ミニマップ・検索） |
+| [app/sankey-svg/page.tsx](app/sankey-svg/page.tsx) | メインUI・状態管理・フィルタ・描画（TopN・予算/支出/会計区分フィルタ・府省庁フィルタ・Pin・ミニマップ・検索・省庁クリック連動・ズーム連動ラベル・サイドパネル会計内訳） |
 | [client/components/SankeySvg/MinimapOverlay.tsx](client/components/SankeySvg/MinimapOverlay.tsx) | ミニマップオーバーレイ |
+| [components/filters/](components/filters/) | フィルタUI部品（FilterRow / MinMaxInput / MultiSelectDropdown / FilterTextInput） |
 | [app/lib/sankey-svg-filter.ts](app/lib/sankey-svg-filter.ts) | グラフフィルタリングロジック（r-no-spending 昇格含む） |
 | [app/lib/sankey-svg-constants.ts](app/lib/sankey-svg-constants.ts) | 色定数・レイアウト定数 |
-| [scripts/generate-sankey-svg-data.ts](scripts/generate-sankey-svg-data.ts) | 1-1/2-1/5-1/5-2 CSV → graph.json 生成（r-no-spending ノード含む） |
+| [app/lib/sankey-svg-ids.ts](app/lib/sankey-svg-ids.ts) | ノード/エッジID命名規則 |
+| [app/lib/format/yen.ts](app/lib/format/yen.ts) | 円表示フォーマッタ |
+| [scripts/generate-sankey-svg-data.ts](scripts/generate-sankey-svg-data.ts) | 1-1/2-1/5-1/5-2 CSV → graph.json 生成（r-no-spending・会計内訳含む） |
 
 ### /sankey2（事前計算版）
 

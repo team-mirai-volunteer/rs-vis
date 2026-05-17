@@ -1,4 +1,10 @@
-import type { SubcontractGraph, BlockNode, BlockEdge } from '@/types/subcontract';
+import type {
+  SubcontractGraph,
+  BlockNode,
+  BlockEdge,
+  BlockOriginKind,
+  FlowOrigin,
+} from '@/types/subcontract';
 
 // ─── 定数 ──────────────────────────────────────────────
 
@@ -24,6 +30,9 @@ export interface LayoutBlock {
   blockName: string;
   totalAmount: number;
   isDirect: boolean;
+  originKind: BlockOriginKind;
+  isTerminal: boolean;
+  isZeroAmount: boolean;
   depth: number;
   x: number;
   y: number;
@@ -44,6 +53,9 @@ export interface LayoutEdge {
   sourceBlock: string | null;
   targetBlock: string;
   note?: string;
+  origin: FlowOrigin;
+  isReference: boolean;
+  targetIncomingBlockCount: number;
   x1: number;
   y1: number;
   x2: number;
@@ -75,11 +87,21 @@ export { formatYen };
 
 const MAX_DEPTH_LIMIT = 30;
 
-/** blockId → depth (BFS、Fan-In: 最大深さ採用、サイクル対策あり) */
+/**
+ * blockId → depth を BFS で計算する。
+ *
+ * 起点は2種類:
+ *  - `f.sourceBlock === null` の direct ルート
+ *  - `origin === 'separate-origin'` の別起点ブロック（5-2上で支出元として現れるが
+ *    どの target としても現れない broad/strong 別起点）
+ *
+ * いずれも depth=1 から流す。
+ */
 function computeDepths(flows: BlockEdge[]): Map<string, number> {
   const depthMap = new Map<string, number>();
   const queue: Array<{ blockId: string; depth: number }> = [];
   const children = new Map<string, string[]>();
+  const separateOriginRoots = new Set<string>();
 
   for (const f of flows) {
     if (f.sourceBlock === null) {
@@ -87,7 +109,11 @@ function computeDepths(flows: BlockEdge[]): Map<string, number> {
     } else {
       if (!children.has(f.sourceBlock)) children.set(f.sourceBlock, []);
       children.get(f.sourceBlock)!.push(f.targetBlock);
+      if (f.origin === 'separate-origin') separateOriginRoots.add(f.sourceBlock);
     }
+  }
+  for (const root of separateOriginRoots) {
+    queue.push({ blockId: root, depth: 1 });
   }
 
   while (queue.length > 0) {
@@ -107,7 +133,12 @@ function mergeParallelFlows(flows: BlockEdge[]): BlockEdge[] {
   const byPair = new Map<string, BlockEdge & { noteSet: Set<string> }>();
 
   for (const flow of flows) {
-    const key = `${flow.sourceBlock ?? '__root__'}->${flow.targetBlock}`;
+    const key = [
+      flow.sourceBlock ?? '__root__',
+      flow.targetBlock,
+      flow.origin,
+      flow.isReference ? 'ref' : 'plain',
+    ].join('->');
     const existing = byPair.get(key);
     if (!existing) {
       const noteSet = new Set<string>();
@@ -148,8 +179,13 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
     byDepth.get(depth)!.push(node);
   }
 
-  // depth-1 を金額降順でソート
-  (byDepth.get(1) ?? []).sort((a, b) => b.totalAmount - a.totalAmount);
+  // depth-1 を「direct/subcontract 群 → 別起点群」の順で並べ、各群内では金額降順
+  const originRank = (k: BlockOriginKind): number =>
+    k === 'separate-origin-strong' ? 2 : k === 'separate-origin-broad' ? 1 : 0;
+  (byDepth.get(1) ?? []).sort((a, b) => {
+    const r = originRank(a.originKind) - originRank(b.originKind);
+    return r !== 0 ? r : b.totalAmount - a.totalAmount;
+  });
 
   // 各ブロックの「即時親」リスト（順方向エッジのみ: sourceDepth < targetDepth）
   const immediateParents = new Map<string, string[]>();
@@ -202,6 +238,9 @@ export function computeSubcontractLayout(graph: SubcontractGraph): SubcontractLa
         blockName: node.blockName,
         totalAmount: node.totalAmount,
         isDirect: node.isDirect,
+        originKind: node.originKind,
+        isTerminal: node.isTerminal,
+        isZeroAmount: node.totalAmount === 0 && node.recipientCount === 0,
         depth,
         x: SVG_MARGIN.left + i * (NODE_W + COL_GAP),
         y: currentY,

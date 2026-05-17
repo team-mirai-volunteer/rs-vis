@@ -5,6 +5,35 @@ import { MARGIN, NODE_W, NODE_PAD, getColumn, sortPriority } from '@/app/lib/san
 
 type AggMember = { id: string; name: string; value: number; ministry?: string };
 
+export function getTopMinistriesInScope(
+  allNodes: RawNode[],
+  topMinistry: number,
+  ministryFocusMode = false,
+  pinnedMinistryName: string | null = null,
+): {
+  ministries: RawNode[];
+  topMinistryNodes: RawNode[];
+  otherMinistries: RawNode[];
+  topMinistryIds: Set<string>;
+  topMinistryNames: Set<string>;
+} {
+  const ministries = allNodes.filter(n => n.type === 'ministry').sort((a, b) => b.value - a.value);
+  let topMinistryNodes = ministries.slice(0, topMinistry);
+  if (ministryFocusMode && pinnedMinistryName) {
+    const pinned = ministries.find(n => n.name === pinnedMinistryName);
+    topMinistryNodes = pinned ? [pinned] : [];
+  }
+  let otherMinistries = ministryFocusMode ? [] : ministries.slice(topMinistry);
+  // Single-element aggregation: promote lone ministry to a regular node
+  if (otherMinistries.length === 1) {
+    topMinistryNodes = [...topMinistryNodes, otherMinistries[0]];
+    otherMinistries = [];
+  }
+  const topMinistryIds = new Set(topMinistryNodes.map(n => n.id));
+  const topMinistryNames = new Set(topMinistryNodes.map(n => n.name));
+  return { ministries, topMinistryNodes, otherMinistries, topMinistryIds, topMinistryNames };
+}
+
 export function filterTopN(
   allNodes: RawNode[],
   allEdges: RawEdge[],
@@ -45,20 +74,8 @@ export function filterTopN(
   const projectRecipientsMode = focusRelated && pinnedProjectId != null && !recipientFocusMode && !ministryFocusMode;
 
   // 1. TopN ministries by total value (stable ranking)
-  const ministries = allNodes.filter(n => n.type === 'ministry').sort((a, b) => b.value - a.value);
-  let topMinistryNodes = ministries.slice(0, topMinistry);
-  if (ministryFocusMode && pinnedMinistryName) {
-    const pinned = ministries.find(n => n.name === pinnedMinistryName);
-    topMinistryNodes = pinned ? [pinned] : [];
-  }
-  let otherMinistries = ministryFocusMode ? [] : ministries.slice(topMinistry);
-  // Single-element aggregation: promote lone ministry to a regular node
-  if (otherMinistries.length === 1) {
-    topMinistryNodes = [...topMinistryNodes, otherMinistries[0]];
-    otherMinistries = [];
-  }
-  const topMinistryIds = new Set(topMinistryNodes.map(n => n.id));
-  const topMinistryNames = new Set(topMinistryNodes.map(n => n.name));
+  const { ministries, topMinistryNodes, otherMinistries, topMinistryIds, topMinistryNames } =
+    getTopMinistriesInScope(allNodes, topMinistry, ministryFocusMode, pinnedMinistryName);
 
   // ── Project-offset mode: pre-compute project window before recipient window ──
   // Active when offsetTarget === 'project' and neither recipientFocus nor projectRecipients mode is engaged.
@@ -101,10 +118,9 @@ export function filterTopN(
 
     // Window projects: [effectiveProjectOffset, effectiveProjectOffset + topProject)
     const windowSlice = ranked.slice(effectiveProjectOffset, effectiveProjectOffset + topProject);
-    // If pinned project is above-window, force it into the window
+    // If pinned project is outside the window, force it in as an extra visible project.
     if (pinnedProjectId) {
-      const aboveWinIds = aboveWindowSpendingIds;
-      if (aboveWinIds.has(pinnedProjectId) && !windowSlice.some(n => n.id === pinnedProjectId)) {
+      if (!windowSlice.some(n => n.id === pinnedProjectId)) {
         const pinned = ranked.find(n => n.id === pinnedProjectId);
         if (pinned) windowSlice.push(pinned);
       }
