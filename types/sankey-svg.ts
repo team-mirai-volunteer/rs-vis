@@ -20,6 +20,45 @@ export interface RawNode {
   ministry?: string;
   /** 会計区分 — project-budget ノードのみ付与 */
   accountCategory?: 'general' | 'special' | 'both';
+  /** 予算・執行サマリ — project-budget ノードのみ付与 */
+  budgetSummary?: BudgetSummary;
+  /** 会計区分・歳出項目ごとの予算内訳 — project-budget ノードのみ付与 */
+  budgetBreakdown?: BudgetBreakdownItem[];
+}
+
+export interface BudgetSummary {
+  fiscalYear: number;
+  initialBudget: number;
+  supplementaryBudget: number;
+  carryoverBudget: number;
+  reserveFund: number;
+  totalBudget: number;
+  executedAmount: number;
+  executionRate: number | null;
+  carryoverToNext: number;
+  nextYearRequest: number;
+  accountSummaries: BudgetAccountSummary[];
+}
+
+export interface BudgetAccountSummary {
+  accountCategory: string;
+  totalBudget: number;
+  executedAmount: number;
+}
+
+export interface BudgetBreakdownItem {
+  fiscalYear: number;
+  accountCategory: string;
+  account: string;
+  subAccount: string;
+  budgetType: string;
+  jurisdiction: string;
+  organizationAccount: string;
+  item: string;
+  subItem: string;
+  note: string;
+  amount: number;
+  nextYearRequestAmount: number;
 }
 
 export interface RawEdge {
