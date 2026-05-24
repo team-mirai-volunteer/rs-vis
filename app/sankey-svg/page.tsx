@@ -100,7 +100,6 @@ const HOVER_SUPPRESS_AFTER_INTERACTION_MS = 500;
 const HOVER_ENTER_DELAY_MS = 220;
 const FIT_TOP_PAD_PX = 32;
 const ZOOM_FONT_MAX_RATIO = 1.3;   // zoom-in でフォントを最大で元の何倍まで拡大するか
-const LABEL_FIT_RATIO = 0.85;      // ノード表示高さに対してフォントが占める割合の上限
 const AGGREGATE_BOUNDARY_GAP_PX = 6;
 
 type ShiftLayoutNode = {
@@ -112,6 +111,11 @@ type ShiftLayoutNode = {
   projectId?: number;
   aggregated?: boolean;
 };
+
+function getZoomLabelScale(zoomK: number, baseZoomK: number): number {
+  if (baseZoomK <= 0 || zoomK <= baseZoomK + 0.001) return 1;
+  return Math.min(zoomK / baseZoomK, ZOOM_FONT_MAX_RATIO);
+}
 
 function getAccountBadgeStyle(category?: string | null): { label: string; background: string } | null {
   if (!category) return null;
@@ -221,7 +225,9 @@ export default function RealDataSankeyPage() {
   const [hoveredColIndex, setHoveredColIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
+  const [showFontControls, setShowFontControls] = useState(false);
   const [baseFontPx, setBaseFontPx] = useState(BASE_FONT_PX_DEFAULT);
+  const [baseFontPxInput, setBaseFontPxInput] = useState(String(BASE_FONT_PX_DEFAULT));
   const [showLabels, setShowLabels] = useState(true);
   const [showAggRecipient, setShowAggRecipient] = useState(true);
   const [showAggProject, setShowAggProject] = useState(true);
@@ -533,6 +539,9 @@ export default function RealDataSankeyPage() {
   const [hoveredLinkStable, setHoveredLinkStable] = useState<LayoutLink | null>(null);
   const hoverEnterTimerRef = useRef<number | null>(null);
   useEffect(() => {
+    setBaseFontPxInput(String(baseFontPx));
+  }, [baseFontPx]);
+  useEffect(() => {
     if (hoverEnterTimerRef.current) {
       window.clearTimeout(hoverEnterTimerRef.current);
       hoverEnterTimerRef.current = null;
@@ -740,6 +749,12 @@ export default function RealDataSankeyPage() {
   const SEARCH_RESULT_PAD_Y_PX = scaleSize(7);
   const SEARCH_RESULT_PAD_X_PX = scaleSize(10);
   const SEARCH_RESULT_SWATCH_PX = scaleSize(8);
+  const FILTER_CLEAR_BUTTON_PX = scaleSize(32);
+  const FILTER_CLEAR_ICON_PX = scaleSize(18);
+  const FONT_CONTROL_BUTTON_PX = 32;
+  const FONT_CONTROL_ICON_PX = 18;
+  const FONT_CONTROL_PANEL_W_PX = 210;
+  const FONT_CONTROL_FONT_PX = CONTROL_SMALL_FONT_PX_DEFAULT;
   const mapLabelFontPx = MAP_LABEL_FONT_PX;
   const mapLabelSlotPx = MAP_LABEL_SLOT_PX;
   const mapLabelVisibleMinHPx = MAP_LABEL_VISIBLE_MIN_H_PX;
@@ -748,14 +763,26 @@ export default function RealDataSankeyPage() {
   const fitTopPadPx = FIT_TOP_PAD_PX;
   const fitTopPadPxRef = useRef(fitTopPadPx);
   fitTopPadPxRef.current = fitTopPadPx;
+  const commitBaseFontPxInput = useCallback(() => {
+    const v = Number(baseFontPxInput);
+    if (!Number.isFinite(v)) {
+      setBaseFontPxInput(String(baseFontPx));
+      return;
+    }
+    const next = Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, v));
+    setBaseFontPxInput(String(next));
+    if (next !== baseFontPx) {
+      pendingHistoryAction.current = 'replace';
+      setBaseFontPx(next);
+    }
+  }, [baseFontPx, baseFontPxInput]);
 
-  // Compute max extra height from label shifts at a given zoom level (2-pass helper)
-  // Uses mapLabelSlotPx (slot-based formula), not colFontPx/zoom. Intentional: this runs for
-  // fitZoomWithShifts (always near fit zoom where zoomedIn=false) and getZoomAnchoredPanY
-  // (sub-pixel drift at zoom-in is acceptable).
-  const calcShiftExtraH = useCallback((nodes: ShiftLayoutNode[], zoomK: number): number => {
+  // Compute max extra height from label shifts at a given zoom level (2-pass helper).
+  // During fit, pass baseZoomK=zoomK to keep the whole-view baseline unchanged.
+  const calcShiftExtraH = useCallback((nodes: ShiftLayoutNode[], zoomK: number, baseZoomK = zoomK): number => {
     if (!showLabelsRef.current) return 0;
     const colShifts = new Map<number, number>();
+    const labelScale = getZoomLabelScale(zoomK, baseZoomK);
     const spendingH = new Map<string, number>();
     for (const node of nodes) {
       if (node.type === 'project-spending' && node.projectId != null) {
@@ -782,7 +809,7 @@ export default function RealDataSankeyPage() {
         const h = node.type === 'project-budget' || node.id === '__agg-project-budget'
           ? Math.max(ownH, spendingH.get(node.id) ?? ownH)
           : ownH;
-        const slotPx = mapLabelMetricsRef.current.slotPx;
+        const slotPx = mapLabelMetricsRef.current.slotPx * labelScale;
         totalShift += h * zoomK < slotPx ? Math.max(0, slotPx / zoomK - h) : 0;
       }
       colShifts.set(col, totalShift);
@@ -793,13 +820,13 @@ export default function RealDataSankeyPage() {
   const getZoomAnchoredPanY = useCallback((anchorY: number, nextZoom: number): number => {
     const l = layoutRef.current;
     if (!l) return anchorY - (anchorY - pan.y) * (nextZoom / zoom);
-    const currentTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, zoom);
-    const nextTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, nextZoom);
+    const currentTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, zoom, baseZoom);
+    const nextTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, nextZoom, baseZoom);
     const currentScreenH = Math.max(1, currentTotalH * zoom);
     const nextScreenH = Math.max(1, nextTotalH * nextZoom);
     const ratioFromTop = (anchorY - pan.y) / currentScreenH;
     return anchorY - ratioFromTop * nextScreenH;
-  }, [calcShiftExtraH, pan.y, zoom]);
+  }, [baseZoom, calcShiftExtraH, pan.y, zoom]);
 
   // Prevent overlay control interactions from bubbling into canvas pan/zoom
   const isOverlayControlTarget = (target: EventTarget | null) =>
@@ -1178,17 +1205,18 @@ export default function RealDataSankeyPage() {
         spendingH.set('__agg-project-budget', Math.max(1, n.y1 - n.y0));
       }
     }
-    const zoomedIn = zoom > baseZoom + 0.001;
+    const labelScale = getZoomLabelScale(zoom, baseZoom);
+    const zoomedLabelFontPx = mapLabelFontPx * labelScale;
+    const zoomedLabelSlotPx = mapLabelSlotPx * labelScale;
     for (const nodes of nodesByColumn.values()) {
       const sorted = [...nodes].sort((a, b) => a.y0 - b.y0);
-      // Pre-compute each node's effective height and label center (SVG units) for gap calculation
+      // Pre-compute each node's effective height for label-slot spacing.
       const heights = sorted.map(n => {
         const bH = Math.max(1, n.y1 - n.y0);
         return n.type === 'project-budget' || n.id === '__agg-project-budget'
           ? Math.max(bH, spendingH.get(n.id) ?? bH)
           : bH;
       });
-      const centers = sorted.map((n, i) => n.y0 + heights[i] / 2);
       let cumShift = 0;
       for (let i = 0; i < sorted.length; i++) {
         const node = sorted[i];
@@ -1196,21 +1224,10 @@ export default function RealDataSankeyPage() {
           cumShift += AGGREGATE_BOUNDARY_GAP_PX / zoom;
         }
         const h = heights[i];
-        let colFontPx: number;
-        let slotExtra: number;
-        if (zoomedIn) {
-          const zoomedMax = mapLabelFontPx * Math.min(zoom / baseZoom, ZOOM_FONT_MAX_RATIO);
-          // Limit font by the shorter of the two neighbor center-to-center gaps
-          const distPrev = i > 0 ? (centers[i] - centers[i - 1]) : Infinity;
-          const distNext = i < sorted.length - 1 ? (centers[i + 1] - centers[i]) : Infinity;
-          const gapMax = Math.min(distPrev, distNext) * zoom * LABEL_FIT_RATIO;
-          // floor at mapLabelFontPx: intentional readability safeguard — labels may still overlap at high density
-          colFontPx = Math.max(mapLabelFontPx, Math.min(zoomedMax, gapMax));
-          slotExtra = h < colFontPx / zoom ? Math.max(0, colFontPx / zoom - h) : 0;
-        } else {
-          colFontPx = mapLabelFontPx;
-          slotExtra = h * zoom < mapLabelSlotPx ? Math.max(0, mapLabelSlotPx / zoom - h) : 0;
-        }
+        const colFontPx = zoomedLabelFontPx;
+        const slotExtra = h * zoom < zoomedLabelSlotPx
+          ? Math.max(0, zoomedLabelSlotPx / zoom - h)
+          : 0;
         const topShift = slotExtra / 2;
         info.set(node.id, { cumShift, topShift, colFontPx });
         cumShift += slotExtra;
@@ -2072,10 +2089,11 @@ export default function RealDataSankeyPage() {
           const cW = container.clientWidth;
           const reserve = searchBoxReserveRef.current;
           const availH = container.clientHeight - reserve;
-          const { k: fitK, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH);
+          const { k: fitK } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH);
+          const restoredTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, k, fitK);
           setBaseZoom(fitK);
           setZoom(k);
-          setPan({ x: 0, y: reserve + Math.min((availH - totalH * k) / 2, fitTopPadPxRef.current) });
+          setPan({ x: 0, y: reserve + Math.min((availH - restoredTotalH * k) / 2, fitTopPadPxRef.current) });
         } else {
           setZoom(k); setBaseZoom(k); setPan({ x: 0, y: searchBoxReserveRef.current });
         }
@@ -2083,7 +2101,7 @@ export default function RealDataSankeyPage() {
         resetView();
       }
     }
-  }, [layout, resetView, fitZoomWithShifts]);
+  }, [calcShiftExtraH, layout, resetView, fitZoomWithShifts]);
 
   // Focus on node after selection — fires when node appears in layout (pinned TopN+1 case)
   // Also watches isPanelCollapsed: when panel opens, recalculate fit with updated panel width
@@ -2126,6 +2144,24 @@ export default function RealDataSankeyPage() {
   const getNodeInnerX1 = useCallback((node: LayoutNode): number => screenToInnerX(getNodeScreenX1(node)), [getNodeScreenX1, screenToInnerX]);
   const innerNodeW = screenWToInner(screenNodeW);
   const innerLabelGap = screenWToInner(3);
+  const getMinimapRenderedYBounds = useCallback((node: LayoutNode): { top: number; bottom: number } => {
+    let shiftNode = node;
+    if (node.type === 'project-spending') {
+      const budgetId = node.id === '__agg-project-spending'
+        ? '__agg-project-budget'
+        : node.projectId != null ? `project-budget-${node.projectId}` : null;
+      const budgetNode = budgetId ? nodeByLayoutId.get(budgetId) : null;
+      if (budgetNode) shiftNode = budgetNode;
+    }
+    const { cumShift = 0, topShift = 0 } = nodeShiftInfo.get(shiftNode.id) ?? {};
+    const top = shiftNode.y0 + cumShift + topShift;
+    return { top, bottom: top + Math.max(1, node.y1 - node.y0) };
+  }, [nodeByLayoutId, nodeShiftInfo]);
+  const minimapWorldH = useMemo(() => {
+    if (!layout || layout.nodes.length === 0) return svgHeight;
+    const renderedBottom = Math.max(...layout.nodes.map(node => getRenderedYBounds(node).bottom));
+    return Math.max(svgHeight, MARGIN.top + renderedBottom + MARGIN.bottom);
+  }, [layout, svgHeight, getRenderedYBounds]);
 
   // Draw minimap
   useEffect(() => {
@@ -2136,12 +2172,12 @@ export default function RealDataSankeyPage() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // The "world" that the minimap represents = the full SVG content area
-    // Nodes are at (MARGIN.left + x0, MARGIN.top + y0) in SVG coords
+    // The "world" that the minimap represents = the rendered SVG content area.
+    // Nodes are at (MARGIN.left + x0, MARGIN.top + shiftedY0) in SVG coords.
     // The SVG transform: translate(pan.x, pan.y) scale(zoom) then translate(MARGIN, MARGIN)
-    // So a node at inner (x0,y0) appears at screen (pan.x + (MARGIN.left+x0)*zoom, pan.y + (MARGIN.top+y0)*zoom)
+    // So a node at inner (x0,shiftedY0) appears at screen (pan.x + (MARGIN.left+x0)*zoom, pan.y + (MARGIN.top+shiftedY0)*zoom)
     const worldW = svgWidth;
-    const worldH = svgHeight;
+    const worldH = minimapWorldH;
     const scaleX = MINIMAP_W / worldW;
     const scaleY = minimapH / worldH;
 
@@ -2151,10 +2187,11 @@ export default function RealDataSankeyPage() {
 
     // Draw nodes (at their SVG-coord positions including MARGIN)
     for (const node of layout.nodes) {
+      const bounds = getMinimapRenderedYBounds(node);
       const x = getNodeScreenX0(node) * scaleX;
-      const y = (MARGIN.top + node.y0) * scaleY;
+      const y = (MARGIN.top + bounds.top) * scaleY;
       const w = Math.max(1, screenNodeW * scaleX);
-      const h = Math.max(0.5, (node.y1 - node.y0) * scaleY);
+      const h = Math.max(0.5, (bounds.bottom - bounds.top) * scaleY);
       ctx.fillStyle = getNodeColor(node);
       ctx.fillRect(x, y, w, h);
     }
@@ -2178,7 +2215,7 @@ export default function RealDataSankeyPage() {
     ctx.strokeRect(mX, mY, mW, mH);
     ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
     ctx.fillRect(mX, mY, mW, mH);
-  }, [showMinimap, layout, zoom, pan, svgWidth, svgHeight, minimapH, getNodeScreenX0, screenNodeW]);
+  }, [showMinimap, layout, zoom, pan, svgWidth, minimapWorldH, minimapH, getNodeScreenX0, getMinimapRenderedYBounds, screenNodeW]);
 
   const minimapNavigate = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = minimapRef.current;
@@ -2189,14 +2226,14 @@ export default function RealDataSankeyPage() {
     const my = e.clientY - rect.top;
     // Minimap coord to SVG world coord
     const scaleX = MINIMAP_W / svgWidth;
-    const scaleY = minimapH / svgHeight;
+    const scaleY = minimapH / minimapWorldH;
     const svgX = mx / scaleX;
     const svgY = my / scaleY;
     // Center horizontally in screen space and vertically in zoomed SVG world.
     const cW = container.clientWidth;
     const cH = container.clientHeight;
     setPan({ x: cW / 2 - svgX, y: cH / 2 - svgY * zoom });
-  }, [svgWidth, svgHeight, minimapH, zoom]);
+  }, [svgWidth, minimapWorldH, minimapH, zoom]);
 
   // Escape key: focusRelated ON → フィルターのみOFF、OFF → 選択解除
   useEffect(() => {
@@ -2243,6 +2280,8 @@ export default function RealDataSankeyPage() {
 
   const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth : 0;
   const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 24px)`;
+  const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : sidePanelWidth + 8) : 8;
+  const fontControlLeft = minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48);
 
   return (
     <div
@@ -2538,9 +2577,11 @@ export default function RealDataSankeyPage() {
             {(() => {
               const maxCol = layout.maxCol || 1;
               const colNodeTypes = ['total', 'ministry', 'project-budget', 'recipient'] as const;
+              const columnAmount = (node: LayoutNode, colIndex: number) =>
+                colIndex === 2 && node.type === 'project-budget' && node.rawValue != null ? node.rawValue : node.value;
               const colAmounts: (number | null)[] = colNodeTypes.map((t, i) => {
                 const nodes = t === 'total' ? layout.nodes.filter(n => n.type === 'total') : layout.nodes.filter(n => n.type === t);
-                return i === 0 ? (nodes[0]?.value ?? null) : nodes.reduce((s, n) => s + n.value, 0);
+                return i === 0 ? (nodes[0]?.value ?? null) : nodes.reduce((s, n) => s + columnAmount(n, i), 0);
               });
               const projectSpendingTotal = layout.nodes.filter(n => n.type === 'project-spending').reduce((s, n) => s + n.value, 0);
               // 列ごとの最上端ノードを取得（ラベル基準位置の計算用）
@@ -2592,13 +2633,159 @@ export default function RealDataSankeyPage() {
               show={showMinimap}
               onShow={() => setShowMinimap(true)}
               onHide={() => setShowMinimap(false)}
-              left={selectedNodeId !== null ? (isPanelCollapsed ? 26 : sidePanelWidth + 8) : 8}
+              left={minimapLeft}
               minimapW={MINIMAP_W}
               minimapH={minimapH}
               canvasRef={minimapRef}
               navigate={minimapNavigate}
               dragging={minimapDragging}
             />
+
+            {/* Font size controls */}
+            <div
+              data-pan-disabled="true"
+              style={{
+                position: 'absolute',
+                left: fontControlLeft,
+                bottom: showMinimap || showFontControls ? 8 : 16,
+                zIndex: 12,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 6,
+                transition: 'left 0.2s ease',
+              }}
+            >
+              {!showFontControls && (
+                <button
+                  type="button"
+                  title="フォントサイズ設定"
+                  aria-label="フォントサイズ設定"
+                  aria-expanded={showFontControls}
+                  onClick={(e) => { e.stopPropagation(); setShowFontControls(true); }}
+                  style={{
+                    width: FONT_CONTROL_BUTTON_PX,
+                    height: FONT_CONTROL_BUTTON_PX,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: 'none',
+                    borderRadius: 6,
+                    background: 'rgba(255,255,255,0.7)',
+                    color: '#888',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {/* Material Icons: format_size */}
+                  <svg xmlns="http://www.w3.org/2000/svg" height={FONT_CONTROL_ICON_PX} width={FONT_CONTROL_ICON_PX} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 4v3h5v12h3V7h5V4H9Zm-6 8h3v7h3v-7h3V9H3v3Z" />
+                  </svg>
+                </button>
+              )}
+              {showFontControls && (
+                <div
+                  role="group"
+                  aria-label="基準フォントサイズ"
+                  style={{
+                    width: FONT_CONTROL_PANEL_W_PX,
+                    position: 'relative',
+                    boxSizing: 'border-box',
+                    background: 'rgba(255,255,255,0.95)',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '6px 6px 0 6px',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                    padding: '6px 10px',
+                    color: '#333',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="range"
+                      min={BASE_FONT_PX_MIN}
+                      max={BASE_FONT_PX_MAX}
+                      step={1}
+                      value={baseFontPx}
+                      onChange={e => { pendingHistoryAction.current = 'replace'; setBaseFontPx(Number(e.target.value)); }}
+                      style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', margin: 0 }}
+                      data-pan-disabled
+                      aria-label="基準フォントサイズ"
+                    />
+                    <input
+                      type="number"
+                      min={BASE_FONT_PX_MIN}
+                      max={BASE_FONT_PX_MAX}
+                      step={1}
+                      value={baseFontPxInput}
+                      onChange={e => setBaseFontPxInput(e.target.value)}
+                      onBlur={commitBaseFontPxInput}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          commitBaseFontPxInput();
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      style={{ width: 48, fontSize: FONT_CONTROL_FONT_PX, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 4, textAlign: 'center' }}
+                      data-pan-disabled
+                      aria-label="基準フォントサイズ(数値)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { pendingHistoryAction.current = 'replace'; setBaseFontPx(BASE_FONT_PX_DEFAULT); }}
+                      title="既定値に戻す"
+                      aria-label="既定値に戻す"
+                      style={{
+                        width: FONT_CONTROL_BUTTON_PX,
+                        height: FONT_CONTROL_BUTTON_PX,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'transparent',
+                        border: '1px solid #ddd',
+                        borderRadius: 4,
+                        color: '#888',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}
+                      data-pan-disabled
+                    >
+                      {/* Material Icons: reset_settings */}
+                      <svg xmlns="http://www.w3.org/2000/svg" height={FONT_CONTROL_ICON_PX} width={FONT_CONTROL_ICON_PX} viewBox="0 -960 960 960" fill="currentColor">
+                        <path d="M520-330v-60h160v60H520Zm60 210v-50h-60v-60h60v-50h60v160h-60Zm100-50v-60h160v60H680Zm40-110v-160h60v50h60v60h-60v50h-60Zm111-280h-83q-26-88-99-144t-169-56q-117 0-198.5 81.5T200-480q0 72 32.5 132t87.5 98v-110h80v240H160v-80h94q-62-50-98-122.5T120-480q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q129 0 226.5 79.5T831-560Z" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    title="フォントサイズ設定を閉じる"
+                    aria-label="フォントサイズ設定を閉じる"
+                    onClick={(e) => { e.stopPropagation(); setShowFontControls(false); }}
+                    style={{
+                      position: 'absolute',
+                      bottom: -1,
+                      right: -13,
+                      zIndex: 12,
+                      background: 'rgba(255,255,255,0.92)',
+                      borderTop: '1px solid #e0e0e0',
+                      borderRight: '1px solid #e0e0e0',
+                      borderBottom: '1px solid #e0e0e0',
+                      borderLeft: 'none',
+                      borderRadius: '0 4px 4px 0',
+                      width: 14,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#aaa">
+                      <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
 
           {/* DOM tooltip — link hover */}
           {hoveredLink && !hoveredNode && !suppressHoverPopup && (() => {
@@ -2727,27 +2914,45 @@ export default function RealDataSankeyPage() {
           {/* DOM tooltip — column label hover */}
           {hoveredColIndex !== null && layout && (() => {
             const amt = (n: LayoutNode) => n.value;
+            const budgetAmt = (n: LayoutNode) =>
+              n.type === 'project-budget' && n.rawValue != null ? n.rawValue : n.value;
             const colNodeTypes = ['total', 'ministry', 'project-budget', 'recipient'] as const;
             const nodes = hoveredColIndex === 0
               ? layout.nodes.filter(n => n.type === 'total')
               : layout.nodes.filter(n => n.type === colNodeTypes[hoveredColIndex]);
             const total = hoveredColIndex === 0
               ? (nodes[0] ? amt(nodes[0]) : 0)
-              : nodes.reduce((s, n) => s + amt(n), 0);
-            const count = hoveredColIndex === 0 ? null : nodes.length;
-            const colDescs = [
-              '全事業の予算額合計（予算案ベース）',
-              '各省庁所管事業の予算額合計',
-              '各事業の予算額（左：予算 / 右：支出）',
-              '全エッジ合計（ウィンドウ外流入含む）',
-            ];
+              : hoveredColIndex === 2
+                ? nodes.reduce((s, n) => s + budgetAmt(n), 0)
+                : nodes.reduce((s, n) => s + amt(n), 0);
+            const projectSpendingTotal = layout.nodes
+              .filter(n => n.type === 'project-spending')
+              .reduce((s, n) => s + amt(n), 0);
+            const valueLine = (label: string, value: number) => (
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ color: '#888', fontSize: TOOLTIP_META_FONT_PX }}>{label}</span>
+                <span style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: '#222' }}>{formatYen(value)}</span>
+              </div>
+            );
+            const rawYenLine = (value: number) => (
+              <div style={{ color: '#555', fontSize: TOOLTIP_META_FONT_PX, textAlign: 'right' }}>{Math.round(value).toLocaleString()}円</div>
+            );
             return (
               <div style={{ position: 'absolute', left: mousePos.x + 12, top: mousePos.y + 16, background: 'rgba(255,255,255,0.97)', color: '#222', padding: '6px 10px', borderRadius: 6, fontSize: TOOLTIP_TITLE_FONT_PX, lineHeight: 1.5, pointerEvents: 'none', zIndex: 20, whiteSpace: 'nowrap', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                 <div style={{ fontWeight: 600, fontSize: TOOLTIP_TITLE_FONT_PX, marginBottom: 2 }}>{COL_LABELS[hoveredColIndex]}</div>
-                {count != null && <div style={{ color: '#888', fontSize: TOOLTIP_META_FONT_PX }}>{count.toLocaleString()}件</div>}
-                <div style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: '#222' }}>{formatYen(total)}</div>
-                <div style={{ color: '#555', fontSize: TOOLTIP_META_FONT_PX }}>{Math.round(total).toLocaleString()}円</div>
-                <div style={{ color: '#888', fontSize: TOOLTIP_META_FONT_PX, marginTop: 4 }}>{colDescs[hoveredColIndex]}</div>
+                {hoveredColIndex === 2 ? (
+                  <div style={{ display: 'grid', gap: 2 }}>
+                    {valueLine('予算', total)}
+                    {rawYenLine(total)}
+                    {valueLine('支出', projectSpendingTotal)}
+                    {rawYenLine(projectSpendingTotal)}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: '#222' }}>{formatYen(total)}</div>
+                    <div style={{ color: '#555', fontSize: TOOLTIP_META_FONT_PX }}>{Math.round(total).toLocaleString()}円</div>
+                  </>
+                )}
               </div>
             );
           })()}
@@ -3816,7 +4021,7 @@ export default function RealDataSankeyPage() {
           data-testid={testId('clear-filters')}
           data-pan-disabled
           style={{
-            flexShrink: 0, width: 32, height: 32,
+            flexShrink: 0, width: FILTER_CLEAR_BUTTON_PX, height: FILTER_CLEAR_BUTTON_PX,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(255,255,255,0.95)', border: '1px solid #e0e0e0',
             borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
@@ -3826,7 +4031,7 @@ export default function RealDataSankeyPage() {
           }}
         >
             {/* Material Icons: filter_list_off */}
-            <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" height={FILTER_CLEAR_ICON_PX} width={FILTER_CLEAR_ICON_PX} viewBox="0 -960 960 960" fill="currentColor">
               <path d="M791-55 55-791l57-57 736 736-57 57ZM633-440l-80-80h167v80h-87ZM433-640l-80-80h487v80H433Zm-33 400v-80h160v80H400ZM240-440v-80h166v80H240ZM120-640v-80h86v80h-86Z"/>
             </svg>
           </button>
@@ -4155,47 +4360,6 @@ export default function RealDataSankeyPage() {
                 <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
                 <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
               </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid #eee', paddingTop: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ color: '#555' }}>基準フォントサイズ</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="number"
-                      min={BASE_FONT_PX_MIN}
-                      max={BASE_FONT_PX_MAX}
-                      step={1}
-                      value={baseFontPx}
-                      onChange={e => {
-                        const v = Number(e.target.value);
-                        if (!isNaN(v)) {
-                          pendingHistoryAction.current = 'replace';
-                          setBaseFontPx(Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, v)));
-                        }
-                      }}
-                      style={{ width: 48, fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 4, textAlign: 'center' }}
-                      data-pan-disabled
-                      aria-label="基準フォントサイズ(数値)"
-                    />
-                    <button
-                      onClick={() => { pendingHistoryAction.current = 'replace'; setBaseFontPx(BASE_FONT_PX_DEFAULT); }}
-                      title="既定値に戻す"
-                      style={{ background: 'transparent', border: '1px solid #ddd', borderRadius: 4, color: '#888', cursor: 'pointer', fontSize: META_FONT_PX_DEFAULT, padding: '2px 6px' }}
-                      data-pan-disabled
-                    >既定</button>
-                  </div>
-                </div>
-                <input
-                  type="range"
-                  min={BASE_FONT_PX_MIN}
-                  max={BASE_FONT_PX_MAX}
-                  step={1}
-                  value={baseFontPx}
-                  onChange={e => { pendingHistoryAction.current = 'replace'; setBaseFontPx(Number(e.target.value)); }}
-                  style={{ width: '100%', boxSizing: 'border-box', margin: 0 }}
-                  data-pan-disabled
-                  aria-label="基準フォントサイズ"
-                />
-              </div>
             </div>
           </>
         )}
