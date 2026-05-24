@@ -43,13 +43,14 @@ export default function Home() {
                 </span>
               </div>
               <p className="text-gray-700 dark:text-gray-300 mb-4">
-                直接支出先のみを対象に、自前SVGレイアウトエンジンで高速描画。支出先ウィンドウのスライドで任意のランキング帯を探索できます。
+                直接支出先のみを対象に、自前SVGレイアウトエンジンで高速描画。支出先ウィンドウや検索・フィルタで任意のランキング帯を探索できます。
               </p>
               <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                 <li>• <strong>支出先ウィンドウ</strong>: オフセットスライダーで任意の順位帯を選択</li>
                 <li>• <strong>動的再ランキング</strong>: スライダー変化に合わせて府省庁・事業を再集計</li>
-                <li>• <strong>ズーム/パン</strong>: ホイールズーム（最大50x）＋ドラッグパン</li>
-                <li>• <strong>ミニマップ</strong>: 全体俯瞰ナビゲーション</li>
+                <li>• <strong>ズーム/パン</strong>: ホイールズーム＋ドラッグパン、ズーム連動ラベル拡大</li>
+                <li>• <strong>ミニマップ</strong>: ラベルシフト後の位置に追従する全体俯瞰ナビゲーション</li>
+                <li>• <strong>表示調整</strong>: 左下のフォントサイズ設定と、事業列の予算/支出ツールチップ</li>
               </ul>
             </div>
           </Link>
