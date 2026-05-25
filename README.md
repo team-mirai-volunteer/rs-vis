@@ -159,6 +159,7 @@ git push origin main
 
 - [行政事業レビューシステム](https://rssystem.go.jp/)（CSVデータ取得元）
 - [財務省 予算・決算](https://www.mof.go.jp/policy/budget/)（MOF予算データ）
+- [国税庁法人番号公表サイト](https://www.houjin-bangou.nta.go.jp/download/zenken/index.html)（法人番号照合用）
 
 ## ライセンス
 
