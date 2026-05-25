@@ -61,6 +61,7 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+.claude/settings.local.json
 *.suo
 *.ntvs*
 *.njsproj

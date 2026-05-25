@@ -1,47 +1,67 @@
 ---
-allowed-tools: Bash(npm run normalize:*), Bash(npm run generate-structured:*), Bash(npm run compress-data:*), Bash(ls:*), Bash(git:*)
+allowed-tools: Bash(npm run generate-sankey-svg:*), Bash(npm run generate-sankey-svg-2025:*), Bash(npm run generate-subcontracts:*), Bash(npm run generate-subcontracts-2025:*), Bash(npm run generate-mof-data:*), Bash(npm run generate-project-details:*), Bash(npm run score-quality:*), Bash(npm run score-quality-2025:*), Bash(npm run compress-data:*), Bash(ls:*), Bash(git:*)
 description: RS SystemのCSVデータを更新してJSON生成・圧縮・Gitに反映する
 ---
 
 ## タスク
 
-RS System（rssystem.go.jp）のデータを更新する手順を実行してください：
+RS System（rssystem.go.jp）のデータを更新する手順を実行する。
 
 ### 前提確認
 
-1. **ZIPファイルの確認**: `data/download/RS_2024/` に最新のCSV ZIPファイルが配置されているか確認する。
-   - 必要なファイル: `1-1_RS_2024_基本情報_組織情報.zip`、`1-2_RS_2024_基本情報_事業概要等.zip`、`2-1_RS_2024_予算・執行_サマリ.zip`、`5-1_RS_2024_支出先_支出情報.zip`
-   - ファイルがない場合はユーザーに `https://rssystem.go.jp/download-csv/2024` からダウンロードするよう案内して終了する
+1. **ZIPファイルの確認**: `data/download/RS_{YEAR}/` に最新のCSV ZIPファイルが配置されているか確認する。
+   - 必要な代表ファイル: `1-1_RS_{YEAR}_基本情報_組織情報.zip`、`2-1_RS_{YEAR}_予算・執行_サマリ.zip`、`5-1_RS_{YEAR}_支出先_支出情報.zip`、`5-2_RS_{YEAR}_支出先_支出ブロックのつながり.zip` 等
+   - ファイルがない場合は `https://rssystem.go.jp/download-csv/{YEAR}` からダウンロードするようユーザーに案内して終了する
 
 ### 実行手順
 
-2. **CSV正規化**: `npm run normalize` を実行する
-   - エラーが出た場合: `pip3 install neologdn` が必要な可能性がある
+公開4ページが消費する JSON を再生成する。
 
-3. **構造化JSON生成**: `npm run generate-structured` を実行する（時間がかかる場合あり）
-
-4. **ファイルサイズ確認**: 生成されたファイルを確認する：
-   - `public/data/rs2024-structured.json` のサイズ（目安: ~46MB）
-   - 極端に小さい場合（1MB以下）はエラーの可能性があるためユーザーに報告する
-
-5. **圧縮**: `npm run compress-data` を実行する
-   - `public/data/rs2024-structured.json.gz` が生成される（目安: ~5.9MB）
-
-6. **差分確認**: `git diff --stat public/data/rs2024-structured.json.gz` で変更があるか確認する。変更がない場合はユーザーに報告する。
-
-7. **コミット確認**: ユーザーに「コミット・プッシュしますか？」と確認を取る。
-
-8. **コミット・プッシュ**（ユーザーがOKした場合のみ）:
-   ```
-   git add public/data/rs2024-structured.json.gz
-   git commit -m "chore: RS System 2024データを更新"
-   git push origin main
+2. **/sankey-svg 用**
+   ```bash
+   npm run generate-sankey-svg         # 2024年度
+   npm run generate-sankey-svg-2025    # 2025年度
    ```
 
-9. **完了報告**: 更新内容を報告する。
+3. **/subcontracts 用**
+   ```bash
+   npm run generate-subcontracts       # 2024年度
+   npm run generate-subcontracts-2025  # 2025年度
+   ```
+
+4. **/mof-budget-overview 用**
+   ```bash
+   npm run generate-mof-data
+   ```
+
+5. **/api/project-details 用**
+   ```bash
+   npm run generate-project-details
+   ```
+
+6. **/quality 用**
+   ```bash
+   npm run score-quality               # 2024年度
+   npm run score-quality-2025          # 2025年度
+   ```
+
+7. **ファイルサイズ確認**: 生成された JSON の極端な小ささ（数百KB以下等）がないかユーザーに報告する。
+
+8. **圧縮**: `npm run compress-data` で `.json` から `.gz` を再生成する。
+
+9. **差分確認**: `git diff --stat public/data/*.gz` で変更があるか確認する。変更がない場合はユーザーに報告して終了する。
+
+10. **コミット確認**: ユーザーに「コミット・プッシュしますか？」と確認を取る。
+
+11. **コミット・プッシュ**（ユーザーが OK した場合のみ）:
+    ```bash
+    git add public/data/*.gz
+    git commit -m "chore: RS System 2024/2025データを更新"
+    git push origin main
+    ```
 
 ## 注意事項
 
-- `public/data/rs2024-structured.json`（46MB）は `.gitignore` に含まれているため、`.gz` のみコミットする
-- コミット前に必ずユーザーの確認を取ること
-- Vercelへのデプロイは `git push` で自動的にトリガーされる
+- `public/data/*.json`（展開後の本体）は `.gitignore` 対象、`.json.gz` のみコミットする
+- コミット前に必ずユーザー確認を取ること
+- Vercel へのデプロイは `git push` で自動トリガー

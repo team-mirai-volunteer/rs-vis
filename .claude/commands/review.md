@@ -14,10 +14,10 @@ description: 現在の変更に対して設計レビューを行う
 1. **変更内容の把握**: `git diff` で変更されたファイルの差分を取得し、変更内容を把握する。必要に応じて関連ファイルも読み込む。
 
 2. **レイヤー設計のチェック**: 変更対象に応じて以下を確認する：
-   - `app/lib/sankey-generator.ts` の変更: HTTPリクエスト・Reactコードが含まれていないか（Pure logic only）
+   - `app/lib/` の変更: HTTPリクエスト・Reactコードが含まれていないか（Pure logic only）
    - `app/api/*/route.ts` の変更: ビジネスロジックが `app/lib/` に委譲されているか
    - `client/components/` の変更: 直接APIコールが含まれていないか（hooks経由であるか）
-   - `app/sankey/page.tsx` の変更: 状態管理・API呼び出し・レイアウトのみか（ロジックが肥大化していないか）
+   - `app/*/page.tsx` の変更: 状態管理・API呼び出し・レイアウトのみか（ロジックが肥大化していないか）
    - `scripts/` の変更: UIロジックが含まれていないか
 
 3. **レビュー実施**: 以下の観点でレビューを行う：
