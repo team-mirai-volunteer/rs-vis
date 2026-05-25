@@ -21,8 +21,8 @@ description: 設計ドキュメントを作成する
    目的が明確でない場合は、必ずユーザーに質問して確認を取ること。設計ドキュメントの冒頭に「目的」セクションとして記載する。
 
 3. **関連コード・ドキュメントの調査**: 設計に必要な既存コードやドキュメントを読み込み、現状を理解する。設計対象に応じて以下を参照する：
-   - Sankey図・可視化関連: [app/sankey/page.tsx](app/sankey/page.tsx)、[app/lib/sankey-generator.ts](app/lib/sankey-generator.ts)
-   - API関連: [app/api/sankey/route.ts](app/api/sankey/route.ts)
+   - Sankey図・可視化関連: [app/sankey-svg/page.tsx](app/sankey-svg/page.tsx)、[app/lib/sankey-svg-filter.ts](app/lib/sankey-svg-filter.ts)
+   - API関連: [app/api/](app/api/)
    - データパイプライン関連: [scripts/](scripts/)
    - 型定義: [types/](types/)
 
