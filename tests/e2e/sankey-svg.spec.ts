@@ -128,6 +128,7 @@ test.describe('sankey-svg interactions', () => {
     );
 
     await page.getByLabel('表示設定を開く').click();
+    await page.getByLabel('基準フォントサイズ編集を開始').click();
     await page.getByLabel('基準フォントサイズ(数値)').fill('24');
     await page.getByLabel('基準フォントサイズ(数値)').press('Enter');
 
