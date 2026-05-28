@@ -99,7 +99,7 @@ const BUDGET_EXECUTION_LIST_HEIGHT_MAX = 600;
 const HOVER_SUPPRESS_AFTER_INTERACTION_MS = 500;
 const HOVER_ENTER_DELAY_MS = 220;
 const FIT_TOP_PAD_PX = 32;
-const ZOOM_FONT_MAX_RATIO = 1.3;   // zoom-in でフォントを最大で元の何倍まで拡大するか
+const ZOOM_FONT_MAX_RATIO = 1.8;   // zoom-in でフォントを最大で元の何倍まで拡大するか
 const AGGREGATE_BOUNDARY_GAP_PX = 6;
 
 type ShiftLayoutNode = {
@@ -241,6 +241,7 @@ export default function RealDataSankeyPage() {
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const [isEditingOffset, setIsEditingOffset] = useState(false);
+  const [isEditingBaseFont, setIsEditingBaseFont] = useState(false);
   const [offsetInputValue, setOffsetInputValue] = useState('');
   const [localTopProject, setLocalTopProject] = useState<number | null>(null);
   const [localTopRecipient, setLocalTopRecipient] = useState<number | null>(null);
@@ -654,6 +655,16 @@ export default function RealDataSankeyPage() {
     return () => { stopTopNRepeat(); window.removeEventListener('blur', onBlur); };
   }, [stopTopNRepeat]);
 
+  const fontRepeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopFontRepeat = useCallback(() => {
+    if (fontRepeatRef.current !== null) { clearTimeout(fontRepeatRef.current); clearInterval(fontRepeatRef.current); fontRepeatRef.current = null; }
+  }, []);
+  useEffect(() => {
+    const onBlur = () => stopFontRepeat();
+    window.addEventListener('blur', onBlur);
+    return () => { stopFontRepeat(); window.removeEventListener('blur', onBlur); };
+  }, [stopFontRepeat]);
+
   // Reset both offsets when offsetTarget switches
   // Reset offsets and sync URL when filter conditions change
   const filterSigInitRef = useRef(false);
@@ -753,8 +764,6 @@ export default function RealDataSankeyPage() {
   const FILTER_CLEAR_ICON_PX = scaleSize(18);
   const FONT_CONTROL_BUTTON_PX = 32;
   const FONT_CONTROL_ICON_PX = 18;
-  const FONT_CONTROL_PANEL_W_PX = 210;
-  const FONT_CONTROL_FONT_PX = CONTROL_SMALL_FONT_PX_DEFAULT;
   const mapLabelFontPx = MAP_LABEL_FONT_PX;
   const mapLabelSlotPx = MAP_LABEL_SLOT_PX;
   const mapLabelVisibleMinHPx = MAP_LABEL_VISIBLE_MIN_H_PX;
@@ -2405,9 +2414,23 @@ export default function RealDataSankeyPage() {
                       nextColNodes = layout.nodes.filter(n => getColumn(n) === nc && n.type !== 'project-spending');
                       if (nextColNodes.length > 0) break;
                     }
-                    const clipEnd = nextColNodes.length > 0
+                    const nextX0 = nextColNodes.length > 0
                       ? Math.min(...nextColNodes.map(n => getNodeInnerX0(n)))
                       : labelStart + screenWToInner(layout.colSpacing * horizontalScale - screenNodeW);
+                    // 次列ノードが左側ラベル（事業予算金額）を持つ場合、その想定幅分を予約
+                    const leftLabelChars = nextColNodes
+                      .filter(n => n.type === 'project-budget')
+                      .reduce((m, n) => {
+                        const main = formatYen(n.value);
+                        const raw = n.isScaled && n.rawValue != null ? ` / ${formatYen(n.rawValue)}` : '';
+                        return Math.max(m, (main + raw).length);
+                      }, 0);
+                    const labelScale = getZoomLabelScale(zoom, baseZoom);
+                    const innerFontPx = (mapLabelFontPx * labelScale) / zoom;
+                    const leftLabelReserve = leftLabelChars > 0
+                      ? innerLabelGap * 2 + leftLabelChars * innerFontPx * 0.7
+                      : 0;
+                    const clipEnd = nextX0 - leftLabelReserve;
                     return (
                       <defs key={`clip-col-${c}`}>
                         <clipPath id={`clip-col-${c}`}>
@@ -2647,7 +2670,7 @@ export default function RealDataSankeyPage() {
               style={{
                 position: 'absolute',
                 left: fontControlLeft,
-                bottom: showMinimap || showFontControls ? 8 : 16,
+                bottom: showMinimap ? 8 : 16,
                 zIndex: 12,
                 display: 'flex',
                 alignItems: 'flex-end',
@@ -2687,7 +2710,6 @@ export default function RealDataSankeyPage() {
                   role="group"
                   aria-label="基準フォントサイズ"
                   style={{
-                    width: FONT_CONTROL_PANEL_W_PX,
                     position: 'relative',
                     boxSizing: 'border-box',
                     background: 'rgba(255,255,255,0.95)',
@@ -2696,6 +2718,9 @@ export default function RealDataSankeyPage() {
                     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
                     padding: '6px 10px',
                     color: '#333',
+                    minHeight: FONT_CONTROL_BUTTON_PX,
+                    display: 'flex',
+                    alignItems: 'center',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -2706,50 +2731,84 @@ export default function RealDataSankeyPage() {
                       step={1}
                       value={baseFontPx}
                       onChange={e => { pendingHistoryAction.current = 'replace'; setBaseFontPx(Number(e.target.value)); }}
-                      style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', margin: 0 }}
+                      style={{ width: 60, boxSizing: 'border-box', margin: 0 }}
                       data-pan-disabled
                       aria-label="基準フォントサイズ"
                     />
-                    <input
-                      type="number"
-                      min={BASE_FONT_PX_MIN}
-                      max={BASE_FONT_PX_MAX}
-                      step={1}
-                      value={baseFontPxInput}
-                      onChange={e => setBaseFontPxInput(e.target.value)}
-                      onBlur={commitBaseFontPxInput}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          commitBaseFontPxInput();
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      style={{ width: 48, fontSize: FONT_CONTROL_FONT_PX, padding: '2px 4px', border: '1px solid #ccc', borderRadius: 4, textAlign: 'center' }}
-                      data-pan-disabled
-                      aria-label="基準フォントサイズ(数値)"
-                    />
+                    {isEditingBaseFont ? (
+                      <input
+                        type="number"
+                        autoFocus
+                        min={BASE_FONT_PX_MIN}
+                        max={BASE_FONT_PX_MAX}
+                        step={1}
+                        value={baseFontPxInput}
+                        onChange={e => setBaseFontPxInput(e.target.value)}
+                        onBlur={() => { commitBaseFontPxInput(); setIsEditingBaseFont(false); }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { commitBaseFontPxInput(); setIsEditingBaseFont(false); }
+                          else if (e.key === 'Escape') { setBaseFontPxInput(String(baseFontPx)); setIsEditingBaseFont(false); }
+                        }}
+                        style={{ width: `${Math.max(40, String(BASE_FONT_PX_MAX).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
+                        data-pan-disabled
+                        aria-label="基準フォントサイズ(数値)"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { setBaseFontPxInput(String(baseFontPx)); setIsEditingBaseFont(true); }}
+                        title="クリックしてフォントサイズを入力"
+                        style={{ color: '#999', fontSize: META_FONT_PX_DEFAULT, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
+                        data-pan-disabled
+                        aria-label="基準フォントサイズ編集を開始"
+                      >{baseFontPx}</button>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
+                      {([
+                        [1,  'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '大きく'],
+                        [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '小さく'],
+                      ] as [number, string, string][]).map(([delta, path, title]) => (
+                        <button key={delta} type="button" title={title} aria-label={title}
+                          onPointerDown={(e) => {
+                            if (e.pointerType === 'mouse' && e.button !== 0) return;
+                            e.stopPropagation();
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            const step = () => {
+                              pendingHistoryAction.current = 'replace';
+                              setBaseFontPx(prev => Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, prev + delta)));
+                            };
+                            stopFontRepeat();
+                            step();
+                            fontRepeatRef.current = setTimeout(() => {
+                              fontRepeatRef.current = setInterval(step, 150);
+                            }, 400);
+                          }}
+                          onPointerUp={(e) => { e.stopPropagation(); stopFontRepeat(); }}
+                          onPointerLeave={stopFontRepeat}
+                          onPointerCancel={stopFontRepeat}
+                          onClick={(e) => {
+                            if (e.detail === 0) {
+                              pendingHistoryAction.current = 'replace';
+                              setBaseFontPx(prev => Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, prev + delta)));
+                            }
+                          }}
+                          style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
+                          data-pan-disabled
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
+                        </button>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={() => { pendingHistoryAction.current = 'replace'; setBaseFontPx(BASE_FONT_PX_DEFAULT); }}
                       title="既定値に戻す"
                       aria-label="既定値に戻す"
-                      style={{
-                        width: FONT_CONTROL_BUTTON_PX,
-                        height: FONT_CONTROL_BUTTON_PX,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        border: '1px solid #ddd',
-                        borderRadius: 4,
-                        color: '#888',
-                        cursor: 'pointer',
-                        padding: 0,
-                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', color: '#555' }}
                       data-pan-disabled
                     >
                       {/* Material Icons: reset_settings */}
-                      <svg xmlns="http://www.w3.org/2000/svg" height={FONT_CONTROL_ICON_PX} width={FONT_CONTROL_ICON_PX} viewBox="0 -960 960 960" fill="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="currentColor">
                         <path d="M520-330v-60h160v60H520Zm60 210v-50h-60v-60h60v-50h60v160h-60Zm100-50v-60h160v60H680Zm40-110v-160h60v50h60v60h-60v50h-60Zm111-280h-83q-26-88-99-144t-169-56q-117 0-198.5 81.5T200-480q0 72 32.5 132t87.5 98v-110h80v240H160v-80h94q-62-50-98-122.5T120-480q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q129 0 226.5 79.5T831-560Z" />
                       </svg>
                     </button>
