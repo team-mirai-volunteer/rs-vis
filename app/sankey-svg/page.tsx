@@ -11,6 +11,9 @@ import {
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
+import { TopNSliders } from '@/client/components/SankeySvg/TopNSliders';
+import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
+import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 import { filterTopN, computeLayout, getTopMinistriesInScope } from '@/app/lib/sankey-svg-filter';
 import { canonicalSelectableNodeId } from '@/app/lib/sankey-svg-ids';
 import { resolveYearSelectionSnapshot, type YearSelectionSnapshot } from '@/app/lib/sankey-svg-year-selection';
@@ -58,12 +61,18 @@ interface SankeyUrlState {
 
 const SCREEN_LEFT_PADDING_PX = 32;
 const SCREEN_HORIZONTAL_FIT_RATIO = 0.82;
+const SCREEN_MIN_TOTAL_LABEL_GAP_PX = 112;
+const SCREEN_MIN_MINISTRY_LABEL_WIDTH_PX = 128;
+const SCREEN_MAX_MINISTRY_LABEL_GAP_PX = 72;
 const E2E_TEST_IDS_ENABLED = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_PLAYWRIGHT === '1';
 const testId = (id: string): string | undefined => E2E_TEST_IDS_ENABLED ? id : undefined;
 
 const MAP_LABEL_FONT_PX_DEFAULT = 11;
 const MAP_LABEL_SLOT_PX_DEFAULT = 12;
 const MAP_LABEL_VISIBLE_MIN_H_PX_DEFAULT = 11;
+// この幅（px）以下では、タッチ操作で代替できるズーム系コントロールを非表示にする。
+// 767 = 「タブレット未満」境界。iPad縦(768px〜)ではコントロールを残し、スマホ幅でのみ隠す。
+const COMPACT_CONTROL_MAX_WIDTH = 767;
 const ZOOM_MIN_ABS = 0.05;
 const ZOOM_MAX_ABS = 20;
 const ZOOM_MIN_MULTIPLIER = 0.25;
@@ -98,8 +107,9 @@ const BUDGET_EXECUTION_LIST_HEIGHT_MIN = 96;
 const BUDGET_EXECUTION_LIST_HEIGHT_MAX = 600;
 const HOVER_SUPPRESS_AFTER_INTERACTION_MS = 500;
 const HOVER_ENTER_DELAY_MS = 220;
+const TOUCH_PAN_SLOP_PX = 10;
 const FIT_TOP_PAD_PX = 32;
-const ZOOM_FONT_MAX_RATIO = 1.8;   // zoom-in でフォントを最大で元の何倍まで拡大するか
+const ZOOM_FONT_MAX_RATIO = 2.0;   // zoom-in でフォントを最大で元の何倍まで拡大するか
 const AGGREGATE_BOUNDARY_GAP_PX = 6;
 
 type ShiftLayoutNode = {
@@ -227,7 +237,6 @@ export default function RealDataSankeyPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showFontControls, setShowFontControls] = useState(false);
   const [baseFontPx, setBaseFontPx] = useState(BASE_FONT_PX_DEFAULT);
-  const [baseFontPxInput, setBaseFontPxInput] = useState(String(BASE_FONT_PX_DEFAULT));
   const [showLabels, setShowLabels] = useState(true);
   const [showAggRecipient, setShowAggRecipient] = useState(true);
   const [showAggProject, setShowAggProject] = useState(true);
@@ -241,14 +250,7 @@ export default function RealDataSankeyPage() {
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const [isEditingOffset, setIsEditingOffset] = useState(false);
-  const [isEditingBaseFont, setIsEditingBaseFont] = useState(false);
   const [offsetInputValue, setOffsetInputValue] = useState('');
-  const [localTopProject, setLocalTopProject] = useState<number | null>(null);
-  const [localTopRecipient, setLocalTopRecipient] = useState<number | null>(null);
-  const [isEditingTopProject, setIsEditingTopProject] = useState(false);
-  const [isEditingTopRecipient, setIsEditingTopRecipient] = useState(false);
-  const [topProjectInputValue, setTopProjectInputValue] = useState('');
-  const [topRecipientInputValue, setTopRecipientInputValue] = useState('');
   const [showTopNSliders, setShowTopNSliders] = useState(true);
   const [scrollMode, setScrollMode] = useState<'zoom' | 'pan'>('zoom');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -311,6 +313,13 @@ export default function RealDataSankeyPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svgWidth, setSvgWidth] = useState(1200);
   const [svgHeight, setSvgHeight] = useState(800);
+  // 幅ベースのコンパクト判定。閾値以下では、ピンチズーム/2本指パンで代替できる
+  // ズーム系コントロール（スライダー・±ボタン・スクロールモード切替）を非表示にする。
+  // 入力デバイス（pointer:coarse）ではなく幅で判定することで、タッチ対応ノートPC等の
+  // 誤判定を避け、初期値1200=デスクトップ表示から安全側に倒す。
+  const isCompactWidth = svgWidth <= COMPACT_CONTROL_MAX_WIDTH;
+  // スマホ横（コンパクト幅かつ横長）: オフセットコントロールをサイドパネルでスライドさせる
+  const isLandscapeCompact = isCompactWidth && svgWidth > svgHeight;
 
   useEffect(() => {
     const updateSize = () => {
@@ -325,6 +334,31 @@ export default function RealDataSankeyPage() {
     window.addEventListener('resize', updateSize);
     return () => { ro.disconnect(); window.removeEventListener('resize', updateSize); };
   }, []);
+
+  // Restore font size from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('sankey-base-font-px');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed)) {
+          const clamped = Math.min(BASE_FONT_PX_MAX, Math.max(BASE_FONT_PX_MIN, parsed));
+          setBaseFontPx(clamped);
+        }
+      }
+    } catch {
+      // localStorage unavailable (private browsing etc.) — ignore
+    }
+  }, []);
+
+  // Persist font size to localStorage on change
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('sankey-base-font-px', String(baseFontPx));
+    } catch {
+      // ignore
+    }
+  }, [baseFontPx]);
 
   // Initialize state from URL on mount
   useEffect(() => {
@@ -531,17 +565,22 @@ export default function RealDataSankeyPage() {
     };
   }, [showAccountDropdown]);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panRef = useRef(pan);
+  useEffect(() => { panRef.current = pan; }, [pan]);
   const [isPanning, setIsPanning] = useState(false);
   const panStart = useRef({ x: 0, y: 0 });
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const touchPanStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPanOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const pinchLastDistanceRef = useRef<number | null>(null);
+  const didPinchRef = useRef(false);
+  const touchActivatedNodeIdRef = useRef<string | null>(null);
   const [isHoverSuppressed, setIsHoverSuppressed] = useState(false);
   const hoverSuppressTimerRef = useRef<number | null>(null);
   const suppressHoverPopup = isPanning || isHoverSuppressed;
   const [hoveredNodeStable, setHoveredNodeStable] = useState<LayoutNode | null>(null);
   const [hoveredLinkStable, setHoveredLinkStable] = useState<LayoutLink | null>(null);
   const hoverEnterTimerRef = useRef<number | null>(null);
-  useEffect(() => {
-    setBaseFontPxInput(String(baseFontPx));
-  }, [baseFontPx]);
   useEffect(() => {
     if (hoverEnterTimerRef.current) {
       window.clearTimeout(hoverEnterTimerRef.current);
@@ -635,35 +674,11 @@ export default function RealDataSankeyPage() {
   const hoveredNode = suppressHoverPopup ? null : hoveredNodeStable;
   const panOrigin = useRef({ x: 0, y: 0 });
   const didPanRef = useRef(false);
-  const offsetRepeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopOffsetRepeat = useCallback(() => {
-    if (offsetRepeatRef.current !== null) { clearTimeout(offsetRepeatRef.current); clearInterval(offsetRepeatRef.current); offsetRepeatRef.current = null; }
-  }, []);
-  useEffect(() => {
-    const onBlur = () => stopOffsetRepeat();
-    window.addEventListener('blur', onBlur);
-    return () => { stopOffsetRepeat(); window.removeEventListener('blur', onBlur); };
-  }, [stopOffsetRepeat]);
-
-  const topNRepeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopTopNRepeat = useCallback(() => {
-    if (topNRepeatRef.current !== null) { clearTimeout(topNRepeatRef.current); clearInterval(topNRepeatRef.current); topNRepeatRef.current = null; }
-  }, []);
-  useEffect(() => {
-    const onBlur = () => stopTopNRepeat();
-    window.addEventListener('blur', onBlur);
-    return () => { stopTopNRepeat(); window.removeEventListener('blur', onBlur); };
-  }, [stopTopNRepeat]);
-
-  const fontRepeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopFontRepeat = useCallback(() => {
-    if (fontRepeatRef.current !== null) { clearTimeout(fontRepeatRef.current); clearInterval(fontRepeatRef.current); fontRepeatRef.current = null; }
-  }, []);
-  useEffect(() => {
-    const onBlur = () => stopFontRepeat();
-    window.addEventListener('blur', onBlur);
-    return () => { stopFontRepeat(); window.removeEventListener('blur', onBlur); };
-  }, [stopFontRepeat]);
+  // 押し続けで増減するリピートボタン用ハンドラ（オフセットコントロール）。
+  // TopN・フォントサイズのリピートは各コントロールコンポーネント側で同フックを使う。
+  const offsetRepeat = useRepeatPress();
+  // URL履歴を replace で更新するためのマーク（子コンポーネントにも渡す）
+  const markHistoryReplace = useCallback(() => { pendingHistoryAction.current = 'replace'; }, []);
 
   // Reset both offsets when offsetTarget switches
   // Reset offsets and sync URL when filter conditions change
@@ -772,19 +787,6 @@ export default function RealDataSankeyPage() {
   const fitTopPadPx = FIT_TOP_PAD_PX;
   const fitTopPadPxRef = useRef(fitTopPadPx);
   fitTopPadPxRef.current = fitTopPadPx;
-  const commitBaseFontPxInput = useCallback(() => {
-    const v = Number(baseFontPxInput);
-    if (!Number.isFinite(v)) {
-      setBaseFontPxInput(String(baseFontPx));
-      return;
-    }
-    const next = Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, v));
-    setBaseFontPxInput(String(next));
-    if (next !== baseFontPx) {
-      pendingHistoryAction.current = 'replace';
-      setBaseFontPx(next);
-    }
-  }, [baseFontPx, baseFontPxInput]);
 
   // Compute max extra height from label shifts at a given zoom level (2-pass helper).
   // During fit, pass baseZoomK=zoomK to keep the whole-view baseline unchanged.
@@ -841,6 +843,12 @@ export default function RealDataSankeyPage() {
   const isOverlayControlTarget = (target: EventTarget | null) =>
     target instanceof Element &&
     !!target.closest('[data-pan-disabled],button,input,select,textarea,label');
+
+  const beginHoverSuppressCooldown = useCallback(() => {
+    setIsHoverSuppressed(true);
+    if (hoverSuppressTimerRef.current) window.clearTimeout(hoverSuppressTimerRef.current);
+    hoverSuppressTimerRef.current = window.setTimeout(() => setIsHoverSuppressed(false), HOVER_SUPPRESS_AFTER_INTERACTION_MS);
+  }, []);
 
   // Debounced zoom URL write — called only on explicit user zoom (wheel / buttons)
   const scheduleZoomUrlWrite = useCallback(() => {
@@ -922,10 +930,136 @@ export default function RealDataSankeyPage() {
     setIsPanning(false);
     // 実際にパンが発生したときだけクールダウン（単なるクリックでは抑制しない）
     if (!didPanRef.current) return;
-    setIsHoverSuppressed(true);
-    if (hoverSuppressTimerRef.current) window.clearTimeout(hoverSuppressTimerRef.current);
-    hoverSuppressTimerRef.current = window.setTimeout(() => setIsHoverSuppressed(false), HOVER_SUPPRESS_AFTER_INTERACTION_MS);
+    beginHoverSuppressCooldown();
+  }, [beginHoverSuppressCooldown]);
+
+  const getTouchPoint = useCallback((e: React.PointerEvent): { x: number; y: number } => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    return {
+      x: e.clientX - (rect?.left ?? 0),
+      y: e.clientY - (rect?.top ?? 0),
+    };
   }, []);
+
+  const getPinchState = useCallback((): { distance: number; midpoint: { x: number; y: number } } | null => {
+    const points = Array.from(activePointersRef.current.values());
+    if (points.length < 2) return null;
+    const [a, b] = points;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    return {
+      distance: Math.max(1, Math.hypot(dx, dy)),
+      midpoint: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    };
+  }, []);
+
+  const getTouchZoomAnchoredPanY = useCallback((
+    anchorY: number,
+    nextZoom: number,
+    fromZoom: number,
+    fromPanY: number,
+  ): number => {
+    const l = layoutRef.current;
+    if (!l) return anchorY - (anchorY - fromPanY) * (nextZoom / fromZoom);
+    const currentTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, fromZoom, baseZoom);
+    const nextTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, nextZoom, baseZoom);
+    const currentScreenH = Math.max(1, currentTotalH * fromZoom);
+    const nextScreenH = Math.max(1, nextTotalH * nextZoom);
+    const ratioFromTop = (anchorY - fromPanY) / currentScreenH;
+    return anchorY - ratioFromTop * nextScreenH;
+  }, [baseZoom, calcShiftExtraH]);
+
+  const setTouchViewport = useCallback((nextZoom: number, nextPan: { x: number; y: number }) => {
+    zoomRef.current = nextZoom;
+    panRef.current = nextPan;
+    setZoom(nextZoom);
+    setPan(nextPan);
+  }, []);
+
+  const resetTouchPanOriginToRemainingPointer = useCallback(() => {
+    const remaining = Array.from(activePointersRef.current.values())[0] ?? null;
+    touchPanStartRef.current = remaining;
+    touchPanOriginRef.current = remaining ? { ...panRef.current } : null;
+  }, []);
+
+  const handleTouchPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' || isOverlayControlTarget(e.target)) return;
+    const point = getTouchPoint(e);
+    activePointersRef.current.set(e.pointerId, point);
+    setIsPanning(true);
+    setHoveredNode(null);
+    setHoveredLink(null);
+
+    if (activePointersRef.current.size === 1) {
+      didPanRef.current = false;
+      didPinchRef.current = false;
+      pinchLastDistanceRef.current = null;
+      touchPanStartRef.current = point;
+      touchPanOriginRef.current = { ...panRef.current };
+      return;
+    }
+
+    const pinch = getPinchState();
+    if (pinch) {
+      didPanRef.current = true;
+      didPinchRef.current = true;
+      pinchLastDistanceRef.current = pinch.distance;
+      touchPanStartRef.current = null;
+      touchPanOriginRef.current = null;
+    }
+  }, [getPinchState, getTouchPoint]);
+
+  const handleTouchPointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' || !activePointersRef.current.has(e.pointerId)) return;
+    e.preventDefault();
+    const point = getTouchPoint(e);
+    activePointersRef.current.set(e.pointerId, point);
+
+    if (activePointersRef.current.size >= 2) {
+      const pinch = getPinchState();
+      if (!pinch) return;
+      const lastDistance = pinchLastDistanceRef.current ?? pinch.distance;
+      const ratio = pinch.distance / Math.max(1, lastDistance);
+      const fromZoom = zoomRef.current;
+      const fromPan = panRef.current;
+      const minZoom = Math.max(ZOOM_MIN_ABS, baseZoom * ZOOM_MIN_MULTIPLIER);
+      const maxZoom = Math.min(ZOOM_MAX_ABS, baseZoom * ZOOM_MAX_MULTIPLIER);
+      const nextZoom = Math.max(minZoom, Math.min(maxZoom, fromZoom * ratio));
+      const nextPanY = getTouchZoomAnchoredPanY(pinch.midpoint.y, nextZoom, fromZoom, fromPan.y);
+      didPanRef.current = true;
+      didPinchRef.current = true;
+      pinchLastDistanceRef.current = pinch.distance;
+      setTouchViewport(nextZoom, { x: fromPan.x, y: nextPanY });
+      return;
+    }
+
+    const start = touchPanStartRef.current;
+    const origin = touchPanOriginRef.current;
+    if (!start || !origin) return;
+    const dx = point.x - start.x;
+    const dy = point.y - start.y;
+    if (Math.abs(dx) > TOUCH_PAN_SLOP_PX || Math.abs(dy) > TOUCH_PAN_SLOP_PX) didPanRef.current = true;
+    const nextPan = { x: origin.x + dx, y: origin.y + dy };
+    panRef.current = nextPan;
+    setPan(nextPan);
+  }, [baseZoom, getPinchState, getTouchPoint, getTouchZoomAnchoredPanY, setTouchViewport]);
+
+  const handleTouchPointerEnd = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    activePointersRef.current.delete(e.pointerId);
+    pinchLastDistanceRef.current = null;
+
+    if (activePointersRef.current.size === 0) {
+      setIsPanning(false);
+      touchPanStartRef.current = null;
+      touchPanOriginRef.current = null;
+      if (didPinchRef.current) scheduleZoomUrlWrite();
+      if (didPanRef.current) beginHoverSuppressCooldown();
+      return;
+    }
+
+    resetTouchPanOriginToRemainingPointer();
+  }, [beginHoverSuppressCooldown, resetTouchPanOriginToRemainingPointer, scheduleZoomUrlWrite]);
 
   // Converge on fit zoom accounting for label shifts (shifts grow as zoom shrinks → iterate)
   const fitZoomWithShifts = useCallback((
@@ -988,7 +1122,14 @@ export default function RealDataSankeyPage() {
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
   const [showMinimap, setShowMinimap] = useState(false);
+  // スマホ幅ではミニマップを表示しない（実機の縦横ともに画面が狭く有用性が低いため）
+  const minimapVisible = showMinimap && !isCompactWidth;
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
+  // スマホ縦のとき、サイドパネルのリスト下端がオフセットコントロールに隠れないよう
+  // コントロールの実高を計測してリストの下パディングを確保する。
+  const offsetControlRef = useRef<HTMLDivElement>(null);
+  const [offsetControlHeight, setOffsetControlHeight] = useState(0);
 
   // Layout constants for bottom-right widgets the dropdown must clear
   const MINIMAP_BOTTOM = 8;       // minimap wrapper bottom offset
@@ -999,23 +1140,28 @@ export default function RealDataSankeyPage() {
   const DROPDOWN_GAP = 12;        // gap between search box bottom and dropdown top
 
   const [searchBoxBottom, setSearchBoxBottom] = useState(52); // 12 (top) + ~40 (approx height)
+  // 展開中のフィルタパネルの実高。列ヘッダーの基準位置を「フィルタ非展開時」に固定するため使う。
+  const [filterPanelHeight, setFilterPanelHeight] = useState(0);
   useLayoutEffect(() => {
     const measure = () => {
       const r = searchBoxRef.current?.getBoundingClientRect();
       if (r) setSearchBoxBottom(r.bottom);
+      const fr = filterPanelRef.current?.getBoundingClientRect();
+      setFilterPanelHeight(fr ? fr.height : 0);
     };
     measure();
     const ro = new ResizeObserver(measure);
     if (searchBoxRef.current) ro.observe(searchBoxRef.current);
+    if (filterPanelRef.current) ro.observe(filterPanelRef.current);
     return () => ro.disconnect();
   }, [showFilterPanel]);
 
   const searchDropdownMaxH = useMemo(() => {
-    const obstacleTop = showMinimap
+    const obstacleTop = minimapVisible
       ? svgHeight - MINIMAP_BOTTOM - MINIMAP_BUFFER - minimapH
       : svgHeight - MAP_ICON_BOTTOM - MAP_ICON_HEIGHT - MAP_ICON_GAP;
     return Math.max(120, obstacleTop - searchBoxBottom - DROPDOWN_GAP);
-  }, [svgHeight, minimapH, showMinimap, searchBoxBottom]);
+  }, [svgHeight, minimapH, minimapVisible, searchBoxBottom]);
 
   useEffect(() => {
     setGraphData(null);
@@ -1178,6 +1324,19 @@ export default function RealDataSankeyPage() {
     const clampedOffset = Math.min(recipientOffset, maxOffset);
     return filterTopN(nodes, edges, topMinistry, topProject, topRecipient, clampedOffset, pinnedProjectId, true, showAggRecipient, showAggProject, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, projectSortBy);
   }, [graphData, topMinistry, topProject, topRecipient, recipientOffset, pinnedProjectId, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, filterExcludedIds]);
+
+  // オフセットコントロールの実高を計測（スマホ縦のリスト下パディング用）。
+  // 再購読はコントロールのマウント/アンマウント時のみで十分。サイズ変化は ResizeObserver が拾う。
+  const offsetControlMounted = filtered != null;
+  useLayoutEffect(() => {
+    const el = offsetControlRef.current;
+    if (!el) { setOffsetControlHeight(0); return; }
+    const measure = () => setOffsetControlHeight(el.getBoundingClientRect().height);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [offsetControlMounted]);
 
   const layout = useMemo(() => {
     if (!filtered) return null;
@@ -1879,9 +2038,7 @@ export default function RealDataSankeyPage() {
     if (nodeId) pendingConnectionNodeId.current = nodeId;
   }, [setPinnedRecipientId, setPinnedMinistryName]);
 
-  const handleNodeClick = useCallback((node: LayoutNode, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (didPanRef.current) return;
+  const activateNode = useCallback((node: LayoutNode) => {
     // 省庁ノード × filterOnMinistryClick 連動: 未設定時だけ単独フィルタを設定する。
     // 解除はフィルタ解除ボタンに一本化し、再クリックはサイドパネル表示を優先する。
     if (filterOnMinistryClick && node.type === 'ministry' && !node.aggregated) {
@@ -1925,6 +2082,29 @@ export default function RealDataSankeyPage() {
     }
     selectNode(newId);
   }, [selectedNodeId, selectNode, focusRelated, autoFocusRelated, exitFocusRelated, graphData, filterOnMinistryClick, filterMinistryNames]);
+
+  const handleNodeClick = useCallback((node: LayoutNode, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (touchActivatedNodeIdRef.current === node.id) {
+      touchActivatedNodeIdRef.current = null;
+      return;
+    }
+    if (didPanRef.current) return;
+    activateNode(node);
+  }, [activateNode]);
+
+  const handleNodeTouchPointerUp = useCallback((node: LayoutNode, e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    e.stopPropagation();
+    const shouldActivate = !didPanRef.current && !didPinchRef.current;
+    handleTouchPointerEnd(e);
+    if (!shouldActivate) return;
+    touchActivatedNodeIdRef.current = node.id;
+    window.setTimeout(() => {
+      if (touchActivatedNodeIdRef.current === node.id) touchActivatedNodeIdRef.current = null;
+    }, 500);
+    activateNode(node);
+  }, [activateNode, handleTouchPointerEnd]);
 
   // focusRelated=ON 中に別ノードをクリックした後、フルレイアウト更新後にオフセット調整
   useEffect(() => {
@@ -2134,6 +2314,29 @@ export default function RealDataSankeyPage() {
     if (!layout) return 1;
     return Math.max(0.2, Math.min(10, (svgWidth / (MARGIN.left + layout.contentW + SCREEN_LEFT_PADDING_PX)) * SCREEN_HORIZONTAL_FIT_RATIO));
   }, [layout, svgWidth]);
+  const totalLabelGapPx = useMemo(() => {
+    if (!layout) return 0;
+    return Math.max(0, SCREEN_MIN_TOTAL_LABEL_GAP_PX - layout.colSpacing * horizontalScale);
+  }, [horizontalScale, layout]);
+  const ministryLabelGapPx = useMemo(() => {
+    if (!layout) return 0;
+    const leftLabelChars = layout.nodes
+      .filter(n => n.type === 'project-budget')
+      .reduce((m, n) => {
+        const main = formatYen(n.value);
+        const raw = n.isScaled && n.rawValue != null ? ` / ${formatYen(n.rawValue)}` : '';
+        return Math.max(m, (main + raw).length);
+      }, 0);
+    const labelScale = getZoomLabelScale(zoom, baseZoom);
+    const leftLabelReservePx = leftLabelChars > 0
+      ? 6 + leftLabelChars * mapLabelFontPx * labelScale * 0.7
+      : 0;
+    const ministryLabelWidthPx = layout.colSpacing * horizontalScale - NODE_W - leftLabelReservePx;
+    return Math.min(
+      SCREEN_MAX_MINISTRY_LABEL_GAP_PX,
+      Math.max(0, SCREEN_MIN_MINISTRY_LABEL_WIDTH_PX - ministryLabelWidthPx)
+    );
+  }, [baseZoom, horizontalScale, layout, mapLabelFontPx, zoom]);
   const screenNodeW = NODE_W;
   const screenToInnerX = useCallback((screenX: number) => screenX / zoom - MARGIN.left, [zoom]);
   const screenWToInner = useCallback((screenW: number) => screenW / zoom, [zoom]);
@@ -2144,15 +2347,54 @@ export default function RealDataSankeyPage() {
         ? '__agg-project-budget'
         : node.projectId != null ? `project-budget-${node.projectId}` : null;
       const budgetNode = budgetId ? nodeByLayoutId.get(budgetId) : null;
-      if (budgetNode) return left + budgetNode.x0 * horizontalScale + screenNodeW;
+      if (budgetNode) return left + budgetNode.x0 * horizontalScale + totalLabelGapPx + ministryLabelGapPx + screenNodeW;
     }
-    return left + node.x0 * horizontalScale;
-  }, [horizontalScale, nodeByLayoutId, screenNodeW]);
+    const totalLabelOffset = node.type === 'total' ? 0 : totalLabelGapPx;
+    const ministryLabelOffset = node.type === 'total' || node.type === 'ministry' ? 0 : ministryLabelGapPx;
+    return left + node.x0 * horizontalScale + totalLabelOffset + ministryLabelOffset;
+  }, [horizontalScale, ministryLabelGapPx, nodeByLayoutId, screenNodeW, totalLabelGapPx]);
   const getNodeScreenX1 = useCallback((node: LayoutNode): number => getNodeScreenX0(node) + screenNodeW, [getNodeScreenX0, screenNodeW]);
   const getNodeInnerX0 = useCallback((node: LayoutNode): number => screenToInnerX(getNodeScreenX0(node)), [getNodeScreenX0, screenToInnerX]);
   const getNodeInnerX1 = useCallback((node: LayoutNode): number => screenToInnerX(getNodeScreenX1(node)), [getNodeScreenX1, screenToInnerX]);
   const innerNodeW = screenWToInner(screenNodeW);
   const innerLabelGap = screenWToInner(3);
+  const innerLabelHitH = screenWToInner(14);
+  const getRightLabelHitW = (col: number, isLastCol: boolean) => screenWToInner(
+    isLastCol ? 220 : col === 0 ? 112 : col === 1 ? 140 : 160
+  );
+  const renderLabelHitRect = (
+    node: LayoutNode,
+    x: number,
+    centerY: number,
+    width: number,
+    anchor: 'start' | 'end' = 'start',
+    clipPath?: string
+  ) => {
+    const hitX = anchor === 'end' ? x - width : x;
+    return (
+      <rect
+        x={hitX}
+        y={centerY - innerLabelHitH / 2}
+        width={width}
+        height={innerLabelHitH}
+        clipPath={clipPath}
+        fill="transparent"
+        style={{ cursor: 'pointer', pointerEvents: 'all' }}
+        onMouseEnter={(e) => {
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (rect) setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+          setHoveredNode(node);
+        }}
+        onMouseMove={(e) => {
+          const rect = containerRef.current?.getBoundingClientRect();
+          if (rect) setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        }}
+        onMouseLeave={() => setHoveredNode(null)}
+        onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
+        onClick={(e) => handleNodeClick(node, e)}
+      />
+    );
+  };
   const getMinimapRenderedYBounds = useCallback((node: LayoutNode): { top: number; bottom: number } => {
     let shiftNode = node;
     if (node.type === 'project-spending') {
@@ -2174,7 +2416,7 @@ export default function RealDataSankeyPage() {
 
   // Draw minimap
   useEffect(() => {
-    if (!showMinimap || !layout) return;
+    if (!minimapVisible || !layout) return;
     const canvas = minimapRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -2224,7 +2466,7 @@ export default function RealDataSankeyPage() {
     ctx.strokeRect(mX, mY, mW, mH);
     ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
     ctx.fillRect(mX, mY, mW, mH);
-  }, [showMinimap, layout, zoom, pan, svgWidth, minimapWorldH, minimapH, getNodeScreenX0, getMinimapRenderedYBounds, screenNodeW]);
+  }, [minimapVisible, layout, zoom, pan, svgWidth, minimapWorldH, minimapH, getNodeScreenX0, getMinimapRenderedYBounds, screenNodeW]);
 
   const minimapNavigate = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = minimapRef.current;
@@ -2288,9 +2530,46 @@ export default function RealDataSankeyPage() {
   };
 
   const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth : 0;
-  const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 24px)`;
+  // 右上の設定(⋮)ボタン領域(幅32+余白)に重ならないよう右側を確保。
+  // これがないと文字拡大時に検索ボックスが設定ボタンを覆い、タップで開けなくなる。
+  const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 64px)`;
   const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : sidePanelWidth + 8) : 8;
   const fontControlLeft = minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48);
+  // 年度変更（トップ中央セレクトとスマホ幅の設定ダイアログで共用）
+  const handleYearChange = (value: '2024' | '2025') => {
+    pendingHistoryAction.current = 'replace';
+    pendingYearSelectionRef.current = selectedNode
+      ? { type: selectedNode.type, name: selectedNode.name, projectId: selectedNode.projectId }
+      : null;
+    setYear(value);
+  };
+
+  // 事業・支出先 TopN スライダー（デスクトップはオフセットパネル内、スマホ幅では設定ダイアログ内に表示）
+  const topNSlidersFragment = (
+    <TopNSliders
+      topProject={topProject}
+      topRecipient={topRecipient}
+      setTopProject={setTopProject}
+      setTopRecipient={setTopRecipient}
+      markReplace={markHistoryReplace}
+      metaFontPx={META_FONT_PX}
+    />
+  );
+
+  // 基準フォントサイズ調整（デスクトップは左下フローティング、スマホ幅では設定ダイアログ内に表示）
+  const fontSizeControlsFragment = (
+    <FontSizeControls
+      baseFontPx={baseFontPx}
+      setBaseFontPx={setBaseFontPx}
+      markReplace={markHistoryReplace}
+      isCompactWidth={isCompactWidth}
+      min={BASE_FONT_PX_MIN}
+      max={BASE_FONT_PX_MAX}
+      defaultValue={BASE_FONT_PX_DEFAULT}
+      controlSmallFontPx={CONTROL_SMALL_FONT_PX}
+      numberFontPx={META_FONT_PX_DEFAULT}
+    />
+  );
 
   return (
     <div
@@ -2330,7 +2609,11 @@ export default function RealDataSankeyPage() {
               width={svgWidth}
               height={svgHeight}
               overflow="visible"
-              style={{ position: 'absolute', inset: 0, display: 'block' }}
+              onPointerDown={handleTouchPointerDown}
+              onPointerMove={handleTouchPointerMove}
+              onPointerUp={handleTouchPointerEnd}
+              onPointerCancel={handleTouchPointerEnd}
+              style={{ position: 'absolute', inset: 0, display: 'block', touchAction: 'none' }}
             >
               {/* Gradient defs for merged project nodes */}
               <defs>
@@ -2480,20 +2763,23 @@ export default function RealDataSankeyPage() {
                               onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredNode(node); }}
                               onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
                               onMouseLeave={() => setHoveredNode(null)}
+                              onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                               onClick={(e) => handleNodeClick(node, e)}
                             />
-                            {labelVisible && (
+                            {labelVisible && (<>
                               <text x={getNodeInnerX1(node) + innerLabelGap} y={topShift + bH / 2} fontSize={colFontPx / zoom} dominantBaseline="middle"
                                 fill={connectedNodeIds && !isConnected ? '#bbb' : hoveredNodeIds && !hoveredNodeIds.has(node.id) ? '#bbb' : '#333'}
-                                style={{ userSelect: 'none', cursor: 'pointer' }} clipPath={`url(#clip-col-${getColumn(node)})`}
+                                style={{ userSelect: 'none', cursor: 'pointer', pointerEvents: 'all' }} clipPath={`url(#clip-col-${getColumn(node)})`}
                                 onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredNode(node); }}
                                 onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
                                 onMouseLeave={() => setHoveredNode(null)}
                                 onMouseDown={(e) => e.preventDefault()}
+                                onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                                 onClick={(e) => handleNodeClick(node, e)}>
                                 {node.name.length > 40 ? node.name.slice(0, 40) + '…' : node.name} ({formatYen(node.value)}){node.isScaled && node.rawValue != null && (<tspan fill="#777"> / {formatYen(node.rawValue)}</tspan>)}
                               </text>
-                            )}
+                              {renderLabelHitRect(node, getNodeInnerX1(node) + innerLabelGap, topShift + bH / 2, getRightLabelHitW(getColumn(node), false), 'start', `url(#clip-col-${getColumn(node)})`)}
+                            </>)}
                           </g>
                         );
                       }
@@ -2507,31 +2793,36 @@ export default function RealDataSankeyPage() {
                             onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredNode(node); }}
                             onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
                             onMouseLeave={() => setHoveredNode(null)}
+                            onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                             onClick={(e) => handleNodeClick(node, e)}
                           />
                           {labelVisible && (<>
                             {/* Left label: budget amount */}
                             <text x={getNodeInnerX0(node) - innerLabelGap} y={topShift + Math.max(bH, sH) / 2} fontSize={colFontPx / zoom} dominantBaseline="middle" textAnchor="end"
                               fill={connectedNodeIds && !isConnected ? '#bbb' : hoveredNodeIds && !hoveredNodeIds.has(node.id) ? '#bbb' : '#333'}
-                              style={{ userSelect: 'none', cursor: 'pointer' }}
+                              style={{ userSelect: 'none', cursor: 'pointer', pointerEvents: 'all' }}
                               onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredNode(node); }}
                               onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
                               onMouseLeave={() => setHoveredNode(null)}
                               onMouseDown={(e) => e.preventDefault()}
+                              onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                               onClick={(e) => handleNodeClick(node, e)}>
                               {formatYen(node.value)}{node.isScaled && node.rawValue != null && <tspan fill="#888"> / {formatYen(node.rawValue)}</tspan>}
                             </text>
+                            {renderLabelHitRect(node, getNodeInnerX0(node) - innerLabelGap, topShift + Math.max(bH, sH) / 2, screenWToInner(96), 'end')}
                             {/* Right label: project name + spending amount */}
                             <text x={getNodeInnerX1(spendingNode) + innerLabelGap} y={topShift + Math.max(bH, sH) / 2} fontSize={colFontPx / zoom} dominantBaseline="middle"
                               fill={connectedNodeIds && !isConnected ? '#bbb' : hoveredNodeIds && !hoveredNodeIds.has(node.id) ? '#bbb' : '#333'}
-                              style={{ userSelect: 'none', cursor: 'pointer' }} clipPath={`url(#clip-col-${getColumn(node)})`}
+                              style={{ userSelect: 'none', cursor: 'pointer', pointerEvents: 'all' }} clipPath={`url(#clip-col-${getColumn(node)})`}
                               onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredNode(node); }}
                               onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
                               onMouseLeave={() => setHoveredNode(null)}
                               onMouseDown={(e) => e.preventDefault()}
+                              onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                               onClick={(e) => handleNodeClick(node, e)}>
                               {node.name.length > 40 ? node.name.slice(0, 40) + '…' : node.name} ({formatYen(spendingNode.value)}){spendingNode.isScaled && spendingNode.rawValue != null && (<tspan fill="#777"> / {formatYen(spendingNode.rawValue)}</tspan>)}
                             </text>
+                            {renderLabelHitRect(node, getNodeInnerX1(spendingNode) + innerLabelGap, topShift + Math.max(bH, sH) / 2, getRightLabelHitW(getColumn(node), false), 'start', `url(#clip-col-${getColumn(node)})`)}
                           </>)}
                         </g>
                       );
@@ -2568,26 +2859,29 @@ export default function RealDataSankeyPage() {
                             if (rect) setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
                           }}
                           onMouseLeave={() => setHoveredNode(null)}
+                          onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                           onClick={(e) => handleNodeClick(node, e)}
                         />
-                        {labelVisible && (
+                        {labelVisible && (<>
                           <text
                             x={getNodeInnerX1(node) + innerLabelGap}
                             y={topShift + h / 2}
                             fontSize={colFontPx / zoom}
                             dominantBaseline="middle"
                             fill={connectedNodeIds && !connectedNodeIds.has(node.id) ? '#bbb' : hoveredNodeIds && !hoveredNodeIds.has(node.id) ? '#bbb' : '#333'}
-                            style={{ userSelect: 'none', cursor: 'pointer' }}
+                            style={{ userSelect: 'none', cursor: 'pointer', pointerEvents: 'all' }}
                             clipPath={isLastCol ? undefined : `url(#clip-col-${col})`}
                             onMouseEnter={(e) => { const rect = containerRef.current?.getBoundingClientRect(); if (rect) setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top }); setHoveredNode(node); }}
                             onMouseMove={(e) => { const rect = containerRef.current?.getBoundingClientRect(); if (rect) setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top }); }}
                             onMouseLeave={() => setHoveredNode(null)}
                             onMouseDown={(e) => e.preventDefault()}
+                            onPointerUp={(e) => handleNodeTouchPointerUp(node, e)}
                             onClick={(e) => handleNodeClick(node, e)}
                           >
                             {node.name.length > 40 ? node.name.slice(0, 40) + '…' : node.name} ({formatYen(node.value)}){node.isScaled && node.rawValue != null && (<tspan fill="#777"> / {formatYen(node.rawValue)}</tspan>)}
                           </text>
-                        )}
+                          {renderLabelHitRect(node, getNodeInnerX1(node) + innerLabelGap, topShift + h / 2, getRightLabelHitW(col, isLastCol), 'start', isLastCol ? undefined : `url(#clip-col-${col})`)}
+                        </>)}
                       </g>
                     );
                   });
@@ -2627,7 +2921,13 @@ export default function RealDataSankeyPage() {
                 const topNodeScreenY = topNode
                   ? pan.y + (MARGIN.top + topNode.y0 + (topNodeShift?.cumShift ?? 0) + (topNodeShift?.topShift ?? 0)) * zoom
                   : pan.y + MARGIN.top * zoom;
-                const top = Math.max(SEARCH_BOX_RESERVE, topNodeScreenY - labelBlockH - 8);
+                // ラベルの上限位置は検索ボックスの実測下端に合わせる。
+                // 静的なSEARCH_BOX_RESERVE(モバイル92/デスクトップ56)だと
+                // モバイルで一律に下げ過ぎるため、実際の検索ボックス高さに追従させる。
+                // フィルタ展開時も列ヘッダーの位置を固定する。
+                // searchBoxBottom はフィルタパネル込みの実測値なので、その実高を差し引いて
+                // 「フィルタ非展開時の下端」を基準にする（フィルタパネルは zIndex で前面に重なる）。
+                const top = Math.max(searchBoxBottom - filterPanelHeight + 4, topNodeScreenY - labelBlockH - 8);
                 return (
                   <div
                     key={i}
@@ -2651,7 +2951,8 @@ export default function RealDataSankeyPage() {
               });
             })()}
 
-            {/* Minimap */}
+            {/* Minimap（スマホ幅では非表示） */}
+            {!isCompactWidth && (
             <MinimapOverlay
               show={showMinimap}
               onShow={() => setShowMinimap(true)}
@@ -2663,8 +2964,10 @@ export default function RealDataSankeyPage() {
               navigate={minimapNavigate}
               dragging={minimapDragging}
             />
+            )}
 
-            {/* Font size controls */}
+            {/* Font size controls（スマホ幅では設定ダイアログへ移動するため非表示） */}
+            {!isCompactWidth && (
             <div
               data-pan-disabled="true"
               style={{
@@ -2723,96 +3026,7 @@ export default function RealDataSankeyPage() {
                     alignItems: 'center',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="range"
-                      min={BASE_FONT_PX_MIN}
-                      max={BASE_FONT_PX_MAX}
-                      step={1}
-                      value={baseFontPx}
-                      onChange={e => { pendingHistoryAction.current = 'replace'; setBaseFontPx(Number(e.target.value)); }}
-                      style={{ width: 60, boxSizing: 'border-box', margin: 0 }}
-                      data-pan-disabled
-                      aria-label="基準フォントサイズ"
-                    />
-                    {isEditingBaseFont ? (
-                      <input
-                        type="number"
-                        autoFocus
-                        min={BASE_FONT_PX_MIN}
-                        max={BASE_FONT_PX_MAX}
-                        step={1}
-                        value={baseFontPxInput}
-                        onChange={e => setBaseFontPxInput(e.target.value)}
-                        onBlur={() => { commitBaseFontPxInput(); setIsEditingBaseFont(false); }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { commitBaseFontPxInput(); setIsEditingBaseFont(false); }
-                          else if (e.key === 'Escape') { setBaseFontPxInput(String(baseFontPx)); setIsEditingBaseFont(false); }
-                        }}
-                        style={{ width: `${Math.max(40, String(BASE_FONT_PX_MAX).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
-                        data-pan-disabled
-                        aria-label="基準フォントサイズ(数値)"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { setBaseFontPxInput(String(baseFontPx)); setIsEditingBaseFont(true); }}
-                        title="クリックしてフォントサイズを入力"
-                        style={{ color: '#999', fontSize: META_FONT_PX_DEFAULT, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
-                        data-pan-disabled
-                        aria-label="基準フォントサイズ編集を開始"
-                      >{baseFontPx}</button>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-                      {([
-                        [1,  'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '大きく'],
-                        [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '小さく'],
-                      ] as [number, string, string][]).map(([delta, path, title]) => (
-                        <button key={delta} type="button" title={title} aria-label={title}
-                          onPointerDown={(e) => {
-                            if (e.pointerType === 'mouse' && e.button !== 0) return;
-                            e.stopPropagation();
-                            e.currentTarget.setPointerCapture(e.pointerId);
-                            const step = () => {
-                              pendingHistoryAction.current = 'replace';
-                              setBaseFontPx(prev => Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, prev + delta)));
-                            };
-                            stopFontRepeat();
-                            step();
-                            fontRepeatRef.current = setTimeout(() => {
-                              fontRepeatRef.current = setInterval(step, 150);
-                            }, 400);
-                          }}
-                          onPointerUp={(e) => { e.stopPropagation(); stopFontRepeat(); }}
-                          onPointerLeave={stopFontRepeat}
-                          onPointerCancel={stopFontRepeat}
-                          onClick={(e) => {
-                            if (e.detail === 0) {
-                              pendingHistoryAction.current = 'replace';
-                              setBaseFontPx(prev => Math.max(BASE_FONT_PX_MIN, Math.min(BASE_FONT_PX_MAX, prev + delta)));
-                            }
-                          }}
-                          style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
-                          data-pan-disabled
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => { pendingHistoryAction.current = 'replace'; setBaseFontPx(BASE_FONT_PX_DEFAULT); }}
-                      title="既定値に戻す"
-                      aria-label="既定値に戻す"
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', color: '#555' }}
-                      data-pan-disabled
-                    >
-                      {/* Material Icons: reset_settings */}
-                      <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="currentColor">
-                        <path d="M520-330v-60h160v60H520Zm60 210v-50h-60v-60h60v-50h60v160h-60Zm100-50v-60h160v60H680Zm40-110v-160h60v50h60v60h-60v50h-60Zm111-280h-83q-26-88-99-144t-169-56q-117 0-198.5 81.5T200-480q0 72 32.5 132t87.5 98v-110h80v240H160v-80h94q-62-50-98-122.5T120-480q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q129 0 226.5 79.5T831-560Z" />
-                      </svg>
-                    </button>
-                  </div>
+                  {fontSizeControlsFragment}
                   <button
                     type="button"
                     title="フォントサイズ設定を閉じる"
@@ -2845,6 +3059,7 @@ export default function RealDataSankeyPage() {
                 </div>
               )}
             </div>
+            )}
 
           {/* DOM tooltip — link hover */}
           {hoveredLink && !hoveredNode && !suppressHoverPopup && (() => {
@@ -3713,7 +3928,8 @@ export default function RealDataSankeyPage() {
                       </button>
                     </div>
                     {/* Tab content */}
-                    <div style={{ padding: '10px 14px', flex: 1, overflowY: 'auto' }}>
+                    {/* スマホ縦では下端のオフセットコントロールに最終行が隠れるため、その実高ぶん下に余白を確保 */}
+                    <div style={{ padding: '10px 14px', flex: 1, overflowY: 'auto', paddingBottom: isCompactWidth && !isLandscapeCompact ? offsetControlHeight + 24 : 10 }}>
                       {/* 省庁タブ */}
                       {panelTab === 'ministry' && (() => {
                         const items = panelSections.ministries;
@@ -3760,18 +3976,13 @@ export default function RealDataSankeyPage() {
         </div>
       )}
 
-      {/* Year selector — top center */}
+      {/* Year selector — top center（スマホ幅では検索ボックスに隠れるため設定ダイアログへ移動） */}
+      {!isCompactWidth && (
       <div data-pan-disabled="true" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 15 }}>
         <select
           data-testid={testId('year-select')}
           value={year}
-          onChange={e => {
-            pendingHistoryAction.current = 'replace';
-            pendingYearSelectionRef.current = selectedNode
-              ? { type: selectedNode.type, name: selectedNode.name, projectId: selectedNode.projectId }
-              : null;
-            setYear(e.target.value as '2024' | '2025');
-          }}
+          onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
           style={{ fontSize: CONTROL_FONT_PX, border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 28px 6px 10px', background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', color: '#333', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
         >
           <option value="2025">2025年度</option>
@@ -3782,12 +3993,15 @@ export default function RealDataSankeyPage() {
           <path d="M7 10l5 5 5-5z"/>
         </svg>
       </div>
+      )}
 
       {/* Search box — top left */}
+      {/* zIndex は サイドパネル(25) より下。列ヘッダー(8)/年度(15)/設定ダイアログ(19) より上、
+          かつ展開したフィルタを含めてサイドパネルの背面に回す（パネル展開時は横へ退避するため実害は少ない）。 */}
       <div
         ref={searchBoxRef}
         data-pan-disabled="true"
-        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth + 12 : 12, zIndex: 100, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
+        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth + 12 : 12, zIndex: 20, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
       >
         {/* Row 1: 検索セクション（input+sliders+toggle）とフィルタボタン */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
@@ -3873,7 +4087,7 @@ export default function RealDataSankeyPage() {
 
             {/* フィルタ（card内部 — TopNのshowTopNSliders && <> に相当） */}
             {showFilterPanel && (
-              <div style={{ padding: '4px 10px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div ref={filterPanelRef} style={{ padding: '4px 10px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {/* 会計区分フィルタ（コンボボックス） */}
                 {(() => {
                   const acOptions = [
@@ -3924,7 +4138,8 @@ export default function RealDataSankeyPage() {
                               </label>
                             ))}
                           </div>,
-                          document.body
+                          // body直下ではなく検索ボックス(zIndex:20)内へportalし、サイドパネル(zIndex:25)の背面に収める
+                          searchBoxRef.current ?? document.body
                         )}
                       </div>
                       {!acAllSelected && (
@@ -3977,7 +4192,8 @@ export default function RealDataSankeyPage() {
                               </label>
                             ))}
                           </div>,
-                          document.body
+                          // body直下ではなく検索ボックス(zIndex:20)内へportalし、サイドパネル(zIndex:25)の背面に収める
+                          searchBoxRef.current ?? document.body
                         )}
                       </div>
                       {!allSelected && (
@@ -4175,8 +4391,10 @@ export default function RealDataSankeyPage() {
           if (isProjectMode) setProjectOffset(v); else setRecipientOffset(v);
         };
         return (
-          <div style={{ position: 'absolute', top: 12, right: 52, zIndex: 15, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
+          <div ref={offsetControlRef} style={ isCompactWidth
+            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
+            : { position: 'absolute', top: 12, right: 52, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
             {/* Row 1: オフセットスライダー（2列スパン） */}
             <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center' }}>
               {/* オフセット対象コンボボックス */}
@@ -4189,8 +4407,9 @@ export default function RealDataSankeyPage() {
                 <option value="project">事業</option>
                 <option value="recipient">支出先</option>
               </select>
-              <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#555', fontSize: META_FONT_PX }}>Top</span>
+              <label style={{ flex: isCompactWidth ? '0 0 auto' : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {/* スマホ幅では「Top」ラベルを省き数値だけ表示 */}
+                {!isCompactWidth && <span style={{ color: '#555', fontSize: META_FONT_PX }}>Top</span>}
                 {isEditingOffset ? (
                   <input
                     type="number"
@@ -4211,151 +4430,46 @@ export default function RealDataSankeyPage() {
                 )}
                 <span style={{ color: '#999', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
                 <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: 60 }} />
-                <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
+                {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
+                {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
                   {([
-                    [1,  'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '次へ'],
-                    [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '前へ'],
+                    [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
+                    [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
                   ] as [number, string, string][]).map(([delta, path, title]) => (
                     <button key={delta} title={title} aria-label={title}
                       data-testid={testId(delta > 0 ? 'recipient-offset-next' : 'recipient-offset-prev')}
-                      onPointerDown={(e) => {
-                        if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        e.stopPropagation();
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        const step = () => {
-                          pendingHistoryAction.current = 'replace';
-                          pendingFocusId.current = null;
-                          if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                          else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                        };
-                        stopOffsetRepeat();
-                        step();
-                        offsetRepeatRef.current = setTimeout(() => {
-                          offsetRepeatRef.current = setInterval(step, 150);
-                        }, 400);
-                      }}
-                      onPointerUp={(e) => { e.stopPropagation(); stopOffsetRepeat(); }}
-                      onPointerLeave={stopOffsetRepeat}
-                      onPointerCancel={stopOffsetRepeat}
+                      {...offsetRepeat(() => {
+                        pendingHistoryAction.current = 'replace';
+                        pendingFocusId.current = null;
+                        if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+                        else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+                      }, { stopPropagation: true })}
                       onClick={(e) => {
                         if (e.detail === 0) {
                           setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + delta)));
                         }
                       }}
-                      style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
                     </button>
                   ))}
                 </div>
                 {/* Material Icons: vertical_align_top — オフセットリセット */}
                 <button onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#555" style={{ transform: 'rotate(-90deg)' }}><path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555" style={{ transform: 'rotate(-90deg)' }}><path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>
                 </button>
               </label>
             </div>
-            {/* Row 2: 事業・支出先 TopN スライダー（各グリッドセル） */}
-            {showTopNSliders && <>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                <span style={{ color: '#555', fontSize: META_FONT_PX, whiteSpace: 'nowrap' }}>事業</span>
-                <input
-                  type="range" min={1} max={300} step={1}
-                  value={localTopProject ?? topProject}
-                  onChange={e => { setLocalTopProject(Number(e.target.value)); }}
-                  onPointerUp={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopProject(Math.max(1, Math.min(300, v))); setLocalTopProject(null); }}
-                  onTouchEnd={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopProject(Math.max(1, Math.min(300, v))); setLocalTopProject(null); }}
-                  onKeyUp={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopProject(Math.max(1, Math.min(300, v))); setLocalTopProject(null); }}
-                  onBlur={e => { if (localTopProject === null) return; const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopProject(Math.max(1, Math.min(300, v))); setLocalTopProject(null); }}
-                  style={{ flex: 1, minWidth: 0, width: 0 }}
-                />
-                {isEditingTopProject ? (
-                  <input type="number" autoFocus min={1} max={300} step={1}
-                    value={topProjectInputValue}
-                    onChange={e => setTopProjectInputValue(e.target.value)}
-                    onBlur={() => { const v = Number(topProjectInputValue); if (!isNaN(v) && v >= 1) { pendingHistoryAction.current = 'replace'; setTopProject(Math.max(1, Math.min(300, v))); } setIsEditingTopProject(false); }}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
-                    style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: META_FONT_PX }}
-                  />
-                ) : (
-                  <button onClick={() => { setTopProjectInputValue(String(topProject)); setIsEditingTopProject(true); }} title="クリックして直接入力"
-                    style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                  >{localTopProject ?? topProject}</button>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-                  {([
-                    [1,  'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '増やす'],
-                    [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '減らす'],
-                  ] as [number, string, string][]).map(([delta, path, title]) => (
-                    <button key={delta} title={title} aria-label={title}
-                      onPointerDown={(e) => {
-                        if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        const step = () => { pendingHistoryAction.current = 'replace'; setTopProject(prev => Math.max(1, Math.min(300, prev + delta))); };
-                        stopTopNRepeat(); step();
-                        topNRepeatRef.current = setTimeout(() => { topNRepeatRef.current = setInterval(step, 150); }, 400);
-                      }}
-                      onPointerUp={stopTopNRepeat} onPointerLeave={stopTopNRepeat} onPointerCancel={stopTopNRepeat}
-                      onClick={(e) => { if (e.detail === 0) { pendingHistoryAction.current = 'replace'; setTopProject(prev => Math.max(1, Math.min(300, prev + delta))); } }}
-                      style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
-                    </button>
-                  ))}
-                </div>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                <span style={{ color: '#555', fontSize: META_FONT_PX, whiteSpace: 'nowrap' }}>支出先</span>
-                <input
-                  type="range" min={1} max={300} step={1}
-                  value={localTopRecipient ?? topRecipient}
-                  onChange={e => { setLocalTopRecipient(Number(e.target.value)); }}
-                  onPointerUp={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopRecipient(Math.max(1, Math.min(300, v))); setLocalTopRecipient(null); }}
-                  onTouchEnd={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopRecipient(Math.max(1, Math.min(300, v))); setLocalTopRecipient(null); }}
-                  onKeyUp={e => { const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopRecipient(Math.max(1, Math.min(300, v))); setLocalTopRecipient(null); }}
-                  onBlur={e => { if (localTopRecipient === null) return; const v = Number((e.target as HTMLInputElement).value); pendingHistoryAction.current = 'replace'; setTopRecipient(Math.max(1, Math.min(300, v))); setLocalTopRecipient(null); }}
-                  style={{ flex: 1, minWidth: 0, width: 0 }}
-                />
-                {isEditingTopRecipient ? (
-                  <input type="number" autoFocus min={1} max={300} step={1}
-                    value={topRecipientInputValue}
-                    onChange={e => setTopRecipientInputValue(e.target.value)}
-                    onBlur={() => { const v = Number(topRecipientInputValue); if (!isNaN(v) && v >= 1) { pendingHistoryAction.current = 'replace'; setTopRecipient(Math.max(1, Math.min(300, v))); } setIsEditingTopRecipient(false); }}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
-                    style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: META_FONT_PX }}
-                  />
-                ) : (
-                  <button onClick={() => { setTopRecipientInputValue(String(topRecipient)); setIsEditingTopRecipient(true); }} title="クリックして直接入力"
-                    style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                  >{localTopRecipient ?? topRecipient}</button>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-                  {([
-                    [1,  'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '増やす'],
-                    [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '減らす'],
-                  ] as [number, string, string][]).map(([delta, path, title]) => (
-                    <button key={delta} title={title} aria-label={title}
-                      onPointerDown={(e) => {
-                        if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        e.currentTarget.setPointerCapture(e.pointerId);
-                        const step = () => { pendingHistoryAction.current = 'replace'; setTopRecipient(prev => Math.max(1, Math.min(300, prev + delta))); };
-                        stopTopNRepeat(); step();
-                        topNRepeatRef.current = setTimeout(() => { topNRepeatRef.current = setInterval(step, 150); }, 400);
-                      }}
-                      onPointerUp={stopTopNRepeat} onPointerLeave={stopTopNRepeat} onPointerCancel={stopTopNRepeat}
-                      onClick={(e) => { if (e.detail === 0) { pendingHistoryAction.current = 'replace'; setTopRecipient(prev => Math.max(1, Math.min(300, prev + delta))); } }}
-                      style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
-                    </button>
-                  ))}
-                </div>
-              </label>
-            </>}
+            {/* Row 2: 事業・支出先 TopN スライダー（スマホ幅では設定ダイアログへ移動） */}
+            {!isCompactWidth && showTopNSliders && topNSlidersFragment}
           </div>
-          {/* トグルボタン（パネル外・下部） */}
+          {/* トグルボタン（パネル外・下部）— スマホ幅では設定ダイアログにTopNを移すため非表示 */}
+          {!isCompactWidth && (
           <button
             onClick={() => setShowTopNSliders(s => !s)}
             title={showTopNSliders ? 'TopN設定 を隠す' : 'TopN設定 を表示'}
@@ -4365,12 +4479,13 @@ export default function RealDataSankeyPage() {
               <path d={showTopNSliders ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z' : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'} />
             </svg>
           </button>
+          )}
           </div>
         );
       })()}
 
-      {/* Settings button — independent, top right */}
-      <div style={{ position: 'absolute', top: 14, right: 12, zIndex: 15 }}>
+      {/* Settings button — independent, top right（ダイアログを最前面にするため高いzIndex） */}
+      <div style={{ position: 'absolute', top: 14, right: 12, zIndex: 200 }}>
         <button
           onClick={() => setShowSettings(s => !s)}
           aria-label="表示設定を開く"
@@ -4388,6 +4503,36 @@ export default function RealDataSankeyPage() {
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
             <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
+              {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
+                  <select
+                    data-testid={testId('year-select-settings')}
+                    value={year}
+                    onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
+                    style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
+                    data-pan-disabled
+                  >
+                    <option value="2025">2025年度</option>
+                    <option value="2024">2024年度</option>
+                  </select>
+                </div>
+              )}
+              {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
+                  {topNSlidersFragment}
+                </div>
+              )}
+              {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+                  {fontSizeControlsFragment}
+                </div>
+              )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
                 <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
@@ -4426,7 +4571,8 @@ export default function RealDataSankeyPage() {
 
       {/* Zoom controls — bottom right (sankey2 style) */}
       <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {/* スクロールモード切替ボタン */}
+        {/* スクロールモード切替ボタン（狭幅では2本指パンで代替できるため非表示） */}
+        {!isCompactWidth && (
         <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
           <button
             aria-label={scrollMode === 'pan' ? 'スクロール移動モード（クリックでズームモードへ）' : 'スクロール移動モードに切替'}
@@ -4437,7 +4583,9 @@ export default function RealDataSankeyPage() {
             <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={scrollMode === 'pan' ? '#1a73e8' : '#bbb'}><path d="M480-80 310-250l57-57 73 73v-166H274l73 74-57 57L120-440l170-170 57 57-74 73h166v-166l-73 73-57-57 170-170 170 170-57 57-73-73v166h166l-74-73 57-57 170 170-170 170-57-57 74-74H520v166l73-73 57 57L480-80Z"/></svg>
           </button>
         </div>
-        {/* + / vertical slider / - */}
+        )}
+        {/* + / vertical slider / -（狭幅ではピンチズームで代替できるため非表示） */}
+        {!isCompactWidth && (
         <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {/* Material Icons: add */}
           <button data-testid={testId('zoom-in')} aria-label="ズームイン" onClick={() => applyZoom(1.5)} title="ズームイン" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', background: 'transparent', border: 'none', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}>
@@ -4461,6 +4609,7 @@ export default function RealDataSankeyPage() {
             <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="#555"><path d="M19 13H5v-2h14v2z"/></svg>
           </button>
         </div>
+        )}
         {/* Zoom% — 非編集時は "N%" 表示、クリックで数値入力 */}
         <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
           {isEditingZoom ? (
