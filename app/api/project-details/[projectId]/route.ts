@@ -6,7 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { gunzipSync } from 'zlib';
 import { join } from 'path';
 import type { ProjectDetailsData, ProjectDetail } from '@/types/project-details';
 
@@ -25,8 +26,11 @@ function isSupportedYear(year: string): year is SupportedYear {
  */
 function getProjectDetails(year: SupportedYear): ProjectDetailsData {
   if (!cache.has(year)) {
-    const filePath = join(process.cwd(), 'public', 'data', `rs${year}-project-details.json`);
-    const fileContent = readFileSync(filePath, 'utf-8');
+    // 展開済み .json を優先。無ければ .gz をその場で展開（prebuild未実行のローカル等でも動く）。
+    const base = join(process.cwd(), 'public', 'data', `rs${year}-project-details.json`);
+    const fileContent = existsSync(base)
+      ? readFileSync(base, 'utf-8')
+      : gunzipSync(readFileSync(`${base}.gz`)).toString('utf-8');
     cache.set(year, JSON.parse(fileContent) as ProjectDetailsData);
     console.log(`[API] Project details data loaded into cache (year=${year})`);
   }

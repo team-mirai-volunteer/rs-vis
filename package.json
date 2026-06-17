@@ -16,6 +16,8 @@
     "generate-mof-data": "tsx scripts/generate-mof-budget-overview-data.ts",
     "score-quality": "python3 scripts/score-project-quality.py",
     "score-quality-2025": "python3 scripts/score-project-quality.py --year 2025",
+    "score-quality-ai": "python3 scripts/score-project-quality-ai.py --year 2024",
+    "score-quality-ai-2025": "python3 scripts/score-project-quality-ai.py --year 2025",
     "generate-subcontracts": "tsx scripts/generate-subcontracts.ts 2024",
     "generate-subcontracts-2025": "tsx scripts/generate-subcontracts.ts 2025",
     "generate-sankey-svg": "tsx scripts/generate-sankey-svg-data.ts 2024",
