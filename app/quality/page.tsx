@@ -4,10 +4,11 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
 import type { RecipientRow } from '@/app/api/quality-scores/recipients/route';
+import type { ProjectDetail } from '@/types/project-details';
 
 const PAGE_SIZE = 50;
 
-type SortField = 'totalScore' | 'axis1' | 'axis2' | 'axis3' | 'axis4' | 'axis5'
+type SortField = 'totalScore' | 'axisIdentify' | 'axisPurpose' | 'axisBudget' | 'axisStructure' | 'axisEffective'
   | 'budgetAmount' | 'execAmount' | 'spendTotal' | 'spendNetTotal' | 'redelegationDepth' | 'rowCount' | 'pid' | 'name';
 type SortDir = 'asc' | 'desc';
 
@@ -26,8 +27,10 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
   const [recipientSortField, setRecipientSortField] = useState<'chain' | 'b' | 's' | 'c' | 'o' | 'a2' | 'pct'>('chain');
   const [recipientSortDir, setRecipientSortDir] = useState<'asc' | 'desc'>('asc');
   const [showAxisDetail, setShowAxisDetail] = useState(false);
-  const COL_MAX_WIDTHS = [undefined, 70, 40, 60, 50, undefined, undefined];
-  const [colWidths, setColWidths] = useState<number[]>([200, 70, 40, 60, 50, 200, 200]);
+  const [projectInfo, setProjectInfo] = useState<ProjectDetail | null | undefined>(undefined);
+  const [showProjectInfo, setShowProjectInfo] = useState(true);
+  const COL_MAX_WIDTHS = [undefined, 70, 64, 60, 50, undefined, undefined];
+  const [colWidths, setColWidths] = useState<number[]>([200, 70, 64, 60, 50, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
 
   useEffect(() => {
@@ -51,10 +54,16 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
     setRecipientSortField('chain');
     setRecipientSortDir('asc');
     setShowAxisDetail(false);
+    setProjectInfo(undefined);
+    setShowProjectInfo(true);
     fetch(`/api/quality-scores/recipients?pid=${item.pid}&year=${year}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then((rows: RecipientRow[]) => setRecipients(rows))
       .catch(() => setRecipientsError(true));
+    fetch(`/api/project-details/${item.pid}?year=${year}`)
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then((d: ProjectDetail) => setProjectInfo(d))
+      .catch(() => setProjectInfo(null));
   }, [item.pid, year]);
 
   const displayedRecipients = useMemo(() => {
@@ -92,18 +101,16 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
   }
 
   const axes = [
-    { key: 'axis1', label: '軸1: 支出先名品質', weight: 40, score: item.axis1 },
-    { key: 'axis2', label: '軸2: CN記入率', weight: 20, score: item.axis2 },
-    { key: 'axis3', label: '軸3: 予算・支出バランス', weight: 20, score: item.axis3 },
-    { key: 'axis4', label: '軸4: ブロック構造', weight: 10, score: item.axis4 },
-    { key: 'axis5', label: '軸5: 透明性', weight: 10, score: item.axis5 },
+    { key: 'axisIdentify', label: 'A: 特定可能性', weight: 28, score: item.axisIdentify ?? null },
+    { key: 'axisPurpose', label: 'B: 使途の説明性', weight: 22, score: item.axisPurpose ?? null },
+    { key: 'axisBudget', label: 'C: 収支の整合性', weight: 15, score: item.axisBudget ?? null },
+    { key: 'axisEffective', label: 'E: 有効性', weight: 35, score: item.axisEffective ?? null },
+    { key: 'axisStructure', label: 'D: 構造(参考)', weight: 0, score: item.axisStructure ?? null },
   ] as const;
+  const isAi = !!item.aiSource && item.aiSource !== 'heuristic';
 
   const axis1Total = item.validCount + item.govAgencyCount + item.suppValidCount + item.invalidCount;
   const axis1Num = item.validCount + item.govAgencyCount + item.suppValidCount;
-  const axis4RedelDeduct = item.hasRedelegation ? Math.min(item.redelegationDepth * 10, 40) : 0;
-  const axis4TotalDeduct = item.axis4 !== null ? Math.round(100 - item.axis4) : null;
-  const axis4IncoDeduct = axis4TotalDeduct !== null ? Math.max(0, axis4TotalDeduct - axis4RedelDeduct) : null;
 
   function RSortIcon({ field }: { field: typeof recipientSortField }) {
     if (recipientSortField !== field) return <span className="text-gray-300 ml-0.5">↕</span>;
@@ -152,7 +159,7 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
                   <div className={`text-xs font-bold font-mono leading-none ${scoreColor(a.score)}`}>
                     {a.score !== null ? a.score.toFixed(0) : '-'}
                   </div>
-                  <div className="text-[8px] text-gray-400 mt-0.5 whitespace-nowrap">{a.label.replace(/^軸\d: /, '')}</div>
+                  <div className="text-[8px] text-gray-400 mt-0.5 whitespace-nowrap">{a.label.replace(/^[A-D]: /, '')}</div>
                 </div>
               ))}
             </div>
@@ -172,111 +179,155 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
                 {item.hasRedelegation && <span><span className="text-gray-400">深度:</span><span className="text-orange-500">{item.redelegationDepth}</span></span>}
                 {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-gray-400">不透明:</span><span className="text-amber-500">{pct(item.opaqueRatio)}</span></span>}
               </div>
-              <div className="flex flex-wrap gap-x-3">
+              <div className="flex flex-wrap gap-x-3 items-center">
+                {item.identifyLevelAvg != null && <span><span className="text-gray-400">特定Lv</span> <span className="font-mono">{item.identifyLevelAvg.toFixed(1)}/3</span></span>}
+                {item.purposeLevelAvg != null && <span><span className="text-gray-400">使途Lv</span> <span className="font-mono">{item.purposeLevelAvg.toFixed(1)}/3</span></span>}
                 <span><span className="text-gray-400">valid</span> <span className="font-mono">{axis1Num}/{axis1Total}</span></span>
-                <span><span className="text-gray-400">CN</span> <span className="font-mono">{item.cnFilled}/{item.cnFilled + item.cnEmpty}</span></span>
+                <span><span className="text-gray-400">法人番号</span> <span className="font-mono">{item.cnFilled}/{item.cnFilled + item.cnEmpty}</span></span>
+                {item.aiSource && (
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold ${isAi ? 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-200' : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`} title={item.aiSource}>
+                    {isAi ? 'AI評価' : 'ヒューリスティック'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setShowAxisDetail(d => !d)}
-            className="mt-1 text-[11px] text-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
-          >
-            {showAxisDetail ? '▲ 計算根拠を閉じる' : '▼ スコア計算根拠'}
-          </button>
+          <div className="mt-1 flex items-center gap-4">
+            <button
+              onClick={() => setShowProjectInfo(d => !d)}
+              className="text-[11px] text-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              {showProjectInfo ? '▲ 事業内容を閉じる' : '▼ 事業内容'}
+            </button>
+            <button
+              onClick={() => setShowAxisDetail(d => !d)}
+              className="text-[11px] text-blue-500 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              {showAxisDetail ? '▲ 計算根拠を閉じる' : '▼ スコア計算根拠'}
+            </button>
+          </div>
         </div>
+
+        {/* 事業内容（目的・現状課題・概要）— 有効性軸の判定材料 */}
+        {showProjectInfo && (
+          <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0 overflow-y-auto max-h-60 bg-gray-50/60 dark:bg-gray-800/40">
+            {projectInfo === undefined && (
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <div className="animate-spin h-3 w-3 border border-gray-400 border-t-transparent rounded-full" />
+                事業内容を読み込み中...
+              </div>
+            )}
+            {projectInfo === null && <div className="text-xs text-gray-400">事業内容データなし</div>}
+            {projectInfo && (
+              <div className="space-y-2 text-xs">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                  {projectInfo.category && <span>区分: {projectInfo.category}</span>}
+                  {projectInfo.startYear && <span>開始: {projectInfo.startYear}年度</span>}
+                  <span>終了: {projectInfo.noEndDate ? '予定なし' : (projectInfo.endYear ? `${projectInfo.endYear}年度` : '-')}</span>
+                  {projectInfo.implementationMethods?.length > 0 && <span>実施方法: {projectInfo.implementationMethods.join('・')}</span>}
+                  {projectInfo.url && <a href={projectInfo.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">事業概要URL ↗</a>}
+                </div>
+                {([
+                  { label: '目的', text: projectInfo.purpose },
+                  { label: '現状・課題', text: projectInfo.currentIssues },
+                  { label: '概要', text: projectInfo.overview },
+                ] as const).map(({ label, text }) => text ? (
+                  <div key={label}>
+                    <div className="font-semibold text-gray-700 dark:text-gray-300">{label}</div>
+                    <div className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{text.replace(/\//g, '\n')}</div>
+                  </div>
+                ) : null)}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Axis detail (collapsible) */}
         {showAxisDetail && (
           <div className="border-b border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800 shrink-0 overflow-y-auto max-h-72">
-            {/* Axis 1 */}
+            <div className="px-5 py-1.5 bg-violet-50/60 dark:bg-violet-900/20 text-[11px] text-gray-500 dark:text-gray-400">
+              軸A・Bは{isAi ? 'AIが' : 'ヒューリスティックが'}支出先ごとに特定可能性・使途を判定し金額加重で集計。軸C・Dは機械計算。
+            </div>
+
+            {/* Axis A: 特定可能性 */}
             <div className="px-5 py-2.5">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">軸1: 支出先名品質（重み40%）</div>
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">A: 支出先の特定可能性（重み28%・{isAi ? 'AI' : 'ヒューリスティック'}判定）</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                <div className="flex gap-3 flex-wrap">
-                  <span className="text-green-600 dark:text-green-400">厳密valid: {item.validCount}</span>
+                <div>支出先が具体的に誰で、第三者が実在を確認できるか（名称・法人番号有無・契約概要を総合判定）</div>
+                <div className="flex gap-3 flex-wrap font-mono text-gray-400">
+                  {item.identifyLevelAvg != null && <span>平均レベル: {item.identifyLevelAvg.toFixed(2)}/3</span>}
+                  <span className="text-green-600 dark:text-green-400">valid: {item.validCount}</span>
                   {item.govAgencyCount > 0 && <span className="text-emerald-500">行政機関: {item.govAgencyCount}</span>}
-                  {item.suppValidCount > 0 && <span className="text-blue-500">補助辞書: {item.suppValidCount}</span>}
+                  {item.suppValidCount > 0 && <span className="text-blue-500">補助: {item.suppValidCount}</span>}
                   <span className="text-red-500">invalid: {item.invalidCount}</span>
-                  <span className="text-gray-400">計: {axis1Total}</span>
+                  {item.opaqueRatio != null && item.opaqueRatio > 0 && <span className="text-amber-500">不透明: {pct(item.opaqueRatio)}</span>}
+                  <span>= {item.axisIdentify != null ? item.axisIdentify.toFixed(1) : '-'}点</span>
                 </div>
-                {axis1Total > 0 && (
-                  <div className="font-mono text-gray-400">
-                    ({axis1Num} / {axis1Total}) × 100 = {item.axis1 !== null ? item.axis1.toFixed(1) : '-'}点
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Axis 2 */}
+            {/* Axis B: 使途の説明性 */}
             <div className="px-5 py-2.5">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">軸2: 法人番号記入率（重み20%）</div>
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">B: 使途の説明性（重み22%・{isAi ? 'AI' : 'ヒューリスティック'}判定）</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                <div className="flex gap-3 flex-wrap">
-                  <span className="text-green-600 dark:text-green-400">CN記入: {item.cnFilled}</span>
-                  <span className="text-red-500">未記入: {item.cnEmpty}</span>
-                </div>
-                <div className="font-mono text-gray-400">
-                  ({item.cnFilled} / {item.cnFilled + item.cnEmpty}) × 100 = {item.axis2 !== null ? item.axis2.toFixed(1) : '-'}点
+                <div>役割・契約概要から「何にいくら使ったか」が理解・検証できるか</div>
+                <div className="flex gap-3 flex-wrap font-mono text-gray-400">
+                  {item.purposeLevelAvg != null && <span>平均レベル: {item.purposeLevelAvg.toFixed(2)}/3</span>}
+                  <span>= {item.axisPurpose != null ? item.axisPurpose.toFixed(1) : '-'}点</span>
                 </div>
               </div>
             </div>
 
-            {/* Axis 3 */}
+            {/* Axis C: 収支整合性 */}
             <div className="px-5 py-2.5">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">軸3: 予算・支出バランス（重み20%）</div>
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">C: 収支の整合性（重み15%・機械計算）</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                 <div className="flex gap-3 flex-wrap">
                   <span>予算額: {formatAmount(item.budgetAmount)}</span>
                   <span>執行額: {formatAmount(item.execAmount)}</span>
                   <span>実質支出: {formatAmount(item.spendNetTotal)}</span>
                 </div>
-                <div className="flex gap-3 flex-wrap font-mono text-gray-400">
-                  {item.budgetAmount > 0 && <span>予算執行率: {pct(item.execAmount / item.budgetAmount)}</span>}
-                  <span>執行 vs 実質支出 乖離: {pct(item.gapRatio)}</span>
-                </div>
                 <div className="font-mono text-gray-400">
-                  執行額 − 実質支出 の乖離率 {pct(item.gapRatio)} → (1 − {pct(item.gapRatio)}) × 100 = {item.axis3 !== null ? item.axis3.toFixed(1) : '-'}点
+                  執行 vs 実質支出 乖離 {pct(item.gapRatio)}（10%まで満点の許容バンド）→ {item.axisBudget != null ? item.axisBudget.toFixed(1) : '-'}点
                 </div>
               </div>
             </div>
 
-            {/* Axis 4 */}
+            {/* Axis D: 構造整合性 */}
             <div className="px-5 py-2.5">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">軸4: ブロック構造（重み10%）</div>
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">D: 構造の整合性（参考・総合に不算入・機械計算）</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
                 <div className="flex gap-3 flex-wrap">
                   <span>ブロック数: {item.blockCount}</span>
                   {item.orphanBlockCount > 0 && <span className="text-orange-500">孤立: {item.orphanBlockCount}</span>}
+                  {item.hasRedelegation && <span className="text-gray-400">再委託深度: {item.redelegationDepth}（減点せず参考）</span>}
                 </div>
                 <div className="flex gap-2 flex-wrap font-mono text-gray-400">
-                  <span>基礎: 100点</span>
-                  {axis4RedelDeduct > 0 && (
-                    <span className="text-red-400">再委託深度{item.redelegationDepth}: −{axis4RedelDeduct}点</span>
-                  )}
-                  {axis4IncoDeduct !== null && axis4IncoDeduct > 0 && (
-                    <span className="text-red-400">金額不整合: −{axis4IncoDeduct}点</span>
-                  )}
-                  <span>= {item.axis4 !== null ? item.axis4.toFixed(1) : '-'}点</span>
+                  <span>基礎100 − ブロック金額不整合 − 孤立ブロック</span>
+                  <span>= {item.axisStructure != null ? item.axisStructure.toFixed(1) : '-'}点</span>
                 </div>
               </div>
             </div>
 
-            {/* Axis 5 */}
+            {/* Axis E: 有効性 */}
             <div className="px-5 py-2.5">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">軸5: 支出先名の透明性（重み10%）</div>
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">E: 有効性／成果設計の明確さ（重み35%・{isAi ? 'AI' : 'ヒューリスティック'}判定）</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                <div>不透明支出比: {pct(item.opaqueRatio)}</div>
-                <div className="font-mono text-gray-400">
-                  (1 − {pct(item.opaqueRatio)} / 50%) × 100 = {item.axis5 !== null ? item.axis5.toFixed(1) : '-'}点
+                <div>事業の目的・現状課題・概要から、国民生活への寄与がどれだけ明確・妥当に説明されているか（※実測成果ではなく成果設計の明確さ）</div>
+                <div className="flex gap-3 flex-wrap font-mono text-gray-400">
+                  {item.effectiveLevel != null && <span>レベル: {item.effectiveLevel}/10</span>}
+                  <span>= {item.axisEffective != null ? item.axisEffective.toFixed(1) : '-'}点</span>
                 </div>
+                {item.effectiveReason && item.effectiveReason !== 'heuristic' && (
+                  <div className="text-gray-500 dark:text-gray-400">根拠: {item.effectiveReason}</div>
+                )}
               </div>
             </div>
 
             {/* Weighted sum */}
             <div className="px-5 py-2 bg-gray-50 dark:bg-gray-800">
               <div className="text-xs font-mono text-gray-400">
-                {axes.filter(a => a.score !== null).map(a => `${a.score!.toFixed(1)}×${a.weight}`).join(' + ')}
+                {axes.filter(a => a.score !== null && a.weight > 0).map(a => `${a.score!.toFixed(1)}×${a.weight}`).join(' + ')}
                 {' '}= <span className={`font-bold ${scoreColor(item.totalScore)}`}>{item.totalScore?.toFixed(1)}</span>点
               </div>
             </div>
@@ -334,7 +385,7 @@ function ScoreDetailDialog({ item, onClose, year }: { item: QualityScoreItem; on
                     {([
                       { label: '支出先名', align: 'left', sort: null, title: undefined },
                       { label: '委託チェーン', align: 'left', sort: 'chain' as const, title: '委託チェーン（A→B→C）でソート' },
-                      { label: 'CN', align: 'center', sort: 'c' as const, title: undefined },
+                      { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号(Corporate Number)の記入有無' },
                       { label: '金額', align: 'right', sort: 'a2' as const, title: '個別支出額（CSVの「金額」列）' },
                       { label: '実支出比', align: 'right', sort: 'pct' as const, title: '実質支出合計に対する割合' },
                       { label: '役割', align: 'left', sort: null, title: '事業を行う上での役割（ブロック単位）' },
@@ -460,6 +511,15 @@ function parseAmountInput(input: string): number | null {
 
 type ScoreRange = 'all' | '0-9' | '10-19' | '20-29' | '30-39' | '40-49' | '50-59' | '60-69' | '70-79' | '80-89' | '90-99' | '100-100';
 
+type DistMetric = 'totalScore' | 'axisIdentify' | 'axisPurpose' | 'axisBudget' | 'axisEffective';
+const DIST_METRICS: { key: DistMetric; label: string }[] = [
+  { key: 'totalScore', label: '総合' },
+  { key: 'axisIdentify', label: '特定可能性' },
+  { key: 'axisPurpose', label: '使途説明性' },
+  { key: 'axisBudget', label: '収支整合性' },
+  { key: 'axisEffective', label: '有効性' },
+];
+
 export default function QualityPage() {
   const [year, setYear] = useState<'2024' | '2025'>('2025');
   const [data, setData] = useState<QualityScoresResponse | null>(null);
@@ -469,6 +529,7 @@ export default function QualityPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMinistry, setSelectedMinistry] = useState<string>('');
   const [scoreRange, setScoreRange] = useState<ScoreRange>('all');
+  const [distMetric, setDistMetric] = useState<DistMetric>('totalScore');
   const [amountFilters, setAmountFilters] = useState<Record<string, { min: string; max: string }>>({
     budgetAmount: { min: '', max: '' },
     execAmount: { min: '', max: '' },
@@ -504,8 +565,8 @@ export default function QualityPage() {
     if (scoreRange !== 'all') {
       const [lo, hi] = scoreRange.split('-').map(Number);
       items = items.filter(i => {
-        const s = i.totalScore;
-        if (s === null) return false;
+        const s = i[distMetric] as number | null | undefined;
+        if (s === null || s === undefined) return false;
         return s >= lo && s <= hi;
       });
     }
@@ -546,11 +607,11 @@ export default function QualityPage() {
     });
 
     return items;
-  }, [data, selectedMinistry, scoreRange, searchQuery, amountFilters, sortField, sortDir]);
+  }, [data, selectedMinistry, scoreRange, distMetric, searchQuery, amountFilters, sortField, sortDir]);
 
   // Reset page on filter change
   const amountFilterKey = Object.values(amountFilters).map(f => `${f.min}-${f.max}`).join(',');
-  const filterKey = `${selectedMinistry}|${scoreRange}|${searchQuery}|${amountFilterKey}|${sortField}|${sortDir}`;
+  const filterKey = `${selectedMinistry}|${scoreRange}|${distMetric}|${searchQuery}|${amountFilterKey}|${sortField}|${sortDir}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
   if (filterKey !== lastFilterKey) {
     setLastFilterKey(filterKey);
@@ -638,8 +699,9 @@ export default function QualityPage() {
             { label: '10-19', range: '10-19', lo: 10, hi: 19 },
             { label: '0-9', range: '0-9', lo: 0, hi: 9 },
           ];
+          const metricVal = (i: QualityScoreItem) => i[distMetric] as number | null | undefined;
           const counts = binRanges.map(({ lo, hi }) =>
-            data.items.filter(i => i.totalScore !== null && i.totalScore >= lo && i.totalScore <= hi).length
+            data.items.filter(i => { const s = metricVal(i); return s != null && s >= lo && s <= hi; }).length
           );
           const maxCount = Math.max(...counts, 1);
           const binColor = (lo: number) => {
@@ -670,17 +732,31 @@ export default function QualityPage() {
                   );
                 })}
               </div>
-              <button
-                onClick={() => setScoreRange('all')}
-                className={`rounded-lg px-3 py-1.5 text-center transition-all self-end ${
-                  scoreRange === 'all'
-                    ? 'ring-2 ring-blue-500 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:opacity-100 opacity-80'
-                }`}
-              >
-                <div className="text-[10px] font-medium">全件</div>
-                <div className="text-sm font-bold">{summary.total.toLocaleString()}</div>
-              </button>
+              <div className="flex flex-col gap-1 self-end">
+                <label className="flex flex-col gap-0.5">
+                  <span className="text-[9px] text-gray-500 dark:text-gray-400 leading-none">分布の軸</span>
+                  <select
+                    value={distMetric}
+                    onChange={e => { setDistMetric(e.target.value as DistMetric); setScoreRange('all'); }}
+                    className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer focus:ring-1 focus:ring-blue-500 outline-none"
+                  >
+                    {DIST_METRICS.map(m => (
+                      <option key={m.key} value={m.key}>{m.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  onClick={() => setScoreRange('all')}
+                  className={`rounded-lg px-3 py-1.5 text-center transition-all ${
+                    scoreRange === 'all'
+                      ? 'ring-2 ring-blue-500 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:opacity-100 opacity-80'
+                  }`}
+                >
+                  <div className="text-[10px] font-medium">全件</div>
+                  <div className="text-sm font-bold">{summary.total.toLocaleString()}</div>
+                </button>
+              </div>
               <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
                 <div className="flex flex-wrap gap-2">
                   <input
@@ -761,23 +837,21 @@ export default function QualityPage() {
                 </th>
                 <th className="px-2 py-2 text-left whitespace-nowrap">府省庁</th>
                 <th className="px-2 py-2 text-left whitespace-nowrap">局・庁</th>
+                <th className="px-2 py-2 text-center whitespace-nowrap">支出先</th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('totalScore')}>
                   総合<SortIcon field="totalScore" />
                 </th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axis1')}>
-                  名称<SortIcon field="axis1" />
+                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axisIdentify')} title="A: 支出先の特定可能性（AI判定 28%）">
+                  特定可能性<SortIcon field="axisIdentify" />
                 </th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axis2')}>
-                  CN<SortIcon field="axis2" />
+                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axisPurpose')} title="B: 使途の説明性（AI判定 22%）">
+                  使途説明性<SortIcon field="axisPurpose" />
                 </th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axis3')}>
-                  収支<SortIcon field="axis3" />
+                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axisBudget')} title="C: 収支の整合性（機械計算 15%）">
+                  収支整合性<SortIcon field="axisBudget" />
                 </th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axis4')}>
-                  構造<SortIcon field="axis4" />
-                </th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axis5')}>
-                  透明性<SortIcon field="axis5" />
+                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('axisEffective')} title="E: 有効性／成果設計の明確さ（AI判定 35%・意図ベース）">
+                  有効性<SortIcon field="axisEffective" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('budgetAmount')}>
                   予算額<SortIcon field="budgetAmount" />
@@ -797,6 +871,9 @@ export default function QualityPage() {
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('rowCount')}>
                   支出先数<SortIcon field="rowCount" />
                 </th>
+                <th className="px-2 py-2 text-center cursor-pointer whitespace-nowrap" onClick={() => handleSort('axisStructure')} title="構造の整合性: ブロック金額の整合・孤立ブロック有無（総合スコアには不算入の参考）">
+                  構造<SortIcon field="axisStructure" />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -812,16 +889,24 @@ export default function QualityPage() {
                     </td>
                     <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{item.ministry}</td>
                     <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400 whitespace-nowrap">{item.bureau || '-'}</td>
-                    <td className="px-2 py-1.5 text-right" onClick={e => { e.stopPropagation(); setDialogItem(item); }}>
-                      <span className={`font-bold cursor-pointer hover:underline decoration-dotted ${scoreColor(item.totalScore)}`}>
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      <button
+                        onClick={e => { e.stopPropagation(); setDialogItem(item); }}
+                        className="px-2 py-1 text-[11px] font-medium rounded-md border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+                        title="支出先一覧・スコア計算根拠を表示"
+                      >
+                        詳細
+                      </button>
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      <span className={`font-bold ${scoreColor(item.totalScore)}`}>
                         {item.totalScore !== null ? item.totalScore.toFixed(1) : '-'}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5"><ScoreBar score={item.axis1} /></td>
-                    <td className="px-2 py-1.5"><ScoreBar score={item.axis2} /></td>
-                    <td className="px-2 py-1.5"><ScoreBar score={item.axis3} /></td>
-                    <td className="px-2 py-1.5"><ScoreBar score={item.axis4} /></td>
-                    <td className="px-2 py-1.5"><ScoreBar score={item.axis5} /></td>
+                    <td className="px-2 py-1.5"><ScoreBar score={item.axisIdentify ?? null} /></td>
+                    <td className="px-2 py-1.5"><ScoreBar score={item.axisPurpose ?? null} /></td>
+                    <td className="px-2 py-1.5"><ScoreBar score={item.axisBudget ?? null} /></td>
+                    <td className="px-2 py-1.5"><ScoreBar score={item.axisEffective ?? null} /></td>
                     <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
                       {item.budgetAmount ? formatAmount(item.budgetAmount) : '-'}
                     </td>
@@ -838,12 +923,19 @@ export default function QualityPage() {
                       {item.redelegationDepth || '-'}
                     </td>
                     <td className="px-2 py-1.5 text-right font-mono text-gray-500">{item.recipientCount ?? item.rowCount}</td>
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      {item.axisStructure == null
+                        ? <span className="text-gray-300 dark:text-gray-600">-</span>
+                        : item.axisStructure >= 100
+                          ? <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200">整合</span>
+                          : <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200" title={`構造スコア ${item.axisStructure}（金額不整合・孤立ブロック）`}>不整合</span>}
+                    </td>
                   </tr>
                   {expandedRow === item.pid && (
                     <tr className="bg-gray-50 dark:bg-gray-800/50">
-                      <td colSpan={16} className="px-4 py-3">
+                      <td colSpan={17} className="px-4 py-3">
                         <div>{item.name}</div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs">
                           <div>
                             <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">組織</h4>
                             <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
@@ -857,12 +949,21 @@ export default function QualityPage() {
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">支出先名品質</h4>
+                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">特定可能性・使途（{item.aiSource && item.aiSource !== 'heuristic' ? 'AI' : 'ヒューリスティック'}）</h4>
                             <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                              {item.identifyLevelAvg != null && <div>特定可能性 平均Lv: {item.identifyLevelAvg.toFixed(2)}/3 → {item.axisIdentify != null ? item.axisIdentify.toFixed(0) : '-'}点</div>}
+                              {item.purposeLevelAvg != null && <div>使途説明性 平均Lv: {item.purposeLevelAvg.toFixed(2)}/3 → {item.axisPurpose != null ? item.axisPurpose.toFixed(0) : '-'}点</div>}
                               <div>valid: {item.validCount}{item.govAgencyCount > 0 && <span className="text-green-600"> (+行政{item.govAgencyCount})</span>}{item.suppValidCount > 0 && <span className="text-blue-500"> (+補助{item.suppValidCount})</span>} / invalid: {item.invalidCount}</div>
-                              <div>valid率: {pct(item.validRatio)}</div>
-                              <div>CN記入: {item.cnFilled} / 未記入: {item.cnEmpty}</div>
-                              <div>CN記入率: {pct(item.cnFillRatio)}</div>
+                              <div>法人番号記入: {item.cnFilled} / 未記入: {item.cnEmpty}</div>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">有効性（{item.aiSource && item.aiSource !== 'heuristic' ? 'AI' : 'ヒューリスティック'}）</h4>
+                            <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                              <div>レベル: {item.effectiveLevel ?? '-'}/10 → {item.axisEffective != null ? `${item.axisEffective.toFixed(0)}点` : '-'}</div>
+                              {item.effectiveReason && item.effectiveReason !== 'heuristic'
+                                ? <div className="text-gray-500 dark:text-gray-400 leading-relaxed">根拠: {item.effectiveReason}</div>
+                                : <div className="text-gray-400">根拠: なし（ヒューリスティック）</div>}
                             </div>
                           </div>
                           <div>

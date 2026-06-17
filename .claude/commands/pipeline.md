@@ -16,7 +16,8 @@ description: データパイプライン・CSV処理・JSON生成の実装を行
 | `scripts/generate-subcontracts.ts` | `subcontracts-{2024,2025}.json`（/subcontracts 用） |
 | `scripts/generate-mof-budget-overview-data.ts` | `mof-budget-overview-2023.json`（/mof-budget-overview 用） |
 | `scripts/generate-project-details.ts` | `rs{2024,2025}-project-details.json`（/api/project-details 用） |
-| `scripts/score-project-quality.py` | `project-quality-{scores,recipients}-{2024,2025}.json`（/quality 用） |
+| `scripts/score-project-quality.py` | `project-quality-{scores,recipients}-{2024,2025}.json`（/quality 用・機械signal生成） |
+| `scripts/score-project-quality-ai.py` | `project-quality-scores-{2024,2025}.json` を上書き（/quality 用・AI評価で新4軸＋総合を最終確定） |
 
 ### ユーティリティ・補助
 
@@ -56,9 +57,11 @@ npm run generate-mof-data
 # 事業詳細
 npm run generate-project-details
 
-# 品質スコア
-npm run score-quality               # 2024年度
+# 品質スコア（機械signal生成 → AI評価で最終スコア）
+npm run score-quality               # 2024年度: per-recipient行＋機械signal
 npm run score-quality-2025          # 2025年度
+npm run score-quality-ai            # 2024年度: AI評価で新5軸＋総合を最終確定（OPENROUTER_API_KEY無しはヒューリスティック）
+npm run score-quality-ai-2025       # 2025年度
 
 # Gzip圧縮（コミット前に必須）
 npm run compress-data

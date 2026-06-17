@@ -1,7 +1,13 @@
 """
-事業別 支出先データ品質スコア計算
+事業別 支出先データ品質スコア計算（機械signal生成フェーズ）
 
-5軸評価:
+⚠️ 最終スコアは scripts/score-project-quality-ai.py が確定する。
+本スクリプトは per-recipient 行と機械signal（旧5軸・収支・構造の素材）を生成し、
+続いて AI評価フェーズが新5軸（特定可能性/使途説明性/収支整合性/構造整合性/有効性）と
+総合スコアを再計算して project-quality-scores-{year}.json を上書きする。
+設計: docs/tasks/20260616_1749_AI支出先データ品質スコアリング再設計.md
+
+旧5軸評価（機械signalとして保持）:
   1. 支出先名の品質 (valid_ratio)       重み 40%
   2. 法人番号の記入率 (cn_fill_ratio)    重み 20%
   3. 予算・支出バランス (gap_ratio)       重み 20%

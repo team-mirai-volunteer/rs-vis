@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 
 // フィールド名は短縮形（JSONサイズ削減のため）
 // n=name, b=blockNo, s=status, c=cnFilled, o=opaque
@@ -26,15 +27,21 @@ const cache = new Map<string, Record<string, RecipientRow[]>>();
 function loadData(year: string): Record<string, RecipientRow[]> {
   if (cache.has(year)) return cache.get(year)!;
 
-  const jsonPath = path.join(process.cwd(), 'public', 'data', `project-quality-recipients-${year}.json`);
-  if (!fs.existsSync(jsonPath)) {
+  // 展開済み .json を優先。無ければ .gz をその場で展開（prebuild未実行のローカル等でも動く）。
+  const base = path.join(process.cwd(), 'public', 'data', `project-quality-recipients-${year}.json`);
+  let raw: string;
+  if (fs.existsSync(base)) {
+    raw = fs.readFileSync(base, 'utf-8');
+  } else if (fs.existsSync(`${base}.gz`)) {
+    raw = zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8');
+  } else {
     throw new Error(
-      `project-quality-recipients-${year}.json が見つかりません。` +
+      `project-quality-recipients-${year}.json(.gz) が見つかりません。` +
       `python3 scripts/score-project-quality.py --year ${year} を実行してください。`
     );
   }
 
-  const data: Record<string, RecipientRow[]> = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const data: Record<string, RecipientRow[]> = JSON.parse(raw);
   cache.set(year, data);
   return data;
 }

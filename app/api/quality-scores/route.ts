@@ -37,6 +37,17 @@ export interface QualityScoreItem {
   axis3: number | null;
   axis4: number | null;
   axis5: number | null;
+  // 新軸（score-project-quality-ai.py が付与）
+  axisIdentify?: number | null;    // A 支出先の特定可能性 (AI判定 28%)
+  axisPurpose?: number | null;     // B 使途の説明性 (AI判定 22%)
+  axisBudget?: number | null;      // C 収支の整合性 (機械計算 15%)
+  axisStructure?: number | null;   // D 構造の整合性 (機械計算・参考表示のみ/総合に不算入)
+  axisEffective?: number | null;   // E 有効性/成果設計の明確さ (AI判定 35%・0-10の11段階・意図ベース)
+  identifyLevelAvg?: number | null; // 0-3 平均（金額加重）
+  purposeLevelAvg?: number | null;  // 0-3 平均（金額加重）
+  effectiveLevel?: number | null;  // 0-10 有効性レベル
+  effectiveReason?: string;        // 有効性判定の根拠（AI時）
+  aiSource?: string;               // "gemini:<model>" | "heuristic"
   totalScore: number | null;
 }
 
