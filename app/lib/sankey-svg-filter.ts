@@ -161,9 +161,14 @@ export function filterTopN(
       }
     }
     const sortedWindowProjectRecips = Array.from(windowProjectRecipAmounts.entries()).sort((a, b) => b[1] - a[1]);
-    totalRecipientCount = sortedWindowProjectRecips.length;
-    windowRecipients = sortedWindowProjectRecips.slice(0, topRecipient);
-    tailRecipients = sortedWindowProjectRecips.slice(topRecipient);
+    // When every recipient in scope already fits within topRecipient (e.g. a recipient-name filter
+    // narrowed the set), rank over ALL recipients rather than only window-project recipients. Otherwise
+    // recipients reachable solely via aggregate projects are wrongly collapsed into __agg-recipient even
+    // though there is room to show them individually (issue #229).
+    const sortedRecips = allSortedRecipients.length <= topRecipient ? allSortedRecipients : sortedWindowProjectRecips;
+    totalRecipientCount = sortedRecips.length;
+    windowRecipients = sortedRecips.slice(0, topRecipient);
+    tailRecipients = sortedRecips.slice(topRecipient);
   } else if (ministryFocusMode && pinnedMinistryName) {
     // Recipient window based on ministry-specific flows (supports offset scrolling)
     const ministryRecipientAmounts = new Map<string, number>();

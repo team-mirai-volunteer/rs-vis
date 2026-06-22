@@ -38,5 +38,9 @@ decompress_if_needed "sankey-svg-2024-graph.json" optional
 decompress_if_needed "sankey-svg-2025-graph.json" optional
 decompress_if_needed "subcontracts-2024.json" optional
 decompress_if_needed "subcontracts-2025.json" optional
+decompress_if_needed "recipient-index-2024.json" optional
+decompress_if_needed "recipient-index-2025.json" optional
+decompress_if_needed "project-quality-scores-2024.json" optional
+decompress_if_needed "project-quality-scores-2025.json" optional
 
 echo "✅ All data files ready"

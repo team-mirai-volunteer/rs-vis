@@ -22,7 +22,9 @@
     "generate-subcontracts-2025": "tsx scripts/generate-subcontracts.ts 2025",
     "generate-sankey-svg": "tsx scripts/generate-sankey-svg-data.ts 2024",
     "generate-sankey-svg-2025": "tsx scripts/generate-sankey-svg-data.ts 2025",
-    "compress-data": "gzip -9 -k -f public/data/rs2024-project-details.json && gzip -9 -k -f public/data/rs2025-project-details.json && gzip -9 -k -f public/data/project-quality-recipients-2024.json && gzip -9 -k -f public/data/project-quality-recipients-2025.json && gzip -9 -k -f public/data/sankey-svg-2024-graph.json && gzip -9 -k -f public/data/sankey-svg-2025-graph.json && gzip -9 -k -f public/data/subcontracts-2024.json && gzip -9 -k -f public/data/subcontracts-2025.json"
+    "generate-recipient-index": "tsx scripts/generate-recipient-index.ts 2024",
+    "generate-recipient-index-2025": "tsx scripts/generate-recipient-index.ts 2025",
+    "compress-data": "gzip -9 -k -f public/data/rs2024-project-details.json && gzip -9 -k -f public/data/rs2025-project-details.json && gzip -9 -k -f public/data/project-quality-recipients-2024.json && gzip -9 -k -f public/data/project-quality-recipients-2025.json && gzip -9 -k -f public/data/sankey-svg-2024-graph.json && gzip -9 -k -f public/data/sankey-svg-2025-graph.json && gzip -9 -k -f public/data/subcontracts-2024.json && gzip -9 -k -f public/data/subcontracts-2025.json && gzip -9 -k -f public/data/recipient-index-2024.json && gzip -9 -k -f public/data/recipient-index-2025.json && gzip -9 -k -f public/data/project-quality-scores-2024.json && gzip -9 -k -f public/data/project-quality-scores-2025.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

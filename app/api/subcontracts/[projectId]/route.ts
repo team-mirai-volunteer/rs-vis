@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SubcontractIndex } from '@/types/subcontract';
+import { buildMetadata, API_CACHE_CONTROL, RECIPIENT_NOTES } from '@/app/lib/api/api-notes';
+import { projectLinks, recipientLinks } from '@/app/lib/api/links';
+import { buildRecipientKey, isExcludedRecipientName } from '@/app/lib/recipient-key';
 
 const SUPPORTED_YEARS = ['2024', '2025'] as const;
 type SupportedYear = typeof SUPPORTED_YEARS[number];
@@ -43,5 +46,24 @@ export async function GET(
     return NextResponse.json({ error: `Project ${projectId} not found` }, { status: 404 });
   }
 
-  return NextResponse.json(graph);
+  // 既存フィールドはそのまま、各支出先に逆引きキーと関連リンクを追加
+  const body = {
+    ...graph,
+    metadata: buildMetadata(year, { projectId: graph.projectId }, RECIPIENT_NOTES),
+    blocks: graph.blocks.map(block => ({
+      ...block,
+      recipients: block.recipients.map(r =>
+        isExcludedRecipientName(r.name)
+          ? r
+          : {
+              ...r,
+              recipientKey: buildRecipientKey(r.name, r.corporateNumber),
+              links: recipientLinks(buildRecipientKey(r.name, r.corporateNumber), year),
+            }
+      ),
+    })),
+    links: projectLinks(projectId, year),
+  };
+
+  return NextResponse.json(body, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
 }
