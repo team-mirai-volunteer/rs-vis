@@ -10,6 +10,8 @@ import { readFileSync, existsSync } from 'fs';
 import { gunzipSync } from 'zlib';
 import { join } from 'path';
 import type { ProjectDetailsData, ProjectDetail } from '@/types/project-details';
+import { API_CACHE_CONTROL } from '@/app/lib/api/api-notes';
+import { projectLinks } from '@/app/lib/api/links';
 
 // データをメモリにキャッシュ（年度別）
 const cache = new Map<string, ProjectDetailsData>();
@@ -74,12 +76,15 @@ export async function GET(
       );
     }
 
-    // レスポンス
-    return NextResponse.json(detail, {
-      headers: {
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400',
-      },
-    });
+    // レスポンス（既存フィールドはそのまま、関連リンクのみ追加）
+    return NextResponse.json(
+      { ...detail, links: projectLinks(projectId, yearParam) },
+      {
+        headers: {
+          'Cache-Control': API_CACHE_CONTROL,
+        },
+      }
+    );
   } catch (error) {
     console.error('[API Error] Failed to get project details:', error);
     return NextResponse.json(

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
+import { parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 
 // フィールド名は短縮形（JSONサイズ削減のため）
 // n=name, b=blockNo, s=status, c=cnFilled, o=opaque
@@ -53,14 +54,14 @@ export async function GET(req: Request) {
     if (!pid) {
       return NextResponse.json({ error: 'pid パラメータが必要です' }, { status: 400 });
     }
-    const year = url.searchParams.get('year') ?? '2024';
+    const year = parseYear(url.searchParams.get('year'));
+    if (year === null) {
+      return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
+    }
 
     const data = loadData(year);
     return NextResponse.json(data[pid] ?? []);
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 }
-    );
+    return serverErrorResponse('quality-scores/recipients', e);
   }
 }
