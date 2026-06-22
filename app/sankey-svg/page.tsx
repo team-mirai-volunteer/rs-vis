@@ -87,7 +87,7 @@ const PANEL_TITLE_FONT_PX_DEFAULT = 14;
 const PANEL_PRIMARY_VALUE_FONT_PX_DEFAULT = 15;
 const PANEL_LIST_NAME_FONT_PX_DEFAULT = 12;
 const PANEL_LIST_VALUE_FONT_PX_DEFAULT = 12;
-const PANEL_META_FONT_PX_DEFAULT = 12;
+const PANEL_META_FONT_PX_DEFAULT = 13;
 const TOOLTIP_TITLE_FONT_PX_DEFAULT = 12;
 const TOOLTIP_VALUE_FONT_PX_DEFAULT = 11;
 const TOOLTIP_META_FONT_PX_DEFAULT = 10;
@@ -96,9 +96,11 @@ const FONT_SCALE_REFERENCE_PX = 12;
 const BASE_FONT_PX_DEFAULT = 12;
 const BASE_FONT_PX_MIN = 8;
 const BASE_FONT_PX_MAX = 24;
-const SIDE_PANEL_WIDTH_DEFAULT = 310;
+const SIDE_PANEL_WIDTH_DEFAULT = 400;
 const SIDE_PANEL_WIDTH_MIN = 200;
 const SIDE_PANEL_WIDTH_MAX = 800;
+// 実効幅クランプ時に地図側へ最低限残す余白(px)。狭いビューポートでパネルが全面を覆うのを防ぐ。
+const SIDE_PANEL_VIEWPORT_RESERVE_PX = 48;
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_DEFAULT = 72;
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_MIN = 24;
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_MAX = 600;
@@ -2529,11 +2531,22 @@ export default function RealDataSankeyPage() {
       + `L${tx},${tBot}C${mx},${tBot} ${mx},${sBot} ${sx},${sBot}Z`;
   };
 
-  const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth : 0;
+  // サイドパネルの実効幅: ユーザー設定値(sidePanelWidth)を保持しつつ、ビューポート幅に収める。
+  // スマホ縦などビューポートが狭い場合に、設定済みの広い幅がそのまま適用されて画面を
+  // 埋め尽くす（地図が見えなくなる）のを防ぐ。地図を最低 SIDE_PANEL_VIEWPORT_RESERVE_PX 残す。
+  // 極端に狭いビューポート(svgWidth < MIN+RESERVE)では MIN より reserve を優先し、
+  // 実効幅が svgWidth - RESERVE を超えない（地図が完全に消えない）ことを保証する。
+  const maxPanelWidthForViewport = Math.max(0, svgWidth - SIDE_PANEL_VIEWPORT_RESERVE_PX);
+  const minPanelWidthForViewport = Math.min(SIDE_PANEL_WIDTH_MIN, maxPanelWidthForViewport);
+  const effectiveSidePanelWidth = Math.min(
+    maxPanelWidthForViewport,
+    Math.max(minPanelWidthForViewport, sidePanelWidth),
+  );
+  const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth : 0;
   // 右上の設定(⋮)ボタン領域(幅32+余白)に重ならないよう右側を確保。
   // これがないと文字拡大時に検索ボックスが設定ボタンを覆い、タップで開けなくなる。
   const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 64px)`;
-  const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : sidePanelWidth + 8) : 8;
+  const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : effectiveSidePanelWidth + 8) : 8;
   const fontControlLeft = minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48);
   // 年度変更（トップ中央セレクトとスマホ幅の設定ダイアログで共用）
   const handleYearChange = (value: '2024' | '2025') => {
@@ -3239,7 +3252,7 @@ export default function RealDataSankeyPage() {
           data-pan-disabled="true"
           style={{
             position: 'fixed', left: 0, top: 0, height: '100%',
-            width: isPanelCollapsed ? 0 : sidePanelWidth,
+            width: isPanelCollapsed ? 0 : effectiveSidePanelWidth,
             background: '#fff',
             borderRight: isPanelCollapsed ? 'none' : '1px solid #e0e0e0',
             boxShadow: isPanelCollapsed ? 'none' : '2px 0 8px rgba(0,0,0,0.1)',
@@ -3371,7 +3384,9 @@ export default function RealDataSankeyPage() {
                       const budgetValue = mainLabel === '予算額' ? mainValue : subLabel === '予算額' ? subValue : null;
                       const spendingValue = mainLabel === '支出額' ? mainValue : subLabel === '支出額' ? subValue : null;
                       const amountCellStyle: React.CSSProperties = {
-                        flex: '1 1 112px',
+                        // flex-basis をフォント連動にして、文字拡大時に2列が収まらなくなったら
+                        // 自動で1列へ折り返す（1円単位のnowrap金額が隣セルへはみ出して重なるのを防ぐ）。
+                        flex: `1 1 ${scaleSize(112)}px`,
                         minWidth: 0,
                       };
                       const amountLabelStyle: React.CSSProperties = {
@@ -3695,7 +3710,7 @@ export default function RealDataSankeyPage() {
                     {accountBadges.length > 0 && (
                       <div style={{ padding: '0 14px 2px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 12, rowGap: 4, minWidth: 0 }}>
                         {accountBadges.map(item => (
-                          <div key={item.label} style={{ flex: '1 1 112px', minWidth: 0 }}>
+                          <div key={item.label} style={{ flex: `1 1 ${scaleSize(112)}px`, minWidth: 0 }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 1, minWidth: 0 }}>
                               {renderAccountBadge(item.label)}
                               <span style={{ display: 'block', fontSize: PANEL_PRIMARY_VALUE_FONT_PX, fontWeight: 600, color: '#222', whiteSpace: 'nowrap' }}>
@@ -4001,7 +4016,7 @@ export default function RealDataSankeyPage() {
       <div
         ref={searchBoxRef}
         data-pan-disabled="true"
-        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth + 12 : 12, zIndex: 20, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
+        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 12 : 12, zIndex: 20, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
       >
         {/* Row 1: 検索セクション（input+sliders+toggle）とフィルタボタン */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
@@ -4392,7 +4407,7 @@ export default function RealDataSankeyPage() {
         };
         return (
           <div ref={offsetControlRef} style={ isCompactWidth
-            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? sidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
+            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
             : { position: 'absolute', top: 12, right: 52, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
             {/* Row 1: オフセットスライダー（2列スパン） */}
