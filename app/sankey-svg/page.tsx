@@ -4,12 +4,14 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
 import { createPortal } from 'react-dom';
 import type { GraphData, LayoutNode, LayoutLink } from '@/types/sankey-svg';
 import type { ProjectDetail } from '@/types/project-details';
+import type { PolicySummaryResponse } from '@/app/api/policy-summary/route';
 import {
   COL_LABELS, MARGIN, NODE_W, NODE_PAD,
   MAX_RECIPIENT_GAP_PX, MAX_MINISTRY_GAP_PX,
   TYPE_COLORS, TYPE_LABELS,
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
+import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { TopNSliders } from '@/client/components/SankeySvg/TopNSliders';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
@@ -53,10 +55,26 @@ interface SankeyUrlState {
   filterMaxBudgetText?: string;
   filterMinSpendingText?: string;
   filterMaxSpendingText?: string;
+  /** 政策評価スコアの足きり "min-max"（0-100・片側空欄可）。o=総合 x=費用対内容 n=必要性 */
+  filterScoreO?: string;
+  filterScoreX?: string;
+  filterScoreN?: string;
   acGeneral?: boolean;
   acSpecial?: boolean;
   acBoth?: boolean;
   acNone?: boolean;
+}
+
+/** 政策評価スコア足きりの範囲（0-100の数値文字列・空欄=指定なし） */
+type ScoreRange = { min: string; max: string };
+const EMPTY_SCORE_RANGE: ScoreRange = { min: '', max: '' };
+/** URLの "min-max" 表現との相互変換 */
+function parseScoreRangeParam(v: string): ScoreRange {
+  const i = v.indexOf('-');
+  return i < 0 ? { min: v, max: '' } : { min: v.slice(0, i), max: v.slice(i + 1) };
+}
+function scoreRangeToParam(r: ScoreRange): string | null {
+  return r.min || r.max ? `${r.min}-${r.max}` : null;
 }
 
 const SCREEN_LEFT_PADDING_PX = 32;
@@ -178,6 +196,9 @@ function parseSearchParams(search: string): Partial<SankeyUrlState> {
   const fxb = p.get('fxb'); if (fxb !== null) result.filterMaxBudgetText = fxb;
   const fms = p.get('fms'); if (fms !== null) result.filterMinSpendingText = fms;
   const fxs = p.get('fxs'); if (fxs !== null) result.filterMaxSpendingText = fxs;
+  const fso = p.get('fso'); if (fso !== null) result.filterScoreO = fso;
+  const fsx = p.get('fsx'); if (fsx !== null) result.filterScoreX = fsx;
+  const fsn = p.get('fsn'); if (fsn !== null) result.filterScoreN = fsn;
   const ac = p.get('ac');
   if (ac !== null) {
     result.acGeneral = ac.includes('g');
@@ -289,6 +310,10 @@ export default function RealDataSankeyPage() {
   const [filterMaxBudgetText, setFilterMaxBudgetText] = useState('');
   const [filterMinSpendingText, setFilterMinSpendingText] = useState('');
   const [filterMaxSpendingText, setFilterMaxSpendingText] = useState('');
+  // 政策評価スコアの足きり（0-100の数値文字列。"min-max" でURLに載せる）
+  const [filterScoreO, setFilterScoreO] = useState<ScoreRange>(EMPTY_SCORE_RANGE);
+  const [filterScoreX, setFilterScoreX] = useState<ScoreRange>(EMPTY_SCORE_RANGE);
+  const [filterScoreN, setFilterScoreN] = useState<ScoreRange>(EMPTY_SCORE_RANGE);
   const [acGeneral, setAcGeneral] = useState(true);
   const [acSpecial, setAcSpecial] = useState(true);
   const [acBoth,    setAcBoth]    = useState(true);
@@ -405,6 +430,9 @@ export default function RealDataSankeyPage() {
     if (parsed.filterMaxBudgetText !== undefined) setFilterMaxBudgetText(parsed.filterMaxBudgetText);
     if (parsed.filterMinSpendingText !== undefined) setFilterMinSpendingText(parsed.filterMinSpendingText);
     if (parsed.filterMaxSpendingText !== undefined) setFilterMaxSpendingText(parsed.filterMaxSpendingText);
+    if (parsed.filterScoreO !== undefined) setFilterScoreO(parseScoreRangeParam(parsed.filterScoreO));
+    if (parsed.filterScoreX !== undefined) setFilterScoreX(parseScoreRangeParam(parsed.filterScoreX));
+    if (parsed.filterScoreN !== undefined) setFilterScoreN(parseScoreRangeParam(parsed.filterScoreN));
     if (parsed.acGeneral !== undefined) setAcGeneral(parsed.acGeneral);
     if (parsed.acSpecial !== undefined) setAcSpecial(parsed.acSpecial);
     if (parsed.acBoth    !== undefined) setAcBoth(parsed.acBoth);
@@ -457,6 +485,9 @@ export default function RealDataSankeyPage() {
       setFilterMaxBudgetText(parsed.filterMaxBudgetText ?? '');
       setFilterMinSpendingText(parsed.filterMinSpendingText ?? '');
       setFilterMaxSpendingText(parsed.filterMaxSpendingText ?? '');
+      setFilterScoreO(parsed.filterScoreO !== undefined ? parseScoreRangeParam(parsed.filterScoreO) : EMPTY_SCORE_RANGE);
+      setFilterScoreX(parsed.filterScoreX !== undefined ? parseScoreRangeParam(parsed.filterScoreX) : EMPTY_SCORE_RANGE);
+      setFilterScoreN(parsed.filterScoreN !== undefined ? parseScoreRangeParam(parsed.filterScoreN) : EMPTY_SCORE_RANGE);
       setAcGeneral(parsed.acGeneral ?? true);
       setAcSpecial(parsed.acSpecial ?? true);
       setAcBoth(parsed.acBoth ?? true);
@@ -503,6 +534,9 @@ export default function RealDataSankeyPage() {
     if (filterMaxBudgetText) p.set('fxb', filterMaxBudgetText);
     if (filterMinSpendingText) p.set('fms', filterMinSpendingText);
     if (filterMaxSpendingText) p.set('fxs', filterMaxSpendingText);
+    const fso = scoreRangeToParam(filterScoreO); if (fso) p.set('fso', fso);
+    const fsx = scoreRangeToParam(filterScoreX); if (fsx) p.set('fsx', fsx);
+    const fsn = scoreRangeToParam(filterScoreN); if (fsn) p.set('fsn', fsn);
     if (!acGeneral || !acSpecial || !acBoth || !acNone) {
       p.set('ac', `${acGeneral ? 'g' : ''}${acSpecial ? 's' : ''}${acBoth ? 'b' : ''}${acNone ? 'n' : ''}`);
     }
@@ -513,7 +547,7 @@ export default function RealDataSankeyPage() {
     } else {
       window.history.replaceState(null, '', url);
     }
-  }, [selectedNodeId, pinnedProjectId, pinnedRecipientId, pinnedMinistryName, recipientOffset, offsetTarget, projectOffset, topMinistry, topProject, topRecipient, showLabels, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, autoFocusRelated, filterOnMinistryClick, year, searchQuery, showFilterPanel, filterProjectName, filterProjectNameRegex, filterRecipientName, filterRecipientNameRegex, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, acGeneral, acSpecial, acBoth, acNone]);
+  }, [selectedNodeId, pinnedProjectId, pinnedRecipientId, pinnedMinistryName, recipientOffset, offsetTarget, projectOffset, topMinistry, topProject, topRecipient, showLabels, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, autoFocusRelated, filterOnMinistryClick, year, searchQuery, showFilterPanel, filterProjectName, filterProjectNameRegex, filterRecipientName, filterRecipientNameRegex, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN, acGeneral, acSpecial, acBoth, acNone]);
 
   // Keep zoomRef in sync for debounce callbacks
   // (declared before zoom state so the effect below can reference it)
@@ -690,7 +724,7 @@ export default function RealDataSankeyPage() {
     pendingHistoryAction.current = 'replace';
     setRecipientOffset(0);
     setProjectOffset(0);
-  }, [filterMinistryNames, debouncedFilterProjectName, debouncedFilterRecipientName, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText]);
+  }, [filterMinistryNames, debouncedFilterProjectName, debouncedFilterRecipientName, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN]);
 
   // Sync URL when filter name query changes (separate from above to avoid double reset)
   const filterQueryInitRef = useRef(false);
@@ -1202,6 +1236,21 @@ export default function RealDataSankeyPage() {
     return m;
   }, [graphData]);
 
+  // 政策評価サマリ（事業単位）。サーバ側で算出済みの軽量データを年度ごとに取得する。
+  // 取得に失敗しても Sankey 本体の表示は妨げない（スコア欄が出ないだけ）。
+  const [policySummary, setPolicySummary] = useState<PolicySummaryResponse | null>(null);
+  const [policyError, setPolicyError] = useState<string | null>(null);
+  useEffect(() => {
+    let aborted = false;
+    setPolicySummary(null);
+    setPolicyError(null);
+    fetch(`/api/policy-summary?year=${year}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((json: PolicySummaryResponse) => { if (!aborted) setPolicySummary(json); })
+      .catch((e: Error) => { if (!aborted) setPolicyError(e.message || '取得失敗'); });
+    return () => { aborted = true; };
+  }, [year]);
+
   // Pre-filter exclusion set: built from filter conditions, applied before filterTopN
   const filterExcludedIds = useMemo(() => {
     if (!graphData) return null;
@@ -1230,7 +1279,20 @@ export default function RealDataSankeyPage() {
     const hasRecipientName = trimmedRecipientName.length >= 1;
     const hasMinistry = filterMinistryNames.length > 0;
     const hasAccountFilter = !acGeneral || !acSpecial || !acBoth || !acNone;
-    if (!hasBudget && !hasSpending && !hasProjectName && !hasRecipientName && !hasMinistry && !hasAccountFilter) return null;
+    // 政策評価スコアの足きり。スコアは policySummary から pid で引く（未ロード時は効かせない）
+    const parseScoreBound = (t: string): number | null => {
+      const trimmed = t.trim();
+      if (trimmed === '') return null;
+      const v = Number(trimmed);
+      return Number.isFinite(v) ? v : null;
+    };
+    const scoreFilters = ([
+      ['o', filterScoreO], ['x', filterScoreX], ['n', filterScoreN],
+    ] as const)
+      .map(([key, r]) => ({ key, min: parseScoreBound(r.min), max: parseScoreBound(r.max) }))
+      .filter(f => f.min !== null || f.max !== null);
+    const hasScore = scoreFilters.length > 0 && policySummary !== null;
+    if (!hasBudget && !hasSpending && !hasProjectName && !hasRecipientName && !hasMinistry && !hasAccountFilter && !hasScore) return null;
     const selectedMinistrySet = new Set(filterMinistryNames);
     const minBudget = minBudgetYen ?? -Infinity;
     const maxBudget = maxBudgetYen ?? Infinity;
@@ -1264,7 +1326,18 @@ export default function RealDataSankeyPage() {
           if (cat === 'both') return !acBoth;
           return !acNone; // undefined → 'none'
         })();
-        if (failBudget || failProjectName || failMinistry || failAccount) { excluded.add(n.id); if (sn) excluded.add(sn.id); }
+        // 足きり指定時、未評価（スコア無し）の事業は落とす。0点扱いで残すと絞り込みの意味が薄れる
+        const failScore = hasScore && (() => {
+          const entry = policySummary!.items[String(n.projectId)];
+          for (const f of scoreFilters) {
+            const v = entry?.[f.key];
+            if (v === null || v === undefined) return true;
+            if (f.min !== null && v < f.min) return true;
+            if (f.max !== null && v > f.max) return true;
+          }
+          return false;
+        })();
+        if (failBudget || failProjectName || failMinistry || failAccount || failScore) { excluded.add(n.id); if (sn) excluded.add(sn.id); }
       } else if (n.type === 'recipient') {
         const failSpending = hasSpending && (n.value < minSpending || n.value > maxSpending);
         const failRecipientName = matchesRecipient !== null && !matchesRecipient(n.name);
@@ -1272,7 +1345,7 @@ export default function RealDataSankeyPage() {
       }
     }
     // Pass 2: 支出先・予算フィルタが有効な場合、残存支出先のない事業／孤立支出先を除外
-    if (hasSpending || hasBudget || hasMinistry || hasRecipientName) {
+    if (hasSpending || hasBudget || hasMinistry || hasRecipientName || hasScore) {
       const projectsWithSurvivingRecipients = new Set(
         graphData.edges
           .filter(e => e.target.startsWith('r-') && !excluded.has(e.target))
@@ -1311,7 +1384,7 @@ export default function RealDataSankeyPage() {
       }
     }
     return excluded.size > 0 ? excluded : null;
-  }, [graphData, selectedNodeId, pinnedProjectId, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, debouncedFilterProjectName, debouncedFilterRecipientName, filterProjectNameRegex, filterRecipientNameRegex, acGeneral, acSpecial, acBoth, acNone]);
+  }, [graphData, selectedNodeId, pinnedProjectId, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN, policySummary, debouncedFilterProjectName, debouncedFilterRecipientName, filterProjectNameRegex, filterRecipientNameRegex, acGeneral, acSpecial, acBoth, acNone]);
 
   const filtered = useMemo(() => {
     if (!graphData) return null;
@@ -1781,6 +1854,7 @@ export default function RealDataSankeyPage() {
   const overviewResizeRef = useRef<{ startY: number; startH: number } | null>(null);
   const budgetExecutionResizeRef = useRef<{ startY: number; startH: number } | null>(null);
   const [projectDetailCache, setProjectDetailCache] = useState<Map<string, ProjectDetail | null>>(new Map());
+
   const [panelTab, setPanelTab] = useState<'ministry' | 'project' | 'recipient'>('ministry');
   // Auto-select panel tab based on selected node type.
   // selectedNode is derived from selectedNodeId and won't change for the same id
@@ -2219,6 +2293,9 @@ export default function RealDataSankeyPage() {
     filterRecipientName !== '' ||
     filterMinBudgetText !== '' || filterMaxBudgetText !== '' ||
     filterMinSpendingText !== '' || filterMaxSpendingText !== '' ||
+    scoreRangeToParam(filterScoreO) !== null ||
+    scoreRangeToParam(filterScoreX) !== null ||
+    scoreRangeToParam(filterScoreN) !== null ||
     !(acGeneral && acSpecial && acBoth && acNone);
 
   const clearAllFilters = useCallback(() => {
@@ -2234,6 +2311,9 @@ export default function RealDataSankeyPage() {
     setFilterMaxBudgetText('');
     setFilterMinSpendingText('');
     setFilterMaxSpendingText('');
+    setFilterScoreO(EMPTY_SCORE_RANGE);
+    setFilterScoreX(EMPTY_SCORE_RANGE);
+    setFilterScoreN(EMPTY_SCORE_RANGE);
     setAcGeneral(true);
     setAcSpecial(true);
     setAcBoth(true);
@@ -2583,6 +2663,125 @@ export default function RealDataSankeyPage() {
       numberFontPx={META_FONT_PX_DEFAULT}
     />
   );
+
+  // 右上クラスタに入れるツール群（TopN・オフセット操作）。スマホ幅では従来どおり左下に絶対配置
+  const offsetControlsBlock = filtered ? (() => {
+        // Recipient offset mode
+        const maxRecipOffset = Math.max(0, filtered.totalRecipientCount - topRecipient);
+        const clampedOffset = Math.min(recipientOffset, maxRecipOffset);
+        const recipRangeStart = clampedOffset + 1;
+        const recipRangeEnd = Math.min(clampedOffset + topRecipient, filtered.totalRecipientCount);
+        const recipMaxStartRank = maxRecipOffset + 1;
+        // Project offset mode
+        const maxProjOffset = Math.max(0, filtered.totalProjectCount - topProject);
+        const clampedProjOffset = Math.min(projectOffset, maxProjOffset);
+        const projRangeStart = clampedProjOffset + 1;
+        const projRangeEnd = Math.min(clampedProjOffset + topProject, filtered.totalProjectCount);
+        // Active values for shared controls
+        const isProjectMode = offsetTarget === 'project';
+        const activeOffset = isProjectMode ? clampedProjOffset : clampedOffset;
+        const activeMax = isProjectMode ? maxProjOffset : maxRecipOffset;
+        const activeTotalCount = isProjectMode ? filtered.totalProjectCount : filtered.totalRecipientCount;
+        const activeRangeStart = isProjectMode ? projRangeStart : recipRangeStart;
+        const activeRangeEnd = isProjectMode ? projRangeEnd : recipRangeEnd;
+        const activeMaxStartRank = isProjectMode ? maxProjOffset + 1 : recipMaxStartRank;
+        const setActiveOffset = (v: number) => {
+          pendingHistoryAction.current = 'replace';
+          if (isProjectMode) setProjectOffset(v); else setRecipientOffset(v);
+        };
+        return (
+          <div ref={offsetControlRef} style={ isCompactWidth
+            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
+            : { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
+            {/* Row 1: オフセットスライダー（2列スパン） */}
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* オフセット対象コンボボックス */}
+              <select
+                data-testid={testId('offset-target-select')}
+                value={offsetTarget}
+                onChange={e => { pendingHistoryAction.current = 'replace'; setOffsetTarget(e.target.value as 'recipient' | 'project'); }}
+                style={{ fontSize: META_FONT_PX, border: '1px solid #ccc', borderRadius: 3, padding: '1px 2px', background: '#fff', color: '#555', cursor: 'pointer' }}
+              >
+                <option value="project">事業</option>
+                <option value="recipient">支出先</option>
+              </select>
+              <label style={{ flex: isCompactWidth ? '0 0 auto' : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {/* スマホ幅では「Top」ラベルを省き数値だけ表示 */}
+                {!isCompactWidth && <span style={{ color: '#555', fontSize: META_FONT_PX }}>Top</span>}
+                {isEditingOffset ? (
+                  <input
+                    type="number"
+                    autoFocus
+                    min={1} max={activeMaxStartRank} step={1}
+                    value={offsetInputValue}
+                    onChange={e => { setOffsetInputValue(e.target.value); const v = Number(e.target.value); if (!isNaN(v) && v >= 1) setActiveOffset(Math.max(0, Math.min(activeMax, v - 1))); }}
+                    onBlur={() => setIsEditingOffset(false)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setIsEditingOffset(false); }}
+                    style={{ width: `${Math.max(40, String(activeMaxStartRank).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => { setOffsetInputValue(String(activeRangeStart)); setIsEditingOffset(true); }}
+                    title="クリックして開始位置を入力"
+                    style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
+                  >{activeRangeStart}</button>
+                )}
+                <span style={{ color: '#999', fontSize: META_FONT_PX }}>~{activeRangeEnd}</span>
+                <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: 60 }} />
+                {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
+                {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
+                  {([
+                    [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
+                    [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
+                  ] as [number, string, string][]).map(([delta, path, title]) => (
+                    <button key={delta} title={title} aria-label={title}
+                      data-testid={testId(delta > 0 ? 'recipient-offset-next' : 'recipient-offset-prev')}
+                      {...offsetRepeat(() => {
+                        pendingHistoryAction.current = 'replace';
+                        pendingFocusId.current = null;
+                        if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+                        else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+                      }, { stopPropagation: true })}
+                      onClick={(e) => {
+                        if (e.detail === 0) {
+                          setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + delta)));
+                        }
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
+                    </button>
+                  ))}
+                </div>
+                {/* Material Icons: vertical_align_top — オフセットリセット */}
+                <button onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555" style={{ transform: 'rotate(-90deg)' }}><path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>
+                </button>
+              </label>
+            </div>
+            {/* Row 2: 事業・支出先 TopN スライダー（スマホ幅では設定ダイアログへ移動） */}
+            {!isCompactWidth && showTopNSliders && topNSlidersFragment}
+          </div>
+          {/* トグルボタン（パネル外・下部）— スマホ幅では設定ダイアログにTopNを移すため非表示 */}
+          {!isCompactWidth && (
+          <button
+            onClick={() => setShowTopNSliders(s => !s)}
+            title={showTopNSliders ? 'TopN設定 を隠す' : 'TopN設定 を表示'}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', borderTop: 'none', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderRadius: '0 0 4px 4px', cursor: 'pointer', padding: '0 2px', marginTop: -1, userSelect: 'none' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#bbb">
+              <path d={showTopNSliders ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z' : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'} />
+            </svg>
+          </button>
+          )}
+          </div>
+        );
+  })() : null;
 
   return (
     <div
@@ -3477,6 +3676,70 @@ export default function RealDataSankeyPage() {
                 </div>
               </div>
 
+              {/* 政策評価 — 事業ノード（非集約）でスコアが取得できているときのみ */}
+              {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending')
+                && !selectedNode.aggregated && selectedNode.projectId != null && policyError && (
+                <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '7px 14px' }}>
+                  <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>政策評価</span>
+                  <span style={{ marginLeft: 8, fontSize: META_FONT_PX, color: '#c0392b' }}>
+                    読み込めませんでした（{policyError}）
+                  </span>
+                </div>
+              )}
+              {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending')
+                && !selectedNode.aggregated && selectedNode.projectId != null && policySummary && (() => {
+                const entry = policySummary.items[String(selectedNode.projectId)];
+                if (!entry) return null;
+                const rec = entry.r ? policySummary.recommendations[entry.r] : null;
+                const act = entry.a ? policySummary.actions[entry.a] : null;
+                // /quality と同じ配色。判断の強さで色を変える
+                const recColor = !rec ? '#999'
+                  : rec === '継続' ? '#2d7d46'
+                  : rec === '要改善' ? '#3b82f6'
+                  : rec === '再設計' || rec === '終了・廃止候補' ? '#d94545'
+                  : '#d98a20';
+                const scoreColor = (v: number | null) => v == null ? '#999'
+                  : v >= 90 ? '#2d7d46' : v >= 70 ? '#3b82f6' : v >= 50 ? '#d98a20' : '#d94545';
+                const category = entry.c ? policySummary.categories[entry.c] : null;
+                // 5軸のうち、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸を並べる。
+                // 残り3軸（成果設計・検証可能性・執行透明性）は /quality 側で確認する。
+                const cells: Array<[string, number | null]> = [
+                  ['総合点', entry.o], ['費用対内容', entry.x], ['必要性', entry.n],
+                ];
+                return (
+                  <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '8px 14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>政策評価</span>
+                      <span style={{ fontSize: META_FONT_PX, color: '#aaa' }}>暫定</span>
+                      {category && (
+                        <span style={{ background: '#f0f0f0', color: '#666', padding: '1px 6px', borderRadius: 9, fontSize: META_FONT_PX, whiteSpace: 'nowrap' }}>{category}</span>
+                      )}
+                      <a href={`/quality?pid=${selectedNode.projectId}`} target="_blank" rel="noopener noreferrer"
+                        style={{ marginLeft: 'auto', fontSize: META_FONT_PX, color: '#4a90d9', textDecoration: 'none' }}
+                      >一覧で見る →</a>
+                    </div>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+                      {cells.map(([label, value]) => (
+                        <div key={label} style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: PANEL_META_FONT_PX + 4, fontWeight: 700, lineHeight: 1, color: scoreColor(value), fontFamily: 'monospace' }}>
+                            {value ?? '—'}
+                          </div>
+                          <div style={{ fontSize: META_FONT_PX, color: '#999', marginTop: 3 }}>{label}</div>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                        {rec && (
+                          <span style={{ background: recColor, color: '#fff', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 600, whiteSpace: 'nowrap' }}>{rec}</span>
+                        )}
+                        {act && (
+                          <span style={{ background: '#e8f1fb', color: '#2b6cb0', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 600, whiteSpace: 'nowrap' }}>{act}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* 事業概要アコーディオン — project-budget / project-spending（非集約）のみ */}
               {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending') && !selectedNode.aggregated && selectedNode.projectId != null && (() => {
                 const pid = selectedNode.projectId;
@@ -3991,24 +4254,6 @@ export default function RealDataSankeyPage() {
         </div>
       )}
 
-      {/* Year selector — top center（スマホ幅では検索ボックスに隠れるため設定ダイアログへ移動） */}
-      {!isCompactWidth && (
-      <div data-pan-disabled="true" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 15 }}>
-        <select
-          data-testid={testId('year-select')}
-          value={year}
-          onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
-          style={{ fontSize: CONTROL_FONT_PX, border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 28px 6px 10px', background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', color: '#333', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
-        >
-          <option value="2025">2025年度</option>
-          <option value="2024">2024年度</option>
-        </select>
-        {/* dropdown arrow */}
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-          <path d="M7 10l5 5 5-5z"/>
-        </svg>
-      </div>
-      )}
 
       {/* Search box — top left */}
       {/* zIndex は サイドパネル(25) より下。列ヘッダー(8)/年度(15)/設定ダイアログ(19) より上、
@@ -4267,7 +4512,7 @@ export default function RealDataSankeyPage() {
                       placeholder="例: 100億、50万"
                       style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(minText) !== null || !minText ? '#ddd' : '#e53935'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
                     />
-                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#aaa', flexShrink: 0 }}>〜</span>
+                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#aaa', flexShrink: 0 }}>~</span>
                     <input type="text" value={maxText} onChange={e => setMax(e.target.value)}
                       placeholder="例: 1兆、500億"
                       style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(maxText) !== null || !maxText ? '#ddd' : '#e53935'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
@@ -4278,6 +4523,40 @@ export default function RealDataSankeyPage() {
                     )}
                   </div>
                 ))}
+                {/* 政策評価スコアの足きり（0-100）。/quality の総合点・費用対内容・必要性と同じ値。
+                    ラベルにマウスを乗せると軸の意味が出る */}
+                {([
+                  { label: '総合点', title: 'AI政策評価の総合点（0-100）。/quality の総合点と同じ値', range: filterScoreO, set: setFilterScoreO },
+                  { label: '費用対', title: '費用対内容（0-100）。金額が活動の規模に見合っているか', range: filterScoreX, set: setFilterScoreX },
+                  { label: '必要性', title: '必要性（0-100）。廃止したら誰が具体的に困るか', range: filterScoreN, set: setFilterScoreN },
+                ] as const).map(({ label, title, range, set }) => {
+                  const bad = (t: string) => {
+                    const s = t.trim();
+                    if (s === '') return false;
+                    const v = Number(s);
+                    return !Number.isFinite(v) || v < 0 || v > 100;
+                  };
+                  return (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span title={title} style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0, cursor: 'help' }}>{label}</span>
+                      <input type="text" inputMode="numeric" value={range.min}
+                        onChange={e => { pendingHistoryAction.current = 'replace'; set({ ...range, min: e.target.value }); }}
+                        placeholder="下限 0"
+                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.min) ? '#e53935' : '#ddd'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                      />
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#aaa', flexShrink: 0 }}>~</span>
+                      <input type="text" inputMode="numeric" value={range.max}
+                        onChange={e => { pendingHistoryAction.current = 'replace'; set({ ...range, max: e.target.value }); }}
+                        placeholder="上限 100"
+                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.max) ? '#e53935' : '#ddd'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                      />
+                      {(range.min || range.max) && (
+                        <button type="button" onClick={() => { pendingHistoryAction.current = 'replace'; set(EMPTY_SCORE_RANGE); }}
+                          style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>{/* end card */}
@@ -4326,6 +4605,91 @@ export default function RealDataSankeyPage() {
             </svg>
           </button>
 
+
+              {/* 表示設定(⋮) — 検索ボックスの隣（左上）。ダイアログは右方向へ開く */}
+          <div style={{ position: 'relative', flexShrink: 0, zIndex: 21 }}>
+            <button
+              onClick={() => setShowSettings(s => !s)}
+              aria-label="表示設定を開く"
+              aria-expanded={showSettings}
+              aria-controls="sankey-topn-settings"
+              aria-haspopup="dialog"
+              style={{ width: 32, height: 32, border: 'none', borderRadius: 6, background: showSettings ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {/* Material Icons: more_vert */}
+              <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#888'}>
+                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              </svg>
+            </button>
+            {showSettings && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
+                <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
+                  {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
+                  {isCompactWidth && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                      <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
+                      <select
+                        data-testid={testId('year-select-settings')}
+                        value={year}
+                        onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
+                        style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
+                        data-pan-disabled
+                      >
+                        <option value="2025">2025年度</option>
+                        <option value="2024">2024年度</option>
+                      </select>
+                    </div>
+                  )}
+                  {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
+                  {isCompactWidth && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                      <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
+                      {topNSlidersFragment}
+                    </div>
+                  )}
+                  {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
+                  {isCompactWidth && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                      <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+                      {fontSizeControlsFragment}
+                    </div>
+                  )}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: '#555' }}>事業ノードの並び順:</span>
+                    <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
+                      <option value="budget">予算額</option>
+                      <option value="spending">支出額</option>
+                    </select>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                    <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
+                  </label>
+                </div>
+              </>
+            )}
+          </div>
         </div>{/* end Row 1 flex */}
 
         {/* Dropdown */}
@@ -4381,207 +4745,30 @@ export default function RealDataSankeyPage() {
       </div>
 
       {/* Top-right panel: offset slider */}
-      {filtered && (() => {
-        // Recipient offset mode
-        const maxRecipOffset = Math.max(0, filtered.totalRecipientCount - topRecipient);
-        const clampedOffset = Math.min(recipientOffset, maxRecipOffset);
-        const recipRangeStart = clampedOffset + 1;
-        const recipRangeEnd = Math.min(clampedOffset + topRecipient, filtered.totalRecipientCount);
-        const recipMaxStartRank = maxRecipOffset + 1;
-        // Project offset mode
-        const maxProjOffset = Math.max(0, filtered.totalProjectCount - topProject);
-        const clampedProjOffset = Math.min(projectOffset, maxProjOffset);
-        const projRangeStart = clampedProjOffset + 1;
-        const projRangeEnd = Math.min(clampedProjOffset + topProject, filtered.totalProjectCount);
-        // Active values for shared controls
-        const isProjectMode = offsetTarget === 'project';
-        const activeOffset = isProjectMode ? clampedProjOffset : clampedOffset;
-        const activeMax = isProjectMode ? maxProjOffset : maxRecipOffset;
-        const activeTotalCount = isProjectMode ? filtered.totalProjectCount : filtered.totalRecipientCount;
-        const activeRangeStart = isProjectMode ? projRangeStart : recipRangeStart;
-        const activeRangeEnd = isProjectMode ? projRangeEnd : recipRangeEnd;
-        const activeMaxStartRank = isProjectMode ? maxProjOffset + 1 : recipMaxStartRank;
-        const setActiveOffset = (v: number) => {
-          pendingHistoryAction.current = 'replace';
-          if (isProjectMode) setProjectOffset(v); else setRecipientOffset(v);
-        };
-        return (
-          <div ref={offsetControlRef} style={ isCompactWidth
-            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
-            : { position: 'absolute', top: 12, right: 52, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
-            {/* Row 1: オフセットスライダー（2列スパン） */}
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center' }}>
-              {/* オフセット対象コンボボックス */}
-              <select
-                data-testid={testId('offset-target-select')}
-                value={offsetTarget}
-                onChange={e => { pendingHistoryAction.current = 'replace'; setOffsetTarget(e.target.value as 'recipient' | 'project'); }}
-                style={{ fontSize: META_FONT_PX, border: '1px solid #ccc', borderRadius: 3, padding: '1px 2px', background: '#fff', color: '#555', cursor: 'pointer' }}
-              >
-                <option value="project">事業</option>
-                <option value="recipient">支出先</option>
-              </select>
-              <label style={{ flex: isCompactWidth ? '0 0 auto' : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                {/* スマホ幅では「Top」ラベルを省き数値だけ表示 */}
-                {!isCompactWidth && <span style={{ color: '#555', fontSize: META_FONT_PX }}>Top</span>}
-                {isEditingOffset ? (
-                  <input
-                    type="number"
-                    autoFocus
-                    min={1} max={activeMaxStartRank} step={1}
-                    value={offsetInputValue}
-                    onChange={e => { setOffsetInputValue(e.target.value); const v = Number(e.target.value); if (!isNaN(v) && v >= 1) setActiveOffset(Math.max(0, Math.min(activeMax, v - 1))); }}
-                    onBlur={() => setIsEditingOffset(false)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setIsEditingOffset(false); }}
-                    style={{ width: `${Math.max(40, String(activeMaxStartRank).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
-                  />
-                ) : (
-                  <button
-                    onClick={() => { setOffsetInputValue(String(activeRangeStart)); setIsEditingOffset(true); }}
-                    title="クリックして開始位置を入力"
-                    style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
-                  >{activeRangeStart}</button>
-                )}
-                <span style={{ color: '#999', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
-                <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: 60 }} />
-                {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
-                {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
-                <div style={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                  {([
-                    [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
-                    [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
-                  ] as [number, string, string][]).map(([delta, path, title]) => (
-                    <button key={delta} title={title} aria-label={title}
-                      data-testid={testId(delta > 0 ? 'recipient-offset-next' : 'recipient-offset-prev')}
-                      {...offsetRepeat(() => {
-                        pendingHistoryAction.current = 'replace';
-                        pendingFocusId.current = null;
-                        if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                        else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                      }, { stopPropagation: true })}
-                      onClick={(e) => {
-                        if (e.detail === 0) {
-                          setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + delta)));
-                        }
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
-                    </button>
-                  ))}
-                </div>
-                {/* Material Icons: vertical_align_top — オフセットリセット */}
-                <button onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
-                  onContextMenu={(e) => e.preventDefault()}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555" style={{ transform: 'rotate(-90deg)' }}><path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>
-                </button>
-              </label>
-            </div>
-            {/* Row 2: 事業・支出先 TopN スライダー（スマホ幅では設定ダイアログへ移動） */}
-            {!isCompactWidth && showTopNSliders && topNSlidersFragment}
-          </div>
-          {/* トグルボタン（パネル外・下部）— スマホ幅では設定ダイアログにTopNを移すため非表示 */}
-          {!isCompactWidth && (
-          <button
-            onClick={() => setShowTopNSliders(s => !s)}
-            title={showTopNSliders ? 'TopN設定 を隠す' : 'TopN設定 を表示'}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', borderTop: 'none', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderRadius: '0 0 4px 4px', cursor: 'pointer', padding: '0 2px', marginTop: -1, userSelect: 'none' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#bbb">
-              <path d={showTopNSliders ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z' : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'} />
-            </svg>
-          </button>
-          )}
-          </div>
-        );
-      })()}
+      {isCompactWidth && offsetControlsBlock}
 
-      {/* Settings button — independent, top right（ダイアログを最前面にするため高いzIndex） */}
-      <div style={{ position: 'absolute', top: 14, right: 12, zIndex: 200 }}>
-        <button
-          onClick={() => setShowSettings(s => !s)}
-          aria-label="表示設定を開く"
-          aria-expanded={showSettings}
-          aria-controls="sankey-topn-settings"
-          aria-haspopup="dialog"
-          style={{ width: 32, height: 32, border: 'none', borderRadius: 6, background: showSettings ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          {/* Material Icons: more_vert */}
-          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#888'}>
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+      {/* 右上クラスタ: ツール(TopN・オフセット) - 年度 - ページ切替。全ページ共通の並びに揃える */}
+      <div data-pan-disabled="true" style={{ position: 'absolute', top: 12, right: 12, zIndex: 30, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        {!isCompactWidth && offsetControlsBlock}
+        {/* 年度セレクト（スマホ幅では設定ダイアログへ移動） */}
+        {!isCompactWidth && (
+        <div data-pan-disabled="true" style={{ position: 'relative', flexShrink: 0 }}>
+          <select
+            data-testid={testId('year-select')}
+            value={year}
+            onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
+            style={{ fontSize: CONTROL_FONT_PX, border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 28px 6px 10px', background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', color: '#333', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+          >
+            <option value="2025">2025年度</option>
+            <option value="2024">2024年度</option>
+          </select>
+          {/* dropdown arrow */}
+          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+            <path d="M7 10l5 5 5-5z"/>
           </svg>
-        </button>
-        {showSettings && (
-          <>
-            <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
-            <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
-              {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
-              {isCompactWidth && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
-                  <select
-                    data-testid={testId('year-select-settings')}
-                    value={year}
-                    onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
-                    style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
-                    data-pan-disabled
-                  >
-                    <option value="2025">2025年度</option>
-                    <option value="2024">2024年度</option>
-                  </select>
-                </div>
-              )}
-              {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
-              {isCompactWidth && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
-                  {topNSlidersFragment}
-                </div>
-              )}
-              {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
-              {isCompactWidth && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
-                  {fontSizeControlsFragment}
-                </div>
-              )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#555' }}>事業ノードの並び順:</span>
-                <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
-                  <option value="budget">予算額</option>
-                  <option value="spending">支出額</option>
-                </select>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
-              </label>
-            </div>
-          </>
+        </div>
         )}
+        <PageNavMenu current="/sankey-svg" theme="light" />
       </div>
 
       {/* Zoom controls — bottom right (sankey2 style) */}

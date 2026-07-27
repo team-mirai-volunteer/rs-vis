@@ -1,0 +1,100 @@
+{
+  "year": 2025,
+  "sampleSize": 576,
+  "categories": 32,
+  "maxChars": 1200,
+  "seed": 42,
+  "results": [
+    {
+      "model": "google/gemini-embedding-001",
+      "dim": 3072,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.6197916666666666,
+      "knnMacroF1": 0.5882306985143015,
+      "ministryKnnAcc": 0.7326388888888888,
+      "silhouette": 0.04565656557679176,
+      "kmeansAri": 0.29312682350893593,
+      "kmeansNmi": 0.5918340105270374,
+      "umapKnnAcc": 0.5677083333333334
+    },
+    {
+      "model": "openai/text-embedding-3-large",
+      "dim": 3072,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5902777777777778,
+      "knnMacroF1": 0.5596255982354803,
+      "ministryKnnAcc": 0.6996527777777778,
+      "silhouette": 0.03852704539895058,
+      "kmeansAri": 0.2507948399671657,
+      "kmeansNmi": 0.5685032151286241,
+      "umapKnnAcc": 0.5069444444444444
+    },
+    {
+      "model": "openai/text-embedding-3-small",
+      "dim": 1536,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5416666666666666,
+      "knnMacroF1": 0.5158615953546813,
+      "ministryKnnAcc": 0.6805555555555556,
+      "silhouette": 0.02396395057439804,
+      "kmeansAri": 0.22144870205401748,
+      "kmeansNmi": 0.5473108156134474,
+      "umapKnnAcc": 0.4965277777777778
+    },
+    {
+      "model": "qwen/qwen3-embedding-8b",
+      "dim": 4096,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5885416666666666,
+      "knnMacroF1": 0.5570877029954069,
+      "ministryKnnAcc": 0.6875,
+      "silhouette": 0.04068407788872719,
+      "kmeansAri": 0.2327351003963835,
+      "kmeansNmi": 0.5587568125087546,
+      "umapKnnAcc": 0.515625
+    },
+    {
+      "model": "qwen/qwen3-embedding-4b",
+      "dim": 2560,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5902777777777778,
+      "knnMacroF1": 0.5630077816689291,
+      "ministryKnnAcc": 0.7048611111111112,
+      "silhouette": 0.039204612374305725,
+      "kmeansAri": 0.2518470763255116,
+      "kmeansNmi": 0.5620134010787469,
+      "umapKnnAcc": 0.4791666666666667
+    },
+    {
+      "model": "baai/bge-m3",
+      "dim": 1024,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5399305555555556,
+      "knnMacroF1": 0.5120694445916649,
+      "ministryKnnAcc": 0.6649305555555556,
+      "silhouette": 0.02261965721845627,
+      "kmeansAri": 0.1725463431766784,
+      "kmeansNmi": 0.5015765991181906,
+      "umapKnnAcc": 0.4236111111111111
+    },
+    {
+      "model": "intfloat/multilingual-e5-large",
+      "dim": 1024,
+      "costUsd": 0.0,
+      "fetched": 0,
+      "knnAcc": 0.5590277777777778,
+      "knnMacroF1": 0.5342132210432327,
+      "ministryKnnAcc": 0.6909722222222222,
+      "silhouette": 0.021937504410743713,
+      "kmeansAri": 0.2291044990451699,
+      "kmeansNmi": 0.5467595310745246,
+      "umapKnnAcc": 0.4583333333333333
+    }
+  ]
+}

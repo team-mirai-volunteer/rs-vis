@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T16:10:51.919Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "anchored",
+  "rubricVersion": "axis-e-anchored-0to10",
+  "promptVersion": "openrouter-rubric-anchored-v1",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": null,
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T16:10:16.158Z",
+      "elapsedMs": 35759,
+      "usage": {
+        "prompt_tokens": 34155,
+        "completion_tokens": 5032,
+        "total_tokens": 39187,
+        "reportedCost": 0.0652383,
+        "calculatedCost": 0.064347
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6アンカーより、受給者への給付と所得保障の便益経路が直接的で明確。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6アンカーと同様、対象制度と国庫負担は明確だが、国民への便益は制度経由で間接的。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6アンカーより、困窮者への8扶助と最低生活保障・自立の便益が具体的。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8アンカーと同様、職員配置改善等は具体的だが、子どもの便益発現は施設経由で間接的。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 10,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=10] スコア10アンカーと同一で、対象・給付内容・進学率格差への便益が定量的につながる。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=4] スコア4アンカーと同一で、交付対象や整備内容は包括的で便益は抽象的。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8アンカーより、開通延長と速達性指標により活動から便益までの検証性が高い。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8アンカーと同様、整備不足を定量化し改修内容も具体的だが成果経路は間接的。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8アンカーと同様、海上輸送比率と港湾工事は明確だが、費用低減の経路は間接的。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6アンカーより、被災施設の復旧活動と再度災害防止の便益が具体的だが定量性に乏しい。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカー同様、課題・支援活動は具体的だが、便益は供給安定化を経由して間接的である。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカーより、世界シェア低下と国内150GWh目標、設備投資・技術開発の対応が具体的である。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカー同様、課題と複数の支援活動は具体的だが、企業の生産性向上への経路は間接的である。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカー同様、シェア2.3％の課題と研究開発活動は具体的だが、便益は普及後に発現する。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカーより、燃料別の引下げ額と卸価格抑制から小売価格低下への経路が明確である。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] 6点アンカー同様、対象と給与費の3分の1負担は明確だが、教育便益の発現経路は不足する。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] 6点アンカーと同一事業であり、対象法人と交付金措置は明確だが、便益経路は一段階不足する。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] 8点アンカー同様、論文指標の低下と研究費助成は具体的だが、研究力向上への便益は間接的である。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] 6点アンカーより、国指定文化財等の対象と保存修理・伝承活動、次世代継承の便益が明確である。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=10] 10点アンカー同様、所得層・支給額・対象生徒と負担軽減の便益は明確だが、成果指標が不足する。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=10] スコア10に近く、定量的課題と補助による便益経路は明確だが、成果実績の定量性がやや不足する。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6に近いが、対象地域・分野が広く、資金供与から日本の便益までの経路も間接的である。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6より対象地域と施設整備等の活動が具体的で、負担軽減と抑止力強化の便益も示される。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6より対象機種と更新理由、取得活動が明確だが、抑止力向上の成果は定量化されていない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=6] スコア6と同程度で、対象府省と監理・共通化活動は明確だが、国民便益への経路は抽象的である。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8に近いが、製品DBによる安全・効率化の経路は明確な一方、課題の定量性が不足する。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8のアンカーそのもので、定量的課題、具体的活動、期待便益の経路が整っている。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8より対象と対策が具体的で、啓発・遮断・捜査から被害減少への経路も直接的である。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=8] スコア8に近く対象・活動は具体的だが、意見反映という便益の測定可能性と課題の定量性が弱い。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[近傍アンカー=2] スコア2のアンカーそのもので、活動は明確だが国民一般への便益経路は抽象的である。"
+        }
+      ]
+    }
+  ]
+}

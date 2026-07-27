@@ -1,0 +1,699 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-27T05:15:59.713Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "unified",
+  "rubricVersion": "policy-unified-anchored-0to10",
+  "promptVersion": "openrouter-rubric-unified-v10-taxonomy",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": {
+    "min": 0,
+    "max": 10
+  },
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-27T05:14:29.658Z",
+      "elapsedMs": 90054,
+      "usage": {
+        "prompt_tokens": 87067,
+        "completion_tokens": 11637,
+        "total_tokens": 98704,
+        "reportedCost": 0.1300714,
+        "calculatedCost": 0.156889
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 7,
+          "evidenceReadiness": 5,
+          "confidence": null,
+          "budgetProportionality": 10,
+          "necessity": 10,
+          "category": "pension",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "proportionality": 10,
+            "necessity": 10
+          },
+          "axisFindings": {
+            "design": "年金受給者への給付と所得喪失時の生活保障がつながるが、対象規模や便益の定量化は乏しい",
+            "evidence": "支払実績や経年アウトカムへの言及はあるが、具体的な指標値・目標値は示されない",
+            "proportionality": "300377.3億円÷法定給付対象者数（本文不明）＝単価算定不可だが、法定給付を受給者へ直接支給",
+            "necessity": "年金受給者が老齢・障害・遺族給付を失う。民間保険では皆年金を代替不能"
+          },
+          "finding": "設計:年金受給者への給付と所得喪失時の生活保障がつながるが、対象規模や便益の定量化は乏しい / 検証:支払実績や経年アウトカムへの言及はあるが、具体的な指標値・目標値は示されない / 費用対内容:300377.3億円÷法定給付対象者数（本文不明）＝単価算定不可だが、法定給付を受給者へ直接支給 / 必要性:年金受給者が老齢・障害・遺族給付を失う。民間保険では皆年金を代替不能"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 6,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 8,
+          "necessity": 9,
+          "category": "health_insurance",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "proportionality": 10,
+            "necessity": 10
+          },
+          "axisFindings": {
+            "design": "対象制度と国庫負担の活動は明確だが、保険料・医療アクセスへの便益経路が間接的",
+            "evidence": "国庫負担割合や執行額は示すが、医療アクセス等の成果指標・実績がない",
+            "proportionality": "101702.1億円÷45保険者等＝約2260億円/者、法定割合で配分するが患者への最終額は不明",
+            "necessity": "患者・高齢者の保険給付と保険者運営が逼迫。民間保険では皆保険を代替不能"
+          },
+          "finding": "設計:対象制度と国庫負担の活動は明確だが、保険料・医療アクセスへの便益経路が間接的 / 検証:国庫負担割合や執行額は示すが、医療アクセス等の成果指標・実績がない / 費用対内容:101702.1億円÷45保険者等＝約2260億円/者、法定割合で配分するが患者への最終額は不明 / 必要性:患者・高齢者の保険給付と保険者運営が逼迫。民間保険では皆保険を代替不能"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 7,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 9,
+          "necessity": 9,
+          "category": "public_assistance",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "proportionality": 10,
+            "necessity": 10
+          },
+          "axisFindings": {
+            "design": "困窮者、8扶助、最低生活保障という対象・活動・便益が具体化されている",
+            "evidence": "扶助の制度枠は明確だが、受給者の自立や生活改善の指標・実績がない",
+            "proportionality": "27835.2億円÷11自治体等＝約2530.5億円/者、法定扶助を自治体が直接実施",
+            "necessity": "困窮者が最低生活保障を失う。資力のない世帯を自治体給付以外で代替困難"
+          },
+          "finding": "設計:困窮者、8扶助、最低生活保障という対象・活動・便益が具体化されている / 検証:扶助の制度枠は明確だが、受給者の自立や生活改善の指標・実績がない / 費用対内容:27835.2億円÷11自治体等＝約2530.5億円/者、法定扶助を自治体が直接実施 / 必要性:困窮者が最低生活保障を失う。資力のない世帯を自治体給付以外で代替困難"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 8,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 6,
+          "necessity": 8,
+          "category": "childcare",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 4,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "子ども・保護者、給付や配置改善、待機児童解消の経路が比較的具体的",
+            "evidence": "配置基準や給付内容は示すが、待機児童・保育の質等の実績値がない",
+            "proportionality": "18774.1億円÷39自治体等＝約481.4億円/者、82%がその他で最終配分と単価が不明",
+            "necessity": "保護者が保育給付を失い就労継続困難。自治体・民間だけでは全国対応困難"
+          },
+          "finding": "設計:子ども・保護者、給付や配置改善、待機児童解消の経路が比較的具体的 / 検証:配置基準や給付内容は示すが、待機児童・保育の質等の実績値がない / 費用対内容:18774.1億円÷39自治体等＝約481.4億円/者、82%がその他で最終配分と単価が不明 / 必要性:保護者が保育給付を失い就労継続困難。自治体・民間だけでは全国対応困難"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 9,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetProportionality": 8,
+          "necessity": 8,
+          "category": "scholarship",
+          "nearestAnchors": {
+            "design": 10,
+            "evidence": 8,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "低所得世帯等の学生、減免・給付、進学格差縮小が定量根拠とともに接続している",
+            "evidence": "約35万人の支援実績と進学率推移があり、到達状況は検証できるが因果検証はない",
+            "proportionality": "5437.7億円÷約35万人＝約155.4万円/人、給付・減免に対応するが機構等を経由",
+            "necessity": "低所得学生が進学断念。民間奨学金では約35万人規模を代替困難"
+          },
+          "finding": "設計:低所得世帯等の学生、減免・給付、進学格差縮小が定量根拠とともに接続している / 検証:約35万人の支援実績と進学率推移があり、到達状況は検証できるが因果検証はない / 費用対内容:5437.7億円÷約35万人＝約155.4万円/人、給付・減免に対応するが機構等を経由 / 必要性:低所得学生が進学断念。民間奨学金では約35万人規模を代替困難"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 5,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 4,
+          "necessity": 7,
+          "category": "disaster",
+          "nearestAnchors": {
+            "design": 4,
+            "evidence": 4,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "地方公共団体への整備支援は明確だが、地域課題や改善規模が包括的で具体性に欠ける",
+            "evidence": "計画に成果指標を設定するが、基準値・目標値・実績値の記載がない",
+            "proportionality": "17353.5億円÷41団体等＝約423.3億円/者、76%がその他で使途・単価を確認しにくい",
+            "necessity": "住民が防災・安全整備を受けられない。自治体単独では財源確保が困難"
+          },
+          "finding": "設計:地方公共団体への整備支援は明確だが、地域課題や改善規模が包括的で具体性に欠ける / 検証:計画に成果指標を設定するが、基準値・目標値・実績値の記載がない / 費用対内容:17353.5億円÷41団体等＝約423.3億円/者、76%がその他で使途・単価を確認しにくい / 必要性:住民が防災・安全整備を受けられない。自治体単独では財源確保が困難"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 8,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetProportionality": 6,
+          "necessity": 7,
+          "category": "road",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 8,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "開通率88%、新規開通80kmと活動・便益を接続",
+            "evidence": "新規開通80kmの実績と速達性指標を掲載",
+            "proportionality": "13194.4億円÷80km＝約164.9億円/km、その他42%で内訳不明",
+            "necessity": "物流・地域の利用者が迂回や寸断に直面。民間単独は困難"
+          },
+          "finding": "設計:開通率88%、新規開通80kmと活動・便益を接続 / 検証:新規開通80kmの実績と速達性指標を掲載 / 費用対内容:13194.4億円÷80km＝約164.9億円/km、その他42%で内訳不明 / 必要性:物流・地域の利用者が迂回や寸断に直面。民間単独は困難"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": 4,
+          "necessity": 9,
+          "category": "river",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "堤防整備率7割を課題とし改修手法も具体的",
+            "evidence": "堤防整備率の背景値はあるが成果実績が乏しい",
+            "proportionality": "5398.6億円÷85先＝約63.5億円/先、その他・下請が不透明",
+            "necessity": "流域住民が洪水被害を受ける。民間代替は困難"
+          },
+          "finding": "設計:堤防整備率7割を課題とし改修手法も具体的 / 検証:堤防整備率の背景値はあるが成果実績が乏しい / 費用対内容:5398.6億円÷85先＝約63.5億円/先、その他・下請が不透明 / 必要性:流域住民が洪水被害を受ける。民間代替は困難"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": 6,
+          "necessity": 8,
+          "category": "port_airport",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "海上輸送99.6%を背景に港湾整備へ接続",
+            "evidence": "海上輸送99.6%の背景統計のみで成果実績なし",
+            "proportionality": "4081.4億円÷135先＝約30.2億円/先、その他22%で物量不明",
+            "necessity": "荷主・消費者が輸送停滞に直面。民間単独では調整困難"
+          },
+          "finding": "設計:海上輸送99.6%を背景に港湾整備へ接続 / 検証:海上輸送99.6%の背景統計のみで成果実績なし / 費用対内容:4081.4億円÷135先＝約30.2億円/先、その他22%で物量不明 / 必要性:荷主・消費者が輸送停滞に直面。民間単独では調整困難"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 7,
+          "evidenceReadiness": 5,
+          "confidence": null,
+          "budgetProportionality": 4,
+          "necessity": 9,
+          "category": "disaster",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 6,
+            "proportionality": 5,
+            "necessity": 10
+          },
+          "axisFindings": {
+            "design": "被災施設の復旧対象と改良復旧の活動は明確",
+            "evidence": "過年度実績の記載はあるが数値・達成度が弱い",
+            "proportionality": "7839億円÷54先＝約145.2億円/先、その他計44%で不明",
+            "necessity": "被災地域住民が道路・治水機能を失う。代替復旧なし"
+          },
+          "finding": "設計:被災施設の復旧対象と改良復旧の活動は明確 / 検証:過年度実績の記載はあるが数値・達成度が弱い / 費用対内容:7839億円÷54先＝約145.2億円/先、その他計44%で不明 / 必要性:被災地域住民が道路・治水機能を失う。代替復旧なし"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 8,
+          "category": "industry_subsidy",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "6件・約1.66兆円支援と国内生産拠点を接続",
+            "evidence": "認定6件と支援額は確認できるが生産成果なし",
+            "proportionality": "4713.9億円÷6計画＝約785.7億円/計画、基金先で最終配分不明",
+            "necessity": "半導体利用産業が供給途絶。民間単独では過少投資"
+          },
+          "finding": "設計:6件・約1.66兆円支援と国内生産拠点を接続 / 検証:認定6件と支援額は確認できるが生産成果なし / 費用対内容:4713.9億円÷6計画＝約785.7億円/計画、基金先で最終配分不明 / 必要性:半導体利用産業が供給途絶。民間単独では過少投資"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 9,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 4,
+          "necessity": 7,
+          "category": "industry_subsidy",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 4,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "国内150GWh目標と設備・技術補助を接続",
+            "evidence": "150GWh目標はあるが設備・技術の実績なし",
+            "proportionality": "4078億円÷1基金先＝4078億円/先、案件別配分不明",
+            "necessity": "電池利用産業が供給不足。民間投資や他制度で代替余地"
+          },
+          "finding": "設計:国内150GWh目標と設備・技術補助を接続 / 検証:150GWh目標はあるが設備・技術の実績なし / 費用対内容:4078億円÷1基金先＝4078億円/先、案件別配分不明 / 必要性:電池利用産業が供給不足。民間投資や他制度で代替余地"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 5,
+          "category": "sme",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "proportionality": 5,
+            "necessity": 5
+          },
+          "axisFindings": {
+            "design": "課題統計と補助活動は具体的だが、複数施策の便益経路が広く間接的",
+            "evidence": "課題の背景統計はあるが、採択件数や生産性向上等の成果実績がない",
+            "proportionality": "3399.9億円÷127件＝約26.8億円/件。基金管理機関・再委託先が多く最終配分が不透明",
+            "necessity": "中小企業が投資・承継支援を失うが、民間融資や他制度で一部代替可能"
+          },
+          "finding": "設計:課題統計と補助活動は具体的だが、複数施策の便益経路が広く間接的 / 検証:課題の背景統計はあるが、採択件数や生産性向上等の成果実績がない / 費用対内容:3399.9億円÷127件＝約26.8億円/件。基金管理機関・再委託先が多く最終配分が不透明 / 必要性:中小企業が投資・承継支援を失うが、民間融資や他制度で一部代替可能"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 8,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 8,
+          "category": "rnd",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "海外シェア2.3%等の課題、技術開発活動、基盤強化の便益が接続",
+            "evidence": "海外シェアの課題統計はあるが、開発成果の指標・目標・実績がない",
+            "proportionality": "9901.8億円÷1機関＝9901.8億円/機関。基金管理費として止まり研究件数・最終配分不明",
+            "necessity": "国内半導体企業が開発停滞。巨額長期投資は民間単独で代替困難"
+          },
+          "finding": "設計:海外シェア2.3%等の課題、技術開発活動、基盤強化の便益が接続 / 検証:海外シェアの課題統計はあるが、開発成果の指標・目標・実績がない / 費用対内容:9901.8億円÷1機関＝9901.8億円/機関。基金管理費として止まり研究件数・最終配分不明 / 必要性:国内半導体企業が開発停滞。巨額長期投資は民間単独で代替困難"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 5,
+          "category": "energy",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "proportionality": 5,
+            "necessity": 5
+          },
+          "axisFindings": {
+            "design": "値下げ幅と価格抑制の活動は明確だが、受益者と長期便益が未特定",
+            "evidence": "値下げ措置は記載されるが、小売価格抑制の成果指標や実績がない",
+            "proportionality": "19506.8億円÷1機関＝19506.8億円/機関。基金造成先に集中し、燃料量別単価が不明",
+            "necessity": "消費者・運輸業者の燃料負担が増すが、減税等の代替策は検討余地あり"
+          },
+          "finding": "設計:値下げ幅と価格抑制の活動は明確だが、受益者と長期便益が未特定 / 検証:値下げ措置は記載されるが、小売価格抑制の成果指標や実績がない / 費用対内容:19506.8億円÷1機関＝19506.8億円/機関。基金造成先に集中し、燃料量別単価が不明 / 必要性:消費者・運輸業者の燃料負担が増すが、減税等の代替策は検討余地あり"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 9,
+          "necessity": 8,
+          "category": "school_edu",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 10,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "対象学校と給与負担、教職員確保の経路は明確だが資金措置中心",
+            "evidence": "法定負担額は確認できるが、教員確保や教育水準の成果指標がない",
+            "proportionality": "16260.4億円÷11自治体等＝約1478.2億円/先。法定3分の1負担で直接対応するが数量は粗い",
+            "necessity": "公立学校が教職員給与を確保困難。自治体負担だけでは全国均衡を代替困難"
+          },
+          "finding": "設計:対象学校と給与負担、教職員確保の経路は明確だが資金措置中心 / 検証:法定負担額は確認できるが、教員確保や教育水準の成果指標がない / 費用対内容:16260.4億円÷11自治体等＝約1478.2億円/先。法定3分の1負担で直接対応するが数量は粗い / 必要性:公立学校が教職員給与を確保困難。自治体負担だけでは全国均衡を代替困難"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 6,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 7,
+          "necessity": 8,
+          "category": "higher_edu",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "85法人と基盤経費は明示されるが、学生・研究成果への経路が不足",
+            "evidence": "共通指標による評価方針はあるが、基準値・目標値・実績値がない",
+            "proportionality": "10876.2億円÷11法人等＝約988.7億円/法人。大学への直接交付だが学生数等による単価根拠が弱い",
+            "necessity": "国立大の教育研究が縮小。授業料や競争的資金では基盤機能を代替困難"
+          },
+          "finding": "設計:85法人と基盤経費は明示されるが、学生・研究成果への経路が不足 / 検証:共通指標による評価方針はあるが、基準値・目標値・実績値がない / 費用対内容:10876.2億円÷11法人等＝約988.7億円/法人。大学への直接交付だが学生数等による単価根拠が弱い / 必要性:国立大の教育研究が縮小。授業料や競争的資金では基盤機能を代替困難"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 9,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": 8,
+          "necessity": 7,
+          "category": "rnd",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 4,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "研究者対象、ピアレビュー助成、論文・研究力向上の指標が一連で示される",
+            "evidence": "採択・長期アウトカムの件数目標はあるが、実績値や因果検証はない",
+            "proportionality": "2530.2億円÷87385件＝約289万円/件。研究助成と対応するがその他・再委託分が24％",
+            "necessity": "基礎研究者が幅広い助成を失うが、他の公的研究費で一部代替可能"
+          },
+          "finding": "設計:研究者対象、ピアレビュー助成、論文・研究力向上の指標が一連で示される / 検証:採択・長期アウトカムの件数目標はあるが、実績値や因果検証はない / 費用対内容:2530.2億円÷87385件＝約289万円/件。研究助成と対応するがその他・再委託分が24％ / 必要性:基礎研究者が幅広い助成を失うが、他の公的研究費で一部代替可能"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 7,
+          "evidenceReadiness": 3,
+          "confidence": null,
+          "budgetProportionality": 3,
+          "necessity": 8,
+          "category": "culture",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 2,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "文化財所有者等と保存修理・伝承活動は具体的だが便益は広い",
+            "evidence": "保存修理等の活動は読めるが、成果指標や実績値がない",
+            "proportionality": "718.3億円÷39先＝約18.4億円/先。その他・再委託が46%",
+            "necessity": "文化財所有者が修理不能。市場だけでは不可逆損失を防げない"
+          },
+          "finding": "設計:文化財所有者等と保存修理・伝承活動は具体的だが便益は広い / 検証:保存修理等の活動は読めるが、成果指標や実績値がない / 費用対内容:718.3億円÷39先＝約18.4億円/先。その他・再委託が46% / 必要性:文化財所有者が修理不能。市場だけでは不可逆損失を防げない"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 8,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 7,
+          "necessity": 8,
+          "category": "scholarship",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "所得層別の対象・支給額・教育費軽減の経路が明確",
+            "evidence": "所得基準や支給額はあるが、就学継続等の実績指標がない",
+            "proportionality": "4244.4億円÷48自治体＝約88.4億円/自治体。制度給付で直接対応",
+            "necessity": "低所得世帯の高校生が就学断念。民間奨学金では規模不足"
+          },
+          "finding": "設計:所得層別の対象・支給額・教育費軽減の経路が明確 / 検証:所得基準や支給額はあるが、就学継続等の実績指標がない / 費用対内容:4244.4億円÷48自治体＝約88.4億円/自治体。制度給付で直接対応 / 必要性:低所得世帯の高校生が就学断念。民間奨学金では規模不足"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 9,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 6,
+          "category": "environment",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "proportionality": 5,
+            "necessity": 5
+          },
+          "axisFindings": {
+            "design": "住宅数・改修実績等の課題、窓改修補助、CO2削減が接続",
+            "evidence": "住宅ストック等の背景統計はあるが事業後の削減実績がない",
+            "proportionality": "2693億円÷30先＝約89.8億円/先。消費者配分は32%、再委託も多い",
+            "necessity": "住宅所有者の改修が停滞。規制や融資だけでは費用障壁が残る"
+          },
+          "finding": "設計:住宅数・改修実績等の課題、窓改修補助、CO2削減が接続 / 検証:住宅ストック等の背景統計はあるが事業後の削減実績がない / 費用対内容:2693億円÷30先＝約89.8億円/先。消費者配分は32%、再委託も多い / 必要性:住宅所有者の改修が停滞。規制や融資だけでは費用障壁が残る"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 6,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 6,
+          "category": "diplomacy",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 5,
+            "necessity": 5
+          },
+          "axisFindings": {
+            "design": "途上地域への施設・資機材供与は明確だが外交便益は抽象的",
+            "evidence": "案件・支出先は示すが、援助成果の指標・実績が乏しい",
+            "proportionality": "2874.1億円÷154先＝約18.7億円/先。案件別単価と最終先が不明",
+            "necessity": "途上国の基礎施設整備が遅延。民間融資だけでは採算不足"
+          },
+          "finding": "設計:途上地域への施設・資機材供与は明確だが外交便益は抽象的 / 検証:案件・支出先は示すが、援助成果の指標・実績が乏しい / 費用対内容:2874.1億円÷154先＝約18.7億円/先。案件別単価と最終先が不明 / 必要性:途上国の基礎施設整備が遅延。民間融資だけでは採算不足"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 7,
+          "necessity": 8,
+          "category": "defense",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "地域・施設・訓練移転は具体的だが抑止力の便益は間接的",
+            "evidence": "再編措置の記載はあるが成果指標・達成実績がない",
+            "proportionality": "8348.1億円÷29先＝約287.9億円/先。工事対応だがその他再委託19%",
+            "necessity": "基地周辺住民の負担軽減と再編が停滞。他手段は限定的"
+          },
+          "finding": "設計:地域・施設・訓練移転は具体的だが抑止力の便益は間接的 / 検証:再編措置の記載はあるが成果指標・達成実績がない / 費用対内容:8348.1億円÷29先＝約287.9億円/先。工事対応だがその他再委託19% / 必要性:基地周辺住民の負担軽減と再編が停滞。他手段は限定的"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 7,
+          "evidenceReadiness": 3,
+          "confidence": null,
+          "budgetProportionality": 4,
+          "necessity": 8,
+          "category": "defense",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 5,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "機種・更新対象・取得活動は明確だが必要数と便益は未定量",
+            "evidence": "取得活動は確認できるが、能力向上の指標や実績がない",
+            "proportionality": "3239.5億円÷1先＝3239.5億円/先。取得機数・機体単価を確認できない",
+            "necessity": "航空自衛隊の更新機確保が困難。他機種代替には能力差が残る"
+          },
+          "finding": "設計:機種・更新対象・取得活動は明確だが必要数と便益は未定量 / 検証:取得活動は確認できるが、能力向上の指標や実績がない / 費用対内容:3239.5億円÷1先＝3239.5億円/先。取得機数・機体単価を確認できない / 必要性:航空自衛隊の更新機確保が困難。他機種代替には能力差が残る"
+        },
+        {
+          "pid": "4",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 2,
+          "necessity": 7,
+          "category": "digital",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 2,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "政府システムを対象に監理・共通化を行うが、国民便益は間接的",
+            "evidence": "監理活動は示すが、成果指標・目標値・実績値がない",
+            "proportionality": "2694.3億円÷対象システム数不明＝単価算定不可。支出先も不明",
+            "necessity": "各府省で重複・非効率が再発。政府横断の代替監理は乏しい"
+          },
+          "finding": "設計:政府システムを対象に監理・共通化を行うが、国民便益は間接的 / 検証:監理活動は示すが、成果指標・目標値・実績値がない / 費用対内容:2694.3億円÷対象システム数不明＝単価算定不可。支出先も不明 / 必要性:各府省で重複・非効率が再発。政府横断の代替監理は乏しい"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 3,
+          "necessity": 7,
+          "category": "health_insurance",
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "proportionality": 2,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "医療製品DBの対象・調査活動は明確だが、便益発現は間接的",
+            "evidence": "DB構築目的は明確だが、指標・目標・実績が未提示",
+            "proportionality": "1.9億円÷DB構築件数不明＝単価算定不可。民間2者への支出",
+            "necessity": "医療機関が共通製品情報を使えず安全低下。民間任意取組では不足"
+          },
+          "finding": "設計:医療製品DBの対象・調査活動は明確だが、便益発現は間接的 / 検証:DB構築目的は明確だが、指標・目標・実績が未提示 / 費用対内容:1.9億円÷DB構築件数不明＝単価算定不可。民間2者への支出 / 必要性:医療機関が共通製品情報を使えず安全低下。民間任意取組では不足"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetProportionality": null,
+          "necessity": 8,
+          "category": "rnd",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "proportionality": 7,
+            "necessity": 8
+          },
+          "axisFindings": {
+            "design": "高齢化率等の課題、基準策定活動、生産性向上の経路が明確",
+            "evidence": "建設業の年齢構成等はあるが、導入成果の実績がない",
+            "proportionality": "0円÷対象件数不明＝単価算定対象外",
+            "necessity": "建設業の担い手不足が進行。安全基準の共通化は民間単独で困難"
+          },
+          "finding": "設計:高齢化率等の課題、基準策定活動、生産性向上の経路が明確 / 検証:建設業の年齢構成等はあるが、導入成果の実績がない / 費用対内容:0円÷対象件数不明＝単価算定対象外 / 必要性:建設業の担い手不足が進行。安全基準の共通化は民間単独で困難"
+        },
+        {
+          "pid": "365",
+          "designClarity": 7,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetProportionality": 5,
+          "necessity": 9,
+          "category": "public_safety",
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 4,
+            "proportionality": 5,
+            "necessity": 10
+          },
+          "axisFindings": {
+            "design": "被害者・捜査活動は具体的だが、被害減少の定量経路が弱い",
+            "evidence": "対策内容は具体的だが、被害減少の目標・実績がない",
+            "proportionality": "2.4億円÷73先＝約329万円/先。活動別単価は不明",
+            "necessity": "高齢者等の被害が増加。捜査・警告は民間では代替不能"
+          },
+          "finding": "設計:被害者・捜査活動は具体的だが、被害減少の定量経路が弱い / 検証:対策内容は具体的だが、被害減少の目標・実績がない / 費用対内容:2.4億円÷73先＝約329万円/先。活動別単価は不明 / 必要性:高齢者等の被害が増加。捜査・警告は民間では代替不能"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 9,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetProportionality": 2,
+          "necessity": 5,
+          "category": "survey_pr",
+          "nearestAnchors": {
+            "design": 10,
+            "evidence": 8,
+            "proportionality": 2,
+            "necessity": 5
+          },
+          "axisFindings": {
+            "design": "対象、意見聴取・派遣活動、政策反映の便益が具体的",
+            "evidence": "1万人規模の実施実績は検証可能だが、因果検証はない",
+            "proportionality": "2.4億円÷1万人＝約2.4万円/人。89％がPwC等に集中",
+            "necessity": "自治体の意見聴取支援が縮小。既存手法で一部代替可能"
+          },
+          "finding": "設計:対象、意見聴取・派遣活動、政策反映の便益が具体的 / 検証:1万人規模の実施実績は検証可能だが、因果検証はない / 費用対内容:2.4億円÷1万人＝約2.4万円/人。89％がPwC等に集中 / 必要性:自治体の意見聴取支援が縮小。既存手法で一部代替可能"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetProportionality": 7,
+          "necessity": 2,
+          "category": "culture",
+          "nearestAnchors": {
+            "design": 2,
+            "evidence": 2,
+            "proportionality": 7,
+            "necessity": 2
+          },
+          "axisFindings": {
+            "design": "会員年金や展示活動は明確だが、国民への便益経路が抽象的",
+            "evidence": "活動内容はあるが、成果指標・目標値・実績値がない",
+            "proportionality": "3.2億円÷120名＝約267万円/名。主な支出先は会員本人",
+            "necessity": "芸術院会員が年金を喪失。顕彰や民間支援で代替可能"
+          },
+          "finding": "設計:会員年金や展示活動は明確だが、国民への便益経路が抽象的 / 検証:活動内容はあるが、成果指標・目標値・実績値がない / 費用対内容:3.2億円÷120名＝約267万円/名。主な支出先は会員本人 / 必要性:芸術院会員が年金を喪失。顕彰や民間支援で代替可能"
+        }
+      ]
+    }
+  ]
+}

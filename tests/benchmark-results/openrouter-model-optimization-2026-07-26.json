@@ -1,0 +1,1391 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T07:03:02.283Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubricVersion": "policy-evaluation-v1-draft",
+  "promptVersion": "openrouter-model-optimization-v1",
+  "failures": [
+    {
+      "model": "xiaomi/mimo-v2.5",
+      "stage": "batch-2",
+      "reason": "0〜4の指定範囲外スコアを返したため、厳格な構造化評価として不採用"
+    }
+  ],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-sol",
+      "name": "OpenAI: GPT-5.6 Sol",
+      "price": {
+        "inputPerMillion": 5,
+        "outputPerMillion": 30
+      },
+      "startedAt": "2026-07-26T06:47:40.546Z",
+      "elapsedMs": 66818,
+      "usage": {
+        "prompt_tokens": 25509,
+        "completion_tokens": 4652,
+        "total_tokens": 30161,
+        "reportedCost": 0.29898,
+        "calculatedCost": 0.267105
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.93,
+          "finding": "対象リスクと年金給付の関係は明確だが、所得安定の指標や実績値がない。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.91,
+          "finding": "対象制度、負担割合、運営安定化の経路は明確だが、成果指標や実績がない。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.92,
+          "finding": "対象要件と八つの扶助、自立までの目的は明確だが、生活保障や自立の実績がない。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.87,
+          "finding": "対象、給付、待機児童対策と配置基準の数値は明確だが、保育の質の実績が不足する。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.89,
+          "finding": "所得層別の課題と学費支援の経路は明確だが、進学率の具体値や目標、比較がない。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.86,
+          "finding": "整備計画ごとの成果指標設定は明確だが、指標の基準値、目標値、実績値がない。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.94,
+          "finding": "整備不足、開通実績、速達性指標が示されるが、便益の比較検証材料はない。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "堤防整備率約7割という課題と改修手段は明確だが、被害軽減の目標や実績がない。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "海上輸送依存と港湾整備による費用低減経路は明確だが、費用低減の実績がない。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "被災施設の復旧と再度災害防止の関係は明確だが、復旧期間や再被災の実績がない。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.91,
+          "finding": "拠点支援から安定供給への経路は明確だが、生産能力や供給安定性の実績がない。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.94,
+          "finding": "2030年150GWh目標と支援対象は明確だが、現状能力や採択後の実績がない。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.87,
+          "finding": "課題別の支援策と成長対象は具体的だが、生産性や賃上げの目標・実績がない。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "市場シェア2.3％の課題と技術開発は対応するが、開発成果や事業化実績がない。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.92,
+          "finding": "油種別の引下げ額と価格抑制経路は明確だが、小売価格への転嫁実績がない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.89,
+          "finding": "教職員給与の3分の1負担と対象は明確だが、教職員確保や教育水準の指標がない。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.86,
+          "finding": "全85法人への基盤支援と期待機能は明確だが、共通指標の目標値・実績値がない。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.93,
+          "finding": "研究力低下の統計と助成経路、件数見込みはあるが、非採択課題との比較がない。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "修理・防災・技能継承の対象と活動は明確だが、劣化状況や保存成果の実績がない。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "対象世帯と給付額、負担軽減経路は明確だが、中退率や進学機会の実績がない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.94,
+          "finding": "改修費補助から省エネ効果への経路と課題値は明確だが、採択住宅の削減実績や比較がない。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.93,
+          "finding": "資金供与の対象分野は示すが、案件別便益への経路と定量的成果指標・実績がない。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "再編措置と施設整備は具体的だが、抑止力向上や地元負担軽減を測る指標・実績がない。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.91,
+          "finding": "旧型機代替による態勢維持の関係は明確だが、取得数や能力向上の指標・実績がない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.92,
+          "finding": "重複解消に向けた一元監理は明確だが、費用削減や共通化率などの指標・実績がない。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "製品DBから安全性・業務効率化への経路は明確だが、基準値・目標・実績がない。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "担い手の年齢構成と基準整備の関係は明確だが、生産性や労働時間の実績がない。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.91,
+          "finding": "予防・犯行妨害・捜査強化の活動は具体的だが、被害減少への寄与を示す実績がない。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.88,
+          "finding": "一万人規模の意見聴取と反映支援は具体的だが、政策反映件数や参加者変化がない。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": 0.89,
+          "finding": "展示・講演や分科新設は示すが、年金支給を含む活動から芸術振興への経路と成果が弱い。"
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-5.6-terra",
+      "name": "OpenAI: GPT-5.6 Terra",
+      "price": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 15
+      },
+      "startedAt": "2026-07-26T06:48:47.371Z",
+      "elapsedMs": 32330,
+      "usage": {
+        "prompt_tokens": 25509,
+        "completion_tokens": 3284,
+        "total_tokens": 28793,
+        "reportedCost": 0.12896999999999997,
+        "calculatedCost": 0.1130325
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.86,
+          "finding": "所得喪失者への基礎年金給付と生活安定の関係は明確だが、受給後の生活安定を示す実績値がない。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.88,
+          "finding": "保険者への法定負担と制度運営支援は明確だが、負担が制度健全性や医療保障に与えた実績がない。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.89,
+          "finding": "困窮者を対象に最低生活保障と自立支援を行う経路は明確だが、自立等の成果実績は示されない。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.84,
+          "finding": "給付・移行支援と保育確保、待機児童解消の経路は具体的だが、待機児童や安全性の成果実績がない。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.9,
+          "finding": "低所得・多子世帯への減免と給付で進学格差を縮小する設計は明確で、35万人支援実績はあるが因果検証はない。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.87,
+          "finding": "自治体計画・成果指標を通じ安全性を高める設計は明確だが、指標値や安全向上の実績が示されない。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.92,
+          "finding": "道路整備から速達性・物流・代替性向上への経路は明確で、開通延長等の実績はあるが効果比較はない。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.88,
+          "finding": "築堤・河道拡幅等による洪水被害防止の経路は具体的だが、整備実績や被害軽減の検証値がない。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.85,
+          "finding": "港湾工事で海上輸送コスト低減を図る目的は明確だが、工事実績や輸送コスト低減の証拠がない。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.89,
+          "finding": "被災施設の原形・改良復旧による早期復旧と再度災害防止の経路は明確だが、復旧速度・再被災実績がない。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "国内生産設備支援から安定供給への経路は明確だが、生産能力・供給安定化の実績がない。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.92,
+          "finding": "2030年の国内製造基盤150GWh目標と支援内容は明確だが、達成実績・効果検証がない。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.84,
+          "finding": "企業類型別に投資・DX・承継を支援する設計は明確だが、生産性・賃上げの実績がない。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "海外シェア2.3%の課題に対し研究開発内容は具体的だが、技術成果や製造基盤化の実績がない。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "品目別の定額引下げと卸価格抑制の経路は明確だが、小売価格への転嫁実績が示されない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "教職員給与の3分の1負担により配置を支える仕組みは明確だが、教育機会・水準の実績がない。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.87,
+          "finding": "85法人の安定運営を支え共通指標で評価する設計はあるが、指標実績・教育研究成果がない。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.9,
+          "finding": "公募・ピアレビュー助成から研究力向上への経路と件数見込みはあるが、因果効果の比較検証がない。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "修理・防災・伝承者育成を通じた継承の経路は明確だが、保存状態や継承成果の実績がない。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.92,
+          "finding": "所得層別の授業料・教育費支援は具体的だが、中退抑制や機会均等への実績が示されない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.92,
+          "finding": "窓改修補助から省エネ・CO2・光熱費削減への経路は明確だが、事業による削減実績の証拠がない。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.91,
+          "finding": "資金供与の対象分野は示されるが案件が多様で便益経路は粗く、定量的成果の記載がない。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.89,
+          "finding": "再編措置と抑止力・地元負担軽減の関係は概ね示すが、負担軽減や能力向上の実績指標がない。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.93,
+          "finding": "旧式機代替による戦闘機態勢維持の経路は明確だが、抑止力・対処能力向上を検証する実績がない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.91,
+          "finding": "共通化・監理で重複を抑える仕組みは明確だが、コスト削減や利用者便益の実績指標がない。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "製品DBを通じた取違え防止・物流効率化の経路は明確だが、現段階は要件検討で効果実績がない。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "担い手不足に対し基準整備・技術開発を進める設計は明確だが、生産性や働き方の改善実績がない。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "名簿活用、警告電話、捜査強化による被害抑止の経路は具体的だが、施策別の被害削減実績がない。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "意見聴取、自治体支援、人材育成の活動は具体的だが、意見の政策反映や参加環境改善の実績がない。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.92,
+          "finding": "年金、顕彰、展示・講演の活動は示されるが、芸術文化振興への便益経路と成果実績が乏しい。"
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T06:49:19.703Z",
+      "elapsedMs": 34020,
+      "usage": {
+        "prompt_tokens": 25509,
+        "completion_tokens": 4080,
+        "total_tokens": 29589,
+        "reportedCost": 0.056364,
+        "calculatedCost": 0.049989000000000006
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.93,
+          "finding": "所得喪失への給付経路は明確だが、受給実績や生活安定効果の数値が示されていない。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.91,
+          "finding": "対象制度と国庫負担の関係は明確だが、負担による制度運営改善の実績検証が不足している。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.94,
+          "finding": "困窮者への保護と自立助長の目的は明確だが、給付実績や自立効果の指標がない。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "子育て支援と給付・人員配置の関係は具体的だが、待機児童や保育の質の成果実績が不足している。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.95,
+          "finding": "低所得層等への支援経路が明確で35万人の実績もあるが、進学率差への因果検証がない。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.86,
+          "finding": "整備計画から安全確保への経路と成果指標の設定は明確だが、指標の基準値・実績が示されていない。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.94,
+          "finding": "道路整備と速達性・地域連携の関係が明確で、整備率や開通実績もあるが比較検証はない。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.93,
+          "finding": "堤防整備の遅れと洪水対策の経路は明確だが、改修後の被害減少実績が示されていない。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.92,
+          "finding": "海上輸送依存と港湾整備の必要性は明確で99.6％の背景統計もあるが、整備効果の実績がない。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.95,
+          "finding": "被災施設の復旧と再度災害防止の目的は明確だが、復旧期間や被害減少の実績がない。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "供給途絶リスクから国内拠点整備への経路は明確だが、生産能力への効果実績や比較検証がない。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.95,
+          "finding": "国内製造基盤150GWhという定量目標と設備・技術支援の関係は明確だが、達成実績や効果検証がない。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "中小企業の課題と投資・DX等の支援策は具体的だが、生産性や賃上げへの実績検証が不足している。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "市場シェア低迷に対する研究開発と製造基盤強化の方向は明確だが、技術成果や市場効果の実績がない。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.95,
+          "finding": "定額引下げから小売価格抑制への経路と金額は明確だが、実際の価格低下効果を示す証拠がない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "国の給与負担による教職員確保と機会均等の目的は明確だが、教育成果や追加効果の検証がない。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "法人運営の安定化と教育研究の充実は示されるが、共通指標の実績や交付金の効果が不足している。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.95,
+          "finding": "研究力低下の統計と科研費から研究成果への経路、件数目標があるが、反実仮想比較はない。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "文化財の劣化・災害リスクに対する保存修理等の対応は明確だが、継承や活用の成果実績がない。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.95,
+          "finding": "所得層別の支援対象・金額と教育費負担軽減の目的は明確だが、中退減少等の実績検証がない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.97,
+          "finding": "家庭の断熱改修から省エネ・CO2削減への経路と住宅数等の課題は明確だが、補助による効果の比較検証が不足している。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.95,
+          "finding": "対象分野と資金供与の活動は示されるが、外交・開発上の便益への経路が広く、成果指標や定量評価がない。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.94,
+          "finding": "再編措置と抑止力強化・負担軽減の目的は整理されるが、実施実績や効果を示す検証可能な指標がない。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.95,
+          "finding": "旧式機の代替取得から体制・対処能力維持への関係は明確だが、取得後の能力実績や目標値が示されていない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.96,
+          "finding": "政府システムの重複・非効率に対する監理と共通化の活動は明確だが、効率化の実績・成果指標が不足している。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.96,
+          "finding": "製品DBから取り違え防止・物流効率化への経路は明確だが、現段階は要件検討で、効果実績や目標値がない。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.95,
+          "finding": "担い手不足に対し自動施工の基準整備を進める設計は明確だが、生産性向上や導入効果の実績が示されていない。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.96,
+          "finding": "被害防止・検挙等の活動と被害減少の目的は具体的だが、対策別の実績や被害減少への効果検証が不足している。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.95,
+          "finding": "意見聴取や派遣・養成から政策反映を目指す構造は明確だが、参加実績や反映内容を測る指標が不足している。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": 0.94,
+          "finding": "院の活動と芸術文化振興の目的は示されるが、活動が便益に結び付く経路や成果の測定材料が限られている。"
+        }
+      ]
+    },
+    {
+      "model": "anthropic/claude-haiku-4.5",
+      "name": "Anthropic: Claude Haiku 4.5",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 5
+      },
+      "startedAt": "2026-07-26T06:50:33.034Z",
+      "elapsedMs": 126790,
+      "usage": {
+        "prompt_tokens": 29147,
+        "completion_tokens": 12275,
+        "total_tokens": 41422,
+        "reportedCost": 0.09052199999999999,
+        "calculatedCost": 0.09052199999999999
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 3,
+          "evidenceReadiness": 3,
+          "confidence": 0.75,
+          "finding": "基礎年金制度の目的と給付実績は明確だが、経年アウトカム指標の具体的水準や高齢者生活安定の検証枠組みが整備途上段階"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "医療保険負担割合が定量的に明確だが、事業特有のアウトカム指標がなく、保健水準維持への固有の寄与度検証が困難"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "生活保護の制度目的と基準設定プロセスは明確だが、自立助長効果や生活水準改善の定量的実績が示されていない"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.72,
+          "finding": "支援対象者約35万人と進学率上昇傾向が把握されているが、配置基準改善による子ども安全・発達効果の検証が不十分"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.75,
+          "finding": "低所得層進学率上昇傾向が部分的に把握されているが、少子化抑制効果や理想子ども数との因果関係の検証が根拠不足"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.68,
+          "finding": "地域の成果指標設定仕組みが構築されているが、防災力強化や安全確保の具体的成果実績が示されておらず検証が限定的"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "新規開通延長80km等の活動実績があるが、都市間速達性確保率等指標の具体値が示されず経済効果の検証が不足"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.72,
+          "finding": "築堤進捗率7割と工事進捗は定量的だが、洪水被害軽減や災害防止効果の実績が示されておらず検証不可能"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.68,
+          "finding": "貿易99.6%海上輸送という課題は具体的だが、整備による輸送コスト低減や物流効率化の定量的実績が示されていない"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.65,
+          "finding": "災害復旧の制度趣旨は明確だが、復旧実績数値や再度災害防止効果の定量的検証が欠けている"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.75,
+          "finding": "半導体安定供給への課題と補助メカニズムは明確だが、認定6件の投資実現と供給能力増加・安定性改善の検証が欠落している。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "蓄電池産業強化の必要性と補助手段は明確だが、2030年150GWh達成への進捗状況と設備投資による国内製造基盤拡大の実績検証がない。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.65,
+          "finding": "中小企業の経営課題は明示されるも、5つの分散的施策から賃上げ実現への因果経路が弱く、施策別の活動実績・成果指標がない。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "市場シェア2.3%など課題は定量的だが、研究開発投資から先端半導体製造能力・市場競争力向上までの効果検証パスが不足している。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.6,
+          "finding": "定額引下げの仕組みは明確だが、基金活用期限や物価抑制・流通価格への実際の波及効果の測定体制が記載されていない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.7,
+          "finding": "教職員給与費国庫負担の枠組は明確だが、負担制度と全国的な教育機会均等・教育質の関連を示す検証データがない。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.6,
+          "finding": "国立大学の独立運営を支援する目的は掲げられるも、経営費交付金の配分方式と各大学の研究教育成果の関連が曖昧である。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.75,
+          "finding": "論文インパクト低下が定量化され論文質向上を目指すピアレビュー制度は確立しているが、科研費改革による実際の論文質改善の実績がない。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.65,
+          "finding": "文化財保存・伝承の必要性は明確だが、修理・保持者支援・材料放置確保の複数施策による保存効果や伝承人数増加の実績検証がない。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.75,
+          "finding": "高校生への経済支援は目的・給付機制が明確で対象者収入明示されるが、支援による中退防止率向上や進学継続の実績検証がない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.75,
+          "finding": "削減目標と窓改修補助の関係は明確で定量目標(2030年66%削減)があるが、実際のCO2削減量やアウトカム検証証拠が不足。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.55,
+          "finding": "外交ツール価値は認識されるが、支出先配分が未明確で、アウトカムの定量評価がなくPDCAサイクルが未整備。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.5,
+          "finding": "米軍再編の施設整備内容は具体的だが、抑止力強化や地元負担軽減の効果検証証拠が極めて限定的。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.5,
+          "finding": "戦力体制維持の必要性は明記されるが、必要数や予算基準、抑止力向上の測定方法が不明確で検証不可能。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.55,
+          "finding": "政府情報システムの重複排除は課題だが、市民向けサービス向上への連結が弱く、効果検証証拠がない。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 2,
+          "evidenceReadiness": 0,
+          "confidence": 0.45,
+          "finding": "医療安全向上の目的は明確だが、実装段階に至らず2025年度も検討段階にとどまり、効果検証材料がない。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 2,
+          "evidenceReadiness": 0,
+          "confidence": 0.5,
+          "finding": "建設業の担い手不足と高齢化は統計で示されるが、自動化技術の生産性向上効果の検証証拠がなく現在予算ゼロ。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.7,
+          "finding": "捜査対策の事業内容は明確で2024年被害額も示されるが、警告電話やリスト活用の具体的な被害削減効果が未検証。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": 0.6,
+          "finding": "こども意見聴取プラットフォーム(1万人規模)は構築されているが、政策反映の具体例がなく実質的な成果測定が困難。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.5,
+          "finding": "優れた芸術家への年金支給の枠組みは明確だが、その支給が芸術文化振興にいかに寄与するかの効果検証がない。"
+        }
+      ]
+    },
+    {
+      "model": "z-ai/glm-5.2",
+      "name": "Z.ai: GLM 5.2",
+      "price": {
+        "inputPerMillion": 0.707,
+        "outputPerMillion": 2.222
+      },
+      "startedAt": "2026-07-26T06:53:27.122Z",
+      "elapsedMs": 67845,
+      "usage": {
+        "prompt_tokens": 22960,
+        "completion_tokens": 4733,
+        "total_tokens": 27693,
+        "reportedCost": 0.03407289,
+        "calculatedCost": 0.026749446
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "基礎年金給付の目的・対象・活動は明確だが、経年推移を確認可能なアウトカム指標の設定はあるものの、効果検証までは不十分である。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "医療保険給付費の国庫負担の目的・制度は明確だが、皆保険制度の維持というアウトカムに対する定量的な検証材料は不足している。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "生活保護の目的・対象・活動は明確で基準部会での検証も行うが、自立助長等のアウトカムを示す定量的な検証材料は不足している。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.8,
+          "finding": "教育・保育給付の目的・対象・活動・便益が明確で配置基準改善等の定量的目標もあるが、児童の健やかな成長等の効果検証には追加データが必要である。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.8,
+          "finding": "修学支援の目的・対象・便益経路が明確で進学率等の実績もあるが、貧困連鎖断絶等の効果検証には比較対象や追加データが必要である。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "防災・安全交付金は成果指標設定を地方に求める等の仕組みはあるが、具体的な基準値・目標・実績がシート上には不十分である。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.8,
+          "finding": "道路整備の目的・活動・便益が明確で整備率や新規開通延長等の定量的指標もあるが、経済効果等の厳密な検証には比較対象が必要である。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "河川改修の目的・活動は明確で整備率等の実績もあるが、災害防止効果の検証には反実仮想や比較対象を含む追加データが不足している。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "港湾整備の目的・活動は明確で貿易量等の背景統計もあるが、コスト低減等のアウトカム検証には定量的な基準値・実績が不足している。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "河川等災害復旧の目的・活動は明確だが、再度災害防止効果を示す指標・実績がほぼなく、主張中心の記載に留まっている。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "目的と定量的目標は明確だが、安定供給確保や経済安保向上のアウトカム検証材料は不足している。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "150GWh/年の定量目標と支援内容は明確だが、シェア回復等のアウトカム検証証拠は現時点で不足している。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.85,
+          "finding": "生産性向上や100億宣言等の目標は明確だが、本事業による賃上げや成長の効果検証材料は不足。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.85,
+          "finding": "ポスト5Gや半導体の国内開発基盤強化の経路は明確だが、競争力向上のアウトカム検証材料は不足。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "定額引下げという具体的目標と経路は明確だが、価格抑制効果の実績や検証材料は記載なし。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.85,
+          "finding": "教職員確保のための国庫負担制度の目的は明確だが、教育の質向上等のアウトカム検証材料はない。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.85,
+          "finding": "安定運営の目的はあるが便益が抽象的。共通指標による評価の記載あるも実績不足。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "論文数減少等の定量的課題と助成の経路は明確。研究力向上のアウトカム検証は追加データが必要。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.85,
+          "finding": "文化財継承と地域活性化の経路は明確だが、保存や活用効果のアウトカム検証材料は不足。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "所得制限や支給額等の制度設計は明確だが、中退防止等のアウトカム効果の実績や検証材料はない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "confidence": 0.8,
+          "finding": "窓断熱改修補助の目的・対象・便益が明確で、定量的な課題と実績推移があるが、効果検証は不十分。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "途上国支援の目的は示されるが、対象や便益の経路が抽象的で、定量的な成果指標が欠如している。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "日米同盟強化と地元負担軽減の目的と活動は明確だが、抑止力等の成果を示す証拠はない。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "F35取得による抑止力維持の目的と活動は明確だが、機密性等により検証可能な成果証拠はない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "政府システム一元管理の目的と活動は明確だが、システム統合の成果や効率化の実績が不足している。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "製品DB構築による医療安全向上の目的は明確だが、検討段階であり効果を示す実績や指標がない。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "建設機械自動化による生産性向上の目的はあるが、技術基準策定段階であり便益や成果の実績が乏しい。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.8,
+          "finding": "特殊詐欺対策の目的と活動は明確で被害額推移はあるが、各活動の防犯効果の検証材料は不足している。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "こども政策への意見反映の目的はあるが、対象や便益の経路が抽象的で、成果を示す指標も乏しい。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "日本芸術院の文化振興の目的はあるが、会員年金の支給との経路が不明確で成果指標もほぼない。"
+        }
+      ]
+    },
+    {
+      "model": "deepseek/deepseek-v4-flash",
+      "name": "DeepSeek: DeepSeek V4 Flash",
+      "price": {
+        "inputPerMillion": 0.14,
+        "outputPerMillion": 0.28
+      },
+      "startedAt": "2026-07-26T06:54:34.972Z",
+      "elapsedMs": 262560,
+      "usage": {
+        "prompt_tokens": 21292,
+        "completion_tokens": 10555,
+        "total_tokens": 31847,
+        "reportedCost": 0.0044275140000000004,
+        "calculatedCost": 0.00593628
+      },
+      "results": [
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "目的と活動の関係は明確だが、アウトカム指標が設定されておらず、効果検証が困難。",
+          "pid": "2826"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "制度の健全運営という目的と負担活動は明確だが、アウトカム検証のための指標や比較対象が不足。",
+          "pid": "2265"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "目的と活動の関係は明確だが、自立促進などのアウトカム指標が乏しく、効果検証が困難。",
+          "pid": "2711"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "finding": "保育の質改善や待機児童解消に向けた具体的目標と実績があるが、因果効果の検証には追加分析が必要。",
+          "pid": "6486"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "finding": "低所得世帯の進学率向上という明確な目標と実績があるが、制度全体の因果効果検証は不十分。",
+          "pid": "6534"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "交付金の使途は地方裁量で、事業全体のアウトカム検証には個別計画レベルでの指標確認が必要。",
+          "pid": "4448"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 4,
+          "evidenceReadiness": 3,
+          "finding": "高規格道路整備率や開通延長の実績が明確だが、交通流改善の因果効果検証にはさらなる分析が必要。",
+          "pid": "4032"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "finding": "堤防整備率などの進捗実績はあるが、洪水被害軽減というアウトカムの検証には反実仮想的分析が必要。",
+          "pid": "4052"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "海上輸送の重要性は明確だが、港湾整備の効果を定量的に検証できる指標や実績が不足。",
+          "pid": "4220"
+        },
+        {
+          "confidence": 0.9,
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "finding": "災害復旧は事後的対応で、事前のアウトカム目標設定が困難。実績はあるが効果検証には限界。",
+          "pid": "4562"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "安定供給確保の目的と補助活動は明確だが、アウトカムの定量的目標・実績が不足。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "定量的製造目標（150GWh）や背景分析は十分だが、中間アウトカム実績の検証材料が不足。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "目的と活動範囲が広く経路不明確、アウトカム指標・実績の記載が不足。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "課題と活動の関係は明確だが、アウトカム指標や進捗実績の記載がない。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "価格引下げ措置の設計は明確だが、アウトカム検証の実績データが記載されていない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 3,
+          "evidenceReadiness": 2,
+          "confidence": 0.9,
+          "finding": "制度目的は明確だが、アウトカム検証の具体的指標や因果分析が不足。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 2,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "運営費交付の目的は明らかだが、便益への因果経路の具体性とアウトカム検証材料が不足。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 3,
+          "evidenceReadiness": 3,
+          "confidence": 0.9,
+          "finding": "背景分析とアウトプット実績は充実しているが、反実仮想など因果効果検証の枠組みは不足。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "保存目的と活動は明確だが、実績やアウトカム指標が提示されていない。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 4,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "制度設計は明確だが、本事業の実績やアウトカム検証のためのデータが入力にない。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.85,
+          "finding": "住宅ストックの断熱化率(18%)や改修実績(年約18万戸)を課題の定量根拠とし、補助による省CO2・光熱費削減という経路が明確だが、アウトカムの直接検証材料は不足。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 1,
+          "evidenceReadiness": 1,
+          "confidence": 0.9,
+          "finding": "目的が極めて抽象的で、外交ツールとしての説明に留まり、具体的な対象や効果発現経路の記載がない。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 2,
+          "evidenceReadiness": 0,
+          "confidence": 0.9,
+          "finding": "再編事業のリストはあるが、目的達成度や地元負担軽減の定量目標・実績が全く示されていない。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 2,
+          "evidenceReadiness": 0,
+          "confidence": 0.9,
+          "finding": "抑止力維持という抽象的目的で、取得による効果検証の手段や実績情報が開示されていない。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.8,
+          "finding": "重複・非効率という課題とプロジェクト監理の活動は明確だが、最終アウトカムへの経路が抽象的で実績指標が不在。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.85,
+          "finding": "製品DB未整備という課題と調査検討の活動は明確だが、効果検証は事業開始前で不可能。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 3,
+          "evidenceReadiness": 0,
+          "confidence": 0.9,
+          "finding": "建設業の高齢化課題と自動化技術基準策定の活動は明確だが、予算ゼロで実績・効果検証材料なし。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 4,
+          "evidenceReadiness": 2,
+          "confidence": 0.85,
+          "finding": "被害額過去最悪という定量課題と複数の対策活動の関係は明確だが、対策全体の効果検証（反実仮想）の記載がない。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 3,
+          "evidenceReadiness": 1,
+          "confidence": 0.85,
+          "finding": "こども意見反映の仕組みやファシリテーター養成は明確だが、政策改善という最終便益の検証可能な実績が示されていない。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 0,
+          "confidence": 0.9,
+          "finding": "会員年金・授賞式・展示等の活動は具体的だが、芸術振興という目的と手段の因果関係が弱く、成果指標が欠落。"
+        }
+      ]
+    }
+  ]
+}

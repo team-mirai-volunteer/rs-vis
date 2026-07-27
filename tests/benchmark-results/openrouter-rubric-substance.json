@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T16:12:15.279Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "substance",
+  "rubricVersion": "axis-e-substance-components",
+  "promptVersion": "openrouter-rubric-substance-v1",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": null,
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T16:11:00.932Z",
+      "elapsedMs": 74347,
+      "usage": {
+        "prompt_tokens": 26733,
+        "completion_tokens": 6480,
+        "total_tokens": 33213,
+        "reportedCost": 0.072294,
+        "calculatedCost": 0.065613
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 受給事由と給付は特定されるが、受給者数や給付水準等の数値目標はない。 根拠:対象「年金受給者」／活動「基礎年金の給付」／便益「所得の喪失・減少を防止」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "2265",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 対象制度と国庫負担割合は具体的だが、運営改善の成果目標はない。 根拠:対象「各医療保険者」／活動「一部を負担」／便益「健全な事業運営」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "2711",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V0] 要保護者の要件と8扶助は明確だが、成果を確認する数値や期限がない。 根拠:対象「最低限度の生活を維持できない者」／活動「8つの扶助」／便益「自立を助長」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "6486",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 施設区分と交付内容は具体的。待機児童解消や配置基準に確認材料がある。 根拠:対象「特定教育・保育施設」／活動「費用の一部を交付」／便益「待機児童の解消」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "6534",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A2/B2/V1] 対象要件と支援規模が明確で、進学率の実績・傾向も確認できる。 根拠:対象「約35万人」／活動「授業料等の減免」／便益「進学率は上昇傾向」",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "4448",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V1] 対象範囲は限定されないが、計画に基づく支援と成果指標の設定がある。 根拠:対象「地方公共団体等」／活動「社会資本総合整備計画」／便益「生活空間の安全確保」",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "4032",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T0/A3/B2/V1] 対象は「国民」にとどまるが、道路整備と開通延長のアウトプットは具体的。 根拠:対象「国民」／活動「新規開通延長は約80km」／便益「交通安全の確保」",
+          "components": {
+            "targetSpecificity": 0,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "4052",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T0/A2/B2/V1] 対象者は明示されていない。整備手段は具体的で、堤防整備率の基準値がある。 根拠:対象「河川」／活動「河道の拡幅、築堤」／便益「災害の発生が防止」",
+          "components": {
+            "targetSpecificity": 0,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "4220",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V1] 利用者は一般公衆に限られ、港湾工事の手段とコスト低減が示される。 根拠:対象「一般公衆」／活動「港湾工事」／便益「海上輸送コストの低減」",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "4562",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 被災施設と復旧方式・負担率は明確。将来実績は0入力で、目標値はない。 根拠:対象「被災した公共土木施設」／活動「原型復旧」／便益「再度災害の防止」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "19958",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 対象は法定認定事業者に限定。補助率は明確で、投資判断への効果も示すが、完了条件はない。 根拠:対象「認定を受けた事業者」 活動「最大1/2補助」 便益「投資判断を後押し」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "7116",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B3/V1] 対象要件、補助率、設備投資・技術開発の手段が明確。2030年までの国内製造基盤目標もある。 根拠:対象「民間事業者等」 活動「補助率1/3以内」 便益「150GWh/年の確立」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 3,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "3649",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B3/V1] 中小企業等の区分と支援手段は具体的。売上高100億円の目標があり、検証材料もある。 根拠:対象「中小企業・小規模」 活動「ITツールの導入」 便益「売上高100億円」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 3,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "3522",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T0/A3/B2/V1] 便益は国内の開発・製造基盤強化。研究開発手段と技術開発内容は具体的だが、受益対象の記載がない。 根拠:対象「」 活動「パイロットライン構築」 便益「製造基盤強化」",
+          "components": {
+            "targetSpecificity": 0,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "3730",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B1/V1] 対象は元売事業者等にとどまる。価格引下げ幅は具体的だが、便益の受け手や達成条件は不明確。 根拠:対象「元売事業者等」 活動「卸価格を抑制」 便益「小売価格の上昇抑制」",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 1,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1548",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 対象自治体と公立義務教育学校の給与費、負担割合が明確。教育機会等への効果は方向まで示す。 根拠:対象「各都道府県・指定都市」 活動「実支出額の3分の1」 便益「教育の機会均等」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1586",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A2/B2/V1] 全85法人と対象規模が明示され、交付金と共通指標評価を実施。便益は充実・活性化にとどまる。 根拠:対象「全85法人」 活動「運営費交付金を措置」 便益「教育研究の充実」",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1644",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 対象研究者、専門審査・助成手段は明確。研究力向上等の便益は示すが、成果期限は限定的。 根拠:対象「大学等の研究者」 活動「8,000人以上で審査」 便益「知的資産を創出」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1818",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V0] 所有者等や保持者を対象として特定。補助・養成等の手段は具体的だが、数値目標や検証指標がない。 根拠:対象「所有者・管理団体等」 活動「補助率50%85%」 便益「次世代に継承」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "1536",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V1] 所得要件・世帯区分で対象を特定。支給額と制度が明確で、教育費負担軽減の方向も示す。 根拠:対象「年収約910万円未満」 活動「年額118,800円支給」 便益「教育費負担の軽減」",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "7463",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A2/B3/V1] 既存住宅の規模、補助手段、2030年度削減目標が示され、検証資料もある。 根拠:既存住宅（約5,400万戸）",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 3,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1097",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V0] 対象は被援助国政府等に留まり、便益は開発・外交上の効果にとどまる。成果の確認指標がない。 根拠:被援助国政府等",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "5389",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V0] 沖縄等の対象地域は示されるが規模は不明。施設整備等は具体的だが成果指標がない。 根拠:沖縄における再編に関する事業",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "5092",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T2/A2/B2/V0] 代替対象の機種は特定されるが取得数がない。取得活動と能力向上は示すが検証指標がない。 根拠:Fー4の後継機及び近代化に適さないFー15",
+          "components": {
+            "targetSpecificity": 2,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "4",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V0] 対象は各府省庁のシステム群に留まり、レビュー等の手段は具体的だが成果指標がない。 根拠:各府省庁が行う情報システム",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "20629",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A2/B2/V0] 対象は医療機関等に留まる。調査・要件検討は具体的だが、便益の定量目標と検証指標がない。 根拠:医療機関等における在庫管理業務",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 2,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "21741",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A3/B2/V1] 就業者の年齢構成を数値で示し、基準類策定という完了成果も明確。便益の定量目標はない。 根拠:55歳以上が35.5%、29歳以下が12.0%",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "365",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T1/A3/B2/V0] 対象は高齢者中心と類型的。名簿化・架電・警告等の活動は具体的だが、被害減少の指標がない。 根拠:高齢者を中心とした被害",
+          "components": {
+            "targetSpecificity": 1,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 2,
+            "verifiability": 0
+          }
+        },
+        {
+          "pid": "6469",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A3/B2/V1] 対象年齢と1万人規模が示され、聴取・派遣・講座等の成果物も具体的。政策反映の定量目標はない。 根拠:小学校1年生から20代まで",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 2,
+            "verifiability": 1
+          }
+        },
+        {
+          "pid": "1835",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[T3/A3/B1/V1] 会員規模が数値で特定され、年金・授賞・展示等の活動も具体的。便益は芸術文化振興という抽象表現に留まる。 根拠:院長1名と会員120名以内",
+          "components": {
+            "targetSpecificity": 3,
+            "activitySpecificity": 3,
+            "benefitSpecificity": 1,
+            "verifiability": 1
+          }
+        }
+      ]
+    }
+  ]
+}

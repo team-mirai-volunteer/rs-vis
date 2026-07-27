@@ -1,0 +1,579 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T17:31:04.912Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "unified",
+  "rubricVersion": "policy-unified-anchored-0to10",
+  "promptVersion": "openrouter-rubric-unified-v1",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": {
+    "min": 0,
+    "max": 10
+  },
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T17:28:45.702Z",
+      "elapsedMs": 139210,
+      "usage": {
+        "prompt_tokens": 47692,
+        "completion_tokens": 8732,
+        "total_tokens": 56424,
+        "reportedCost": 0.09278405,
+        "calculatedCost": 0.100084
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 7,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "老齢・障害等への給付と所得保障の経路が明確",
+            "evidence": "アウトカム設定の言及はあるが数値実績がない",
+            "budget": "執行率85%、前年度87%で制度給付として安定"
+          },
+          "finding": "設計:老齢・障害等への給付と所得保障の経路が明確 / 検証:アウトカム設定の言及はあるが数値実績がない / 計上:執行率85%、前年度87%で制度給付として安定"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 6,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 6,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "保険者への法定負担と医療保障の関係を特定",
+            "evidence": "制度の背景は示すが成果指標・実績がない",
+            "budget": "執行率ほぼ100%で法定負担の所要額と一致"
+          },
+          "finding": "設計:保険者への法定負担と医療保障の関係を特定 / 検証:制度の背景は示すが成果指標・実績がない / 計上:執行率ほぼ100%で法定負担の所要額と一致"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "困窮者への8扶助と最低生活保障を特定",
+            "evidence": "制度目的は明確だが指標・実績がない",
+            "budget": "執行率98%、前年度97%で給付見込みが安定"
+          },
+          "finding": "設計:困窮者への8扶助と最低生活保障を特定 / 検証:制度目的は明確だが指標・実績がない / 計上:執行率98%、前年度97%で給付見込みが安定"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "子ども・自治体・給付と待機児童解消を具体化",
+            "evidence": "配置基準等の活動は示すが成果実績がない",
+            "budget": "執行率96%、前年度95%で所要見込みは安定"
+          },
+          "finding": "設計:子ども・自治体・給付と待機児童解消を具体化 / 検証:配置基準等の活動は示すが成果実績がない / 計上:執行率96%、前年度95%で所要見込みは安定"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 10,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetAppropriateness": 4,
+          "nearestAnchors": {
+            "design": 10,
+            "evidence": 8,
+            "budget": 4
+          },
+          "axisFindings": {
+            "design": "対象、減免・奨学金、進学格差への効果が直結",
+            "evidence": "支援人数と進学率推移はあるが因果検証はない",
+            "budget": "執行率56%、前年度59%で未執行が恒常化"
+          },
+          "finding": "設計:対象、減免・奨学金、進学格差への効果が直結 / 検証:支援人数と進学率推移はあるが因果検証はない / 計上:執行率56%、前年度59%で未執行が恒常化"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 4,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 4,
+            "evidence": 4,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "対象や整備内容が広く便益も抽象的",
+            "evidence": "成果指標の設定はあるが基準値・実績がない",
+            "budget": "交付金・公共整備で執行率63%前後が安定"
+          },
+          "finding": "設計:対象や整備内容が広く便益も抽象的 / 検証:成果指標の設定はあるが基準値・実績がない / 計上:交付金・公共整備で執行率63%前後が安定"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 8,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 8,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "道路整備、開通実績、地域連携の便益が具体的",
+            "evidence": "開通延長等の定量実績があり達成度を判定可能",
+            "budget": "公共工事で執行率68%前後が2年安定"
+          },
+          "finding": "設計:道路整備、開通実績、地域連携の便益が具体的 / 検証:開通延長等の定量実績があり達成度を判定可能 / 計上:公共工事で執行率68%前後が2年安定"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "堤防整備の課題、工事内容、防災便益を特定",
+            "evidence": "整備遅れの統計はあるが成果実績がない",
+            "budget": "公共工事で執行率61〜63%が安定"
+          },
+          "finding": "設計:堤防整備の課題、工事内容、防災便益を特定 / 検証:整備遅れの統計はあるが成果実績がない / 計上:公共工事で執行率61〜63%が安定"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "海上輸送依存率を踏まえ整備活動とコスト低減を接続",
+            "evidence": "海上輸送依存率の統計はあるが整備後の成果実績がない",
+            "budget": "公共事業で繰越が前提、執行率も前年度と概ね安定"
+          },
+          "finding": "設計:海上輸送依存率を踏まえ整備活動とコスト低減を接続 / 検証:海上輸送依存率の統計はあるが整備後の成果実績がない / 計上:公共事業で繰越が前提、執行率も前年度と概ね安定"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "被災施設と復旧活動、再度災害防止の便益が明確",
+            "evidence": "年度目標が困難とされ、成果指標や実績値が示されない",
+            "budget": "災害発生に左右される事業で執行率は前年度と安定"
+          },
+          "finding": "設計:被災施設と復旧活動、再度災害防止の便益が明確 / 検証:年度目標が困難とされ、成果指標や実績値が示されない / 計上:災害発生に左右される事業で執行率は前年度と安定"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 8,
+          "evidenceReadiness": 8,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 8,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "先端半導体の供給課題、補助、国内拠点整備が接続",
+            "evidence": "認定6件と支援額の実績はあるが供給効果は未検証",
+            "budget": "予算と執行が一致し、前年度も執行率100％"
+          },
+          "finding": "設計:先端半導体の供給課題、補助、国内拠点整備が接続 / 検証:認定6件と支援額の実績はあるが供給効果は未検証 / 計上:予算と執行が一致し、前年度も執行率100％"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 10,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 10,
+            "evidence": 6,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "150GWh目標と設備・技術支援の経路が明確",
+            "evidence": "市場シェア等の背景値はあるが事業成果の実績がない",
+            "budget": "予算と執行が一致し、前年度も執行率100％"
+          },
+          "finding": "設計:150GWh目標と設備・技術支援の経路が明確 / 検証:市場シェア等の背景値はあるが事業成果の実績がない / 計上:予算と執行が一致し、前年度も執行率100％"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 8,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 8
+          },
+          "axisFindings": {
+            "design": "中小企業の課題別に補助メニューと生産性向上を整理",
+            "evidence": "生産性停滞等の背景統計はあるが事業成果実績がない",
+            "budget": "当年度の予算と執行は一致するが前年度比較は不能"
+          },
+          "finding": "設計:中小企業の課題別に補助メニューと生産性向上を整理 / 検証:生産性停滞等の背景統計はあるが事業成果実績がない / 計上:当年度の予算と執行は一致するが前年度比較は不能"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "市場シェア課題と具体的な研究開発活動を接続",
+            "evidence": "市場シェア2.3％の基準値はあるが成果実績がない",
+            "budget": "予算と執行が一致し前年度も100％だが裁量補助"
+          },
+          "finding": "設計:市場シェア課題と具体的な研究開発活動を接続 / 検証:市場シェア2.3％の基準値はあるが成果実績がない / 計上:予算と執行が一致し前年度も100％だが裁量補助"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 8,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "燃料別の引下げ額と小売価格抑制の経路が明確",
+            "evidence": "価格抑制の目標・実績など成果指標が示されない",
+            "budget": "予算執行は一致し前年度も95％で見込みは安定"
+          },
+          "finding": "設計:燃料別の引下げ額と小売価格抑制の経路が明確 / 検証:価格抑制の目標・実績など成果指標が示されない / 計上:予算執行は一致し前年度も95％で見込みは安定"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "対象と給与費負担は明確だが教育成果への経路が間接",
+            "evidence": "負担制度は明確だが成果指標や実績値がない",
+            "budget": "法定負担で予算執行がほぼ一致し前年度も安定"
+          },
+          "finding": "設計:対象と給与費負担は明確だが教育成果への経路が間接 / 検証:負担制度は明確だが成果指標や実績値がない / 計上:法定負担で予算執行がほぼ一致し前年度も安定"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 6,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 4,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "対象と中期計画は明確だが、交付金から便益への経路が間接的",
+            "evidence": "共通指標への言及はあるが、基準値・目標値・実績値がない",
+            "budget": "予算額と執行額が一致し、前年度も執行率100％"
+          },
+          "finding": "設計:対象と中期計画は明確だが、交付金から便益への経路が間接的 / 検証:共通指標への言及はあるが、基準値・目標値・実績値がない / 計上:予算額と執行額が一致し、前年度も執行率100％"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "研究力低下を定量把握し、研究費助成から成果までの経路が明確",
+            "evidence": "論文統計と目標見込みはあるが、成果の実績値がない",
+            "budget": "執行率は高く安定しているが、予算と実績は完全一致しない"
+          },
+          "finding": "設計:研究力低下を定量把握し、研究費助成から成果までの経路が明確 / 検証:論文統計と目標見込みはあるが、成果の実績値がない / 計上:執行率は高く安定しているが、予算と実績は完全一致しない"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 6,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "budget": 6
+          },
+          "axisFindings": {
+            "design": "対象文化財と保存活動は具体的だが、便益の規模は定量化されない",
+            "evidence": "保存・継承の目的は明確だが、成果指標や実績値がない",
+            "budget": "修理事業の性質上変動があり、執行率も2年ほぼ安定"
+          },
+          "finding": "設計:対象文化財と保存活動は具体的だが、便益の規模は定量化されない / 検証:保存・継承の目的は明確だが、成果指標や実績値がない / 計上:修理事業の性質上変動があり、執行率も2年ほぼ安定"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 7,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "対象所得層、支援額、教育機会均等への便益が具体的",
+            "evidence": "支給制度は明確だが、成果指標や達成実績が示されない",
+            "budget": "給付・補助事業として執行率が高く、前年度も同水準"
+          },
+          "finding": "設計:対象所得層、支援額、教育機会均等への便益が具体的 / 検証:支給制度は明確だが、成果指標や達成実績が示されない / 計上:給付・補助事業として執行率が高く、前年度も同水準"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 10,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 2,
+          "nearestAnchors": {
+            "design": 10,
+            "evidence": 6,
+            "budget": 2
+          },
+          "axisFindings": {
+            "design": "住宅戸数や改修実績を踏まえ、補助から省エネ効果まで接続",
+            "evidence": "住宅性能や改修実績の背景統計はあるが、事業成果実績がない",
+            "budget": "執行率36％、前年度7％で需要見込みが大幅に外れた"
+          },
+          "finding": "設計:住宅戸数や改修実績を踏まえ、補助から省エネ効果まで接続 / 検証:住宅性能や改修実績の背景統計はあるが、事業成果実績がない / 計上:執行率36％、前年度7％で需要見込みが大幅に外れた"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 6,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 6
+          },
+          "axisFindings": {
+            "design": "対象地域と支援分野は示されるが、外交便益への経路が広い",
+            "evidence": "支援目的は示すが、成果指標・目標・実績の記載がない",
+            "budget": "案件形成や相手国事情による変動があり、執行率も安定"
+          },
+          "finding": "設計:対象地域と支援分野は示されるが、外交便益への経路が広い / 検証:支援目的は示すが、成果指標・目標・実績の記載がない / 計上:案件形成や相手国事情による変動があり、執行率も安定"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 6,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 6
+          },
+          "axisFindings": {
+            "design": "再編事業の内容は具体的だが、負担軽減等の便益が抽象的",
+            "evidence": "抑止力強化と負担軽減の成果指標が設定されていない",
+            "budget": "日米・地元調整に左右され、低執行率が2年安定"
+          },
+          "finding": "設計:再編事業の内容は具体的だが、負担軽減等の便益が抽象的 / 検証:抑止力強化と負担軽減の成果指標が設定されていない / 計上:日米・地元調整に左右され、低執行率が2年安定"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 9,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "更新対象と取得機種は明確だが、抑止力の便益は間接的",
+            "evidence": "取得目的は明確だが、能力向上の成果指標がない",
+            "budget": "取得事業として執行率が高く、前年度もほぼ全額執行"
+          },
+          "finding": "設計:更新対象と取得機種は明確だが、抑止力の便益は間接的 / 検証:取得目的は明確だが、能力向上の成果指標がない / 計上:取得事業として執行率が高く、前年度もほぼ全額執行"
+        },
+        {
+          "pid": "4",
+          "designClarity": 6,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 6,
+          "nearestAnchors": {
+            "design": 6,
+            "evidence": 2,
+            "budget": 6
+          },
+          "axisFindings": {
+            "design": "府省庁・活動は明確だが便益経路が間接的",
+            "evidence": "指標・目標・成果実績の記載がない",
+            "budget": "一括計上と案件進行による執行変動がある"
+          },
+          "finding": "設計:府省庁・活動は明確だが便益経路が間接的 / 検証:指標・目標・成果実績の記載がない / 計上:一括計上と案件進行による執行変動がある"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 8,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": null,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 2,
+            "budget": 0
+          },
+          "axisFindings": {
+            "design": "対象・DB構築活動・医療安全への便益が明確",
+            "evidence": "目的と活動は明確だが成果指標がない",
+            "budget": "新規検討事業で執行実績がなく判定不能"
+          },
+          "finding": "設計:対象・DB構築活動・医療安全への便益が明確 / 検証:目的と活動は明確だが成果指標がない / 計上:新規検討事業で執行実績がなく判定不能"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": null,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 0
+          },
+          "axisFindings": {
+            "design": "定量的課題と技術基準策定が便益につながる",
+            "evidence": "課題統計はあるが事業成果の実績がない",
+            "budget": "予算・執行実績がなく判定不能"
+          },
+          "finding": "設計:定量的課題と技術基準策定が便益につながる / 検証:課題統計はあるが事業成果の実績がない / 計上:予算・執行実績がなく判定不能"
+        },
+        {
+          "pid": "365",
+          "designClarity": 8,
+          "evidenceReadiness": 6,
+          "confidence": null,
+          "budgetAppropriateness": 4,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 6,
+            "budget": 4
+          },
+          "axisFindings": {
+            "design": "被害者・対策・被害減少の関係が具体的",
+            "evidence": "被害の深刻化は示すが対策成果の実績がない",
+            "budget": "予算超過が続き所要見込みの精度に課題"
+          },
+          "finding": "設計:被害者・対策・被害減少の関係が具体的 / 検証:被害の深刻化は示すが対策成果の実績がない / 計上:予算超過が続き所要見込みの精度に課題"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 8,
+          "evidenceReadiness": 4,
+          "confidence": null,
+          "budgetAppropriateness": 6,
+          "nearestAnchors": {
+            "design": 8,
+            "evidence": 4,
+            "budget": 6
+          },
+          "axisFindings": {
+            "design": "対象・意見聴取活動・政策反映が明確",
+            "evidence": "1万人規模の取組は示すが実績値がない",
+            "budget": "執行率は概ね安定し大幅な乖離はない"
+          },
+          "finding": "設計:対象・意見聴取活動・政策反映が明確 / 検証:1万人規模の取組は示すが実績値がない / 計上:執行率は概ね安定し大幅な乖離はない"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 2,
+          "evidenceReadiness": 2,
+          "confidence": null,
+          "budgetAppropriateness": 10,
+          "nearestAnchors": {
+            "design": 2,
+            "evidence": 2,
+            "budget": 10
+          },
+          "axisFindings": {
+            "design": "活動は明確だが国民への便益経路が抽象的",
+            "evidence": "成果指標や目標・実績の記載がない",
+            "budget": "年金等の所要額と執行が継続的にほぼ一致"
+          },
+          "finding": "設計:活動は明確だが国民への便益経路が抽象的 / 検証:成果指標や目標・実績の記載がない / 計上:年金等の所要額と執行が継続的にほぼ一致"
+        }
+      ]
+    }
+  ]
+}

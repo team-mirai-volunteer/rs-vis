@@ -70,5 +70,8 @@ next-env.d.ts
 __pycache__/
 *.pyc
 
+# 埋め込みキャッシュ（scripts/generate-project-map.py・数百MB。消しても再取得できる）
+/.cache/
+
 # --- IGNORE ---
 docs/*ignore*

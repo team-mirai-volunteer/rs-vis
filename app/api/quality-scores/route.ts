@@ -51,6 +51,12 @@ export interface QualityScoreItem {
   effectiveReason?: string;        // 有効性判定の根拠（AI時）
   aiSource?: string;               // "openrouter:<model>" | "heuristic"
   totalScore: number | null;
+  // 事業期間（rs<year>-project-details.json から結合）。長期化した事業の洗い出しに使う
+  startYear?: number | null;
+  endYear?: number | null;
+  noEndDate?: boolean;
+  /** 継続年数（対象年度 − 開始年度 + 1）。開始年度が無い事業は null */
+  yearsRunning?: number | null;
 }
 
 export interface QualityScoresResponse {
@@ -66,6 +72,32 @@ export interface QualityScoresResponse {
 }
 
 const cache = new Map<string, QualityScoresResponse>();
+
+type DetailPeriod = { startYear?: number | null; endYear?: number | null; noEndDate?: boolean };
+
+/**
+ * 事業期間を品質スコアへ結合する。
+ * 開始年度は事業詳細（rs<year>-project-details.json）にしか無く、品質スコア側には入っていない。
+ * 「何年続いているか」は見直しの判断材料になるので、一覧で並べ替えできるようにする。
+ */
+function attachDuration(items: QualityScoreItem[], year: string): void {
+  const base = path.join(process.cwd(), 'public', 'data', `rs${year}-project-details.json`);
+  let raw: string | null = null;
+  if (fs.existsSync(base)) raw = fs.readFileSync(base, 'utf-8');
+  else if (fs.existsSync(`${base}.gz`)) raw = zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8');
+  if (!raw) return;   // 詳細が無い年度は継続年数を出さないだけで、一覧自体は表示する
+
+  const details: Record<string, DetailPeriod> = JSON.parse(raw);
+  const target = Number(year);
+  for (const it of items) {
+    const d = details[it.pid] ?? details[String(it.pid)];
+    if (!d) continue;
+    it.startYear = d.startYear ?? null;
+    it.endYear = d.endYear ?? null;
+    it.noEndDate = d.noEndDate ?? false;
+    it.yearsRunning = d.startYear ? Math.max(1, target - d.startYear + 1) : null;
+  }
+}
 
 function loadData(year: string): QualityScoresResponse {
   if (cache.has(year)) return cache.get(year)!;
@@ -85,6 +117,7 @@ function loadData(year: string): QualityScoresResponse {
   }
 
   const items: QualityScoreItem[] = JSON.parse(raw);
+  attachDuration(items, year);
 
   const ministries = [...new Set(items.map(i => i.ministry))].sort();
   const scored = items.filter(i => i.totalScore !== null);

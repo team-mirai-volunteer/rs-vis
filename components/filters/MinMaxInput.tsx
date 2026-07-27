@@ -38,7 +38,7 @@ export function MinMaxInput({
         title="下限 (例: 100億, 1兆)"
         style={inputStyle(minOk)}
       />
-      <span style={{ color: '#aaa', fontSize: 11 }}>〜</span>
+      <span style={{ color: '#aaa', fontSize: 11 }}>~</span>
       <input
         type="text"
         value={maxVal}

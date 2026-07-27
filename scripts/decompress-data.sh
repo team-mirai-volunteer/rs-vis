@@ -42,5 +42,9 @@ decompress_if_needed "recipient-index-2024.json" optional
 decompress_if_needed "recipient-index-2025.json" optional
 decompress_if_needed "project-quality-scores-2024.json" optional
 decompress_if_needed "project-quality-scores-2025.json" optional
+decompress_if_needed "rs2025-project-outcomes.json" optional
+decompress_if_needed "rs2024-project-outcomes.json" optional
+decompress_if_needed "project-map-2025.json" optional
+decompress_if_needed "project-map-2024.json" optional
 
 echo "✅ All data files ready"

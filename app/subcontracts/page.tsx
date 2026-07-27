@@ -7,6 +7,7 @@ import { FilterRow } from '@/components/filters/FilterRow';
 import { FilterTextInput } from '@/components/filters/FilterTextInput';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
+import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { ProjectReferenceLinks } from '@/components/subcontracts/ProjectReferenceLinks';
 import { formatYen, parseAmountToYen } from '@/app/lib/format/yen';
 import { accountCategoryLabel, bureauLeaf } from '@/app/lib/subcontracts/labels';
@@ -496,56 +497,6 @@ function SubcontractsPageInner() {
       <div style={{ flexShrink: 0, padding: '12px 16px', maxWidth: 1600, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         {/* コントロール（/sankey-svg と同じトーン） */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* トップへ戻る（矢印のみ） */}
-          <Link
-            href="/"
-            aria-label="トップへ戻る"
-            title="トップへ戻る"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: '1px solid #e0e0e0',
-              background: 'rgba(255,255,255,0.95)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-              color: '#666',
-              textDecoration: 'none',
-              flexShrink: 0,
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
-            </svg>
-          </Link>
-
-          {/* 年度切替 */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <select
-              value={year}
-              onChange={(e) => { const y = Number(e.target.value); setYear(y); router.replace(`/subcontracts?year=${y}`); }}
-              style={{
-                fontSize: 13,
-                border: '1px solid #e0e0e0',
-                borderRadius: 8,
-                padding: '6px 28px 6px 10px',
-                background: 'rgba(255,255,255,0.95)',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                color: '#333',
-                cursor: 'pointer',
-                appearance: 'none',
-                WebkitAppearance: 'none',
-              }}
-            >
-              <option value={2025}>2025年度</option>
-              <option value={2024}>2024年度</option>
-            </select>
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </div>
 
           {/* 検索 */}
           <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
@@ -630,6 +581,36 @@ function SubcontractsPageInner() {
           >
             列幅リセット
           </button>
+
+          {/* 年度とページ切替。全ページ共通で右上に置く */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={year}
+                onChange={(e) => { const y = Number(e.target.value); setYear(y); router.replace(`/subcontracts?year=${y}`); }}
+                aria-label="年度"
+                style={{
+                  fontSize: 13,
+                  border: '1px solid #e0e0e0',
+                  borderRadius: 8,
+                  padding: '8px 28px 8px 10px',
+                  background: 'rgba(255,255,255,0.95)',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+                  color: '#333',
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                }}
+              >
+                <option value={2025}>2025年度</option>
+                <option value={2024}>2024年度</option>
+              </select>
+              <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <path d="M7 10l5 5 5-5z"/>
+              </svg>
+            </div>
+            <PageNavMenu current="/subcontracts" theme="light" />
+          </div>
         </div>
 
         {/* 折りたたみフィルタパネル（/sankey-svg ライク） */}

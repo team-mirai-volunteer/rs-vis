@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T16:12:40.872Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "comparative",
+  "rubricVersion": "axis-e-comparative-rank",
+  "promptVersion": "openrouter-rubric-comparative-v1",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": null,
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T16:12:21.283Z",
+      "elapsedMs": 19588,
+      "usage": {
+        "prompt_tokens": 24568,
+        "completion_tokens": 3378,
+        "total_tokens": 27946,
+        "reportedCost": 0.05097725,
+        "calculatedCost": 0.044836
+      },
+      "results": [
+        {
+          "pid": "7463",
+          "designClarity": 10,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/1位] 住宅と改修箇所を特定し、補助から断熱・CO2・光熱費まで便益を検証できる。",
+          "rank": 1
+        },
+        {
+          "pid": "3730",
+          "designClarity": 9.7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/2位] 燃料価格を一定額下げる対象・手段・期待効果が明快で、他事業より短期検証しやすい。",
+          "rank": 2
+        },
+        {
+          "pid": "20629",
+          "designClarity": 9.3,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/3位] 医療機関等の課題を特定し、DB整備から取り違え防止・物流効率化への経路が明確。",
+          "rank": 3
+        },
+        {
+          "pid": "6534",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/4位] 低所得・多子世帯等を特定し、授業料減免等から進学機会改善への便益を示す。",
+          "rank": 4
+        },
+        {
+          "pid": "7116",
+          "designClarity": 8.6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/5位] 蓄電池関連事業者を対象に、補助から2030年150GWhの国内基盤形成へ接続する。",
+          "rank": 5
+        },
+        {
+          "pid": "365",
+          "designClarity": 8.3,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/6位] 特殊詐欺被害者・犯罪者双方を対象に、具体策から被害減少への経路が比較的明確。",
+          "rank": 6
+        },
+        {
+          "pid": "6486",
+          "designClarity": 7.9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[A/7位] 子ども・保育現場を対象に、給付や配置改善から待機児童・安心確保を示すが施策が複合的。",
+          "rank": 7
+        },
+        {
+          "pid": "19958",
+          "designClarity": 7.6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/8位] 先端半導体事業者への最大1/2補助と国内生産拠点整備の関係は明確だが成果指標が弱い。",
+          "rank": 8
+        },
+        {
+          "pid": "1536",
+          "designClarity": 7.2,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/9位] 高校生と所得階層、支給額が具体的だが、教育機会改善の実績検証指標が乏しい。",
+          "rank": 9
+        },
+        {
+          "pid": "2826",
+          "designClarity": 6.9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/10位] 所得喪失者への基礎年金給付は対象と便益が明瞭だが、給付以後の改善指標は限定的。",
+          "rank": 10
+        },
+        {
+          "pid": "4448",
+          "designClarity": 6.6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/11位] 地方計画と防災・安全を結び、アウトカム指標設定を求める点で広域事業より明確。",
+          "rank": 11
+        },
+        {
+          "pid": "4032",
+          "designClarity": 6.2,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/12位] 道路整備から都市間速達性等への経路と開通実績はあるが、便益が広範である。",
+          "rank": 12
+        },
+        {
+          "pid": "2711",
+          "designClarity": 5.9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/13位] 困窮者と8扶助を具体化し最低生活保障に至るが、自立改善の測定設計が弱い。",
+          "rank": 13
+        },
+        {
+          "pid": "2265",
+          "designClarity": 5.5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/14位] 医療保険者への負担と制度運営は明確だが、国民の健康便益との因果が遠い。",
+          "rank": 14
+        },
+        {
+          "pid": "4052",
+          "designClarity": 5.2,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/15位] 洪水被害地域への河道整備手段は具体的だが、安全向上の定量的成果が示されない。",
+          "rank": 15
+        },
+        {
+          "pid": "4562",
+          "designClarity": 4.8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[B/16位] 被災公共施設を復旧し再災害を防ぐ対象・活動は明確だが、目標値の扱いが弱い。",
+          "rank": 16
+        },
+        {
+          "pid": "4220",
+          "designClarity": 4.5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/17位] 港湾整備から輸送コスト低減を示すが、対象利用者と事業別便益の対応が粗い。",
+          "rank": 17
+        },
+        {
+          "pid": "3649",
+          "designClarity": 4.1,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/18位] 中小企業と支援メニューは具体的だが、複数事業を束ね生産性・賃上げの検証が難しい。",
+          "rank": 18
+        },
+        {
+          "pid": "1644",
+          "designClarity": 3.8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/19位] 研究者への公募・審査・助成は明確だが、研究力向上への因果と便益が長期的で広い。",
+          "rank": 19
+        },
+        {
+          "pid": "21741",
+          "designClarity": 3.4,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/20位] 建設現場の担い手不足に対し標準化を行うが、生産性改善の測定方法が明示されない。",
+          "rank": 20
+        },
+        {
+          "pid": "3522",
+          "designClarity": 3.1,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/21位] 開発技術と対象分野は幅広く記載されるが、利用者・成果水準・便益が特定しにくい。",
+          "rank": 21
+        },
+        {
+          "pid": "1548",
+          "designClarity": 2.8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/22位] 公立義務教育の教職員給与を支える手段は明確だが、教育成果への接続が薄い。",
+          "rank": 22
+        },
+        {
+          "pid": "1818",
+          "designClarity": 2.4,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/23位] 国指定文化財と保存修理等の活動は特定されるが、継承・活用便益の検証が難しい。",
+          "rank": 23
+        },
+        {
+          "pid": "6469",
+          "designClarity": 2.1,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[C/24位] こども・若者の意見聴取手段は多様だが、政策反映という成果の判定基準が曖昧。",
+          "rank": 24
+        },
+        {
+          "pid": "1586",
+          "designClarity": 1.7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/25位] 国立大学への基盤交付は明確だが、法人ごとに目的が異なり最終便益が広すぎる。",
+          "rank": 25
+        },
+        {
+          "pid": "4",
+          "designClarity": 1.4,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/26位] 政府システムの監理活動は具体的だが、共通化から国民便益への成果設計が抽象的。",
+          "rank": 26
+        },
+        {
+          "pid": "5092",
+          "designClarity": 1,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/27位] F-35取得対象と能力維持目的は明確だが、抑止・対処能力の検証可能性が低い。",
+          "rank": 27
+        },
+        {
+          "pid": "5389",
+          "designClarity": 0.7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/28位] 再編事業の個別施設は列挙されるが、抑止力強化と負担軽減の成果指標がない。",
+          "rank": 28
+        },
+        {
+          "pid": "1097",
+          "designClarity": 0.3,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/29位] 援助分野は示されるが、国ごとに課題・活動・便益が異なり一体的検証が困難。",
+          "rank": 29
+        },
+        {
+          "pid": "1835",
+          "designClarity": 0,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "[D/30位] 会員年金・展示・講演等を併記するが、芸術文化振興の対象と便益が最も曖昧。",
+          "rank": 30
+        }
+      ]
+    }
+  ]
+}

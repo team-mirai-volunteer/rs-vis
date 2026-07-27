@@ -8,6 +8,8 @@ interface MultiSelectDropdownProps {
   allLabel: string;
   placeholder?: string;
   minWidth?: number;
+  /** 未選択（すべて）表示の文字色。既定の #aaa は淡いので、濃くしたい画面から指定する */
+  placeholderColor?: string;
 }
 
 export function MultiSelectDropdown({
@@ -17,6 +19,7 @@ export function MultiSelectDropdown({
   allLabel,
   placeholder,
   minWidth = 160,
+  placeholderColor = '#aaa',
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -65,7 +68,7 @@ export function MultiSelectDropdown({
           borderRadius: 4,
           padding: '3px 22px 3px 6px',
           background: '#fafafa',
-          color: allSelected ? '#aaa' : '#333',
+          color: allSelected ? placeholderColor : '#333',
           cursor: 'pointer',
           textAlign: 'left',
           overflow: 'hidden',

@@ -1,0 +1,246 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "generatedAt": "2026-07-26T16:10:08.516Z",
+  "baselineModel": "openai/gpt-5.6-sol",
+  "rubric": "production",
+  "rubricVersion": "axis-e-current-0to10",
+  "promptVersion": "openrouter-rubric-production-v1",
+  "scoreScale": {
+    "min": 0,
+    "max": 10
+  },
+  "evidenceScale": null,
+  "failures": [],
+  "runs": [
+    {
+      "model": "openai/gpt-5.6-luna",
+      "name": "OpenAI: GPT-5.6 Luna",
+      "price": {
+        "inputPerMillion": 1,
+        "outputPerMillion": 6
+      },
+      "startedAt": "2026-07-26T16:09:48.765Z",
+      "elapsedMs": 19750,
+      "usage": {
+        "prompt_tokens": 25686,
+        "completion_tokens": 2819,
+        "total_tokens": 28505,
+        "reportedCost": 0.04901925,
+        "calculatedCost": 0.0426
+      },
+      "results": [
+        {
+          "pid": "2826",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "老齢・障害・死亡による所得減少者を対象に基礎年金を給付し、生活安定を確保する因果関係が明確。成果指標はやや乏しい。"
+        },
+        {
+          "pid": "2265",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "各医療保険制度への国庫負担を通じて保険運営と医療アクセスを支える構造は明確。ただし国民の便益への経路はやや間接的。"
+        },
+        {
+          "pid": "2711",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "生活困窮者を対象に8種類の扶助で最低生活を保障し、自立を促す設計が具体的。自立に至る活動や成果の説明は限定的。"
+        },
+        {
+          "pid": "6486",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "子育て世帯と保育施設を対象に給付・補助、人員配置改善を行い、待機児童解消と安心できる保育につなげる論理が明確。"
+        },
+        {
+          "pid": "6534",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "低所得世帯や多子世帯等に授業料減免・給付型奨学金を行い、進学機会と少子化対策を図る設計は具体的。効果の因果は一部推論的。"
+        },
+        {
+          "pid": "4448",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "地方公共団体の防災・安全インフラ整備を支援し、命と生活空間の安全確保を図る構造は明確。事業内容と便益が広範で具体性に欠ける。"
+        },
+        {
+          "pid": "4032",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "直轄道路の新設・改築により安全性、代替性、物流・地域連携を高める対象と活動が明確。個別整備から便益への説明はやや一般的。"
+        },
+        {
+          "pid": "4052",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "洪水等の被害地域を対象に築堤・河道拡幅・遊水地等を整備し、浸水被害とリスクを抑える論理が具体的。成果の定量化は弱い。"
+        },
+        {
+          "pid": "4220",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "海上輸送依存と船舶大型化等の課題に対し港湾・航路を整備し、輸送コスト低減を図る設計は妥当。利用者便益や成果指標は不足。"
+        },
+        {
+          "pid": "4562",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "災害で被災した公共土木施設を直轄・補助で復旧し、早期の生活・経済回復と再度災害防止を図る活動が具体的。"
+        },
+        {
+          "pid": "19958",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "先端半導体の供給途絶リスクを対象に、国内生産拠点整備を補助し、産業基盤と経済安全保障を強化する因果が明確。"
+        },
+        {
+          "pid": "7116",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "蓄電池の供給・競争力低下を課題とし、設備投資と技術開発を支援して、脱炭素化や重要施設の安定稼働につなげる設計が具体的。"
+        },
+        {
+          "pid": "3649",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "中小企業の生産性、人手不足、承継等の課題に対し、投資・IT導入・販路開拓等を支援するが、施策群が広く成果への経路はやや分散。"
+        },
+        {
+          "pid": "3522",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "海外依存と国内製造力不足を踏まえ、通信・半導体の研究開発や人材育成を行う構成は明確だが、国民生活への便益は長期的で間接的。"
+        },
+        {
+          "pid": "3730",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "燃料油価格高騰に対し元売りへの原資支給で小売価格を抑える仕組みは明快。ただし、家計・産業への波及や対象の妥当性は十分説明されていない。"
+        },
+        {
+          "pid": "1548",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "全国の公立義務教育を対象に教職員給与の三分の一を負担し、必要な教員確保と教育機会均等を支える因果が明確。成果指標は一般的。"
+        },
+        {
+          "pid": "1586",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "国立大学の教育研究と地域・進学機会への貢献を示し、基盤経費を交付するが、法人ごとの活動から国民便益への成果設計は幅広く抽象的。"
+        },
+        {
+          "pid": "1644",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "研究力低下を課題として、全分野の自由な研究を審査・助成し、知的資産や研究力向上を目指す流れは妥当。国民便益は長期・間接的。"
+        },
+        {
+          "pid": "1818",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "文化財の劣化・災害と技能継承を課題に、修理、防災、伝承者養成等を補助し、次世代継承と地域活性化につなげる設計が具体的。"
+        },
+        {
+          "pid": "1536",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "高校生等と所得・生活状況に応じた世帯を対象に授業料等を支援し、教育費負担軽減と中退防止・機会均等へつなげる関係が非常に明確。"
+        },
+        {
+          "pid": "7463",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "既存住宅・費用負担という課題を特定し、窓改修補助から省エネ、CO2削減、快適性・光熱費低減への経路が明確。"
+        },
+        {
+          "pid": "1097",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "途上地域の基礎生活分野等への資金供与は具体的だが、個別事業ごとの成果や日本国民への安全・繁栄への波及経路は抽象的。"
+        },
+        {
+          "pid": "5389",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "日米同盟強化と地元負担軽減の目的、移転・返還・訓練移転等の活動は明確だが、負担軽減の具体的効果や因果関係は弱い。"
+        },
+        {
+          "pid": "5092",
+          "designClarity": 6,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "旧式機の更新と周辺国の軍備増強への対応は明確で、抑止力向上との関係も妥当だが、必要数や取得による効果の説明は限定的。"
+        },
+        {
+          "pid": "4",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "政府システムの重複・非効率という課題に対し、共通化、レビュー、一括計上を行い、行政サービス改善へつなげる設計が概ね明確。"
+        },
+        {
+          "pid": "20629",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "GS1コード活用の阻害要因を特定し、DB要件調査から医療安全・在庫効率化への道筋は明確だが、当面は検討段階にとどまる。"
+        },
+        {
+          "pid": "21741",
+          "designClarity": 7,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "建設業の高齢化・担い手不足に対し、安全基準の標準化と協調的技術開発を進め、生産性向上へつなげる構成は妥当。"
+        },
+        {
+          "pid": "365",
+          "designClarity": 9,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "高齢者等の被害課題に対し、啓発電話、犯行ツール遮断、捜査強化を組み合わせ、被害減少への因果経路が具体的で説得的。"
+        },
+        {
+          "pid": "6469",
+          "designClarity": 8,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "こども・若者を対象に意見聴取、派遣・養成、政策反映を進める設計が具体的で、参加促進の便益も明確だが反映効果の測定は弱い。"
+        },
+        {
+          "pid": "1835",
+          "designClarity": 5,
+          "evidenceReadiness": null,
+          "confidence": null,
+          "finding": "芸術家の顕彰、作品公開、講演会等の活動は具体的だが、年金支給を含む運営が国民の芸術文化振興に至る便益の説明は抽象的。"
+        }
+      ]
+    }
+  ]
+}

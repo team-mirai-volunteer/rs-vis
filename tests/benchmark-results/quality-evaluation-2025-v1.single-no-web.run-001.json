@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "runId": "quality-evaluation-2025-v1-single-no-web-001",
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "evaluatedAt": "2026-07-26",
+  "evaluator": "codex-session",
+  "mode": "single-no-web",
+  "rubricVersion": "policy-evaluation-v1-draft",
+  "promptVersion": "manual-structured-review-v1",
+  "inputs": [
+    "1-2_基本情報_事業概要等: 事業名・目的・現状課題・概要",
+    "テストセットに保存した現行AIスコア"
+  ],
+  "excludedInputs": [
+    "3-1_効果発現経路_目標・実績",
+    "3-2_効果発現経路_目標のつながり",
+    "4-1_点検・評価",
+    "Web上の外部証拠"
+  ],
+  "rubric": {
+    "designClarity": {
+      "0": "記載なし",
+      "1": "目的が抽象的で、対象・活動・便益の関係がほぼ不明",
+      "2": "目的と活動は分かるが、対象または便益への経路が弱い",
+      "3": "対象・課題・活動・期待便益の関係が概ね明確",
+      "4": "関係が明確で、定量的な課題・目標または検証可能な効果発現経路がある"
+    },
+    "evidenceReadiness": {
+      "0": "検証材料なし",
+      "1": "主張中心で、指標・実績がほぼない",
+      "2": "背景統計または活動実績はあるが、アウトカム検証には不足",
+      "3": "基準値・目標・実績の一部があり、追加データで検証可能",
+      "4": "比較対象・反実仮想を含む効果検証が可能"
+    }
+  },
+  "results": [
+    {"pid":"2826","designClarity":3,"evidenceReadiness":1,"confidence":0.78,"primaryDimensions":["directPublicBenefit","distribution"],"finding":"所得保障の対象と便益は明確だが、給付実施を超えるアウトカム証拠は本文にない。"},
+    {"pid":"2265","designClarity":3,"evidenceReadiness":1,"confidence":0.74,"primaryDimensions":["directPublicBenefit","fiscalSustainability"],"finding":"法定負担と制度維持の説明は明確だが、健康成果や制度効率の検証材料が不足。"},
+    {"pid":"2711","designClarity":3,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["directPublicBenefit","distribution"],"finding":"最低生活保障と自立助長の二目的が明確。自立成果の実績は別データが必要。"},
+    {"pid":"6486","designClarity":4,"evidenceReadiness":3,"confidence":0.82,"primaryDimensions":["directPublicBenefit","humanCapital","distribution"],"finding":"待機児童、配置基準、処遇改善まで具体的。質・安全・就労への効果検証が次段階。"},
+    {"pid":"6534","designClarity":4,"evidenceReadiness":3,"confidence":0.86,"primaryDimensions":["directPublicBenefit","humanCapital","distribution"],"finding":"対象、支援手段、進学格差、支援人数が接続しており検証可能性が高い。"},
+
+    {"pid":"4448","designClarity":3,"evidenceReadiness":2,"confidence":0.72,"primaryDimensions":["resilience","directPublicBenefit"],"finding":"目的は明確だが交付金内の施策が広く、子事業なしでは効果を一括評価できない。"},
+    {"pid":"4032","designClarity":4,"evidenceReadiness":3,"confidence":0.82,"primaryDimensions":["supplyCapacity","resilience","regionalEffect"],"finding":"整備率・開通延長・速達性が示され、物流と安全への経路も具体的。"},
+    {"pid":"4052","designClarity":3,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["resilience","directPublicBenefit","environment"],"finding":"課題と手段は明確だが、回避被害や費用便益の実績は本文だけでは分からない。"},
+    {"pid":"4220","designClarity":4,"evidenceReadiness":3,"confidence":0.84,"primaryDimensions":["supplyCapacity","resilience","regionalEffect"],"finding":"海上輸送依存、労働制約、港湾整備の必要性が具体的で供給力との接続が強い。"},
+    {"pid":"4562","designClarity":3,"evidenceReadiness":2,"confidence":0.76,"primaryDimensions":["resilience","directPublicBenefit"],"finding":"復旧対象と制度手段は明確。予算乖離は災害発生依存であり政策効果と分離すべき。"},
+
+    {"pid":"19958","designClarity":4,"evidenceReadiness":3,"confidence":0.82,"primaryDimensions":["supplyCapacity","economicSecurity","privateInvestment"],"finding":"国内生産能力と投資支援の経路は明確。補助の追加性と費用対効果が未検証。"},
+    {"pid":"7116","designClarity":4,"evidenceReadiness":3,"confidence":0.86,"primaryDimensions":["supplyCapacity","economicSecurity","environment"],"finding":"150GWh目標と供給網の課題が具体的。採択案件による純増効果の確認が必要。"},
+    {"pid":"3649","designClarity":4,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["supplyCapacity","privateInvestment","regionalEffect"],"finding":"政策手段は具体的だが複数補助を束ねており、採択企業の選択バイアスが主要論点。"},
+    {"pid":"3522","designClarity":4,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["supplyCapacity","economicSecurity","knowledgeSpillover"],"finding":"市場課題と研究開発手段は明確。技術成果の実用化・波及は長期検証が必要。"},
+    {"pid":"3730","designClarity":2,"evidenceReadiness":2,"confidence":0.84,"primaryDimensions":["directPublicBenefit","fiscalSustainability","environment"],"finding":"価格引下げ手段は明確だが、受益分布・転嫁・需要維持・脱炭素とのトレードオフが未整理。"},
+
+    {"pid":"1548","designClarity":3,"evidenceReadiness":1,"confidence":0.76,"primaryDimensions":["humanCapital","distribution"],"finding":"教職員確保の制度目的は明確だが、教育成果や地域間格差への寄与を本文で検証できない。"},
+    {"pid":"1586","designClarity":3,"evidenceReadiness":2,"confidence":0.74,"primaryDimensions":["humanCapital","knowledgeSpillover","regionalEffect"],"finding":"大学の多面的機能を一事業に束ねており、共通指標と法人別ミッションの接続が必要。"},
+    {"pid":"1644","designClarity":4,"evidenceReadiness":3,"confidence":0.82,"primaryDimensions":["knowledgeSpillover","humanCapital","supplyCapacity"],"finding":"研究力低下の統計、配分方式、期待効果が具体的。因果効果は採択比較等で検証すべき。"},
+    {"pid":"1818","designClarity":3,"evidenceReadiness":2,"confidence":0.72,"primaryDimensions":["nonMarketCulturalValue","regionalEffect","intergenerationalEffect"],"finding":"保存・継承の不可逆性は明確。非市場価値と観光波及を別々に測る必要がある。"},
+    {"pid":"1536","designClarity":3,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["directPublicBenefit","humanCapital","distribution"],"finding":"対象と給付額は具体的。中退防止や進学への追加効果は本文だけでは不足。"},
+
+    {"pid":"7463","designClarity":4,"evidenceReadiness":3,"confidence":0.88,"primaryDimensions":["environment","directPublicBenefit","supplyCapacity"],"finding":"住宅ストック、改修率、費用障壁、CO2・光熱費への経路が具体的で検証準備度が高い。"},
+    {"pid":"1097","designClarity":2,"evidenceReadiness":1,"confidence":0.68,"primaryDimensions":["foreignPolicy","directPublicBenefit","economicSecurity"],"finding":"対象分野と目的が広すぎ、個別案件なしでは外交・開発効果を一括評価できない。"},
+    {"pid":"5389","designClarity":2,"evidenceReadiness":1,"confidence":0.62,"primaryDimensions":["nationalSecurity","distribution","regionalEffect"],"finding":"抑止力と地元負担軽減の二目的は示すが、成果指標とトレードオフが本文にない。"},
+    {"pid":"5092","designClarity":3,"evidenceReadiness":1,"confidence":0.64,"primaryDimensions":["nationalSecurity","economicSecurity","fiscalSustainability"],"finding":"代替機取得の目的は明確だが、必要数・能力向上・代替案・ライフサイクル費用が不足。"},
+    {"pid":"4","designClarity":3,"evidenceReadiness":1,"confidence":0.72,"primaryDimensions":["governmentProductivity","directPublicBenefit","fiscalSustainability"],"finding":"共通化・一括監理の問題設定は明確だが、巨大な事業集合で効果と収支を一括評価できない。"},
+
+    {"pid":"20629","designClarity":4,"evidenceReadiness":2,"confidence":0.82,"primaryDimensions":["directPublicBenefit","governmentProductivity","supplyCapacity"],"finding":"現行総合39.5に反して政策ロジックは明瞭。支出先欠損を成果設計の低さと混同している代表例。"},
+    {"pid":"21741","designClarity":4,"evidenceReadiness":3,"confidence":0.86,"primaryDimensions":["supplyCapacity","governmentProductivity","humanCapital"],"finding":"労働力統計、技術基準、標準化、生産性への経路が具体的。予算ゼロを低評価理由にすべきでない。"},
+    {"pid":"365","designClarity":4,"evidenceReadiness":2,"confidence":0.82,"primaryDimensions":["directPublicBenefit","publicSafety"],"finding":"被害、予防、捜査の活動は具体的。被害減少への寄与を手口変化と分離する必要がある。"},
+    {"pid":"6469","designClarity":4,"evidenceReadiness":2,"confidence":0.78,"primaryDimensions":["participation","directPublicBenefit","distribution"],"finding":"参加機会と実施手段は具体的。聴取件数ではなく政策変更への反映を測る必要がある。"},
+    {"pid":"1835","designClarity":2,"evidenceReadiness":1,"confidence":0.72,"primaryDimensions":["nonMarketCulturalValue","distribution"],"finding":"年金、顕彰、展示、文化振興が混在し、会員年金が文化成果へ至る経路が弱い。"}
+  ]
+}

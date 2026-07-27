@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "benchmarkId": "quality-policy-evaluation-2025-v1",
+  "sourceYear": 2025,
+  "createdAt": "2026-07-26",
+  "purpose": "AI評価の粒度・根拠・納得感を、固定した30事業で反復比較するための層化テストセット",
+  "selectionPolicy": {
+    "cohortCount": 6,
+    "projectsPerCohort": 5,
+    "principles": [
+      "政策類型を横断する",
+      "予算規模と現行スコアの高低を混在させる",
+      "供給力を評価すべき事業と適用すべきでない事業を含める",
+      "予算ゼロ・支出先なし・給付・安全保障など評価困難な境界事例を含める"
+    ]
+  },
+  "projects": [
+    {"pid":"2826","cohort":"social_protection","name":"基礎年金給付に必要な経費","ministry":"厚生労働省","budgetAmount":30037732060000,"challengeTags":["direct_benefit","entitlement","recipient_identity_not_applicable"],"baseline":{"total":68.5,"identify":0.0,"purpose":100.0,"budget":100.0,"effective":90.0}},
+    {"pid":"2265","cohort":"social_protection","name":"医療保険給付費国庫負担金等","ministry":"厚生労働省","budgetAmount":10170209802000,"challengeTags":["direct_benefit","health","large_transfer"],"baseline":{"total":71.1,"identify":57.7,"purpose":70.0,"budget":100.0,"effective":70.0}},
+    {"pid":"2711","cohort":"social_protection","name":"保護費負担金","ministry":"厚生労働省","budgetAmount":2783516466000,"challengeTags":["direct_benefit","distribution","recipient_privacy"],"baseline":{"total":71.3,"identify":27.1,"purpose":78.1,"budget":100.0,"effective":90.0}},
+    {"pid":"6486","cohort":"social_protection","name":"子どものための教育・保育給付に必要な経費","ministry":"こども家庭庁","budgetAmount":1877406762000,"challengeTags":["direct_benefit","childcare","human_capital"],"baseline":{"total":66.0,"identify":14.6,"purpose":70.0,"budget":100.0,"effective":90.0}},
+    {"pid":"6534","cohort":"social_protection","name":"大学等における修学支援に必要な経費","ministry":"こども家庭庁","budgetAmount":543768827000,"challengeTags":["direct_benefit","education","distribution"],"baseline":{"total":88.9,"identify":97.0,"purpose":69.1,"budget":100.0,"effective":90.0}},
+
+    {"pid":"4448","cohort":"infrastructure_resilience","name":"防災・安全交付金","ministry":"国土交通省","budgetAmount":1735353560830,"challengeTags":["grant","resilience","distributed_implementation"],"baseline":{"total":53.1,"identify":22.4,"purpose":49.1,"budget":100.0,"effective":60.0}},
+    {"pid":"4032","cohort":"infrastructure_resilience","name":"道路事業(直轄・改築等)","ministry":"国土交通省","budgetAmount":1319438420763,"challengeTags":["infrastructure","productivity","long_term_outcome"],"baseline":{"total":72.5,"identify":54.0,"purpose":81.2,"budget":100.0,"effective":70.0}},
+    {"pid":"4052","cohort":"infrastructure_resilience","name":"河川改修事業","ministry":"国土交通省","budgetAmount":539860810000,"challengeTags":["infrastructure","disaster_prevention","counterfactual_difficult"],"baseline":{"total":73.9,"identify":40.6,"purpose":72.9,"budget":100.0,"effective":90.0}},
+    {"pid":"4220","cohort":"infrastructure_resilience","name":"港湾整備事業","ministry":"国土交通省","budgetAmount":408142888781,"challengeTags":["infrastructure","supply_capacity","regional_effect"],"baseline":{"total":75.3,"identify":75.9,"purpose":66.2,"budget":100.0,"effective":70.0}},
+    {"pid":"4562","cohort":"infrastructure_resilience","name":"河川等災害復旧事業","ministry":"国土交通省","budgetAmount":783899457000,"challengeTags":["disaster_recovery","reactive_spending","budget_gap"],"baseline":{"total":66.1,"identify":55.0,"purpose":67.8,"budget":28.6,"effective":90.0}},
+
+    {"pid":"19958","cohort":"supply_capacity_innovation","name":"先端半導体の国内生産拠点の確保","ministry":"経済産業省","budgetAmount":471391197000,"challengeTags":["supply_capacity","economic_security","additionality"],"baseline":{"total":86.4,"identify":100.0,"purpose":70.0,"budget":100.0,"effective":80.0}},
+    {"pid":"7116","cohort":"supply_capacity_innovation","name":"蓄電池の製造サプライチェーン強靱化支援事業費","ministry":"経済産業省","budgetAmount":407800000000,"challengeTags":["supply_capacity","economic_security","subsidy"],"baseline":{"total":93.0,"identify":100.0,"purpose":100.0,"budget":100.0,"effective":80.0}},
+    {"pid":"3649","cohort":"supply_capacity_innovation","name":"中小企業生産性革命推進事業","ministry":"経済産業省","budgetAmount":339986201000,"challengeTags":["productivity","private_investment","selection_bias"],"baseline":{"total":81.7,"identify":81.5,"purpose":72.2,"budget":100.0,"effective":80.0}},
+    {"pid":"3522","cohort":"supply_capacity_innovation","name":"ポスト5G情報通信システム基盤強化研究開発事業(AI基盤モデル及び先端半導体関連技術開発事業)","ministry":"経済産業省","budgetAmount":990178535000,"challengeTags":["research_and_development","supply_capacity","long_term_outcome"],"baseline":{"total":86.4,"identify":100.0,"purpose":70.0,"budget":100.0,"effective":80.0}},
+    {"pid":"3730","cohort":"supply_capacity_innovation","name":"燃料油価格激変緩和対策事業","ministry":"経済産業省","budgetAmount":1950677545000,"challengeTags":["price_relief","demand_support","supply_capacity_boundary"],"baseline":{"total":86.0,"identify":100.0,"purpose":100.0,"budget":100.0,"effective":60.0}},
+
+    {"pid":"1548","cohort":"human_capital_knowledge_culture","name":"義務教育費国庫負担金に必要な経費","ministry":"文部科学省","budgetAmount":1626037771000,"challengeTags":["education","human_capital","baseline_service"],"baseline":{"total":74.3,"identify":35.9,"purpose":96.8,"budget":100.0,"effective":80.0}},
+    {"pid":"1586","cohort":"human_capital_knowledge_culture","name":"国立大学法人の運営に必要な経費","ministry":"文部科学省","budgetAmount":1087615854000,"challengeTags":["education","research","broad_objectives"],"baseline":{"total":59.4,"identify":64.6,"purpose":40.0,"budget":100.0,"effective":50.0}},
+    {"pid":"1644","cohort":"human_capital_knowledge_culture","name":"科学研究費助成事業","ministry":"文部科学省","budgetAmount":253019509000,"challengeTags":["basic_research","knowledge_spillover","long_term_outcome"],"baseline":{"total":82.7,"identify":75.6,"purpose":100.0,"budget":100.0,"effective":70.0}},
+    {"pid":"1818","cohort":"human_capital_knowledge_culture","name":"国宝・重要文化財等の保存整備等","ministry":"文化庁","budgetAmount":71829183000,"challengeTags":["culture","non_market_value","intergenerational_effect"],"baseline":{"total":71.4,"identify":28.6,"purpose":92.5,"budget":100.0,"effective":80.0}},
+    {"pid":"1536","cohort":"human_capital_knowledge_culture","name":"高校生等への修学支援","ministry":"文部科学省","budgetAmount":424435330000,"challengeTags":["education","distribution","direct_benefit"],"baseline":{"total":83.1,"identify":52.1,"purpose":100.0,"budget":100.0,"effective":90.0}},
+
+    {"pid":"7463","cohort":"security_external_environment_digital","name":"断熱窓への改修促進等による住宅の省エネ・省CO2加速化支援事業(経済産業省・国土交通省連携事業)","ministry":"環境省","budgetAmount":269301984000,"challengeTags":["environment","energy_security","private_additionality"],"baseline":{"total":75.4,"identify":40.0,"purpose":80.3,"budget":100.0,"effective":90.0}},
+    {"pid":"1097","cohort":"security_external_environment_digital","name":"無償資金協力","ministry":"外務省","budgetAmount":287405834000,"challengeTags":["foreign_aid","indirect_public_value","heterogeneous_projects"],"baseline":{"total":69.8,"identify":73.9,"purpose":75.7,"budget":100.0,"effective":50.0}},
+    {"pid":"5389","cohort":"security_external_environment_digital","name":"米軍再編関係経費","ministry":"防衛省","budgetAmount":834814091000,"challengeTags":["national_security","non_public_evidence","distribution"],"baseline":{"total":77.7,"identify":80.6,"purpose":55.1,"budget":100.0,"effective":80.0}},
+    {"pid":"5092","cohort":"security_external_environment_digital","name":"戦闘機(Fー35A/B)の取得","ministry":"防衛省","budgetAmount":323952244028,"challengeTags":["national_security","capability","classified_counterfactual"],"baseline":{"total":81.1,"identify":70.0,"purpose":100.0,"budget":100.0,"effective":70.0}},
+    {"pid":"4","cohort":"security_external_environment_digital","name":"情報システムの整備(情報通信技術調達等適正・効率化推進費)","ministry":"デジタル庁","budgetAmount":269432043050,"challengeTags":["digital","missing_recipient_score","budget_gap"],"baseline":{"total":49.0,"identify":null,"purpose":null,"budget":0.0,"effective":70.0}},
+
+    {"pid":"20629","cohort":"calibration_edge_cases","name":"医療安全の更なる向上・物流DXの推進に資する製品DBの構築事業","ministry":"厚生労働省","budgetAmount":192322000,"challengeTags":["digital","low_transparency","high_effective_low_total"],"baseline":{"total":39.5,"identify":0.0,"purpose":0.0,"budget":100.0,"effective":70.0}},
+    {"pid":"21741","cohort":"calibration_edge_cases","name":"建設機械等の自動施工技術の導入","ministry":"国土交通省","budgetAmount":0,"challengeTags":["zero_budget","supply_capacity","high_effective_low_total"],"baseline":{"total":43.0,"identify":0.0,"purpose":0.0,"budget":100.0,"effective":80.0}},
+    {"pid":"365","cohort":"calibration_edge_cases","name":"総合的な特殊詐欺対策の推進","ministry":"警察庁","budgetAmount":239569000,"challengeTags":["public_safety","prevention","high_current_score"],"baseline":{"total":86.7,"identify":87.3,"purpose":71.7,"budget":100.0,"effective":90.0}},
+    {"pid":"6469","cohort":"calibration_edge_cases","name":"こども若者の意見のこども施策への意見反映","ministry":"こども家庭庁","budgetAmount":243884000,"challengeTags":["participation","soft_outcome","measurement_difficult"],"baseline":{"total":86.4,"identify":100.0,"purpose":70.0,"budget":100.0,"effective":80.0}},
+    {"pid":"1835","cohort":"calibration_edge_cases","name":"日本芸術院会員年金の支給等に必要な経費","ministry":"文化庁","budgetAmount":322108000,"challengeTags":["entitlement","culture","public_value_disagreement"],"baseline":{"total":47.2,"identify":5.5,"purpose":75.6,"budget":100.0,"effective":40.0}}
+  ]
+}
