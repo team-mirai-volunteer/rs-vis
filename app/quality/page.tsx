@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import Link from 'next/link';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
 import type { RecipientRow } from '@/app/api/quality-scores/recipients/route';
@@ -1316,15 +1315,12 @@ export default function QualityPage() {
             <h1 className="text-lg font-bold text-gray-900 dark:text-white">
               事業別 政策評価・執行透明性スコア
             </h1>
-            <Link href="/model-lab" className="ml-auto text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
-              モデル比較 →
-            </Link>
             {/* 年度とページ切替。全ページ共通で右上に置く */}
             <select
               value={year}
               onChange={e => setYear(e.target.value as '2024' | '2025')}
               aria-label="年度"
-              className="h-9 rounded-lg border border-black/10 bg-white px-2 text-xs text-gray-700 shadow-sm cursor-pointer dark:border-white/10 dark:bg-gray-700 dark:text-gray-200"
+              className="ml-auto h-9 rounded-lg border border-black/10 bg-white px-2 text-xs text-gray-700 shadow-sm cursor-pointer dark:border-white/10 dark:bg-gray-700 dark:text-gray-200"
             >
               <option value="2025">2025年度</option>
               <option value="2024">2024年度</option>
