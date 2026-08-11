@@ -61,6 +61,12 @@ export interface IndirectCost {
   category: string;
   amount: number;
   note?: string;
+  /**
+   * 対応する支出先ブロック（5-2 の `支出先の支出先ブロック`）を持つ行か。
+   * `true` の行はフロー（blocks/flows）にも現れるため、「サンキーに乗らない支出」の
+   * 集計からは除外する。未定義の旧データは全件ブロック無し（実測）のため false 相当に扱う。
+   */
+  attachedToBlock?: boolean;
 }
 
 export interface SubcontractGraph {

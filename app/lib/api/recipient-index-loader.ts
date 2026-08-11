@@ -2,10 +2,9 @@
  * recipient-index-{YEAR}.json の読み込み・メモリキャッシュ。
  * /api/recipients/[key] と /api/search/recipients が共用する。
  */
-import * as fs from 'fs';
-import * as path from 'path';
 import type { RecipientIndex, RecipientEntry } from '@/types/recipient-index';
 import { normalizeRecipientName } from '@/app/lib/recipient-key';
+import { readDataJson } from '@/app/lib/api/data-file';
 
 const cache = new Map<string, RecipientIndex>();
 // 正規化名 → キー（法人番号エントリを優先できるよう、出現数最大のエントリに解決）
@@ -14,15 +13,10 @@ const nameKeyCache = new Map<string, Map<string, string>>();
 export function loadRecipientIndex(year: string): RecipientIndex {
   if (cache.has(year)) return cache.get(year)!;
 
-  const jsonPath = path.join(process.cwd(), 'public', 'data', `recipient-index-${year}.json`);
-  if (!fs.existsSync(jsonPath)) {
-    throw new Error(
-      `recipient-index-${year}.json が見つかりません。` +
-      `npm run generate-recipient-index${year === '2024' ? '' : `-${year}`} を実行してください。`
-    );
-  }
-
-  const data: RecipientIndex = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const data = readDataJson<RecipientIndex>(
+    `recipient-index-${year}.json`,
+    `npm run generate-recipient-index${year === '2024' ? '' : `-${year}`} を実行してください。`
+  );
   cache.set(year, data);
   return data;
 }
@@ -40,7 +34,20 @@ function getOwnEntry(recipients: Record<string, RecipientEntry>, key: string): R
 
 export function resolveRecipient(year: string, key: string): RecipientEntry | null {
   const index = loadRecipientIndex(year);
-  if (!key.startsWith('name:')) return getOwnEntry(index.recipients, key);
+
+  // 1. 直接ヒット（実在エントリを最優先）
+  const direct = getOwnEntry(index.recipients, key);
+  if (direct) return direct;
+
+  // 2. キー互換: 解決（誤記載統合・番号補完）で付け替わった旧キー → 現行キー
+  const redirected = index.redirects?.[key];
+  if (redirected) {
+    const r = getOwnEntry(index.recipients, redirected);
+    if (r) return r;
+  }
+
+  // 3. "name:正規化名" キーは表記ゆれ（aliases）から出現数最大のエントリへ解決
+  if (!key.startsWith('name:')) return null;
 
   let nameMap = nameKeyCache.get(year);
   if (!nameMap) {
@@ -59,6 +66,5 @@ export function resolveRecipient(year: string, key: string): RecipientEntry | nu
   }
 
   const resolvedKey = nameMap.get(key.slice('name:'.length));
-  const resolved = resolvedKey ? getOwnEntry(index.recipients, resolvedKey) : null;
-  return resolved ?? getOwnEntry(index.recipients, key);
+  return resolvedKey ? getOwnEntry(index.recipients, resolvedKey) : null;
 }

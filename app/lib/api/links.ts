@@ -1,6 +1,10 @@
 /**
  * API応答に埋め込む関連リンク（HATEOAS）の組み立て。
  * すべて相対URLで返し、ホスト名に依存しない。
+ *
+ * 例外は API ガイドへの外部リンクだけで、これは配置先ごとに異なるため
+ * 環境変数で与える（未設定なら応答に含めない）。リポジトリURLを直書きすると
+ * 公開ミラーの応答が開発元リポジトリを指してしまう。
  */
 import { isValidCorporateNumber } from '@/app/lib/recipient-key';
 
@@ -51,4 +55,13 @@ export function externalCorporateLinks(corporateNumber: string): { gbizinfo: str
   return {
     gbizinfo: `https://info.gbiz.go.jp/hojin/ichiran?hojinBango=${cn}`,
   };
+}
+
+/**
+ * API ガイドの公開URL。`NEXT_PUBLIC_API_DOCS_URL` 未設定なら undefined を返し、
+ * 呼び出し側は links に含めない。
+ */
+export function apiDocsLink(): string | undefined {
+  const url = process.env.NEXT_PUBLIC_API_DOCS_URL?.trim();
+  return url ? url : undefined;
 }

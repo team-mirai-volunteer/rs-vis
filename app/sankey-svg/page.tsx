@@ -12,14 +12,54 @@ import {
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { YearSelect } from '@/components/navigation/YearSelect';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { TopNSliders } from '@/client/components/SankeySvg/TopNSliders';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
+import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
+import { createScaleFont, FONT_SCALE_REFERENCE_PX } from '@/app/lib/font-scale';
 import { filterTopN, computeLayout, getTopMinistriesInScope } from '@/app/lib/sankey-svg-filter';
 import { canonicalSelectableNodeId } from '@/app/lib/sankey-svg-ids';
 import { resolveYearSelectionSnapshot, type YearSelectionSnapshot } from '@/app/lib/sankey-svg-year-selection';
 import { parseAmountToYen } from '@/app/lib/format/yen';
+import { buildFilterExcludedIds, sankeyQueryToUrlParams, sankeyQueryFromUrlParams } from '@/app/lib/sankey-query';
+import { externalCorporateLinks } from '@/app/lib/api/links';
+import type { AccountCategoryKey } from '@/types/sankey-query';
+import { AiChatPanel, type AiChatUiMessage } from '@/client/components/SankeySvg/AiChatPanel';
+import { MAX_CHAT_MESSAGES, type SankeyChatProgressEvent, type SankeyChatResponse, type SankeyChatResult } from '@/types/sankey-ai-chat';
+import { loadByokSettings, saveByokSettings, deleteByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
+import {
+  listChatSessions,
+  loadChatSession,
+  saveChatSession,
+  deleteChatSession,
+  deleteAllChatSessions,
+  renameChatSession,
+  type ChatSessionMeta,
+} from '@/client/lib/ai/chat-history-store';
+import { ExplorationHistory } from '@/client/components/SankeySvg/ExplorationHistory';
+import { FEATURE_AI_CHAT, FEATURE_EXPLORATION_HISTORY } from '@/app/lib/feature-flags';
+import { recordVisit, saveMemo } from '@/client/lib/exploration-store';
+import { buildExplorationLabel } from '@/app/lib/exploration-label';
+import { testOpenRouterKey, DEFAULT_BYOK_MODEL } from '@/client/lib/ai/openrouter-caller';
+import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
+import type { ClientGraphSource } from '@/client/lib/ai/client-tool-executor';
+import type { QualityScoreItem } from '@/app/api/quality-scores/route';
+import { TagChip } from '@/client/components/TagChip';
+import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
+import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
+import { getAccountBadgeStyle } from '@/app/lib/account-badge';
+import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
+import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
+import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import {
+  useSidePanel,
+  SIDE_PANEL_WIDTH_DEFAULT,
+  SIDE_PANEL_WIDTH_MIN,
+  SIDE_PANEL_WIDTH_MAX,
+  SIDE_PANEL_VIEWPORT_RESERVE_PX,
+} from '@/client/hooks/useSidePanel';
 
 // ── URL state serialization ──
 
@@ -61,6 +101,9 @@ interface SankeyUrlState {
   filterScoreN?: string;
   acGeneral?: boolean;
   acSpecial?: boolean;
+  /** 再委託フィルタ: 階層下限の文字列（'2'=あり〜'9'）。空/未指定 = フィルタなし */
+  filterSubcontract?: string;
+  filterRecipientIncludeSub?: boolean;
   acBoth?: boolean;
   acNone?: boolean;
 }
@@ -109,16 +152,12 @@ const PANEL_META_FONT_PX_DEFAULT = 13;
 const TOOLTIP_TITLE_FONT_PX_DEFAULT = 12;
 const TOOLTIP_VALUE_FONT_PX_DEFAULT = 11;
 const TOOLTIP_META_FONT_PX_DEFAULT = 10;
-// フォントスケールの基準値（baseFontPx ÷ FONT_SCALE_REFERENCE_PX で全フォントを比例拡縮）
-const FONT_SCALE_REFERENCE_PX = 12;
+// フォントスケールの基準値（baseFontPx ÷ FONT_SCALE_REFERENCE_PX で全フォントを比例拡縮）。
+// 実際の scaleFont 生成は app/lib/font-scale.ts（Pure ヘルパー、他ページと共有）に委譲。
 const BASE_FONT_PX_DEFAULT = 12;
 const BASE_FONT_PX_MIN = 8;
 const BASE_FONT_PX_MAX = 24;
-const SIDE_PANEL_WIDTH_DEFAULT = 400;
-const SIDE_PANEL_WIDTH_MIN = 200;
-const SIDE_PANEL_WIDTH_MAX = 800;
-// 実効幅クランプ時に地図側へ最低限残す余白(px)。狭いビューポートでパネルが全面を覆うのを防ぐ。
-const SIDE_PANEL_VIEWPORT_RESERVE_PX = 48;
+// サイドパネルの幅定数（既定/最小/最大/ビューポート予約）は client/hooks/useSidePanel.ts に一元化
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_DEFAULT = 72;
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_MIN = 24;
 const PROJECT_OVERVIEW_PREVIEW_HEIGHT_MAX = 600;
@@ -147,20 +186,48 @@ function getZoomLabelScale(zoomK: number, baseZoomK: number): number {
   return Math.min(zoomK / baseZoomK, ZOOM_FONT_MAX_RATIO);
 }
 
-function getAccountBadgeStyle(category?: string | null): { label: string; background: string } | null {
-  if (!category) return null;
-  const generalColor = '#e45f6f';
-  const specialColor = '#5f8ee8';
-  if (category === 'general') return { label: '一般', background: generalColor };
-  if (category === 'special') return { label: '特別', background: specialColor };
-  if (category === 'both') {
-    return {
-      label: '一般特別',
-      background: `linear-gradient(to right, ${generalColor} 0 50%, ${specialColor} 50% 100%)`,
-    };
-  }
-  return null;
+/**
+ * サイドパネルの再委託サマリ用。/api/subcontracts の全グラフから件数のみ抽出して保持する
+ * （全グラフはメイングラフに載せず、事業選択時に遅延取得する）。
+ */
+interface SubcontractSummary {
+  maxDepth: number;
+  totalBlockCount: number;
+  totalRecipientCount: number;
+  directBlockCount: number;
+  separateOriginCount: number;
+  /** 再委託ブロック数 = 全 − 直接 − 別財源 */
+  subcontractBlockCount: number;
 }
+
+/**
+ * 事業ノード選択時に pid 単位のデータを遅延取得してキャッシュする共通フック
+ * （事業概要プレビュー・品質スコアブロックで共用）。
+ * キーは `${year}-${pid}`。取得失敗・404 は null をキャッシュし再試行しない。
+ */
+function useProjectPidCache<T>(
+  selectedNode: LayoutNode | null | undefined,
+  year: string,
+  urlFor: (pid: number, y: string) => string,
+  extract: (data: unknown) => T | null,
+): Map<string, T | null> {
+  const [cache, setCache] = useState<Map<string, T | null>>(new Map());
+  useEffect(() => {
+    if (!selectedNode || selectedNode.aggregated) return;
+    if (selectedNode.type !== 'project-budget' && selectedNode.type !== 'project-spending') return;
+    const pid = selectedNode.projectId;
+    const cacheKey = `${year}-${pid}`;
+    if (pid == null || cache.has(cacheKey)) return;
+    fetch(urlFor(pid, year))
+      .then(r => r.ok ? r.json() : null)
+      .then((data: unknown) => setCache(prev => new Map(prev).set(cacheKey, data == null ? null : extract(data))))
+      .catch(() => setCache(prev => new Map(prev).set(cacheKey, null)));
+    // urlFor/extract はインライン定義を許容し、再取得は selectedNode.id と year のみで制御する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNode?.id, year]);
+  return cache;
+}
+
 
 function parseSearchParams(search: string): Partial<SankeyUrlState> {
   const p = new URLSearchParams(search);
@@ -206,6 +273,12 @@ function parseSearchParams(search: string): Partial<SankeyUrlState> {
     result.acBoth    = ac.includes('b');
     result.acNone    = ac.includes('n');
   }
+  const fsd = p.get('fsd');
+  const fsdNum = fsd !== null ? parseInt(fsd, 10) : NaN;
+  // 上限クランプはしない（スライダ最大 = データの maxSubcontractDepth。範囲外は clamp effect が是正）
+  if (!isNaN(fsdNum) && fsdNum >= 2) result.filterSubcontract = String(fsdNum);
+  else if (p.get('fsr') === '1') result.filterSubcontract = '2';
+  const fnrs = p.get('fnrs'); if (fnrs !== null) result.filterRecipientIncludeSub = fnrs === '1';
   return result;
 }
 
@@ -259,7 +332,9 @@ export default function RealDataSankeyPage() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
   const [showFontControls, setShowFontControls] = useState(false);
-  const [baseFontPx, setBaseFontPx] = useState(BASE_FONT_PX_DEFAULT);
+  const [baseFontPx, setBaseFontPx] = useBaseFontPx(
+    'sankey-base-font-px', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
+  );
   const [showLabels, setShowLabels] = useState(true);
   const [showAggRecipient, setShowAggRecipient] = useState(true);
   const [showAggProject, setShowAggProject] = useState(true);
@@ -269,6 +344,9 @@ export default function RealDataSankeyPage() {
   const [autoFocusRelated, setAutoFocusRelated] = useState(false);
   const [filterOnMinistryClick, setFilterOnMinistryClick] = useState(true);
   const [year, setYear] = useState<'2024' | '2025'>('2025');
+  // 品質スコア詳細ダイアログ（/quality と共通の ScoreDetailDialog を全項目取得して表示）
+  const [scoreDialogItem, setScoreDialogItem] = useState<QualityScoreItem | null>(null);
+  const [scoreDialogLoading, setScoreDialogLoading] = useState(false);
   const [baseZoom, setBaseZoom] = useState(1);
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
@@ -277,10 +355,20 @@ export default function RealDataSankeyPage() {
   const [showTopNSliders, setShowTopNSliders] = useState(true);
   const [scrollMode, setScrollMode] = useState<'zoom' | 'pan'>('zoom');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
-  const [sidePanelWidth, setSidePanelWidth] = useState(SIDE_PANEL_WIDTH_DEFAULT);
-  const [isResizingSidePanel, setIsResizingSidePanel] = useState(false);
-  const sidePanelResizeRef = useRef<{ startX: number; startW: number } | null>(null);
+  // 左サイドパネル（ノード詳細）の chrome 状態は useSidePanel に集約。
+  // isPanelCollapsed/effectiveSidePanelWidth/isResizingSidePanel は下記 svgWidth 定義後にエイリアスする
+  // AIチャットパネル（右側）。サーバモードの可否は /api/ai/sankey-chat の疎通で判定
+  const [aiChatAvailable, setAiChatAvailable] = useState(false);
+  // BYOK（使用者キー）設定。登録済みならサーバモードより優先する（設計 20260718_1542 3-1節）
+  const [byokSettings, setByokSettings] = useState<ByokSettings | null>(null);
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [aiChatMessages, setAiChatMessages] = useState<AiChatUiMessage[]>([]);
+  const [aiChatSending, setAiChatSending] = useState(false);
+  // ストリーミング応答（stream:true）の最新進行イベントのみ保持。result/error 受信で null に戻す
+  const [aiChatProgress, setAiChatProgress] = useState<SankeyChatProgressEvent | null>(null);
+  const [aiPanelWidth, setAiPanelWidth] = useState(SIDE_PANEL_WIDTH_DEFAULT);
+  const [isResizingAiPanel, setIsResizingAiPanel] = useState(false);
+  const aiPanelResizeRef = useRef<{ startX: number; startW: number } | null>(null);
   const [isResizingOverview, setIsResizingOverview] = useState(false);
   const [isResizingBudgetExecution, setIsResizingBudgetExecution] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -318,6 +406,10 @@ export default function RealDataSankeyPage() {
   const [acSpecial, setAcSpecial] = useState(true);
   const [acBoth,    setAcBoth]    = useState(true);
   const [acNone,    setAcNone]    = useState(true);
+  // 再委託フィルタ: 階層下限（'2'=あり、'3'=再々委託以深…）。'' = フィルタなし
+  const [filterSubcontract, setFilterSubcontract] = useState('');
+  // 支出先名フィルタの「再委託先を含む」（OR判定・事業単位）
+  const [filterRecipientIncludeSub, setFilterRecipientIncludeSub] = useState(false);
   const isPidQuery = (q: string) => /^\d+$/.test(q);
   const meetsSearchMinLength = (q: string) => isPidQuery(q) ? q.length >= 1 : q.length >= 2;
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -330,6 +422,10 @@ export default function RealDataSankeyPage() {
   // focusRelated ON中に事業をピンしたときのコンテキスト事業ID
   // projectOffsetMode + r-* 選択後にfocusRelated=OFFしたとき、親事業の特定に使う
   const pinnedContextProjectId = useRef<string | null>(null);
+  // 事業ピン付きディープリンク（/subcontracts からの遷移など）で po= 未指定のとき、
+  // グラフ読込後に一度だけ projectOffset をその事業の順位へ中央寄せするための保留ID。
+  // 順位は graphData がないと決まらないため、リンク側では po を計算せずここで解決する。
+  const pendingProjectOffsetPinId = useRef<string | null>(null);
   // Zoom URL state
   const urlRestoredZoomRef = useRef<number | null>(null); // zoom to restore on first layout (no sel= case)
   const zoomRef = useRef(1);                              // always-current zoom for debounce callbacks
@@ -348,6 +444,13 @@ export default function RealDataSankeyPage() {
   // スマホ横（コンパクト幅かつ横長）: オフセットコントロールをサイドパネルでスライドさせる
   const isLandscapeCompact = isCompactWidth && svgWidth > svgHeight;
 
+  // 左サイドパネル（ノード詳細）の chrome 状態。effectiveWidth は svgWidth に対する
+  // ビューポートクランプ込み（旧: minPanelWidthForViewport/maxPanelWidthForViewport 計算と同一式）
+  const leftSidePanel = useSidePanel({ side: 'left', viewportWidth: svgWidth });
+  const isPanelCollapsed = leftSidePanel.collapsed;
+  const isResizingSidePanel = leftSidePanel.isResizing;
+  const effectiveSidePanelWidth = leftSidePanel.effectiveWidth;
+
   useEffect(() => {
     const updateSize = () => {
       const el = containerRef.current;
@@ -362,31 +465,6 @@ export default function RealDataSankeyPage() {
     return () => { ro.disconnect(); window.removeEventListener('resize', updateSize); };
   }, []);
 
-  // Restore font size from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem('sankey-base-font-px');
-      if (saved !== null) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) {
-          const clamped = Math.min(BASE_FONT_PX_MAX, Math.max(BASE_FONT_PX_MIN, parsed));
-          setBaseFontPx(clamped);
-        }
-      }
-    } catch {
-      // localStorage unavailable (private browsing etc.) — ignore
-    }
-  }, []);
-
-  // Persist font size to localStorage on change
-  useEffect(() => {
-    try {
-      window.localStorage.setItem('sankey-base-font-px', String(baseFontPx));
-    } catch {
-      // ignore
-    }
-  }, [baseFontPx]);
-
   // Initialize state from URL on mount
   useEffect(() => {
     const parsed = parseSearchParams(window.location.search);
@@ -397,6 +475,13 @@ export default function RealDataSankeyPage() {
     if (parsed.topProject !== undefined) prevTopProjectRef.current = parsed.topProject;
     if (parsed.selectedNodeId !== undefined) { setSelectedNodeId(parsed.selectedNodeId); pendingFocusId.current = parsed.selectedNodeId; }
     if (parsed.pinnedProjectId !== undefined) setPinnedProjectId(parsed.pinnedProjectId);
+    // po= 明示がない事業ピン付きリンクは、グラフ読込後に順位へ中央寄せする（下の useEffect）。
+    // 初回マウント限定なのは意図的。popstate・探索履歴・AI結果の復元（applyUrlState）は
+    // 「記録された表示状態をそのまま戻す」経路であり、po 非出力＝当時 offset 0 を意味する。
+    // そこで中央寄せすると戻り先が記録時と別のウィンドウになり、URL も書き換わってしまう。
+    if (parsed.pinnedProjectId && parsed.projectOffset === undefined && parsed.offsetTarget !== 'recipient') {
+      pendingProjectOffsetPinId.current = parsed.pinnedProjectId;
+    }
     if (parsed.pinnedRecipientId !== undefined) setPinnedRecipientId(parsed.pinnedRecipientId);
     if (parsed.pinnedMinistryName !== undefined) setPinnedMinistryName(parsed.pinnedMinistryName);
     if (parsed.recipientOffset !== undefined) setRecipientOffset(parsed.recipientOffset);
@@ -437,13 +522,14 @@ export default function RealDataSankeyPage() {
     if (parsed.acSpecial !== undefined) setAcSpecial(parsed.acSpecial);
     if (parsed.acBoth    !== undefined) setAcBoth(parsed.acBoth);
     if (parsed.acNone    !== undefined) setAcNone(parsed.acNone);
+    if (parsed.filterSubcontract !== undefined) setFilterSubcontract(parsed.filterSubcontract);
+    if (parsed.filterRecipientIncludeSub !== undefined) setFilterRecipientIncludeSub(parsed.filterRecipientIncludeSub);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only init; state setters and refs are stable
   }, []);
 
-  // Restore state on browser back/forward
-  useEffect(() => {
-    const handler = () => {
-      const parsed = parseSearchParams(window.location.search);
+  // URL(パース済み)から全表示状態を復元する。
+  // ブラウザバック/フォワード（popstate）と、AIチャット結果の適用の両方から呼ばれる。
+  const applyUrlState = useCallback((parsed: Partial<SankeyUrlState>) => {
       // Pre-update prev refs so reset effects don't fire for URL-restored values
       prevOffsetTargetRef.current = parsed.offsetTarget ?? 'project';
       prevProjectSortByRef.current = parsed.projectSortBy ?? 'budget';
@@ -492,11 +578,35 @@ export default function RealDataSankeyPage() {
       setAcSpecial(parsed.acSpecial ?? true);
       setAcBoth(parsed.acBoth ?? true);
       setAcNone(parsed.acNone ?? true);
+      setFilterSubcontract(parsed.filterSubcontract ?? '');
+      setFilterRecipientIncludeSub(parsed.filterRecipientIncludeSub ?? false);
       if (parsed.selectedNodeId) pendingResetViewport.current = true;
-    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restore state on browser back/forward
+  useEffect(() => {
+    const handler = () => applyUrlState(parseSearchParams(window.location.search));
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [applyUrlState]);
+
+  // 探索履歴の自動記録（URL 同期・状態適用に連動して debounce）。
+  // 既定状態（qs 空）は記録しない。保存先は IndexedDB のみ（exploration-store）
+  const explorationRecordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleExplorationRecord = useCallback((qs: string) => {
+    if (explorationRecordTimer.current) clearTimeout(explorationRecordTimer.current);
+    if (!qs) return;
+    explorationRecordTimer.current = setTimeout(() => {
+      const query = sankeyQueryFromUrlParams(new URLSearchParams(qs));
+      recordVisit(qs, buildExplorationLabel(query), query.year ?? '2025');
+    }, 1500);
+  }, []);
+
+  // 共有URL等で開いた初期状態も履歴に載せる
+  useEffect(() => {
+    scheduleExplorationRecord(window.location.search.replace(/^\?/, ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync URL after user actions (push for node selection, replace for sliders/toggles)
   useEffect(() => {
@@ -540,6 +650,8 @@ export default function RealDataSankeyPage() {
     if (!acGeneral || !acSpecial || !acBoth || !acNone) {
       p.set('ac', `${acGeneral ? 'g' : ''}${acSpecial ? 's' : ''}${acBoth ? 'b' : ''}${acNone ? 'n' : ''}`);
     }
+    if (filterSubcontract) p.set('fsd', filterSubcontract);
+    if (filterRecipientName && filterRecipientIncludeSub) p.set('fnrs', '1');
     const qs = p.toString();
     const url = qs ? `?${qs}` : window.location.pathname;
     if (action === 'push') {
@@ -547,7 +659,8 @@ export default function RealDataSankeyPage() {
     } else {
       window.history.replaceState(null, '', url);
     }
-  }, [selectedNodeId, pinnedProjectId, pinnedRecipientId, pinnedMinistryName, recipientOffset, offsetTarget, projectOffset, topMinistry, topProject, topRecipient, showLabels, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, autoFocusRelated, filterOnMinistryClick, year, searchQuery, showFilterPanel, filterProjectName, filterProjectNameRegex, filterRecipientName, filterRecipientNameRegex, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN, acGeneral, acSpecial, acBoth, acNone]);
+    scheduleExplorationRecord(qs);
+  }, [scheduleExplorationRecord, selectedNodeId, pinnedProjectId, pinnedRecipientId, pinnedMinistryName, recipientOffset, offsetTarget, projectOffset, topMinistry, topProject, topRecipient, showLabels, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, autoFocusRelated, filterOnMinistryClick, year, searchQuery, showFilterPanel, filterProjectName, filterProjectNameRegex, filterRecipientName, filterRecipientNameRegex, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, acGeneral, acSpecial, acBoth, acNone, filterSubcontract, filterRecipientIncludeSub, filterScoreO, filterScoreX, filterScoreN]);
 
   // Keep zoomRef in sync for debounce callbacks
   // (declared before zoom state so the effect below can reference it)
@@ -646,18 +759,19 @@ export default function RealDataSankeyPage() {
       hoverSuppressTimerRef.current = null;
     }
   }, []);
-  // サイドパネル幅ドラッグリスナ — アンマウントやドラッグ終了時に確実に剥がす
+  // サイドパネル幅ドラッグリスナは client/hooks/useSidePanel.ts（leftSidePanel）に集約済み
+  // AIチャットパネル幅ドラッグリスナ（右側パネルのため左方向ドラッグで拡大）
   useEffect(() => {
-    if (!isResizingSidePanel) return;
+    if (!isResizingAiPanel) return;
     const onMove = (ev: MouseEvent) => {
-      const s = sidePanelResizeRef.current;
+      const s = aiPanelResizeRef.current;
       if (!s) return;
-      const next = Math.max(SIDE_PANEL_WIDTH_MIN, Math.min(SIDE_PANEL_WIDTH_MAX, s.startW + (ev.clientX - s.startX)));
-      setSidePanelWidth(next);
+      const next = Math.max(SIDE_PANEL_WIDTH_MIN, Math.min(SIDE_PANEL_WIDTH_MAX, s.startW - (ev.clientX - s.startX)));
+      setAiPanelWidth(next);
     };
     const onUp = () => {
-      sidePanelResizeRef.current = null;
-      setIsResizingSidePanel(false);
+      aiPanelResizeRef.current = null;
+      setIsResizingAiPanel(false);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -665,7 +779,287 @@ export default function RealDataSankeyPage() {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [isResizingSidePanel]);
+  }, [isResizingAiPanel]);
+
+  // サーバモードの疎通確認: 無効環境（キー未設定・Vercel本番）では404が返る。
+  // BYOK（使用者キー）はサーバモードと独立に利用可能なため、パネル自体は常に出す
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/ai/sankey-chat')
+      .then(res => { if (!cancelled && res.ok) setAiChatAvailable(true); })
+      .catch(() => { /* 疎通失敗 = サーバモードなしとして扱う */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // BYOK設定の復元（IndexedDB。未保存・非対応環境は null のまま）
+  useEffect(() => {
+    let cancelled = false;
+    loadByokSettings().then(s => { if (!cancelled) setByokSettings(s); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // チャット会話の復元・永続化（IndexedDB のみ・サーバ送信なし・複数セッション）。
+  // 起動時は最新セッションを復元。復元完了前の保存で空上書きしないようフラグ制御
+  const [chatSessions, setChatSessions] = useState<ChatSessionMeta[]>([]);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const chatHistoryLoadedRef = useRef(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const metas = await listChatSessions();
+      if (cancelled) return;
+      setChatSessions(metas);
+      const latest = metas.length > 0 ? await loadChatSession(metas[0].id) : null;
+      if (cancelled) return;
+      if (latest) {
+        setChatSessionId(latest.id);
+        setAiChatMessages(latest.messages);
+      } else {
+        setChatSessionId(crypto.randomUUID());
+      }
+      chatHistoryLoadedRef.current = true;
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!chatHistoryLoadedRef.current || !chatSessionId || aiChatMessages.length === 0) return;
+    const timer = setTimeout(() => {
+      saveChatSession(chatSessionId, aiChatMessages).then(() => listChatSessions().then(setChatSessions));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [aiChatMessages, chatSessionId]);
+
+  // 「クリア」= 新しい会話の開始（以前の会話はセッション一覧に残る）
+  const handleNewChatSession = useCallback(() => {
+    setChatSessionId(crypto.randomUUID());
+    setAiChatMessages([]);
+    setAiChatProgress(null);
+  }, []);
+
+  const handleSwitchChatSession = useCallback(async (id: string) => {
+    const session = await loadChatSession(id);
+    if (!session) return;
+    setChatSessionId(session.id);
+    setAiChatMessages(session.messages);
+    setAiChatProgress(null);
+  }, []);
+
+  const handleRenameChatSession = useCallback(async (id: string, title: string) => {
+    await renameChatSession(id, title);
+    setChatSessions(await listChatSessions());
+  }, []);
+
+  const handleDeleteChatSession = useCallback(async (id: string) => {
+    await deleteChatSession(id);
+    setChatSessions(await listChatSessions());
+    if (id === chatSessionId) {
+      setChatSessionId(crypto.randomUUID());
+      setAiChatMessages([]);
+    }
+  }, [chatSessionId]);
+
+  // 実行モード: キー登録済みなら BYOK を優先、なければサーバモード、どちらも無ければ未設定
+  const aiChatMode: 'byok' | 'server' | null = byokSettings ? 'byok' : aiChatAvailable ? 'server' : null;
+
+  // BYOKツール実行用の graph 取得: 表示中の年度はページの graph を再利用し、
+  // 他年度（compare_years 等）は /data から fetch してセッション内キャッシュする
+  const byokGraphCacheRef = useRef(new Map<string, GraphData>());
+  const byokGetGraph = useCallback<ClientGraphSource>(async y => {
+    if (y === year && graphData) return graphData;
+    const cached = byokGraphCacheRef.current.get(y);
+    if (cached) return cached;
+    // no-cache: 必ず ETag 再検証（更新時のみ本体取得・未更新は304）。データ構造更新後の
+    // 古いキャッシュ配信を防ぐ（graph はフィルタ機能追加でフィールドが増えるため）
+    const res = await fetch(`/data/sankey-svg-${y}-graph.json`, { cache: 'no-cache' });
+    if (!res.ok) throw new Error(`${y}年度のグラフデータの取得に失敗しました（HTTP ${res.status}）`);
+    const data = await res.json() as GraphData;
+    byokGraphCacheRef.current.set(y, data);
+    return data;
+  }, [year, graphData]);
+
+  // BYOK設定の保存・削除（AiChatPanel の設定ビューから呼ばれる）。
+  // apiKey が null のときは登録済みキーを維持してモデルだけ更新する
+  const handleSaveByok = useCallback(async (apiKey: string | null, model: string) => {
+    const key = apiKey ?? byokSettings?.apiKey;
+    if (!key) throw new Error('APIキーが未登録です');
+    const settings: ByokSettings = { apiKey: key, model };
+    await saveByokSettings(settings);
+    setByokSettings(settings);
+  }, [byokSettings]);
+  const handleDeleteByok = useCallback(async () => {
+    await deleteByokSettings();
+    setByokSettings(null);
+    // BYOK下の会話をサーバモードへ引き継がない: 残すと後のサーバモード送信で
+    // BYOK中の会話全文が /api/ai/sankey-chat へ送られ、プライバシー境界が変わってしまう。
+    // 保存済みセッションから再開しても同じことが起きるため、全セッションを削除する
+    await deleteAllChatSessions();
+    setChatSessions([]);
+    setChatSessionId(crypto.randomUUID());
+    setAiChatMessages([]);
+    setAiChatProgress(null);
+  }, []);
+
+  // SSE応答本文をパースし、progress は逐次state更新、result/error で終端メッセージを積む。
+  // 途中切断（result/error を受け取れずストリームが閉じる）は従来のエラー表示に落とす
+  const consumeAiChatStream = useCallback(async (body: ReadableStream<Uint8Array>) => {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let settled = false;
+    let sepIndex: number;
+    while (!settled) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+        const rawEvent = buffer.slice(0, sepIndex);
+        buffer = buffer.slice(sepIndex + 2);
+        let eventName = 'message';
+        let dataLine = '';
+        for (const line of rawEvent.split('\n')) {
+          if (line.startsWith(':')) continue; // ping コメント行は無視
+          if (line.startsWith('event:')) eventName = line.slice(6).trim();
+          else if (line.startsWith('data:')) dataLine += line.slice(5).trim();
+        }
+        if (!dataLine) continue;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(dataLine);
+        } catch {
+          continue;
+        }
+        if (eventName === 'progress') {
+          setAiChatProgress(parsed as SankeyChatProgressEvent);
+        } else if (eventName === 'result') {
+          const data = parsed as SankeyChatResponse;
+          setAiChatMessages(prev => [...prev, { role: 'assistant', content: data.message, result: data.result, suggestions: data.suggestions }]);
+          setAiChatProgress(null);
+          settled = true;
+        } else if (eventName === 'error') {
+          const data = parsed as { error?: string };
+          setAiChatMessages(prev => [...prev, { role: 'assistant', content: `エラー: ${data.error ?? '不明なエラー'}`, isError: true }]);
+          setAiChatProgress(null);
+          settled = true;
+        }
+      }
+    }
+    if (!settled) {
+      setAiChatMessages(prev => [...prev, { role: 'assistant', content: 'エラー: 通信に失敗しました。再度お試しください', isError: true }]);
+      setAiChatProgress(null);
+    }
+  }, []);
+
+  // AIチャット送信: 履歴全量 + 現在のビュー状態（URL由来のSankeyQuery）をステートレスAPIへ送る。
+  // stream:true を付け、応答が text/event-stream ならSSEパース、JSONなら従来処理にフォールバックする
+  const handleAiChatSend = useCallback(async (text: string) => {
+    const userMessage: AiChatUiMessage = { role: 'user', content: text };
+    setAiChatMessages(prev => [...prev, userMessage]);
+    setAiChatSending(true);
+    setAiChatProgress(null);
+    try {
+      // エラーバブルは role/content のみの API 履歴に含めない（isError 付きは表示専用）
+      const history = [...aiChatMessages, userMessage]
+        .filter(m => !m.isError)
+        .map(m => ({ role: m.role, content: m.content }))
+        .slice(-MAX_CHAT_MESSAGES);
+      const currentQuery = sankeyQueryFromUrlParams(new URLSearchParams(window.location.search));
+
+      // BYOKモード: ブラウザ内でエージェントループを実行（LLMはOpenRouter直接、
+      // ツールは公開API fetch + graph ローカル実行）。キー・会話本文は自サイトへ
+      // 送信されない（ツールの検索キーワード等のみ公開データAPIへ送られる）
+      if (byokSettings) {
+        try {
+          const agentResult = await runByokChat({
+            messages: history,
+            context: { year, currentQuery },
+            settings: byokSettings,
+            getGraph: byokGetGraph,
+            onProgress: ev => setAiChatProgress(ev),
+          });
+          setAiChatMessages(prev => [...prev, {
+            role: 'assistant',
+            content: agentResult.message,
+            result: agentResult.result,
+            suggestions: agentResult.suggestions,
+          }]);
+        } catch (e) {
+          // LlmUpstreamError の message はユーザー向け文言（キー拒否・接続失敗等）。キーは含まれない
+          const text = e instanceof LlmUpstreamError
+            ? e.message
+            : e instanceof Error && e.name === 'TimeoutError'
+              ? 'AIの応答がタイムアウトしました。時間をおいて再度お試しください'
+              : 'AIが応答できませんでした。時間をおいて再度お試しください';
+          setAiChatMessages(prev => [...prev, { role: 'assistant', content: `エラー: ${text}`, isError: true }]);
+        }
+        return;
+      }
+
+      const res = await fetch('/api/ai/sankey-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: history, context: { year, currentQuery }, stream: true }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { error?: string } | null;
+        const detail = body?.error ?? `HTTP ${res.status}`;
+        setAiChatMessages(prev => [...prev, { role: 'assistant', content: `エラー: ${detail}`, isError: true }]);
+        return;
+      }
+      const contentType = res.headers.get('content-type') ?? '';
+      if (contentType.includes('text/event-stream') && res.body) {
+        await consumeAiChatStream(res.body);
+      } else {
+        // 従来のJSON応答へのフォールバック（例: SSE非対応の中間層を経由する場合）
+        const data = await res.json() as SankeyChatResponse;
+        setAiChatMessages(prev => [...prev, { role: 'assistant', content: data.message, result: data.result, suggestions: data.suggestions }]);
+      }
+    } catch {
+      setAiChatMessages(prev => [...prev, { role: 'assistant', content: 'エラー: 通信に失敗しました。再度お試しください', isError: true }]);
+    } finally {
+      setAiChatSending(false);
+      setAiChatProgress(null);
+    }
+  }, [aiChatMessages, year, consumeAiChatStream, byokSettings, byokGetGraph]);
+
+  // AIチャット結果の適用: SankeyQuery → URL変換 → pushState → popstate と同じ復元経路で図を更新。
+  // フルリロードしないためチャット履歴が保持され、ブラウザバックで適用前の図に戻れる
+  const applyAiChatResult = useCallback((result: SankeyChatResult) => {
+    const params = sankeyQueryToUrlParams(result.query);
+    const qs = params.toString();
+    window.history.pushState(null, '', qs ? `?${qs}` : window.location.pathname);
+    applyUrlState(parseSearchParams(window.location.search));
+    // フィルタで図が大きく変わるため、レイアウト確定後に全体表示へフィットさせる
+    pendingResetViewport.current = true;
+    scheduleExplorationRecord(qs);
+  }, [applyUrlState, scheduleExplorationRecord]);
+
+  // 探索履歴・メモの適用: AIチャット結果適用と同じ URL 復元経路を使う
+  const applyExplorationEntry = useCallback((qs: string) => {
+    window.history.pushState(null, '', qs ? `?${qs}` : window.location.pathname);
+    applyUrlState(parseSearchParams(window.location.search));
+    pendingResetViewport.current = true;
+    scheduleExplorationRecord(qs);
+  }, [applyUrlState, scheduleExplorationRecord]);
+
+  // メモ保存用: 現在の URL 状態のスナップショット（ラベルは自動合成）
+  const getExplorationSnapshot = useCallback(() => {
+    const qs = window.location.search.replace(/^\?/, '');
+    const query = sankeyQueryFromUrlParams(new URLSearchParams(qs));
+    return { qs, label: buildExplorationLabel(query), year: query.year ?? '2025' };
+  }, []);
+
+  // チャットのレポート応答を発見メモとして保存（現在の図の状態に紐づく。
+  // 常に新規エントリとして追記され、同一状態に複数のレポートを残せる）。
+  // タイトルは Markdown の最初の見出し（無ければ先頭行）から自動抽出する
+  const handleSaveReportMemo = useCallback(async (reportText: string) => {
+    const snap = getExplorationSnapshot();
+    const headingLine = reportText.split('\n').map(l => l.trim()).find(l => /^#{1,3}\s+\S/.test(l));
+    const firstLine = reportText.split('\n').map(l => l.trim()).find(l => l.length > 0) ?? '';
+    const rawTitle = (headingLine ?? firstLine).replace(/^#{1,3}\s+/, '').replace(/\*\*/g, '');
+    const title = rawTitle.length > 40 ? `${rawTitle.slice(0, 40)}…` : rawTitle;
+    await saveMemo(snap.qs, snap.label, snap.year, reportText, title || undefined);
+  }, [getExplorationSnapshot]);
+
   // 事業概要プレビュー高さドラッグリスナ
   useEffect(() => {
     if (!isResizingOverview) return;
@@ -713,6 +1107,16 @@ export default function RealDataSankeyPage() {
   // 押し続けで増減するリピートボタン用ハンドラ（オフセットコントロール）。
   // TopN・フォントサイズのリピートは各コントロールコンポーネント側で同フックを使う。
   const offsetRepeat = useRepeatPress();
+  const subDepthRepeat = useRepeatPress();
+  // 再委託階層の数値直接入力（TopNSliderRow と同型のクリック編集）
+  const [subDepthEditing, setSubDepthEditing] = useState(false);
+  const [subDepthInput, setSubDepthInput] = useState('');
+  // 再委託スライダの上限 = グラフ中の最大ブロック階層数（データ無しなら5）
+  const maxSubcontractDepth = useMemo(() => {
+    let m = 5;
+    if (graphData) for (const n of graphData.nodes) if (n.subcontractDepth != null && n.subcontractDepth > m) m = n.subcontractDepth;
+    return m;
+  }, [graphData]);
   // URL履歴を replace で更新するためのマーク（子コンポーネントにも渡す）
   const markHistoryReplace = useCallback(() => { pendingHistoryAction.current = 'replace'; }, []);
 
@@ -724,7 +1128,7 @@ export default function RealDataSankeyPage() {
     pendingHistoryAction.current = 'replace';
     setRecipientOffset(0);
     setProjectOffset(0);
-  }, [filterMinistryNames, debouncedFilterProjectName, debouncedFilterRecipientName, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN]);
+  }, [filterMinistryNames, debouncedFilterProjectName, debouncedFilterRecipientName, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterSubcontract, filterRecipientIncludeSub, filterScoreO, filterScoreX, filterScoreN]);
 
   // Sync URL when filter name query changes (separate from above to avoid double reset)
   const filterQueryInitRef = useRef(false);
@@ -774,8 +1178,8 @@ export default function RealDataSankeyPage() {
   showLabelsRef.current = showLabels;
 
   const fontScale = baseFontPx / FONT_SCALE_REFERENCE_PX;
-  const scaleFont = (px: number) => Math.max(1, Math.round(px * fontScale));
-  const scaleSize = (px: number) => Math.max(1, Math.round(px * fontScale));
+  const scaleFont = useMemo(() => createScaleFont(baseFontPx), [baseFontPx]);
+  const scaleSize = scaleFont;
   // Top offset reserved for search/year/TopN controls. Narrow screens need another row's worth of breathing room.
   const SEARCH_BOX_RESERVE = Math.round((svgWidth < 1100 ? 92 : 56) * Math.max(1, fontScale));
   const searchBoxReserveRef = useRef(SEARCH_BOX_RESERVE);
@@ -1203,7 +1607,9 @@ export default function RealDataSankeyPage() {
     setGraphData(null);
     setLoading(true);
     setError(null);
-    fetch(`/data/sankey-svg-${year}-graph.json`)
+    // no-cache: 必ず ETag 再検証（未更新は304・帯域ゼロ、更新時のみ本体取得）。
+    // データ構造更新後に古いキャッシュ版を掴み続ける問題（再委託フィルタで顕在化）の対策
+    fetch(`/data/sankey-svg-${year}-graph.json`, { cache: 'no-cache' })
       .then(res => {
         if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
         return res.json();
@@ -1251,36 +1657,10 @@ export default function RealDataSankeyPage() {
     return () => { aborted = true; };
   }, [year]);
 
-  // Pre-filter exclusion set: built from filter conditions, applied before filterTopN
-  const filterExcludedIds = useMemo(() => {
-    if (!graphData) return null;
-    const protectedProjectIds = new Set<string>();
-    const protectProjectNode = (nodeId: string | null) => {
-      if (!nodeId) return;
-      if (nodeId.startsWith('project-spending-')) {
-        protectedProjectIds.add(nodeId);
-        protectedProjectIds.add(nodeId.replace('project-spending-', 'project-budget-'));
-      } else if (nodeId.startsWith('project-budget-')) {
-        protectedProjectIds.add(nodeId);
-        protectedProjectIds.add(nodeId.replace('project-budget-', 'project-spending-'));
-      }
-    };
-    protectProjectNode(selectedNodeId);
-    protectProjectNode(pinnedProjectId);
-    const minBudgetYen = parseAmountToYen(filterMinBudgetText);
-    const maxBudgetYen = parseAmountToYen(filterMaxBudgetText);
-    const minSpendingYen = parseAmountToYen(filterMinSpendingText);
-    const maxSpendingYen = parseAmountToYen(filterMaxSpendingText);
-    const hasBudget = minBudgetYen !== null || maxBudgetYen !== null;
-    const hasSpending = minSpendingYen !== null || maxSpendingYen !== null;
-    const trimmedProjectName = debouncedFilterProjectName.trim();
-    const trimmedRecipientName = debouncedFilterRecipientName.trim();
-    const hasProjectName = trimmedProjectName.length >= 1;
-    const hasRecipientName = trimmedRecipientName.length >= 1;
-    const hasMinistry = filterMinistryNames.length > 0;
-    const hasAccountFilter = !acGeneral || !acSpecial || !acBoth || !acNone;
-    // 政策評価スコアの足きり。スコアは policySummary から pid で引く（未ロード時は効かせない）
-    const parseScoreBound = (t: string): number | null => {
+  // 政策評価スコアの足きり（総合点・費用対内容・必要性）。API のクエリスキーマには載せず、
+  // buildFilterExcludedIds の事業単位フックとして差し込む（policySummary は画面側にしか無いため）。
+  const scoreExcludeProject = useMemo(() => {
+    const parseBound = (t: string): number | null => {
       const trimmed = t.trim();
       if (trimmed === '') return null;
       const v = Number(trimmed);
@@ -1289,102 +1669,56 @@ export default function RealDataSankeyPage() {
     const scoreFilters = ([
       ['o', filterScoreO], ['x', filterScoreX], ['n', filterScoreN],
     ] as const)
-      .map(([key, r]) => ({ key, min: parseScoreBound(r.min), max: parseScoreBound(r.max) }))
+      .map(([key, r]) => ({ key, min: parseBound(r.min), max: parseBound(r.max) }))
       .filter(f => f.min !== null || f.max !== null);
-    const hasScore = scoreFilters.length > 0 && policySummary !== null;
-    if (!hasBudget && !hasSpending && !hasProjectName && !hasRecipientName && !hasMinistry && !hasAccountFilter && !hasScore) return null;
-    const selectedMinistrySet = new Set(filterMinistryNames);
-    const minBudget = minBudgetYen ?? -Infinity;
-    const maxBudget = maxBudgetYen ?? Infinity;
-    const minSpending = minSpendingYen ?? 0;
-    const maxSpending = maxSpendingYen ?? Infinity;
-    const buildMatcher = (query: string, useRegex: boolean): ((name: string) => boolean) => {
-      if (useRegex) {
-        try { const re = new RegExp(query, 'i'); return name => re.test(name); }
-        catch { return () => false; }
-      }
-      const qLower = query.toLocaleLowerCase();
-      return name => name.toLocaleLowerCase().includes(qLower);
-    };
-    const matchesProject = hasProjectName ? buildMatcher(trimmedProjectName, filterProjectNameRegex) : null;
-    const matchesRecipient = hasRecipientName ? buildMatcher(trimmedRecipientName, filterRecipientNameRegex) : null;
-    const excluded = new Set<string>();
-    const spendingByPid = new Map(
-      graphData.nodes.filter(n => n.type === 'project-spending' && n.projectId != null).map(n => [n.projectId!, n])
-    );
-    for (const n of graphData.nodes) {
-      if (n.aggregated) continue;
-      if (n.type === 'project-budget' && n.projectId != null) {
-        const sn = spendingByPid.get(n.projectId);
-        const failBudget = hasBudget && (n.value < minBudget || n.value > maxBudget);
-        const failProjectName = matchesProject !== null && !matchesProject(n.name);
-        const failMinistry = hasMinistry && !selectedMinistrySet.has(n.ministry ?? '');
-        const failAccount = hasAccountFilter && (() => {
-          const cat = n.accountCategory;
-          if (cat === 'general') return !acGeneral;
-          if (cat === 'special') return !acSpecial;
-          if (cat === 'both') return !acBoth;
-          return !acNone; // undefined → 'none'
-        })();
+    // 未ロード時は効かせない（スコア取得前に事業が消えるのを避ける）
+    if (scoreFilters.length === 0 || policySummary === null) return null;
+    return (projectId: number) => {
+      const entry = policySummary.items[String(projectId)];
+      for (const f of scoreFilters) {
+        const v = entry?.[f.key];
         // 足きり指定時、未評価（スコア無し）の事業は落とす。0点扱いで残すと絞り込みの意味が薄れる
-        const failScore = hasScore && (() => {
-          const entry = policySummary!.items[String(n.projectId)];
-          for (const f of scoreFilters) {
-            const v = entry?.[f.key];
-            if (v === null || v === undefined) return true;
-            if (f.min !== null && v < f.min) return true;
-            if (f.max !== null && v > f.max) return true;
-          }
-          return false;
-        })();
-        if (failBudget || failProjectName || failMinistry || failAccount || failScore) { excluded.add(n.id); if (sn) excluded.add(sn.id); }
-      } else if (n.type === 'recipient') {
-        const failSpending = hasSpending && (n.value < minSpending || n.value > maxSpending);
-        const failRecipientName = matchesRecipient !== null && !matchesRecipient(n.name);
-        if (failSpending || failRecipientName) excluded.add(n.id);
+        if (v === null || v === undefined) return true;
+        if (f.min !== null && v < f.min) return true;
+        if (f.max !== null && v > f.max) return true;
       }
-    }
-    // Pass 2: 支出先・予算フィルタが有効な場合、残存支出先のない事業／孤立支出先を除外
-    if (hasSpending || hasBudget || hasMinistry || hasRecipientName || hasScore) {
-      const projectsWithSurvivingRecipients = new Set(
-        graphData.edges
-          .filter(e => e.target.startsWith('r-') && !excluded.has(e.target))
-          .map(e => e.source)
-      );
-      for (const [pid, sn] of spendingByPid) {
-        const bn = budgetNodeByPid.get(pid);
-        if (protectedProjectIds.has(sn.id) || (bn != null && protectedProjectIds.has(bn.id))) continue;
-        if (!excluded.has(sn.id) && !projectsWithSurvivingRecipients.has(sn.id)) {
-          excluded.add(sn.id);
-          if (bn) excluded.add(bn.id);
-        }
-      }
-    }
-    // ゼロ予算事業は graph 生成時に ministry→project-budget エッジを持たないため Pass 3 で
-    // 省庁保護ロジックを切り替える必要がある。minBudget > 0 の場合は failBudget が除外済み。
-    const excludeZeroBudget = hasBudget && minBudget > 0;
-    // Pass 3: 残存事業のない省庁を除外（project → ministry のカスケード）
-    const ministriesWithSurvivingProjects = new Set(
-      graphData.edges
-        .filter(e => !excluded.has(e.source) && !excluded.has(e.target) && e.target.startsWith('project-budget-'))
-        .map(e => e.source)
+      return false;
+    };
+  }, [filterScoreO, filterScoreX, filterScoreN, policySummary]);
+
+  // Pre-filter exclusion set: built from filter conditions, applied before filterTopN
+  // (除外ロジック本体は app/lib/sankey-query.ts に移設。ここでは UI 状態 → フィルタ条件への変換のみ行う)
+  const filterExcludedIds = useMemo(() => {
+    if (!graphData) return null;
+    const trimmedProjectName = debouncedFilterProjectName.trim();
+    const trimmedRecipientName = debouncedFilterRecipientName.trim();
+    const accountCategories: AccountCategoryKey[] = [];
+    if (acGeneral) accountCategories.push('general');
+    if (acSpecial) accountCategories.push('special');
+    if (acBoth) accountCategories.push('both');
+    if (acNone) accountCategories.push('none');
+    return buildFilterExcludedIds(
+      graphData.nodes,
+      graphData.edges,
+      {
+        projectName: trimmedProjectName ? { query: trimmedProjectName, regex: filterProjectNameRegex } : null,
+        recipientName: trimmedRecipientName
+          ? { query: trimmedRecipientName, regex: filterRecipientNameRegex, ...(filterRecipientIncludeSub ? { includeSubcontract: true } : {}) }
+          : null,
+        ministries: filterMinistryNames,
+        budget: { min: parseAmountToYen(filterMinBudgetText), max: parseAmountToYen(filterMaxBudgetText) },
+        spending: { min: parseAmountToYen(filterMinSpendingText), max: parseAmountToYen(filterMaxSpendingText) },
+        accountCategories,
+        subcontract: {
+          hasRedelegation: false,
+          minDepth: filterSubcontract ? parseInt(filterSubcontract, 10) : null,
+        },
+      },
+      [selectedNodeId, pinnedProjectId],
+      // 政策評価スコアの足きり。事業単位フックとして差し込む（policySummary は画面側にしか無い）
+      scoreExcludeProject,
     );
-    // ゼロ予算事業がいる可能性がある場合（excludeZeroBudget=false）は、
-    // ministry→project-budgetエッジが存在しないため、生き残ったproject-spendingノードから省庁を保護する。
-    if (!excludeZeroBudget) {
-      for (const n of graphData.nodes) {
-        if (n.type === 'project-spending' && !excluded.has(n.id) && n.value > 0 && n.ministry) {
-          ministriesWithSurvivingProjects.add(`ministry-${n.ministry}`);
-        }
-      }
-    }
-    for (const n of graphData.nodes) {
-      if (n.type === 'ministry' && !n.aggregated && !excluded.has(n.id)) {
-        if (!ministriesWithSurvivingProjects.has(n.id)) excluded.add(n.id);
-      }
-    }
-    return excluded.size > 0 ? excluded : null;
-  }, [graphData, selectedNodeId, pinnedProjectId, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, filterScoreO, filterScoreX, filterScoreN, policySummary, debouncedFilterProjectName, debouncedFilterRecipientName, filterProjectNameRegex, filterRecipientNameRegex, acGeneral, acSpecial, acBoth, acNone]);
+  }, [graphData, selectedNodeId, pinnedProjectId, filterMinistryNames, filterMinBudgetText, filterMaxBudgetText, filterMinSpendingText, filterMaxSpendingText, debouncedFilterProjectName, debouncedFilterRecipientName, filterProjectNameRegex, filterRecipientNameRegex, acGeneral, acSpecial, acBoth, acNone, filterSubcontract, filterRecipientIncludeSub, scoreExcludeProject]);
 
   const filtered = useMemo(() => {
     if (!graphData) return null;
@@ -1397,8 +1731,8 @@ export default function RealDataSankeyPage() {
       : graphData.edges;
     const maxOffset = Math.max(0, (nodes.filter(n => n.type === 'recipient').length) - topRecipient);
     const clampedOffset = Math.min(recipientOffset, maxOffset);
-    return filterTopN(nodes, edges, topMinistry, topProject, topRecipient, clampedOffset, pinnedProjectId, true, showAggRecipient, showAggProject, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, projectSortBy);
-  }, [graphData, topMinistry, topProject, topRecipient, recipientOffset, pinnedProjectId, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, filterExcludedIds]);
+    return filterTopN(nodes, edges, topMinistry, topProject, topRecipient, clampedOffset, pinnedProjectId, true, showAggRecipient, showAggProject, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, projectSortBy, !!filterRecipientName.trim());
+  }, [graphData, topMinistry, topProject, topRecipient, recipientOffset, pinnedProjectId, showAggRecipient, showAggProject, projectSortBy, scaleBudgetToVisible, focusRelated, pinnedRecipientId, pinnedMinistryName, offsetTarget, projectOffset, filterExcludedIds, filterRecipientName]);
 
   // オフセットコントロールの実高を計測（スマホ縦のリスト下パディング用）。
   // 再購読はコントロールのマウント/アンマウント時のみで十分。サイズ変化は ResizeObserver が拾う。
@@ -1685,6 +2019,24 @@ export default function RealDataSankeyPage() {
     return new Map(ranked.map((n, i) => [n.id, i]));
   }, [graphData, filterExcludedIds, topMinistry, projectSortBy, focusRelated, pinnedRecipientId, pinnedMinistryName]);
 
+  // 事業ピン付きディープリンク（po= 未指定）の projectOffset 中央寄せ。
+  // ピン事業は TopN 圏外でも表示されるが、関連ノードのみを解除した瞬間に
+  // 先頭50事業へ飛んでしまうため、順位が判明した時点で一度だけウィンドウを合わせる。
+  // 計算は事業クリック時の jumpToProjectRank と同一。
+  useEffect(() => {
+    const pinId = pendingProjectOffsetPinId.current;
+    if (!pinId || allProjectRanks.size === 0) return;
+    pendingProjectOffsetPinId.current = null;
+    const rank = allProjectRanks.get(pinId);
+    if (rank === undefined) return;
+    const maxOffset = Math.max(0, allProjectRanks.size - topProject);
+    const newOffset = Math.max(0, Math.min(rank - Math.floor(topProject / 2), maxOffset));
+    if (newOffset > 0) {
+      pendingHistoryAction.current = 'replace';
+      setProjectOffset(newOffset);
+    }
+  }, [allProjectRanks, topProject]);
+
   // Recipient count per project-spending node (from raw graphData)
   const projectRecipientCount = useMemo(() => {
     if (!graphData) return new Map<string, number>();
@@ -1853,8 +2205,6 @@ export default function RealDataSankeyPage() {
   const [budgetExecutionListHeight, setBudgetExecutionListHeight] = useState(BUDGET_EXECUTION_LIST_HEIGHT_DEFAULT);
   const overviewResizeRef = useRef<{ startY: number; startH: number } | null>(null);
   const budgetExecutionResizeRef = useRef<{ startY: number; startH: number } | null>(null);
-  const [projectDetailCache, setProjectDetailCache] = useState<Map<string, ProjectDetail | null>>(new Map());
-
   const [panelTab, setPanelTab] = useState<'ministry' | 'project' | 'recipient'>('ministry');
   // Auto-select panel tab based on selected node type.
   // selectedNode is derived from selectedNodeId and won't change for the same id
@@ -1892,19 +2242,48 @@ export default function RealDataSankeyPage() {
     }
   }, [selectedNode, selectedNodeId, selectNode, graphData]);
 
+  // 事業ノード選択時の遅延取得キャッシュ（useProjectPidCache で共通化）
   // Pre-fetch project detail on node selection (for collapsed preview)
-  useEffect(() => {
-    if (!selectedNode || selectedNode.aggregated) return;
-    if (selectedNode.type !== 'project-budget' && selectedNode.type !== 'project-spending') return;
-    const pid = selectedNode.projectId;
-    const cacheKey = `${year}-${pid}`;
-    if (pid == null || projectDetailCache.has(cacheKey)) return;
-    fetch(`/api/project-details/${pid}?year=${year}`)
-      .then(r => r.ok ? r.json() : null)
-      .then((data: ProjectDetail | null) => setProjectDetailCache(prev => new Map(prev).set(cacheKey, data)))
-      .catch(() => setProjectDetailCache(prev => new Map(prev).set(cacheKey, null)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNode?.id, year]);
+  const projectDetailCache = useProjectPidCache<ProjectDetail>(
+    selectedNode, year,
+    (pid, y) => `/api/project-details/${pid}?year=${y}`,
+    data => data as ProjectDetail,
+  );
+  // Fetch subcontract summary on project node selection (side panel 再委託 block)
+  const subcontractSummaryCache = useProjectPidCache<SubcontractSummary>(
+    selectedNode, year,
+    (pid, y) => `/api/subcontracts/${pid}?year=${y}`,
+    (data) => {
+      const g = data as {
+        maxDepth?: number; totalBlockCount?: number; totalRecipientCount?: number;
+        directBlockCount?: number; separateOriginCount?: number;
+      };
+      if (g?.totalBlockCount == null) return null;
+      const totalBlockCount = g.totalBlockCount;
+      const directBlockCount = g.directBlockCount ?? 0;
+      const separateOriginCount = g.separateOriginCount ?? 0;
+      return {
+        maxDepth: g.maxDepth ?? 0,
+        totalBlockCount,
+        totalRecipientCount: g.totalRecipientCount ?? 0,
+        directBlockCount,
+        separateOriginCount,
+        subcontractBlockCount: Math.max(0, totalBlockCount - directBlockCount - separateOriginCount),
+      };
+    },
+  );
+
+  // 品質スコアブロックのクリックで全項目を取得し /quality と同じ詳細ダイアログを開く
+  const openScoreDialog = useCallback((pid: string | number) => {
+    setScoreDialogLoading(true);
+    fetch(`/api/quality-scores/${pid}?year=${year}&full=1`)
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then((data: { score?: QualityScoreItem }) => {
+        if (data.score) setScoreDialogItem(data.score);
+      })
+      .catch(() => { /* スコアなし等は何もしない */ })
+      .finally(() => setScoreDialogLoading(false));
+  }, [year]);
 
   const nodeByLayoutId = useMemo(() => {
     const m = new Map<string, LayoutNode>();
@@ -2207,6 +2586,19 @@ export default function RealDataSankeyPage() {
     return () => clearTimeout(timer);
   }, [filterRecipientName]);
 
+  // 年度切替・URL直接指定で filterSubcontract が現在データの最大階層を超えた場合、
+  // 表示（cur のクランプ）と実フィルタ（buildFilterExcludedIds は生値を受け取る）の
+  // 乖離を防ぐため state 側をクランプして永続化する。クランプ後は条件が false になり再発火しない。
+  // graphData 確定前は maxSubcontractDepth がデフォルト値（5）のため、ロード前にクランプしない
+  useEffect(() => {
+    if (!graphData) return;
+    if (filterSubcontract && parseInt(filterSubcontract, 10) > maxSubcontractDepth) {
+      pendingHistoryAction.current = 'replace';
+      setFilterSubcontract(String(maxSubcontractDepth));
+    }
+  }, [graphData, maxSubcontractDepth, filterSubcontract]);
+
+
   useEffect(() => { setSearchPage(0); setSearchCursorIndex(-1); }, [debouncedQuery]);
 
   const SEARCH_REGEX_MAX_LEN = 100;
@@ -2296,7 +2688,8 @@ export default function RealDataSankeyPage() {
     scoreRangeToParam(filterScoreO) !== null ||
     scoreRangeToParam(filterScoreX) !== null ||
     scoreRangeToParam(filterScoreN) !== null ||
-    !(acGeneral && acSpecial && acBoth && acNone);
+    !(acGeneral && acSpecial && acBoth && acNone) ||
+    filterSubcontract !== '';
 
   const clearAllFilters = useCallback(() => {
     pendingHistoryAction.current = 'push';
@@ -2318,6 +2711,8 @@ export default function RealDataSankeyPage() {
     setAcSpecial(true);
     setAcBoth(true);
     setAcNone(true);
+    setFilterSubcontract('');
+    setFilterRecipientIncludeSub(false);
   }, []);
 
   const handleSearchSelect = useCallback((nodeId: string) => {
@@ -2611,18 +3006,18 @@ export default function RealDataSankeyPage() {
       + `L${tx},${tBot}C${mx},${tBot} ${mx},${sBot} ${sx},${sBot}Z`;
   };
 
-  // サイドパネルの実効幅: ユーザー設定値(sidePanelWidth)を保持しつつ、ビューポート幅に収める。
-  // スマホ縦などビューポートが狭い場合に、設定済みの広い幅がそのまま適用されて画面を
-  // 埋め尽くす（地図が見えなくなる）のを防ぐ。地図を最低 SIDE_PANEL_VIEWPORT_RESERVE_PX 残す。
-  // 極端に狭いビューポート(svgWidth < MIN+RESERVE)では MIN より reserve を優先し、
-  // 実効幅が svgWidth - RESERVE を超えない（地図が完全に消えない）ことを保証する。
+  // 左サイドパネルの実効幅（ビューポートクランプ込み）は leftSidePanel（useSidePanel）が算出済み。
+  // AIチャットパネル（右）も同じクランプ規則を使うため、境界値だけここでも算出する。
   const maxPanelWidthForViewport = Math.max(0, svgWidth - SIDE_PANEL_VIEWPORT_RESERVE_PX);
   const minPanelWidthForViewport = Math.min(SIDE_PANEL_WIDTH_MIN, maxPanelWidthForViewport);
-  const effectiveSidePanelWidth = Math.min(
-    maxPanelWidthForViewport,
-    Math.max(minPanelWidthForViewport, sidePanelWidth),
-  );
   const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth : 0;
+  // AIチャットパネル（右側）の実効幅: 左パネルと同じ規則でビューポート幅に収める。
+  // コンパクト幅では全幅オーバーレイになるため右端コントロールの退避は行わない。
+  const effectiveAiPanelWidth = Math.min(
+    maxPanelWidthForViewport,
+    Math.max(minPanelWidthForViewport, aiPanelWidth),
+  );
+  const rightControlsOffset = showAiChat && !isCompactWidth ? effectiveAiPanelWidth : 0;
   // 右上の設定(⋮)ボタン領域(幅32+余白)に重ならないよう右側を確保。
   // これがないと文字拡大時に検索ボックスが設定ボタンを覆い、タップで開けなくなる。
   const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 64px)`;
@@ -2664,7 +3059,10 @@ export default function RealDataSankeyPage() {
     />
   );
 
-  // 右上クラスタに入れるツール群（TopN・オフセット操作）。スマホ幅では従来どおり左下に絶対配置
+  /**
+   * TopN・オフセットの操作パネル。狭幅では画面下部、通常は右上クラスタの左端に置く。
+   * 右上は［ツール - 表示設定 - 年度 - メニュー］の並びで rs-vis と揃える。
+   */
   const offsetControlsBlock = filtered ? (() => {
         // Recipient offset mode
         const maxRecipOffset = Math.max(0, filtered.totalRecipientCount - topRecipient);
@@ -2692,6 +3090,7 @@ export default function RealDataSankeyPage() {
         return (
           <div ref={offsetControlRef} style={ isCompactWidth
             ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
+            // 通常幅では右上クラスタの子として並べる（位置はクラスタ側が持つ）
             : { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
             {/* Row 1: オフセットスライダー（2列スパン） */}
@@ -2727,7 +3126,7 @@ export default function RealDataSankeyPage() {
                     style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
                   >{activeRangeStart}</button>
                 )}
-                <span style={{ color: '#999', fontSize: META_FONT_PX }}>~{activeRangeEnd}</span>
+                <span style={{ color: '#999', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
                 <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: 60 }} />
                 {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
                 {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
@@ -2781,7 +3180,7 @@ export default function RealDataSankeyPage() {
           )}
           </div>
         );
-  })() : null;
+      })() : null;
 
   return (
     <div
@@ -3447,78 +3846,19 @@ export default function RealDataSankeyPage() {
 
       {/* Left side panel — node detail */}
       {selectedNodeId !== null && (
-        <div
-          data-pan-disabled="true"
-          style={{
-            position: 'fixed', left: 0, top: 0, height: '100%',
-            width: isPanelCollapsed ? 0 : effectiveSidePanelWidth,
-            background: '#fff',
-            borderRight: isPanelCollapsed ? 'none' : '1px solid #e0e0e0',
-            boxShadow: isPanelCollapsed ? 'none' : '2px 0 8px rgba(0,0,0,0.1)',
-            zIndex: 25,
-            transition: isResizingSidePanel ? 'none' : 'width 0.2s ease',
-            overflow: 'visible',
-            cursor: 'default',
-          }}
+        <SidePanelChrome
+          side="left"
+          open={!isPanelCollapsed}
+          onToggle={leftSidePanel.toggleCollapsed}
+          width={effectiveSidePanelWidth}
+          minWidth={SIDE_PANEL_WIDTH_MIN}
+          maxWidth={SIDE_PANEL_WIDTH_MAX}
+          onResizeStart={leftSidePanel.onResizeStart}
+          isResizing={isResizingSidePanel}
+          onResetWidth={leftSidePanel.resetWidth}
         >
-          {/* Width resize handle — right edge */}
-          {!isPanelCollapsed && (
-            <div
-              data-pan-disabled="true"
-              role="separator"
-              aria-orientation="vertical"
-              aria-label="サイドパネルの幅を変更"
-              title="ドラッグで幅を変更（ダブルクリックで既定値）"
-              onMouseDown={e => {
-                e.preventDefault();
-                sidePanelResizeRef.current = { startX: e.clientX, startW: sidePanelWidth };
-                setIsResizingSidePanel(true);
-              }}
-              onDoubleClick={() => setSidePanelWidth(SIDE_PANEL_WIDTH_DEFAULT)}
-              style={{
-                position: 'absolute', right: -3, top: 0, width: 6, height: '100%',
-                cursor: 'ew-resize', zIndex: 26,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                userSelect: 'none',
-              }}
-            >
-              <div style={{ width: 3, height: 32, borderRadius: 2, background: isResizingSidePanel ? '#a0a0a0' : 'transparent' }} />
-            </div>
-          )}
-          {/* Collapse/expand toggle + close buttons on right edge */}
-          <div
-            data-pan-disabled="true"
-            style={{
-              position: 'absolute', right: -25, top: '50%', transform: 'translateY(-50%)',
-              width: 25,
-              background: '#fff', border: '1px solid #e0e0e0', borderLeft: 'none',
-              borderRadius: '0 6px 6px 0',
-              boxShadow: '2px 0 4px rgba(0,0,0,0.08)',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-            }}
-          >
-            {/* Collapse/expand button: panel folds, node stays selected */}
-            <button
-              data-pan-disabled="true"
-              onClick={() => setIsPanelCollapsed(c => !c)}
-              title={isPanelCollapsed ? 'パネルを展開' : 'パネルを折りたたむ'}
-              style={{
-                width: 25, height: 56,
-                background: 'transparent', border: 'none',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 0, borderRadius: '0 6px 6px 0',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                {isPanelCollapsed
-                  ? <polyline points="9 6 15 12 9 18"/>
-                  : <polyline points="15 6 9 12 15 18"/>}
-              </svg>
-            </button>
-          </div>
-
           {/* Panel content */}
-          {!isPanelCollapsed && selectedNode && (
+          {selectedNode && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Header — fixed, never scrolls */}
               <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid #f0f0f0', flexShrink: 0, background: '#fff' }}>
@@ -3527,6 +3867,40 @@ export default function RealDataSankeyPage() {
                     <div style={{ fontWeight: 700, fontSize: PANEL_TITLE_FONT_PX, color: '#111', wordBreak: 'break-all', lineHeight: 1.4 }}>
                       {selectedNode.name}
                     </div>
+                    {selectedNode.type === 'recipient' && selectedNode.representativeCorporateNumber && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: META_FONT_PX, color: '#666' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', lineHeight: 1 }} title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
+                          <span style={{ lineHeight: 1 }}>法人番号 {selectedNode.representativeCorporateNumber}</span>
+                          {(() => {
+                            // 有効な法人番号のみ gBizINFO へリンク（検証・URL構築は共有ヘルパーに集約）
+                            const links = externalCorporateLinks(selectedNode.representativeCorporateNumber);
+                            if (!links) return null;
+                            return (
+                              <a
+                                href={links.gbizinfo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`gBizINFO で法人番号を確認: ${selectedNode.representativeCorporateNumber}`}
+                                style={{ display: 'inline-flex', color: '#2563eb', flexShrink: 0 }}
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" height="13" width="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+                                  <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
+                                </svg>
+                              </a>
+                            );
+                          })()}
+                        </span>
+                        {(selectedNode.corporateNumberCount ?? 0) >= 2 && (
+                          <span
+                            style={{ background: '#fef3c7', color: '#92400e', padding: '0 6px', borderRadius: 8, fontWeight: 600, whiteSpace: 'nowrap' }}
+                            title={`この支出先名には${selectedNode.corporateNumberCount}件の法人番号が紐づいています（表記揺れ・誤記載・複数実体の可能性）`}
+                          >
+                            他{(selectedNode.corporateNumberCount ?? 1) - 1}件
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {(() => {
                       // Main value (予算額 for budget types, 支出額 for spending type)
                       let mainValue = 0;
@@ -3676,389 +4050,93 @@ export default function RealDataSankeyPage() {
                 </div>
               </div>
 
-              {/* 政策評価 — 事業ノード（非集約）でスコアが取得できているときのみ */}
+              {/* 政策評価 — 事業ノード（非集約）のみ。共有コンポーネント（再委託ビューと同型） */}
               {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending')
-                && !selectedNode.aggregated && selectedNode.projectId != null && policyError && (
-                <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '7px 14px' }}>
-                  <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>政策評価</span>
-                  <span style={{ marginLeft: 8, fontSize: META_FONT_PX, color: '#c0392b' }}>
-                    読み込めませんでした（{policyError}）
-                  </span>
-                </div>
+                && !selectedNode.aggregated && selectedNode.projectId != null && (() => {
+                const entry = policySummary?.items[String(selectedNode.projectId)];
+                return (
+                  <PolicyEvaluationBlock
+                    pid={selectedNode.projectId}
+                    year={year}
+                    error={policyError}
+                    view={entry ? {
+                      overall: entry.o, proportionality: entry.x, necessity: entry.n,
+                      recommendation: entry.r ? policySummary!.recommendations[entry.r] : null,
+                      improvementAction: entry.a ? policySummary!.actions[entry.a] : null,
+                      categoryLabel: entry.c ? policySummary!.categories[entry.c] : null,
+                    } : null}
+                    labelPx={PANEL_META_FONT_PX}
+                    metaPx={META_FONT_PX}
+                    onOpenDetail={() => openScoreDialog(selectedNode.projectId!)}
+                    detailLoading={scoreDialogLoading}
+                  />
+                );
+              })()}
+
+              {/* 事業概要アコーディオン — project-budget / project-spending（非集約）のみ。共有コンポーネント */}
+              {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending') && !selectedNode.aggregated && selectedNode.projectId != null && (
+                <ProjectOverviewSection
+                  detail={projectDetailCache.get(`${year}-${selectedNode.projectId}`)}
+                  projectName={selectedNode.name}
+                  year={year}
+                  subcontractHref={`/subcontracts/${selectedNode.projectId}?year=${year}`}
+                  scaleFont={scaleFont}
+                  expanded={isProjectDetailExpanded}
+                  onToggle={() => setIsProjectDetailExpanded(v => !v)}
+                  previewHeight={projectOverviewPreviewHeight}
+                  onResizeStart={(e) => { e.preventDefault(); overviewResizeRef.current = { startY: e.clientY, startH: projectOverviewPreviewHeight }; setIsResizingOverview(true); }}
+                  onResizeReset={() => setProjectOverviewPreviewHeight(PROJECT_OVERVIEW_PREVIEW_HEIGHT_DEFAULT)}
+                  isLoading={isProjectDetailExpanded && projectDetailCache.get(`${year}-${selectedNode.projectId}`) === undefined}
+                />
               )}
-              {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending')
-                && !selectedNode.aggregated && selectedNode.projectId != null && policySummary && (() => {
-                const entry = policySummary.items[String(selectedNode.projectId)];
-                if (!entry) return null;
-                const rec = entry.r ? policySummary.recommendations[entry.r] : null;
-                const act = entry.a ? policySummary.actions[entry.a] : null;
-                // /quality と同じ配色。判断の強さで色を変える
-                const recColor = !rec ? '#999'
-                  : rec === '継続' ? '#2d7d46'
-                  : rec === '要改善' ? '#3b82f6'
-                  : rec === '再設計' || rec === '終了・廃止候補' ? '#d94545'
-                  : '#d98a20';
-                const scoreColor = (v: number | null) => v == null ? '#999'
-                  : v >= 90 ? '#2d7d46' : v >= 70 ? '#3b82f6' : v >= 50 ? '#d98a20' : '#d94545';
-                const category = entry.c ? policySummary.categories[entry.c] : null;
-                // 5軸のうち、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸を並べる。
-                // 残り3軸（成果設計・検証可能性・執行透明性）は /quality 側で確認する。
-                const cells: Array<[string, number | null]> = [
-                  ['総合点', entry.o], ['費用対内容', entry.x], ['必要性', entry.n],
-                ];
-                return (
-                  <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '8px 14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>政策評価</span>
-                      <span style={{ fontSize: META_FONT_PX, color: '#aaa' }}>暫定</span>
-                      {category && (
-                        <span style={{ background: '#f0f0f0', color: '#666', padding: '1px 6px', borderRadius: 9, fontSize: META_FONT_PX, whiteSpace: 'nowrap' }}>{category}</span>
-                      )}
-                      <a href={`/quality?pid=${selectedNode.projectId}`} target="_blank" rel="noopener noreferrer"
-                        style={{ marginLeft: 'auto', fontSize: META_FONT_PX, color: '#4a90d9', textDecoration: 'none' }}
-                      >一覧で見る →</a>
-                    </div>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
-                      {cells.map(([label, value]) => (
-                        <div key={label} style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: PANEL_META_FONT_PX + 4, fontWeight: 700, lineHeight: 1, color: scoreColor(value), fontFamily: 'monospace' }}>
-                            {value ?? '—'}
-                          </div>
-                          <div style={{ fontSize: META_FONT_PX, color: '#999', marginTop: 3 }}>{label}</div>
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
-                        {rec && (
-                          <span style={{ background: recColor, color: '#fff', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 600, whiteSpace: 'nowrap' }}>{rec}</span>
-                        )}
-                        {act && (
-                          <span style={{ background: '#e8f1fb', color: '#2b6cb0', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 600, whiteSpace: 'nowrap' }}>{act}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
 
-              {/* 事業概要アコーディオン — project-budget / project-spending（非集約）のみ */}
+
+              {/* 再委託サマリ — project-budget / project-spending（非集約）のみ。/api/subcontracts から遅延取得 */}
               {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending') && !selectedNode.aggregated && selectedNode.projectId != null && (() => {
-                const pid = selectedNode.projectId;
-                const cachedDetail = projectDetailCache.get(`${year}-${pid}`);
-                const isLoading = isProjectDetailExpanded && cachedDetail === undefined;
-                const rsUrl = `https://rssystem.go.jp/project?q=${encodeURIComponent(selectedNode.name.replace(/\//g, ''))}&fiscalYear=${year}&isSearchTargetProjectName=true`;
-                const handleToggle = () => setIsProjectDetailExpanded(v => !v);
+                const sub = subcontractSummaryCache.get(`${year}-${selectedNode.projectId}`);
+                if (sub === undefined) return null; // fetch中は非表示（パネルのちらつき防止）
+                if (sub === null || sub.totalBlockCount === 0) return null; // 再委託データなし
+                const subPid = selectedNode.projectId;
+                const statChip: React.CSSProperties = {
+                  border: '1px solid #e0e0e0', borderRadius: 4, padding: '1px 7px',
+                  fontSize: META_FONT_PX, color: '#555', whiteSpace: 'nowrap',
+                };
                 return (
-                  <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '7px 14px', gap: 4 }}>
-                      <button type="button" onClick={handleToggle}
-                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                      >
-                        <span style={{ fontSize: META_FONT_PX, color: '#888' }}>{isProjectDetailExpanded ? '▼' : '▶'}</span>
-                        <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>事業概要</span>
-                      </button>
-                      <a href={rsUrl} target="_blank" rel="noopener noreferrer"
-                        title="RSシステムで開く"
-                        style={{ display: 'flex', alignItems: 'center', color: '#4a90d9', textDecoration: 'none', flexShrink: 0 }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="18" viewBox="0 0 24 20" fill="none">
-                          <text x="12" y="16" textAnchor="middle" fontSize="14" fontWeight="700" fontFamily="sans-serif" fill="#4a90d9">RS</text>
-                        </svg>
-                      </a>
-                      {cachedDetail?.url && /^https?:\/\//.test(cachedDetail.url) && (
-                        <a href={cachedDetail.url} target="_blank" rel="noopener noreferrer"
-                          title="事業概要URL"
-                          style={{ display: 'flex', alignItems: 'center', color: '#4a90d9', textDecoration: 'none', flexShrink: 0 }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="#4a90d9">
-                            <path d="M320-440h320v-80H320v80Zm0 120h320v-80H320v80Zm0 120h200v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/>
-                          </svg>
-                        </a>
-                      )}
-                      <a href={`/subcontracts/${pid}?year=${year}`} target="_blank" rel="noopener noreferrer"
-                        title="再委託構造を見る"
-                        style={{ display: 'flex', alignItems: 'center', color: '#4a90d9', textDecoration: 'none', flexShrink: 0 }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="#4a90d9">
-                          <path d="M760-120q-39 0-70-22.5T647-200H440q-66 0-113-47t-47-113q0-66 47-113t113-47h80q33 0 56.5-23.5T600-600q0-33-23.5-56.5T520-680H313q-13 35-43.5 57.5T200-600q-50 0-85-35t-35-85q0-50 35-85t85-35q39 0 69.5 22.5T313-760h207q66 0 113 47t47 113q0 66-47 113t-113 47h-80q-33 0-56.5 23.5T360-360q0 33 23.5 56.5T440-280h207q13-35 43.5-57.5T760-360q50 0 85 35t35 85q0 50-35 85t-85 35ZM228.5-691.5Q240-703 240-720t-11.5-28.5Q217-760 200-760t-28.5 11.5Q160-737 160-720t11.5 28.5Q183-680 200-680t28.5-11.5Z"/>
-                        </svg>
-                      </a>
+                  <div style={{ borderBottom: '1px solid #f0f0f0', padding: '7px 14px 9px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>再委託</span>
+                      <a href={`/subcontracts/${subPid}?year=${year}`}
+                        title="再委託フローを見る（同じタブで開きます）"
+                        style={{ fontSize: META_FONT_PX, color: '#4a90d9', textDecoration: 'none', marginLeft: 'auto', flexShrink: 0 }}
+                      >フロー ↗</a>
                     </div>
-                    {!isProjectDetailExpanded && cachedDetail?.overview && (
-                      <>
-                        <div style={{ padding: '0 14px 0', fontSize: PANEL_META_FONT_PX, color: '#888', lineHeight: 1.5,
-                          height: projectOverviewPreviewHeight, overflowY: 'auto', wordBreak: 'break-all' }}>
-                          {cachedDetail.overview}
-                        </div>
-                        <div
-                          role="separator"
-                          aria-orientation="horizontal"
-                          aria-label="事業概要プレビューの高さを変更"
-                          title="ドラッグで高さを変更"
-                          onMouseDown={e => {
-                            e.preventDefault();
-                            overviewResizeRef.current = { startY: e.clientY, startH: projectOverviewPreviewHeight };
-                            setIsResizingOverview(true);
-                          }}
-                          onDoubleClick={() => setProjectOverviewPreviewHeight(PROJECT_OVERVIEW_PREVIEW_HEIGHT_DEFAULT)}
-                          style={{
-                            height: 10,  cursor: 'ns-resize',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            userSelect: 'none',
-                          }}
-                          data-pan-disabled
-                        >
-                          <div style={{ width: 32, height: 3, borderRadius: 2, background: '#d0d0d0' }} />
-                        </div>
-                      </>
-                    )}
-                    {isProjectDetailExpanded && (
-                      <div style={{ padding: '0 14px 10px', fontSize: PANEL_META_FONT_PX, color: '#444', maxHeight: 320, overflowY: 'auto' }}>
-                        {isLoading && <span style={{ color: '#aaa' }}>読み込み中...</span>}
-                        {!isLoading && cachedDetail === null && <span style={{ color: '#aaa' }}>詳細情報が見つかりませんでした</span>}
-                        {!isLoading && cachedDetail && (() => {
-                          const d = cachedDetail;
-                          const fieldStyle: React.CSSProperties = { marginBottom: 8 };
-                          const labelStyle: React.CSSProperties = { fontSize: META_FONT_PX, color: '#aaa', display: 'block', marginBottom: 2 };
-                          const textStyle: React.CSSProperties = { lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-all' };
-                          return (<>
-                            {d.category && (
-                              <div style={fieldStyle}>
-                                <span style={labelStyle}>事業区分</span>
-                                <span>{d.category}</span>
-                                {(d.startYear || d.endYear || d.noEndDate) && (
-                                  <span style={{ marginLeft: 8, color: '#888' }}>
-                                    {d.startYear ?? (d.startYearUnknown ? '不明' : '?')}年度〜{d.noEndDate ? '終了予定なし' : (d.endYear ? `${d.endYear}年度` : '?')}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {d.implementationMethods.length > 0 && (
-                              <div style={fieldStyle}>
-                                <span style={labelStyle}>実施方法</span>
-                                <span>{d.implementationMethods.join('・')}</span>
-                              </div>
-                            )}
-                            {d.overview && (
-                              <div style={fieldStyle}>
-                                <span style={labelStyle}>概要</span>
-                                <span style={textStyle}>{d.overview}</span>
-                              </div>
-                            )}
-                            {d.purpose && (
-                              <div style={fieldStyle}>
-                                <span style={labelStyle}>目的</span>
-                                <span style={textStyle}>{d.purpose}</span>
-                              </div>
-                            )}
-                            {d.url && (
-                              <div style={fieldStyle}>
-                                <a href={d.url} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize: META_FONT_PX, color: '#4a90d9', wordBreak: 'break-all' }}>
-                                  事業概要URL ↗
-                                </a>
-                              </div>
-                            )}
-                          </>);
-                        })()}
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+                      <span style={statChip}>ブロック {sub.totalBlockCount}</span>
+                      <span style={statChip}>支出先 {sub.totalRecipientCount.toLocaleString()}</span>
+                      <span style={statChip}>階層 {sub.maxDepth}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+                      <TagChip kind="direct" fontSize={META_FONT_PX}>直接 {sub.directBlockCount}</TagChip>
+                      {sub.subcontractBlockCount > 0 && <TagChip kind="subcontract" fontSize={META_FONT_PX}>再委託 {sub.subcontractBlockCount}</TagChip>}
+                      {sub.separateOriginCount > 0 && <TagChip kind="separate-origin" fontSize={META_FONT_PX}>別財源 {sub.separateOriginCount}</TagChip>}
+                    </div>
                   </div>
                 );
               })()}
 
-              {/* 予算・執行アコーディオン — project-budget / project-spending（非集約）のみ */}
-              {selectedProjectBudgetNode && (() => {
-                const summary = selectedProjectBudgetNode.budgetSummary;
-                const breakdown = selectedProjectBudgetNode.budgetBreakdown ?? [];
-                if (!summary && breakdown.length === 0) return null;
-
-                const formatBreakdownAmount = (value: number) => formatYen(value);
-                const renderText = (value: string) => value.trim() || '-';
-                const summaryAccountItems = (summary?.accountSummaries ?? []).filter(item => item.totalBudget > 0);
-                const accountTotals = summaryAccountItems.length > 0
-                  ? summaryAccountItems.reduce((m, item) => {
-                    const label = item.accountCategory === '一般会計' ? '一般' : item.accountCategory === '特別会計' ? '特別' : '';
-                    if (label) m.set(label, (m.get(label) ?? 0) + item.totalBudget);
-                    return m;
-                  }, new Map<string, number>())
-                  : breakdown.reduce((m, item) => {
-                    const label = item.accountCategory === '一般会計' ? '一般' : item.accountCategory === '特別会計' ? '特別' : '';
-                    if (label) m.set(label, (m.get(label) ?? 0) + item.amount);
-                    return m;
-                  }, new Map<string, number>());
-                const toAccountBadgeKey = (value: string) => {
-                  if (value === '一般会計' || value === '一般') return 'general';
-                  if (value === '特別会計' || value === '特別') return 'special';
-                  return null;
-                };
-                const renderAccountBadge = (value: string) => {
-                  const badge = getAccountBadgeStyle(toAccountBadgeKey(value));
-                  if (!badge) return null;
-                  return (
-                    <span style={{
-                      background: badge.background,
-                      color: '#fff',
-                      padding: '1px 6px',
-                      borderRadius: 8,
-                      fontSize: Math.max(9, META_FONT_PX - 1),
-                      fontWeight: 700,
-                      lineHeight: 1.4,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {badge.label}
-                    </span>
-                  );
-                };
-                const accountBadges = (['一般', '特別'] as const)
-                  .map(label => ({ label, amount: accountTotals.get(label) ?? 0 }))
-                  .filter(item => item.amount > 0);
-                const totalBreakdownAmount = breakdown.reduce((s, item) => s + item.amount, 0);
-                const cardStyle: React.CSSProperties = {
-                  border: '1px solid #e8edf3',
-                  borderRadius: 6,
-                  background: '#fff',
-                  padding: '8px 9px',
-                };
-                const cardHeaderStyle: React.CSSProperties = {
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  marginBottom: 6,
-                };
-                const cardTitleStyle: React.CSSProperties = {
-                  minWidth: 0,
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  color: '#333',
-                  fontSize: PANEL_META_FONT_PX,
-                  fontWeight: 600,
-                };
-                const miniLabelStyle: React.CSSProperties = {
-                  fontSize: META_FONT_PX,
-                  color: '#999',
-                  marginRight: 3,
-                };
-                const metaGridStyle: React.CSSProperties = {
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                  gap: '5px 10px',
-                  fontSize: META_FONT_PX,
-                  lineHeight: 1.45,
-                };
-                const renderMeta = (label: string, value: string) => (
-                  <div style={{ minWidth: 0 }}>
-                    <span style={miniLabelStyle}>{label}</span>
-                    <span style={{ color: '#555', wordBreak: 'break-all' }}>{renderText(value)}</span>
-                  </div>
-                );
-
-                return (
-                  <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', padding: '2px 14px 1px', gap: 4 }}>
-                      <button type="button" onClick={() => setIsBudgetExecutionExpanded(v => !v)}
-                        style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-                      >
-                        <span style={{ fontSize: META_FONT_PX, color: '#888' }}>{isBudgetExecutionExpanded ? '▼' : '▶'}</span>
-                        <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>予算・執行</span>
-                        {breakdown.length > 0 && (
-                          <span style={{ fontSize: META_FONT_PX, color: '#999', fontWeight: 500 }}>
-                            {breakdown.length.toLocaleString()}件
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                    {accountBadges.length > 0 && (
-                      <div style={{ padding: '0 14px 2px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 12, rowGap: 4, minWidth: 0 }}>
-                        {accountBadges.map(item => (
-                          <div key={item.label} style={{ flex: `1 1 ${scaleSize(112)}px`, minWidth: 0 }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 1, minWidth: 0 }}>
-                              {renderAccountBadge(item.label)}
-                              <span style={{ display: 'block', fontSize: PANEL_PRIMARY_VALUE_FONT_PX, fontWeight: 600, color: '#222', whiteSpace: 'nowrap' }}>
-                                {formatBreakdownAmount(item.amount)}
-                              </span>
-                            </span>
-                            <span style={{ display: 'block', fontSize: META_FONT_PX, color: '#999', marginTop: 1, whiteSpace: 'nowrap' }}>
-                              {Math.round(item.amount).toLocaleString()}円
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {isBudgetExecutionExpanded && (
-                      <div style={{ padding: '0 14px 10px', fontSize: PANEL_META_FONT_PX, color: '#444' }}>
-                        {breakdown.length > 0 && summary && totalBreakdownAmount !== summary.totalBudget && (
-                          <div style={{ color: '#b26a00', background: '#fff8e1', border: '1px solid #ffe0a3', borderRadius: 6, padding: 6, marginBottom: 8, lineHeight: 1.45 }}>
-                            2-1合計と2-2内訳合計に差があります: {formatBreakdownAmount((summary?.totalBudget ?? 0) - totalBreakdownAmount)}
-                          </div>
-                        )}
-                        {breakdown.length === 0 ? (
-                          <p style={{ color: '#aaa', margin: 0 }}>歳出項目内訳がありません</p>
-                        ) : (
-                          <>
-                            <div style={{
-                              display: 'grid',
-                              gap: 7,
-                              ...(breakdown.length > 1 ? { maxHeight: budgetExecutionListHeight, overflowY: 'auto' as const } : { overflowY: 'visible' as const }),
-                              paddingRight: 2,
-                            }}>
-                              {breakdown.map((item, index) => (
-                                <div key={`${item.accountCategory}-${item.account}-${item.subAccount}-${item.budgetType}-${item.item}-${item.subItem}-${index}`} style={cardStyle}>
-                                  <div style={cardHeaderStyle}>
-                                    <div style={cardTitleStyle}>
-                                      {renderAccountBadge(item.accountCategory)}
-                                      <span style={{ color: '#999', fontWeight: 500 }}>{renderText(item.budgetType)}</span>
-                                    </div>
-                                    <div style={{ color: '#222', fontWeight: 700, whiteSpace: 'nowrap', fontSize: PANEL_LIST_VALUE_FONT_PX }}>
-                                      {formatBreakdownAmount(item.amount)}
-                                    </div>
-                                  </div>
-                                  <div style={metaGridStyle}>
-                                    {renderMeta('会計', item.account)}
-                                    {renderMeta('勘定', item.subAccount)}
-                                    {renderMeta('項', item.item)}
-                                    {renderMeta('目', item.subItem)}
-                                  </div>
-                                  {item.note.trim() && (
-                                    <div style={{ marginTop: 5, fontSize: META_FONT_PX, lineHeight: 1.45 }}>
-                                      <span style={miniLabelStyle}>補足</span>
-                                      <span style={{ color: '#555', wordBreak: 'break-all' }}>{item.note}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                            {breakdown.length > 1 && (
-                              <div
-                                role="separator"
-                                aria-orientation="horizontal"
-                                aria-label="予算・執行カードリストの高さを変更"
-                                title="ドラッグで高さを変更"
-                                onMouseDown={e => {
-                                  e.preventDefault();
-                                  budgetExecutionResizeRef.current = { startY: e.clientY, startH: budgetExecutionListHeight };
-                                  setIsResizingBudgetExecution(true);
-                                }}
-                                onDoubleClick={() => setBudgetExecutionListHeight(BUDGET_EXECUTION_LIST_HEIGHT_DEFAULT)}
-                                style={{
-                                  height: 10, cursor: 'ns-resize',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  userSelect: 'none',
-                                }}
-                                data-pan-disabled
-                              >
-                                <div style={{ width: 32, height: 3, borderRadius: 2, background: '#d0d0d0' }} />
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {/* 予算・執行アコーディオン — project-budget / project-spending（非集約）のみ。共有コンポーネント */}
+              {selectedProjectBudgetNode && (
+                <BudgetExecutionSection
+                  budgetSummary={selectedProjectBudgetNode.budgetSummary}
+                  budgetBreakdown={selectedProjectBudgetNode.budgetBreakdown ?? []}
+                  scaleFont={scaleFont}
+                  expanded={isBudgetExecutionExpanded}
+                  onToggleExpanded={() => setIsBudgetExecutionExpanded(v => !v)}
+                  listHeight={budgetExecutionListHeight}
+                  onResizeStart={(e) => { e.preventDefault(); budgetExecutionResizeRef.current = { startY: e.clientY, startH: budgetExecutionListHeight }; setIsResizingBudgetExecution(true); }}
+                  onResizeReset={() => setBudgetExecutionListHeight(BUDGET_EXECUTION_LIST_HEIGHT_DEFAULT)}
+                />
+              )}
 
               {/* 省庁 / 事業 / 支出先 3タブ */}
               {panelSections && (() => {
@@ -4251,7 +4329,7 @@ export default function RealDataSankeyPage() {
               })()}
             </div>
           )}
-        </div>
+        </SidePanelChrome>
       )}
 
 
@@ -4501,6 +4579,65 @@ export default function RealDataSankeyPage() {
                     </div>
                   );
                 })}
+                {/* 支出先: 再委託先を含む（OR判定・事業単位）+ 再委託階層（スライダ + 数値 + リピートボタン。） */}
+                {(() => {
+                  const cur = filterSubcontract ? Math.min(parseInt(filterSubcontract, 10), maxSubcontractDepth) : 1;
+                  const commitDepth = (v: number) => {
+                    pendingHistoryAction.current = 'replace';
+                    const c = Math.max(1, Math.min(maxSubcontractDepth, Math.floor(v)));
+                    setFilterSubcontract(c <= 1 ? '' : String(c));
+                  };
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 44 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
+                        title="オンにすると、直接支出先または再委託先のどちらかに名前がマッチする事業を残します（支出先ノード自体は隠しません）">
+                        <input
+                          type="checkbox"
+                          checked={filterRecipientIncludeSub}
+                          onChange={e => { pendingHistoryAction.current = 'replace'; setFilterRecipientIncludeSub(e.target.checked); }}
+                          style={{ width: 12, height: 12, flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap' }}>再委託先</span>
+                      </label>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>階層</span>
+                      <input
+                        type="range" min={1} max={maxSubcontractDepth} step={1}
+                        value={cur}
+                        onChange={e => commitDepth(Number(e.target.value))}
+                        aria-label="再委託ブロック階層の下限"
+                        style={{ flex: 1, minWidth: 0, width: 0 }}
+                      />
+                      {subDepthEditing ? (
+                        <input type="number" autoFocus min={1} max={maxSubcontractDepth} step={1}
+                          value={subDepthInput}
+                          onChange={e => setSubDepthInput(e.target.value)}
+                          onBlur={() => { const v = Number(subDepthInput); if (!isNaN(v) && v >= 1) commitDepth(v); setSubDepthEditing(false); }}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
+                          style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
+                        />
+                      ) : (
+                        <button type="button" onClick={() => { setSubDepthInput(String(cur)); setSubDepthEditing(true); }}
+                          title="クリックして直接入力"
+                          style={{ color: cur > 1 ? '#333' : '#999', fontSize: CONTROL_SMALL_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
+                        >{cur}</button>
+                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
+                        {([[1, 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '深くする'], [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '浅くする']] as const).map(([delta, path, title]) => {
+                          const step = () => commitDepth((filterSubcontract ? parseInt(filterSubcontract, 10) : 1) + delta);
+                          return (
+                            <button key={delta} type="button" title={title} aria-label={title}
+                              {...subDepthRepeat(step)}
+                              onClick={(e) => { if (e.detail === 0) step(); }}
+                              style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
                 {/* 予算・支出 テキスト入力 */}
                 {([
                   { label: '予算', minText: filterMinBudgetText, maxText: filterMaxBudgetText, setMin: setFilterMinBudgetText, setMax: setFilterMaxBudgetText },
@@ -4605,91 +4742,6 @@ export default function RealDataSankeyPage() {
             </svg>
           </button>
 
-
-              {/* 表示設定(⋮) — 検索ボックスの隣（左上）。ダイアログは右方向へ開く */}
-          <div style={{ position: 'relative', flexShrink: 0, zIndex: 21 }}>
-            <button
-              onClick={() => setShowSettings(s => !s)}
-              aria-label="表示設定を開く"
-              aria-expanded={showSettings}
-              aria-controls="sankey-topn-settings"
-              aria-haspopup="dialog"
-              style={{ width: 32, height: 32, border: 'none', borderRadius: 6, background: showSettings ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              {/* Material Icons: more_vert */}
-              <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#888'}>
-                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-              </svg>
-            </button>
-            {showSettings && (
-              <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
-                <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
-                  {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
-                  {isCompactWidth && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                      <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
-                      <select
-                        data-testid={testId('year-select-settings')}
-                        value={year}
-                        onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
-                        style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
-                        data-pan-disabled
-                      >
-                        <option value="2025">2025年度</option>
-                        <option value="2024">2024年度</option>
-                      </select>
-                    </div>
-                  )}
-                  {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
-                  {isCompactWidth && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                      <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
-                      {topNSlidersFragment}
-                    </div>
-                  )}
-                  {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
-                  {isCompactWidth && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                      <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
-                      {fontSizeControlsFragment}
-                    </div>
-                  )}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: '#555' }}>事業ノードの並び順:</span>
-                    <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
-                      <option value="budget">予算額</option>
-                      <option value="spending">支出額</option>
-                    </select>
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                    <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
-                  </label>
-                </div>
-              </>
-            )}
-          </div>
         </div>{/* end Row 1 flex */}
 
         {/* Dropdown */}
@@ -4744,35 +4796,141 @@ export default function RealDataSankeyPage() {
         )}
       </div>
 
-      {/* Top-right panel: offset slider */}
+
+      {/* 狭幅では TopN・オフセット操作を画面下部へ（クラスタには入れない） */}
       {isCompactWidth && offsetControlsBlock}
 
-      {/* 右上クラスタ: ツール(TopN・オフセット) - 年度 - ページ切替。全ページ共通の並びに揃える */}
-      <div data-pan-disabled="true" style={{ position: 'absolute', top: 12, right: 12, zIndex: 30, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+      {/* 右上クラスタ: ［ツール - 探索履歴 - 表示設定 - 年度 - ページ切替］。
+          rs-vis の並び（ツール → 年度 → メニュー）に合わせつつ、marumie 固有の
+          探索履歴と表示設定(⋮)を年度コンボの左に置く。
+          AIチャットパネル展開時は rightControlsOffset ぶん左へ退避する。
+          スマホ幅では表示設定とページ切替だけを残す（ツール・履歴・年度は
+          それぞれ画面下部と設定ダイアログへ移す）。 */}
+      <div
+        data-pan-disabled="true"
+        style={{
+          position: 'absolute', top: 12, right: 12 + rightControlsOffset, zIndex: 200,
+          display: 'flex', gap: 8, alignItems: 'flex-start',
+          transition: isResizingAiPanel ? 'none' : 'right 0.2s ease',
+        }}
+      >
         {!isCompactWidth && offsetControlsBlock}
-        {/* 年度セレクト（スマホ幅では設定ダイアログへ移動） */}
-        {!isCompactWidth && (
-        <div data-pan-disabled="true" style={{ position: 'relative', flexShrink: 0 }}>
-          <select
-            data-testid={testId('year-select')}
-            value={year}
-            onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
-            style={{ fontSize: CONTROL_FONT_PX, border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 28px 6px 10px', background: 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', color: '#333', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
-          >
-            <option value="2025">2025年度</option>
-            <option value="2024">2024年度</option>
-          </select>
-          {/* dropdown arrow */}
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
-        </div>
+
+        {/* 探索履歴・発見メモ（IndexedDB のみ・サーバ送信なし）。
+            公開ミラーでは NEXT_PUBLIC_FEATURE_EXPLORATION_HISTORY 未設定で非表示 */}
+        {FEATURE_EXPLORATION_HISTORY && !isCompactWidth && (
+          <ExplorationHistory
+            getSnapshot={getExplorationSnapshot}
+            onApply={applyExplorationEntry}
+            // 他ページは text-xs(12px)。フォントスケール機能があるので倍率だけ合わせる
+            fontPx={scaleFont(12)}
+          />
         )}
+
+        {/* 表示設定(⋮)。ダイアログはこの要素を基準に開く */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          onClick={() => setShowSettings(s => !s)}
+          aria-label="表示設定を開く"
+          aria-expanded={showSettings}
+          aria-controls="sankey-topn-settings"
+          aria-haspopup="dialog"
+          style={{ width: 32, height: 32, border: 'none', borderRadius: 6, background: showSettings ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {/* Material Icons: more_vert */}
+          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#888'}>
+            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+          </svg>
+        </button>
+        {showSettings && (
+          <>
+            <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
+            <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
+              {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
+                  <select
+                    data-testid={testId('year-select-settings')}
+                    value={year}
+                    onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
+                    style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
+                    data-pan-disabled
+                  >
+                    <option value="2025">2025年度</option>
+                    <option value="2024">2024年度</option>
+                  </select>
+                </div>
+              )}
+              {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
+                  {topNSlidersFragment}
+                </div>
+              )}
+              {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
+              {isCompactWidth && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+                  {fontSizeControlsFragment}
+                </div>
+              )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#555' }}>事業ノードの並び順:</span>
+                <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
+                  <option value="budget">予算額</option>
+                  <option value="spending">支出額</option>
+                </select>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+                <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
+              </label>
+            </div>
+          </>
+        )}
+        </div>
+
+        {/* 年度切替（rs-vis の並びに合わせて、ツール類の右・メニューの左）。
+            スマホ幅では検索ボックスに隠れるため設定ダイアログ側に置く */}
+        {!isCompactWidth && (
+          <YearSelect
+            value={year}
+            onChange={y => handleYearChange(y as '2024' | '2025')}
+            years={[2025, 2024]}
+            theme="light"
+            // 他ページは text-xs(12px)。フォントスケール機能があるので倍率だけ合わせる
+            fontPx={scaleFont(12)}
+            testId={testId('year-select')}
+          />
+        )}
+
         <PageNavMenu current="/sankey-svg" theme="light" />
       </div>
 
       {/* Zoom controls — bottom right (sankey2 style) */}
-      <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ position: 'absolute', bottom: 12, right: 12 + rightControlsOffset, zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4, transition: isResizingAiPanel ? 'none' : 'right 0.2s ease' }}>
         {/* スクロールモード切替ボタン（狭幅では2本指パンで代替できるため非表示） */}
         {!isCompactWidth && (
         <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
@@ -4878,6 +5036,54 @@ export default function RealDataSankeyPage() {
           </div>
         )}
       </div>
+
+      {/* AIチャットパネル（右側）— BYOK（使用者キー）は全環境で使える。
+          モード未設定時はパネル内にキー登録の導線を出す。
+          公開ミラーでは NEXT_PUBLIC_FEATURE_AI_CHAT 未設定で非表示 */}
+      {FEATURE_AI_CHAT && (
+      <AiChatPanel
+        open={showAiChat}
+        onToggle={() => setShowAiChat(v => !v)}
+        messages={aiChatMessages}
+        sending={aiChatSending}
+        progress={aiChatProgress}
+        onSend={handleAiChatSend}
+        onApplyResult={applyAiChatResult}
+        onClear={handleNewChatSession}
+        sessions={chatSessions}
+        activeSessionId={chatSessionId}
+        onSwitchSession={handleSwitchChatSession}
+        onDeleteSession={handleDeleteChatSession}
+        onRenameSession={handleRenameChatSession}
+        onSaveReport={handleSaveReportMemo}
+        width={effectiveAiPanelWidth}
+        isCompactWidth={isCompactWidth}
+        onResizeStart={e => {
+          aiPanelResizeRef.current = { startX: e.clientX, startW: aiPanelWidth };
+          setIsResizingAiPanel(true);
+        }}
+        isResizing={isResizingAiPanel}
+        onResetWidth={() => setAiPanelWidth(SIDE_PANEL_WIDTH_DEFAULT)}
+        mode={aiChatMode}
+        byokModel={byokSettings?.model ?? null}
+        defaultByokModel={DEFAULT_BYOK_MODEL}
+        onSaveByok={handleSaveByok}
+        onDeleteByok={handleDeleteByok}
+        onTestByok={testOpenRouterKey}
+      />
+      )}
+
+      {/* 品質スコア詳細ダイアログ（/quality と共通コンポーネント）
+          containerRef 外の document.body に portal で出し、背面サンキー図の wheel/pan ハンドラに
+          イベントが伝播しないようにする（そうしないとダイアログ内スクロールで背面が動く） */}
+      {scoreDialogItem && createPortal(
+        <ScoreDetailDialog
+          item={scoreDialogItem}
+          onClose={() => setScoreDialogItem(null)}
+          year={year}
+        />,
+        document.body,
+      )}
     </div>
   );
 }

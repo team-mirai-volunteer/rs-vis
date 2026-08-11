@@ -1,28 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-import type { SubcontractIndex } from '@/types/subcontract';
-import { buildMetadata, API_CACHE_CONTROL, RECIPIENT_NOTES } from '@/app/lib/api/api-notes';
+import { buildMetadata, API_CACHE_CONTROL, RECIPIENT_NOTES, SUPPORTED_YEARS } from '@/app/lib/api/api-notes';
 import { projectLinks, recipientLinks } from '@/app/lib/api/links';
 import { buildRecipientKey, isExcludedRecipientName } from '@/app/lib/recipient-key';
+import { loadSubcontracts, loadProjectBudgetComposition } from '@/app/lib/api/subcontracts-loader';
 
-const SUPPORTED_YEARS = ['2024', '2025'] as const;
 type SupportedYear = typeof SUPPORTED_YEARS[number];
 
 function isSupportedYear(y: string): y is SupportedYear {
   return (SUPPORTED_YEARS as readonly string[]).includes(y);
-}
-
-// リクエストごとにファイル再読み込みしないようにメモ化
-const cache = new Map<SupportedYear, SubcontractIndex>();
-
-function loadData(year: SupportedYear): SubcontractIndex | null {
-  if (cache.has(year)) return cache.get(year)!;
-  const filePath = path.join(process.cwd(), 'public', 'data', `subcontracts-${year}.json`);
-  if (!fs.existsSync(filePath)) return null;
-  const data: SubcontractIndex = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  cache.set(year, data);
-  return data;
 }
 
 export async function GET(
@@ -36,7 +21,7 @@ export async function GET(
     return NextResponse.json({ error: `Unsupported year: ${year}` }, { status: 400 });
   }
 
-  const data = loadData(year);
+  const data = loadSubcontracts(year);
   if (!data) {
     return NextResponse.json({ error: `Data file not found for year ${year}` }, { status: 404 });
   }
@@ -46,9 +31,14 @@ export async function GET(
     return NextResponse.json({ error: `Project ${projectId} not found` }, { status: 404 });
   }
 
+  // 予算・執行は再委託データ側に持たないため app/lib で合成する（サンキーグラフから）
+  const { budgetSummary, budgetBreakdown } = loadProjectBudgetComposition(year, projectId);
+
   // 既存フィールドはそのまま、各支出先に逆引きキーと関連リンクを追加
   const body = {
     ...graph,
+    budgetSummary,
+    budgetBreakdown,
     metadata: buildMetadata(year, { projectId: graph.projectId }, RECIPIENT_NOTES),
     blocks: graph.blocks.map(block => ({
       ...block,

@@ -5,7 +5,7 @@
 本スクリプトは per-recipient 行と機械signal（旧5軸・収支・構造の素材）を生成し、
 続いて AI評価フェーズが新5軸（特定可能性/使途説明性/収支整合性/構造整合性/有効性）と
 総合スコアを再計算して project-quality-scores-{year}.json を上書きする。
-設計: docs/tasks/20260616_1749_AI支出先データ品質スコアリング再設計.md
+設計: docs/quality-scoring-guide.md
 
 旧5軸評価（機械signalとして保持）:
   1. 支出先名の品質 (valid_ratio)       重み 40%
@@ -27,6 +27,7 @@
 import csv
 import json
 import re
+import sqlite3
 import unicodedata
 import collections
 import argparse
@@ -48,6 +49,7 @@ DICT_CSV   = REPO_ROOT / 'public' / 'data' / 'dictionaries' / 'recipient_diction
 GOV_CSV    = REPO_ROOT / 'public' / 'data' / 'dictionaries' / 'government_agency_names.csv'
 SUPP_CSV   = REPO_ROOT / 'public' / 'data' / 'dictionaries' / 'supplementary_valid_names.csv'
 OPAQUE_CSV = REPO_ROOT / 'public' / 'data' / 'dictionaries' / 'opaque_recipient_keywords.csv'
+HOUJIN_DB  = REPO_ROOT / 'data' / 'houjin.db'  # 法人番号→公式名の ground truth（.gitignore・任意）
 OUT_CSV              = REPO_ROOT / 'data' / 'result' / f'project_quality_scores_{YEAR}.csv'
 OUT_JSON             = REPO_ROOT / 'public' / 'data' / f'project-quality-scores-{YEAR}.json'
 OUT_RECIPIENTS_JSON  = REPO_ROOT / 'public' / 'data' / f'project-quality-recipients-{YEAR}.json'
@@ -66,6 +68,72 @@ def to_int_or_none(s):
 
 def normalize(s):
     return unicodedata.normalize('NFKC', s)
+
+# 法人格略記の統一（generate-recipient-resolution.py / recipient-key.ts と同一方針）
+_HOUJIN_ABBR = [
+    (re.compile(r'[(（]株[)）]|㈱'), '株式会社'),
+    (re.compile(r'[(（]有[)）]|㈲'), '有限会社'),
+    (re.compile(r'[(（]合[)）]'), '合同会社'),
+    (re.compile(r'[(（]財[)）]'), '財団法人'),
+    (re.compile(r'[(（]社[)）]'), '社団法人'),
+    (re.compile(r'[(（]独[)）]'), '独立行政法人'),
+]
+
+def normalize_houjin_name(name: str) -> str:
+    """NFKC + 空白除去 + 小文字化 + 法人格統一。houjin.db 公式名との照合用。"""
+    s = unicodedata.normalize('NFKC', name)
+    s = re.sub(r'\s+', '', s).lower()
+    for pat, rep in _HOUJIN_ABBR:
+        s = pat.sub(rep, s)
+    return s
+
+def _has_valid_check_digit(cn: str) -> bool:
+    base = cn[1:]
+    s = sum(int(base[12 - n]) * (1 if n % 2 == 1 else 2) for n in range(1, 13))
+    return 9 - (s % 9) == int(cn[0])
+
+def is_valid_corporate_number(cn: str) -> bool:
+    """13桁数字・全桁同一でない・チェックディジット整合。recipient-key.ts と同一方針。"""
+    cn = cn.strip()
+    if len(cn) != 13 or not cn.isdigit():
+        return False
+    if cn == cn[0] * 13:  # 全桁同一のダミー（9999999999999 等）
+        return False
+    return _has_valid_check_digit(cn)
+
+# ── houjin.db（法人番号→公式名）ロード ──
+# 有効な法人番号かつ公式名が支出先名と一致する行を 'cn'（番号一致）で救済する。
+# houjin.db は .gitignore（任意）。無い環境では裏取りをスキップし従来挙動にフォールバック。
+_houjin_cur = None
+if HOUJIN_DB.exists():
+    try:
+        _houjin_conn = sqlite3.connect(f'file:{HOUJIN_DB}?mode=ro', uri=True)
+        _houjin_cur = _houjin_conn.cursor()
+        print(f'houjin.db 裏取り: 有効（{HOUJIN_DB}）')
+    except sqlite3.Error as e:
+        print(f'houjin.db 裏取り: スキップ（接続失敗: {e}）')
+else:
+    print('houjin.db 裏取り: スキップ（data/houjin.db が無いため従来挙動）')
+
+_houjin_name_cache = {}
+def houjin_name(cn: str):
+    """法人番号の公式名（houjin.db）。未登録/DB無しは None。CN単位でキャッシュ。"""
+    if _houjin_cur is None:
+        return None
+    if cn in _houjin_name_cache:
+        return _houjin_name_cache[cn]
+    row = _houjin_cur.execute('SELECT name FROM houjin WHERE corporate_number=?', (cn,)).fetchone()
+    name = row[0] if row else None
+    _houjin_name_cache[cn] = name
+    return name
+
+def is_cn_verified(cn: str, recipient_name: str) -> bool:
+    """有効な法人番号 かつ houjin.db 公式名が支出先名と一致するか（正規化名で照合）。"""
+    cn = cn.strip()  # 検証と houjin_name の完全一致照合で同じ正規化値を使う
+    if not is_valid_corporate_number(cn):
+        return False
+    hn = houjin_name(cn)
+    return bool(hn) and normalize_houjin_name(hn) == normalize_houjin_name(recipient_name)
 
 # ── 1. 辞書ロード ──
 print('辞書ロード中...')
@@ -240,6 +308,7 @@ class ProjectStats:
     __slots__ = [
         'pid', 'name', 'ministry', 'bureau', 'division', 'section', 'office', 'team', 'unit',
         'valid_count', 'gov_agency_count', 'supp_valid_count', 'invalid_count',
+        'cn_verified_count',
         'cn_filled', 'cn_empty',
         'spend_total', 'spend_net_total',
         'block_names', 'has_redelegation', 'redelegation_depth',
@@ -263,6 +332,7 @@ class ProjectStats:
         self.gov_agency_count = 0
         self.supp_valid_count = 0
         self.invalid_count = 0
+        self.cn_verified_count = 0  # 有効CN＋houjin公式名一致で救済した行数
         self.cn_filled = 0
         self.cn_empty = 0
         self.spend_total = 0
@@ -320,8 +390,10 @@ with open(SPEND_CSV, encoding='utf-8') as f:
         else:
             ps.cn_empty += 1
 
-        # 軸1: 支出先名品質（3層辞書: 厳密 → 行政機関 → 補助）
-        # 厳密辞書マッチでもCNなしはinvalid（法人はCNが必須）
+        # 軸1: 支出先名品質（辞書層 + houjin.db裏取り）
+        # 優先順: 厳密辞書valid(+CN) → 行政機関 → 補助 → 法人番号一致(houjin裏取り) → invalid/unknown
+        # 辞書に無い/invalid でも「有効な法人番号 かつ 公式名一致」なら 'cn' で救済（特定可能）。
+        cn_verified = is_cn_verified(cn, recipient_name)
         if recipient_name in dict_map:
             if dict_map[recipient_name]:
                 if cn:
@@ -336,9 +408,15 @@ with open(SPEND_CSV, encoding='utf-8') as f:
             elif recipient_name in supp_map:
                 ps.supp_valid_count += 1
                 row_status = 'supp'
+            elif cn_verified:
+                ps.cn_verified_count += 1
+                row_status = 'cn'
             else:
                 ps.invalid_count += 1
                 row_status = 'invalid'
+        elif cn_verified:
+            ps.cn_verified_count += 1
+            row_status = 'cn'
         else:
             row_status = 'unknown'
 
@@ -366,6 +444,7 @@ with open(SPEND_CSV, encoding='utf-8') as f:
         # per-recipient行を収集（支出先合計行は除外、金額行のみ）
         # 支出先合計行（支出先の合計支出額あり・金額なし）は常に金額行とペアで存在するため除外可能
         # フィールド名は短縮形: n=name, b=blockNo, s=status, c=cnFilled, o=opaque
+        # cn=法人番号の実値（空欄=""）。c(bool)は記入有無、cnは値そのもの（誤記載の可視化に使う）
         # a2=金額（個別支出額、None=空欄,0=明示的ゼロ）
         # role=事業を行う上での役割（ブロック単位）, cc=契約概要
         has_total = bool(r.get('支出先の合計支出額', '').strip())
@@ -377,6 +456,7 @@ with open(SPEND_CSV, encoding='utf-8') as f:
             'b': block_no,
             's': row_status,
             'c': bool(cn),
+            'cn': cn,
             'o': opaque,
             'a2': to_int_or_none(r.get('金額', '')),
             'role': ps.block_roles.get(block_no, ''),
@@ -428,9 +508,12 @@ def calc_scores(ps):
     # 軸1: 支出先名品質 (0-100)
     # valid = 厳密辞書valid, gov_agency = 行政機関辞書で救済, supp_valid = 補助辞書で救済
     # invalid = いずれの辞書にも存在しない
-    dict_total = ps.valid_count + ps.gov_agency_count + ps.supp_valid_count + ps.invalid_count
+    # cn_verified（法人番号一致）は valid/gov/supp と同様に特定可能として分子・分母に算入
+    dict_total = (ps.valid_count + ps.gov_agency_count + ps.supp_valid_count
+                  + ps.cn_verified_count + ps.invalid_count)
     if dict_total > 0:
-        scores['valid_ratio'] = (ps.valid_count + ps.gov_agency_count + ps.supp_valid_count) / dict_total
+        scores['valid_ratio'] = (ps.valid_count + ps.gov_agency_count + ps.supp_valid_count
+                                 + ps.cn_verified_count) / dict_total
         scores['axis1'] = clamp(scores['valid_ratio'] * 100)
     else:
         scores['valid_ratio'] = None
@@ -529,7 +612,7 @@ def calc_scores(ps):
 # ── 5. CSV出力 ──
 fieldnames = [
     '予算事業ID', '事業名', '府省庁', '局・庁', '部', '課', '室', '班', '係',
-    '支出先行数', 'valid数', '行政機関辞書valid数', '補助辞書valid数', 'invalid数', 'valid率',
+    '支出先行数', 'valid数', '行政機関辞書valid数', '補助辞書valid数', '法人番号一致数', 'invalid数', 'valid率',
     'CN記入数', 'CN未記入数', 'CN記入率',
     '予算額', '執行額', '支出先合計額', '実質支出額', '乖離率',
     'ブロック数', '再委託有無', '再委託階層',
@@ -572,6 +655,7 @@ for pid in sorted_pids:
         'valid数': ps.valid_count,
         '行政機関辞書valid数': ps.gov_agency_count,
         '補助辞書valid数': ps.supp_valid_count,
+        '法人番号一致数': ps.cn_verified_count,
         'invalid数': ps.invalid_count,
         'valid率': fmt_pct(sc['valid_ratio']),
         'CN記入数': ps.cn_filled,
@@ -619,6 +703,7 @@ for pid in sorted_pids:
         'validCount': ps.valid_count,
         'govAgencyCount': ps.gov_agency_count,
         'suppValidCount': ps.supp_valid_count,
+        'cnVerifiedCount': ps.cn_verified_count,
         'invalidCount': ps.invalid_count,
         'validRatio': sc['valid_ratio'],
         'cnFilled': ps.cn_filled,

@@ -29,6 +29,13 @@ export interface RecipientAppearance {
   amount: number;
   upstream: AppearanceUpstream | null;
   downstream: AppearanceDownstream[];
+  /**
+   * 元データで報告された生の法人番号。解決（誤記載統合・番号補完）で
+   * このエントリのキーと異なる番号／欠落から付け替わった出現にのみ付与する
+   * （正常な出現では省略）。元データ側の問題の切り分けに使う。
+   * ""（空文字）= 元データで法人番号が欠落していたことを表す。
+   */
+  rawCorporateNumber?: string;
 }
 
 export interface RecipientMinistryTotal {
@@ -69,4 +76,9 @@ export interface RecipientIndexMetadata {
 export interface RecipientIndex {
   metadata: RecipientIndexMetadata;
   recipients: Record<string, RecipientEntry>;
+  /**
+   * キー互換: 解決（誤記載統合・番号補完）で付け替わった旧キー → 現行キー。
+   * 旧キーでの参照（流通URL・過去レポート）を現行エントリへ案内するために API が使う。
+   */
+  redirects: Record<string, string>;
 }

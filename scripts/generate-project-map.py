@@ -4,7 +4,7 @@
 事業説明文を埋め込み、UMAPで2次元に落とし、高次元側でクラスタリングして、
 「意味の近い事業が近くに並ぶ地図」の座標を作る。
 
-モデル選定の根拠: docs/tasks/20260727_1052_バブルチャートビュー設計と埋め込みモデル選定.md
+モデル選定の根拠:
   google/gemini-embedding-001 を採用。実データ576件のベンチで全指標1位
   （kNN 0.620 / ARI 0.293 / UMAP後kNN 0.568）。再測定は
   scripts/benchmark-embedding-models.py

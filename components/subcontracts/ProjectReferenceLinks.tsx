@@ -74,10 +74,8 @@ export function ProjectReferenceLinks({
       </a>
       <Link
         href={sankeySvgProjectUrl(projectId, projectName, year)}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="/sankey-svgでこの事業を表示"
-        title="/sankey-svgでこの事業を表示"
+        aria-label="メイン画面でこの事業を表示（同じタブで開きます）"
+        title="メイン画面でこの事業を表示（同じタブで開きます）"
         style={itemStyle}
       >
         <SankeyIcon />

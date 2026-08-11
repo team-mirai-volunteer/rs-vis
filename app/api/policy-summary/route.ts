@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as zlib from 'zlib';
 import {
   buildPolicyEvaluations,
   POLICY_CATEGORY_LABELS,
   RECOMMENDATION_ORDER,
   IMPROVEMENT_ACTION_ORDER,
+  type PolicyEvaluation,
   type PolicyQualityInput,
 } from '@/app/lib/policy-evaluation';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { readDataJson, tryReadDataJson } from '@/app/lib/api/data-file';
 
 /**
  * Sankey 図に重ねるための、事業ごとの政策評価サマリ。
@@ -40,6 +39,14 @@ export interface PolicySummaryEntry {
   c?: string;
 }
 
+/** `?pid=` 指定時の応答。1事業の完全な政策評価を返す */
+export interface PolicyEvaluationResponse {
+  year: number;
+  /** 政策類型 id → 表示名 */
+  categories: Record<string, string>;
+  evaluation: PolicyEvaluation;
+}
+
 export interface PolicySummaryResponse {
   year: number;
   /** 番号 → ラベル の対応表。クライアントで文字列を復元するために同梱する */
@@ -53,13 +60,13 @@ export interface PolicySummaryResponse {
 
 const cache = new Map<string, PolicySummaryResponse>();
 
+// Vercel の関数バンドルに public/data は同梱されない（data/server の .gz だけ）。
+// パス解決は data-file.ts に一元化する（直に public/data を読むと本番で必ず落ちる）。
 function loadQuality(year: string): PolicyQualityInput[] {
-  const base = path.join(process.cwd(), 'public', 'data', `project-quality-scores-${year}.json`);
-  if (fs.existsSync(base)) return JSON.parse(fs.readFileSync(base, 'utf-8'));
-  if (fs.existsSync(`${base}.gz`)) {
-    return JSON.parse(zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8'));
-  }
-  throw new Error(`project-quality-scores-${year}.json(.gz) が見つかりません。`);
+  return readDataJson<PolicyQualityInput[]>(
+    `project-quality-scores-${year}.json`,
+    `python3 scripts/score-project-quality-ai.py --year ${year} を実行してください。`,
+  );
 }
 
 function invert(order: Record<string, number>): Record<number, string> {
@@ -90,14 +97,31 @@ function loadPriorExecutionRates(year: string): Record<string, number> {
   return rates;
 }
 
-function build(year: string): PolicySummaryResponse {
-  const cached = cache.get(year);
+/**
+ * 全事業の政策評価。母集団のパーセンタイル・分位点から閾値を決めるため、
+ * 1事業だけを切り出して計算することはできない（必ず全件を通す）。
+ * 年度ごとに1回だけ組み立ててキャッシュし、サマリと pid 単体の両方で使い回す。
+ */
+const evalCache = new Map<string, Map<string, PolicyEvaluation>>();
+
+function buildEvaluations(year: string): Map<string, PolicyEvaluation> {
+  const cached = evalCache.get(year);
   if (cached) return cached;
 
   const rates = loadPriorExecutionRates(year);
   const rows = buildPolicyEvaluations(
     loadQuality(year).map((i) => ({ ...i, priorExecutionRate: rates[i.pid] ?? null })),
   );
+  const index = new Map(rows.map((row) => [row.pid, row]));
+  evalCache.set(year, index);
+  return index;
+}
+
+function build(year: string): PolicySummaryResponse {
+  const cached = cache.get(year);
+  if (cached) return cached;
+
+  const rows = [...buildEvaluations(year).values()];
   const items: Record<string, PolicySummaryEntry> = {};
   for (const row of rows) {
     items[row.pid] = {
@@ -131,6 +155,25 @@ export async function GET(req: Request) {
     if (year === null) {
       return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
     }
+    // pid 指定は「サイドパネル等から1事業だけ引きたい」用途。サマリの圧縮形では
+    // 判定理由（recommendationReason・findings）まで返せないため、完全な
+    // PolicyEvaluation をそのまま返す。母集団の計算はサーバ側で1回だけ行う。
+    const pid = url.searchParams.get('pid');
+    if (pid !== null) {
+      const evaluation = buildEvaluations(year).get(pid);
+      if (!evaluation) {
+        return NextResponse.json({ error: `事業が見つかりません（pid=${pid}）` }, { status: 404 });
+      }
+      return NextResponse.json(
+        {
+          year: Number(year),
+          categories: POLICY_CATEGORY_LABELS,
+          evaluation,
+        } satisfies PolicyEvaluationResponse,
+        { headers: { 'Cache-Control': API_CACHE_CONTROL } },
+      );
+    }
+
     return NextResponse.json(build(year), {
       headers: { 'Cache-Control': API_CACHE_CONTROL },
     });

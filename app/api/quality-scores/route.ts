@@ -1,171 +1,17 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as zlib from 'zlib';
-import { parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
+import {
+  loadQualityScores,
+  getQualityScore,
+  toQualityScoreProjection,
+} from '@/app/lib/api/quality-scores-loader';
+import { parseYear, buildMetadata, QUALITY_SCORE_NOTES, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { projectLinks } from '@/app/lib/api/links';
 
-export interface QualityScoreItem {
-  pid: string;
-  name: string;
-  ministry: string;
-  bureau: string;
-  division: string;
-  section: string;
-  office: string;
-  team: string;
-  unit: string;
-  rowCount: number;
-  recipientCount?: number;
-  validCount: number;
-  govAgencyCount: number;
-  suppValidCount: number;
-  invalidCount: number;
-  validRatio: number | null;
-  cnFilled: number;
-  cnEmpty: number;
-  cnFillRatio: number | null;
-  budgetAmount: number;
-  execAmount: number;
-  spendTotal: number;
-  spendNetTotal: number;
-  gapRatio: number | null;
-  blockCount: number;
-  orphanBlockCount: number;
-  hasRedelegation: boolean;
-  redelegationDepth: number;
-  opaqueRatio: number | null;
-  axis1: number | null;
-  axis2: number | null;
-  axis3: number | null;
-  axis4: number | null;
-  axis5: number | null;
-  // 新軸（score-project-quality-ai.py が付与）
-  axisIdentify?: number | null;    // A 支出先の特定可能性 (AI判定 28%)
-  axisPurpose?: number | null;     // B 使途の説明性 (AI判定 22%)
-  axisBudget?: number | null;      // C 収支の整合性 (機械計算 15%)
-  axisStructure?: number | null;   // D 構造の整合性 (機械計算・参考表示のみ/総合に不算入)
-  axisEffective?: number | null;   // E 有効性/成果設計の明確さ (AI判定 35%・0-10の11段階・意図ベース)
-  identifyLevelAvg?: number | null; // 0-3 平均（金額加重）
-  purposeLevelAvg?: number | null;  // 0-3 平均（金額加重）
-  effectiveLevel?: number | null;  // 0-10 有効性レベル
-  effectiveReason?: string;        // 有効性判定の根拠（AI時）
-  aiSource?: string;               // "openrouter:<model>" | "heuristic"
-  totalScore: number | null;
-  // 事業期間（rs<year>-project-details.json から結合）。長期化した事業の洗い出しに使う
-  startYear?: number | null;
-  endYear?: number | null;
-  noEndDate?: boolean;
-  /** 継続年数（対象年度 − 開始年度 + 1）。開始年度が無い事業は null */
-  yearsRunning?: number | null;
-}
+// 型の正典は app/lib/api/quality-scores-loader.ts（/quality ページ等はそちらを import する）
+export type { QualityScoreItem, QualityScoresResponse } from '@/app/lib/api/quality-scores-loader';
 
-export interface QualityScoresResponse {
-  items: QualityScoreItem[];
-  summary: {
-    total: number;
-    avgScore: number;
-    medianScore: number;
-    stddevScore: number;
-    modeScore: number;
-    ministries: string[];
-  };
-}
-
-const cache = new Map<string, QualityScoresResponse>();
-
-type DetailPeriod = { startYear?: number | null; endYear?: number | null; noEndDate?: boolean };
-
-/**
- * 事業期間を品質スコアへ結合する。
- * 開始年度は事業詳細（rs<year>-project-details.json）にしか無く、品質スコア側には入っていない。
- * 「何年続いているか」は見直しの判断材料になるので、一覧で並べ替えできるようにする。
- */
-function attachDuration(items: QualityScoreItem[], year: string): void {
-  const base = path.join(process.cwd(), 'public', 'data', `rs${year}-project-details.json`);
-  let raw: string | null = null;
-  if (fs.existsSync(base)) raw = fs.readFileSync(base, 'utf-8');
-  else if (fs.existsSync(`${base}.gz`)) raw = zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8');
-  if (!raw) return;   // 詳細が無い年度は継続年数を出さないだけで、一覧自体は表示する
-
-  const details: Record<string, DetailPeriod> = JSON.parse(raw);
-  const target = Number(year);
-  for (const it of items) {
-    const d = details[it.pid] ?? details[String(it.pid)];
-    if (!d) continue;
-    it.startYear = d.startYear ?? null;
-    it.endYear = d.endYear ?? null;
-    it.noEndDate = d.noEndDate ?? false;
-    it.yearsRunning = d.startYear ? Math.max(1, target - d.startYear + 1) : null;
-  }
-}
-
-function loadData(year: string): QualityScoresResponse {
-  if (cache.has(year)) return cache.get(year)!;
-
-  // 展開済み .json を優先。無ければ .gz をその場で展開（prebuild未実行のローカル等でも動く）。
-  const base = path.join(process.cwd(), 'public', 'data', `project-quality-scores-${year}.json`);
-  let raw: string;
-  if (fs.existsSync(base)) {
-    raw = fs.readFileSync(base, 'utf-8');
-  } else if (fs.existsSync(`${base}.gz`)) {
-    raw = zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8');
-  } else {
-    throw new Error(
-      `project-quality-scores-${year}.json(.gz) が見つかりません。` +
-      `python3 scripts/score-project-quality-ai.py --year ${year} を実行してください。`
-    );
-  }
-
-  const items: QualityScoreItem[] = JSON.parse(raw);
-  attachDuration(items, year);
-
-  const ministries = [...new Set(items.map(i => i.ministry))].sort();
-  const scored = items.filter(i => i.totalScore !== null);
-  const scores = scored.map(i => i.totalScore as number).sort((a, b) => a - b);
-  const avgScore = scores.length > 0
-    ? scores.reduce((sum, s) => sum + s, 0) / scores.length
-    : 0;
-
-  // 中央値
-  let medianScore = 0;
-  if (scores.length > 0) {
-    const mid = Math.floor(scores.length / 2);
-    medianScore = scores.length % 2 === 0
-      ? (scores[mid - 1] + scores[mid]) / 2
-      : scores[mid];
-  }
-
-  // 標準偏差
-  let stddevScore = 0;
-  if (scores.length > 0) {
-    const variance = scores.reduce((sum, s) => sum + (s - avgScore) ** 2, 0) / scores.length;
-    stddevScore = Math.sqrt(variance);
-  }
-
-  // 最頻値（1点刻みでビン化）
-  let modeScore = 0;
-  if (scores.length > 0) {
-    const bins = new Map<number, number>();
-    for (const s of scores) {
-      const bin = Math.round(s);
-      bins.set(bin, (bins.get(bin) ?? 0) + 1);
-    }
-    let maxCount = 0;
-    for (const [bin, count] of bins) {
-      if (count > maxCount) {
-        maxCount = count;
-        modeScore = bin;
-      }
-    }
-  }
-
-  const result: QualityScoresResponse = {
-    items,
-    summary: { total: items.length, avgScore, medianScore, stddevScore, modeScore, ministries },
-  };
-  cache.set(year, result);
-  return result;
-}
+/** pids 指定時の最大件数（URL長・応答サイズの上限として十分な値） */
+const MAX_PIDS = 300;
 
 export async function GET(req: Request) {
   try {
@@ -174,8 +20,38 @@ export async function GET(req: Request) {
     if (year === null) {
       return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
     }
-    const data = loadData(year);
-    return NextResponse.json(data);
+
+    // pids=1,2,3 指定時: 該当事業のみの軽量プロジェクションを返す（エージェント探索用・数KB）
+    const pidsParam = url.searchParams.get('pids');
+    if (pidsParam !== null) {
+      const pids = [...new Set(pidsParam.split(',').map(s => s.trim()).filter(Boolean))];
+      if (pids.length === 0) {
+        return NextResponse.json({ error: 'pids には予算事業IDをカンマ区切りで指定してください（例: pids=1900,4752）' }, { status: 400 });
+      }
+      if (pids.length > MAX_PIDS) {
+        return NextResponse.json({ error: `pids は最大${MAX_PIDS}件までです（受領: ${pids.length}件）` }, { status: 400 });
+      }
+      const found = pids
+        .map(pid => getQualityScore(year, pid))
+        .filter((i): i is NonNullable<typeof i> => i != null);
+      const foundPids = new Set(found.map(i => i.pid));
+      const body = {
+        metadata: buildMetadata(year, {
+          requestedPids: pids.length,
+          foundPids: found.length,
+          missingPids: pids.filter(p => !foundPids.has(p)),
+        }, QUALITY_SCORE_NOTES),
+        items: found.map(i => ({
+          ...toQualityScoreProjection(i),
+          links: projectLinks(i.pid, year),
+        })),
+      };
+      return NextResponse.json(body, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
+    }
+
+    // 未指定時: 従来どおり全件 + summary（/quality ページ用・後方互換）
+    const data = loadQualityScores(year);
+    return NextResponse.json(data, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
   } catch (e) {
     return serverErrorResponse('quality-scores', e);
   }

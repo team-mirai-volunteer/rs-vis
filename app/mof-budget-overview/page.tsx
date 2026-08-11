@@ -591,21 +591,6 @@ function NotesPanel({ notes }: { notes: string[] }) {
           </li>
         ))}
 
-        <li className="flex items-start mt-3 pt-3 border-t border-yellow-300">
-          <span className="text-yellow-600 mr-1.5 text-sm">📊</span>
-          <span>
-            詳細な分析結果は{' '}
-            <Link
-              href="https://github.com/igomuni/marumie-rssystem/blob/main/docs/20260202_0000_MOF%E4%BA%88%E7%AE%97%E5%85%A8%E4%BD%93%E3%81%A8RS%E5%AF%BE%E8%B1%A1%E7%AF%84%E5%9B%B2%E3%81%AE%E5%8F%AF%E8%A6%96%E5%8C%96.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              こちらのドキュメント
-            </Link>
-            をご参照ください
-          </span>
-        </li>
       </ul>
     </div>
   );
