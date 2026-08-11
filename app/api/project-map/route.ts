@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as zlib from 'zlib';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { joinProjectMap, type MapQualityRow } from '@/app/lib/project-map';
 import type { ProjectMapFile, ProjectMapResponse } from '@/types/project-map';
+// パス解決は data-file.ts に一元化する（Vercel の関数バンドルは data/server の .gz のみ）
+import { tryReadDataJson as readDataJson } from '@/app/lib/api/data-file';
 
 /**
  * 事業の意味的2次元マップ API（/project-map のバブルチャート用）。
@@ -19,15 +18,6 @@ import type { ProjectMapFile, ProjectMapResponse } from '@/types/project-map';
 
 const cache = new Map<string, ProjectMapResponse>();
 
-/** 展開済み .json を優先。無ければ .gz をその場で展開する（prebuild未実行のローカルでも動く） */
-function readDataJson<T>(basename: string): T | null {
-  const base = path.join(process.cwd(), 'public', 'data', basename);
-  if (fs.existsSync(base)) return JSON.parse(fs.readFileSync(base, 'utf-8')) as T;
-  if (fs.existsSync(`${base}.gz`)) {
-    return JSON.parse(zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8')) as T;
-  }
-  return null;
-}
 
 type DetailPeriod = { startYear?: number | null };
 

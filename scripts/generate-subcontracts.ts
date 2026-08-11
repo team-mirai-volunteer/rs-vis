@@ -161,6 +161,7 @@ for (const row of csv52) {
         category: indirectCategory,
         amount: parseAmount(indirectAmountStr),
         note,
+        attachedToBlock: false,
       });
     }
     continue;
@@ -174,6 +175,7 @@ for (const row of csv52) {
       category: indirectCategory,
       amount: parseAmount(indirectAmountStr),
       note,
+      attachedToBlock: true,
     });
   }
 

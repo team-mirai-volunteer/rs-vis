@@ -52,6 +52,7 @@ export function filterTopN(
   offsetTarget: 'recipient' | 'project' = 'recipient',
   projectOffset: number = 0,
   projectSortBy: 'budget' | 'spending' = 'budget',
+  recipientFilterActive: boolean = false,
 ): { nodes: RawNode[]; edges: RawEdge[]; totalRecipientCount: number; totalProjectCount: number; aggNodeMembers: Map<string, AggMember[]>; topProjectIds: Set<string> } {
   // Build O(1) lookup map
   const nodeById = new Map(allNodes.map(n => [n.id, n]));
@@ -161,11 +162,12 @@ export function filterTopN(
       }
     }
     const sortedWindowProjectRecips = Array.from(windowProjectRecipAmounts.entries()).sort((a, b) => b[1] - a[1]);
-    // When every recipient in scope already fits within topRecipient (e.g. a recipient-name filter
-    // narrowed the set), rank over ALL recipients rather than only window-project recipients. Otherwise
-    // recipients reachable solely via aggregate projects are wrongly collapsed into __agg-recipient even
-    // though there is room to show them individually (issue #229).
-    const sortedRecips = allSortedRecipients.length <= topRecipient ? allSortedRecipients : sortedWindowProjectRecips;
+    // 支出先フィルタで絞り込まれた集合、または全支出先が topRecipient に収まる場合は、
+    // 「可視事業経由の支出先」ではなく全支出先を対象に TopN を採る。そうしないと集約事業
+    // 経由でしか届かない支出先が __agg-recipient に巻き込まれ、TopN の枠があるのに個別表示
+    // されない（issue #229、および支出先フィルタでマッチ数 > topRecipient のケース）。
+    const sortedRecips = (recipientFilterActive || allSortedRecipients.length <= topRecipient)
+      ? allSortedRecipients : sortedWindowProjectRecips;
     totalRecipientCount = sortedRecips.length;
     windowRecipients = sortedRecips.slice(0, topRecipient);
     tailRecipients = sortedRecips.slice(topRecipient);

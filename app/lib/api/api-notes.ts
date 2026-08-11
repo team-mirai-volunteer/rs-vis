@@ -31,6 +31,13 @@ export const RECIPIENT_NOTES: readonly string[] = [
   '同一支出先が1事業内の複数ブロックに出現する場合があります（appearancesは全件保持、集計済み値はtotalsを参照）',
 ];
 
+/** 品質スコア系APIに追加する留意事項 */
+export const QUALITY_SCORE_NOTES: readonly string[] = [
+  '品質スコアは報告の形式品質（支出先の特定可能性・使途の説明性・成果設計の明確さ）を測るものであり、資金経路の透明性や事業の実効性そのものを保証しません',
+  '例: 支出先が執行団体1件のみの事業はスコアが高く出ますが、その先の資金の流れはレビューデータに現れません',
+  'axisStructure（構造の整合性）は参考表示であり総合スコアには算入されません',
+];
+
 /** 共通メタデータの組み立て */
 export function buildMetadata(
   year: SupportedYear,

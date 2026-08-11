@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loadQualityScores } from '@/app/lib/api/quality-scores-loader';
-import { searchProjects } from '@/app/lib/search/project-search';
+import { loadProjectDetails } from '@/app/lib/api/project-details-loader';
+import { searchProjects, PROJECT_SEARCH_SCOPES, type ProjectSearchScope } from '@/app/lib/search/project-search';
 import { parseYear, buildMetadata, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { projectLinks, sankeyProjectViewLink } from '@/app/lib/api/links';
 
@@ -22,13 +23,23 @@ export async function GET(req: Request) {
     const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '', 10) || 0);
     const sortBy = url.searchParams.get('sort') === 'spending' ? 'spending' : 'budget';
 
+    const scopeParam = url.searchParams.get('scope') ?? 'name';
+    if (!PROJECT_SEARCH_SCOPES.includes(scopeParam as ProjectSearchScope)) {
+      return NextResponse.json(
+        { error: `scope は "name" または "details" を指定してください（受領値: ${scopeParam}）` },
+        { status: 400 },
+      );
+    }
+    const scope = scopeParam as ProjectSearchScope;
+
     const { items: allItems } = loadQualityScores(year);
-    const { totalHits, items } = searchProjects(allItems, q, { limit, offset, sortBy });
+    const projectDetails = scope === 'details' ? loadProjectDetails(year) : undefined;
+    const { totalHits, items } = searchProjects(allItems, q, { limit, offset, sortBy, scope, projectDetails });
 
     const nextOffset = offset + limit < totalHits ? offset + limit : null;
     const body = {
-      metadata: buildMetadata(year, { query: q, totalHits, limit, offset, sortBy }),
-      items: items.map(i => ({
+      metadata: buildMetadata(year, { query: q, scope, totalHits, limit, offset, sortBy }),
+      items: items.map(({ item: i, matchedIn }) => ({
         pid: i.pid,
         name: i.name,
         ministry: i.ministry,
@@ -38,6 +49,7 @@ export async function GET(req: Request) {
         spendTotal: i.spendTotal,
         hasRedelegation: i.hasRedelegation,
         redelegationDepth: i.redelegationDepth,
+        matchedIn,
         links: {
           ...projectLinks(i.pid, year),
           sankeyView: sankeyProjectViewLink(i.name, year),
@@ -45,7 +57,7 @@ export async function GET(req: Request) {
       })),
       links: {
         next: nextOffset != null
-          ? `/api/search/projects?q=${encodeURIComponent(q)}&year=${year}&limit=${limit}&offset=${nextOffset}&sort=${sortBy}`
+          ? `/api/search/projects?q=${encodeURIComponent(q)}&year=${year}&limit=${limit}&offset=${nextOffset}&sort=${sortBy}&scope=${scope}`
           : null,
       },
     };

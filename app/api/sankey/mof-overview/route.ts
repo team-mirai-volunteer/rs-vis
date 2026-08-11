@@ -3,11 +3,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
 import type { MOFBudgetData } from '@/types/mof-budget-overview';
 import { generateMOFBudgetOverviewSankey } from '@/app/lib/mof-sankey-generator';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { readDataJson } from '@/app/lib/api/data-file';
 
 // キャッシュ用
 let cachedData: ReturnType<typeof generateMOFBudgetOverviewSankey> | null =
@@ -19,17 +18,10 @@ const CACHE_DURATION = 1000 * 60 * 60; // 1時間
  * MOFデータを読み込む
  */
 function loadMOFBudgetData(): MOFBudgetData {
-  const dataPath = path.join(
-    process.cwd(),
-    'public/data/mof-budget-overview-2023.json'
+  return readDataJson<MOFBudgetData>(
+    'mof-budget-overview-2023.json',
+    'npm run generate-mof-data を実行してください。'
   );
-
-  if (!fs.existsSync(dataPath)) {
-    throw new Error(`MOF budget data not found: ${dataPath}`);
-  }
-
-  const content = fs.readFileSync(dataPath, 'utf-8');
-  return JSON.parse(content) as MOFBudgetData;
 }
 
 /**

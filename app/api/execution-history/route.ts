@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as zlib from 'zlib';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { tryReadDataJson } from '@/app/lib/api/data-file';
 
 /**
  * 前年度の執行実績だけを最小限で返す API。
@@ -28,14 +26,9 @@ type QualityRow = { pid: string; budgetAmount: number; execAmount: number };
 
 const cache = new Map<string, ExecutionHistoryResponse>();
 
-/** 展開済み .json を優先。無ければ .gz をその場で展開する */
+// パス解決は data-file.ts に一元化する（Vercel の関数バンドルは data/server の .gz のみ）
 function readQualityScores(year: string): QualityRow[] | null {
-  const base = path.join(process.cwd(), 'public', 'data', `project-quality-scores-${year}.json`);
-  if (fs.existsSync(base)) return JSON.parse(fs.readFileSync(base, 'utf-8'));
-  if (fs.existsSync(`${base}.gz`)) {
-    return JSON.parse(zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8'));
-  }
-  return null;
+  return tryReadDataJson<QualityRow[]>(`project-quality-scores-${year}.json`);
 }
 
 function loadData(year: string): ExecutionHistoryResponse {

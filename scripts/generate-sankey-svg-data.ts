@@ -27,7 +27,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import { readShiftJISCSV, parseAmount } from '@/scripts/csv-reader';
+import { resolveRecipientKey } from '@/app/lib/recipient-key';
+import type { RecipientResolution } from '@/app/lib/recipient-key';
 import type { CSVRow } from '@/types/rs-system';
 import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
 
@@ -43,6 +46,12 @@ const DATA_DIR = path.join(__dirname, `../data/year_${YEAR}`);
 const OUTPUT_DIR = path.join(__dirname, '../public/data');
 const OUTPUT_FILE = `sankey-svg-${YEAR}-graph.json`;
 const TARGET_BUDGET_YEAR = YEAR - 1; // 例: 2025年度事業 → 2024年度予算データを使用
+
+// 法人番号解決マッピング（houjin.db裏取り。無ければ解決なし）
+const RESOLUTION_PATH = path.join(OUTPUT_DIR, `recipient-resolution-${YEAR}.json`);
+const resolution: RecipientResolution | undefined = fs.existsSync(RESOLUTION_PATH)
+  ? JSON.parse(fs.readFileSync(RESOLUTION_PATH, 'utf-8'))
+  : undefined;
 
 // ─── 型定義 ──────────────────────────────────────────────
 
@@ -60,6 +69,11 @@ interface SankeyNode {
   accountCategory?: 'general' | 'special' | 'both'; // project-budget のみ
   budgetSummary?: BudgetSummary; // project-budget のみ
   budgetBreakdown?: BudgetBreakdownItem[]; // project-budget のみ
+  subcontractDepth?: number; // project-budget のみ・再委託あり（階層2以上）のみ付与
+  subcontractRecipients?: string[]; // project-budget のみ・再委託ブロックの支出先名（filter.subcontract.recipientName 用）
+
+  representativeCorporateNumber?: string; // recipient のみ: 内包する有効法人番号のうち最大金額のもの
+  corporateNumberCount?: number; // recipient のみ: 内包する相異なる有効法人番号の件数
 }
 
 interface SankeyEdge {
@@ -86,6 +100,47 @@ interface SankeyGraphData {
 }
 
 // ─── CSV読み込み ──────────────────────────────────────────
+
+interface SubcontractInfo {
+  /** 再委託ブロック階層数（maxDepth。2以上のみ） */
+  depth: number;
+  /** 再委託ブロックの支出先名（重複排除。filter.subcontract.recipientName 用） */
+  names: string[];
+}
+
+/**
+ * subcontracts-{YEAR}.json から pid → 再委託情報（階層数・再委託先名）を読む。
+ * 階層2以上（=再委託あり）のみを保持する（1=直接のみはノード未付与で表現し、サイズ増を避ける）。
+ * raw が無ければ .gz をその場で展開。どちらも無ければ警告して空マップ（付与スキップ）。
+ */
+function loadSubcontractInfo(): Map<number, SubcontractInfo> {
+  const base = path.join(__dirname, '../public/data', `subcontracts-${YEAR}.json`);
+  let raw: string | null = null;
+  if (fs.existsSync(base)) raw = fs.readFileSync(base, 'utf-8');
+  else if (fs.existsSync(`${base}.gz`)) raw = zlib.gunzipSync(fs.readFileSync(`${base}.gz`)).toString('utf-8');
+  const map = new Map<number, SubcontractInfo>();
+  if (raw === null) {
+    console.warn(`  ⚠ subcontracts-${YEAR}.json(.gz) が見つかりません。subcontractDepth は未付与になります（npm run generate-subcontracts を先に実行してください）`);
+    return map;
+  }
+  const index = JSON.parse(raw) as Record<string, { maxDepth?: number; blocks?: { originKind?: string; recipients?: { name?: string }[] }[] }>;
+  let nameTotal = 0;
+  for (const [pid, g] of Object.entries(index)) {
+    const n = parseInt(pid, 10);
+    if (isNaN(n) || typeof g.maxDepth !== 'number' || g.maxDepth < 2) continue;
+    const names = new Set<string>();
+    for (const b of g.blocks ?? []) {
+      if (b.originKind !== 'subcontract') continue;
+      for (const r of b.recipients ?? []) {
+        if (r.name) names.add(r.name);
+      }
+    }
+    nameTotal += names.size;
+    map.set(n, { depth: g.maxDepth, names: [...names] });
+  }
+  console.log(`  再委託階層データ: ${map.size.toLocaleString()} 事業（階層2以上）/ 再委託先名 ${nameTotal.toLocaleString()} 件`);
+  return map;
+}
 
 function loadCSV(filename: string): CSVRow[] {
   const filePath = path.join(DATA_DIR, filename);
@@ -229,6 +284,11 @@ function main() {
   }
   console.log(`  予算内訳データ: ${budgetBreakdownMap.size.toLocaleString()} 事業 / ${budgetItemTargetRows.toLocaleString()} 行 / ${(budgetItemAmountTotal / 1e12).toFixed(2)} 兆円`);
 
+  // 3.5. 再委託ブロック階層数（subcontracts-{YEAR}.json の maxDepth）
+  // filter.subcontract（Issue #270）用に project-budget ノードへ埋め込む。
+  // 生成順の依存: 先に npm run generate-subcontracts を実行しておくこと（無ければ警告して未付与）
+  const subcontractInfoMap = loadSubcontractInfo();
+
   // 4. 再委託ブロックセットの構築（5-2 CSV）
   // 判定方針: 「担当組織からの支出=FALSE」は明示的な再委託（間接）→ 除外
   //           「TRUE」または 5-2 に登場しないブロックは担当組織が直接支出 → 含める
@@ -261,6 +321,7 @@ function main() {
     name: string;
     totalAmount: number;
     projectAmounts: Map<number, number>; // projectId → amount
+    corpAmounts: Map<string, number>; // 有効法人番号 → amount（名前集約ノードが内包する実体の内訳）
   }
   const recipientMap = new Map<string, RecipientAgg>();
   const projectSpendingMap = new Map<number, number>(); // 事業ごとの直接支出合計
@@ -305,11 +366,18 @@ function main() {
     const recipientKey = spendingName;
     let recipient = recipientMap.get(recipientKey);
     if (!recipient) {
-      recipient = { name: spendingName, totalAmount: 0, projectAmounts: new Map() };
+      recipient = { name: spendingName, totalAmount: 0, projectAmounts: new Map(), corpAmounts: new Map() };
       recipientMap.set(recipientKey, recipient);
     }
     recipient.totalAmount += amount;
     recipient.projectAmounts.set(pid, (recipient.projectAmounts.get(pid) || 0) + amount);
+    // 名前集約ノードが内包する法人番号（有効なもののみ）を金額付きで蓄積
+    // 解決（誤記載統合・番号補完）を適用した法人番号で集計。
+    // 13桁cnに解決されたもののみ内訳に加える（name:キーは法人番号なし）。
+    const resolvedKey = resolveRecipientKey(spendingName, row['法人番号'] || '', resolution);
+    if (/^\d{13}$/.test(resolvedKey)) {
+      recipient.corpAmounts.set(resolvedKey, (recipient.corpAmounts.get(resolvedKey) || 0) + amount);
+    }
 
     projectSpendingMap.set(pid, (projectSpendingMap.get(pid) || 0) + amount);
   }
@@ -386,6 +454,10 @@ function main() {
       ...(ac !== undefined ? { accountCategory: ac } : {}),
       ...(budget !== undefined ? { budgetSummary: budget } : {}),
       ...(budgetBreakdownMap.has(pid) ? { budgetBreakdown: budgetBreakdownMap.get(pid) } : {}),
+      ...(subcontractInfoMap.has(pid) ? {
+        subcontractDepth: subcontractInfoMap.get(pid)!.depth,
+        ...(subcontractInfoMap.get(pid)!.names.length > 0 ? { subcontractRecipients: subcontractInfoMap.get(pid)!.names } : {}),
+      } : {}),
     });
 
     // 事業(支出)ノード — 直接支出額のみ
@@ -421,7 +493,7 @@ function main() {
     if (budgetAmount > 0 && spendingAmount === 0) {
       let noSpending = recipientMap.get('__no-spending__');
       if (!noSpending) {
-        noSpending = { name: '支出先なし', totalAmount: 0, projectAmounts: new Map() };
+        noSpending = { name: '支出先なし', totalAmount: 0, projectAmounts: new Map(), corpAmounts: new Map() };
         recipientMap.set('__no-spending__', noSpending);
       }
       noSpending.projectAmounts.set(pid, 0);
@@ -437,12 +509,21 @@ function main() {
   for (const [key, recipient] of sortedRecipients) {
     const isNoSpending = key === '__no-spending__';
     const recipientId = isNoSpending ? 'r-no-spending' : `r-${++recipientSeq}`;
+    // 代表法人番号（最大金額の有効番号）と内包件数。内包0件なら未設定（集約行・法人番号なし）
+    let representativeCorporateNumber: string | undefined;
+    let maxCorpAmount = -1;
+    for (const [cn, amt] of recipient.corpAmounts) {
+      if (amt > maxCorpAmount) { maxCorpAmount = amt; representativeCorporateNumber = cn; }
+    }
+    const corporateNumberCount = recipient.corpAmounts.size;
     nodes.push({
       id: recipientId,
       name: recipient.name,
       type: 'recipient',
       value: recipient.totalAmount,
       ...(isNoSpending ? { skipLinkOverride: true } : {}),
+      ...(representativeCorporateNumber ? { representativeCorporateNumber } : {}),
+      ...(corporateNumberCount > 0 ? { corporateNumberCount } : {}),
     });
 
     for (const [pid, amount] of recipient.projectAmounts) {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { YearSelect } from '@/components/navigation/YearSelect';
 import {
   COLOR_MODE_LABELS, SIZE_METRIC_LABELS,
   buildColorLookup, buildLegend, buildSizeScale, categoryLabel,
@@ -516,16 +517,7 @@ export default function ProjectMapPage() {
             </>
           )}
         </div>
-        <select
-          value={year}
-          onChange={e => setYear(e.target.value as Year)}
-          className="h-9 rounded-lg border border-black/10 bg-white/90 px-2 text-xs text-neutral-700 shadow-md backdrop-blur focus:outline-none dark:border-white/10 dark:bg-neutral-900/90 dark:text-neutral-200"
-          aria-label="年度"
-        >
-          {YEARS.map(y => (
-            <option key={y} value={y}>{y}年度</option>
-          ))}
-        </select>
+        <YearSelect value={year} onChange={y => setYear(y as Year)} years={YEARS} />
         <PageNavMenu current="/project-bubble" />
       </div>
 

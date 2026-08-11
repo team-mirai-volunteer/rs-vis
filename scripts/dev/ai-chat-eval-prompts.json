@@ -1,0 +1,54 @@
+[
+  {
+    "id": "filter-renewable",
+    "turns": ["再エネ関連の大型事業を調べたい。予算100億円以上に絞って"]
+  },
+  {
+    "id": "filter-defense",
+    "turns": ["防衛関連の大型事業（予算100億円以上）を見たい"]
+  },
+  {
+    "id": "filter-etax",
+    "turns": ["国税庁のシステム関連の事業を見せて"]
+  },
+  {
+    "id": "filter-ministry-top",
+    "turns": ["経済産業省の予算が大きい事業を教えて"]
+  },
+  {
+    "id": "drill-project-detail",
+    "turns": ["地域脱炭素移行・再エネ推進交付金って何のための事業？"]
+  },
+  {
+    "id": "drill-quality",
+    "turns": ["マイナンバー関連の事業に絞って", "その中で品質スコアが低いのは？"]
+  },
+  {
+    "id": "drill-recipient",
+    "turns": ["NTTデータはどの事業から受注している？"]
+  },
+  {
+    "id": "drill-subcontract",
+    "turns": ["地域脱炭素移行・再エネ推進交付金は再委託している？"]
+  },
+  {
+    "id": "refine-narrow-ministry",
+    "turns": ["再エネ関連の大型事業を予算100億円以上で見たい", "さらに環境省だけに絞って"]
+  },
+  {
+    "id": "off-topic-chitchat",
+    "turns": ["今日の天気は？"]
+  },
+  {
+    "id": "drill-compare-years",
+    "turns": ["マイナンバー関連の事業は去年から増えた？"]
+  },
+  {
+    "id": "drill-spending-search",
+    "turns": ["広報にいくら使われている？"]
+  },
+  {
+    "id": "drill-highlights",
+    "turns": ["無駄遣いっぽい事業を教えて"]
+  }
+]
