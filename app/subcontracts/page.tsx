@@ -585,11 +585,13 @@ function SubcontractsPageInner() {
     <div style={{ height: '100vh', background: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ── 上部: フィルタ群 ── */}
       <div style={{ flexShrink: 0, padding: '12px', width: '100%', boxSizing: 'border-box' }}>
-        {/* コントロール（/sankey-svg と同じトーン） */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* コントロール（/sankey-svg と同じトーン）。
+            年度・ページ切替は折り返し対象から外し、狭幅でも常に1行目右端に固定する */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flex: 1, minWidth: 0 }}>
 
           {/* 検索 */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 240 }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
             <span aria-hidden="true" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
               <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="#999">
                 <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
@@ -672,11 +674,13 @@ function SubcontractsPageInner() {
             列幅リセット
           </button>
 
-          {/* 年度とページ切替。全ページ共通で右上に置く */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} theme="light" />
-            <PageNavMenu current="/subcontracts" theme="light" />
-          </div>
+        </div>
+
+        {/* 年度とページ切替。全ページ共通で右上に置く（折り返し行の外なので2行目に落ちない） */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} theme="light" />
+          <PageNavMenu current="/subcontracts" theme="light" />
+        </div>
         </div>
 
         {/* 折りたたみフィルタパネル（/sankey-svg ライク） */}

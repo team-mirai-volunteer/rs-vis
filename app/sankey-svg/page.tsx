@@ -155,6 +155,7 @@ const TOOLTIP_META_FONT_PX_DEFAULT = 10;
 // フォントスケールの基準値（baseFontPx ÷ FONT_SCALE_REFERENCE_PX で全フォントを比例拡縮）。
 // 実際の scaleFont 生成は app/lib/font-scale.ts（Pure ヘルパー、他ページと共有）に委譲。
 const BASE_FONT_PX_DEFAULT = 12;
+const BASE_FONT_PX_COMPACT_DEFAULT = 14; // スマホ幅の既定（ユーザー未設定時のみ）
 const BASE_FONT_PX_MIN = 8;
 const BASE_FONT_PX_MAX = 24;
 // サイドパネルの幅定数（既定/最小/最大/ビューポート予約）は client/hooks/useSidePanel.ts に一元化
@@ -334,6 +335,8 @@ export default function RealDataSankeyPage() {
   const [showFontControls, setShowFontControls] = useState(false);
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     'sankey-base-font-px', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
+    // スマホ幅ではラベルが体感的に小さすぎるため、未設定時のみ既定を引き上げる
+    { maxWidth: COMPACT_CONTROL_MAX_WIDTH, defaultValue: BASE_FONT_PX_COMPACT_DEFAULT },
   );
   const [showLabels, setShowLabels] = useState(true);
   const [showAggRecipient, setShowAggRecipient] = useState(true);

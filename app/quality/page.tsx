@@ -417,14 +417,16 @@ export default function QualityPage() {
       {/* Header */}
       <div className="shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 py-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+          <div className="flex items-start gap-2 mb-1">
+            <h1 className="min-w-0 text-lg font-bold text-gray-900 dark:text-white">
               事業別 政策評価・執行透明性スコア
             </h1>
-            {/* 年度とページ切替。全ページ共通で右上に置く */}
-            <div className="ml-auto" />
-            <YearSelect value={year} onChange={y => setYear(y as '2024' | '2025')} years={[2025, 2024]} />
-            <PageNavMenu current="/quality" />
+            {/* 年度とページ切替。全ページ共通で右上に置く。
+                タイトルが折り返しても上端に固定する（items-start + shrink-0） */}
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              <YearSelect value={year} onChange={y => setYear(y as '2024' | '2025')} years={[2025, 2024]} />
+              <PageNavMenu current="/quality" />
+            </div>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {(() => {

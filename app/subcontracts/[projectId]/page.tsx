@@ -1275,6 +1275,8 @@ function SubcontractDetailPageInner() {
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     'subcontracts-detail-base-font-px', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
+    // スマホ幅ではラベルが体感的に小さすぎるため、未設定時のみ既定を引き上げる（サンキーと同値）
+    { maxWidth: 767, defaultValue: 14 },
   );
   const scaleFont = useMemo(() => createScaleFont(baseFontPx), [baseFontPx]);
 

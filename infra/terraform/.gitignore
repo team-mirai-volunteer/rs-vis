@@ -1,0 +1,8 @@
+# Terraform ローカル状態・秘匿値は絶対にコミットしない
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

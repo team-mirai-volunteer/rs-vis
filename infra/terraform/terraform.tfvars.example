@@ -1,0 +1,18 @@
+# コピーして terraform.tfvars を作る（terraform.tfvars は .gitignore 済み）。
+# トークン・APIキー・DBパスワードは tfvars ではなく環境変数で渡すこと:
+#   export VERCEL_API_TOKEN=...
+#   export SUPABASE_ACCESS_TOKEN=...
+#   export TF_VAR_supabase_database_password=...
+
+vercel_team_slug    = "team-mirai-volunteer"
+vercel_project_name = "marumie-rssystem"
+github_repo         = "team-mirai-volunteer/rs-vis"
+
+app_env_plain = {
+  # SANKEY_AI_CHAT_ENABLED      = "true"
+  # NEXT_PUBLIC_FEATURE_AI_CHAT = "true"
+}
+
+# Supabase はDB導入時に有効化
+supabase_enabled = false
+# supabase_organization_id = "xxxxxxxxxxxx"
