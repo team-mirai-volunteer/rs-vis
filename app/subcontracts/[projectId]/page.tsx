@@ -1274,9 +1274,11 @@ function SubcontractDetailPageInner() {
   const leftFloatOffset = sidePanelSide === 'left' && !sidePanel.collapsed ? sidePanel.effectiveWidth + 12 : 12;
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
-    'subcontracts-detail-base-font-px', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
+    // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
+    'subcontracts-detail-base-font-px-v2', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
     // スマホ幅・フルHD以上ではラベルが体感的に小さすぎるため、未設定時のみ画面幅で既定を引き上げる
     defaultBaseFontPxForWidth,
+    'subcontracts-detail-base-font-px',
   );
   const scaleFont = useMemo(() => createScaleFont(baseFontPx), [baseFontPx]);
 
