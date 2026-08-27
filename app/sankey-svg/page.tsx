@@ -331,7 +331,6 @@ export default function RealDataSankeyPage() {
   const [hoveredColIndex, setHoveredColIndex] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showSettings, setShowSettings] = useState(false);
-  const [showFontControls, setShowFontControls] = useState(false);
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
     'sankey-base-font-px-v2', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
@@ -356,7 +355,9 @@ export default function RealDataSankeyPage() {
   const [zoomInputValue, setZoomInputValue] = useState('');
   const [isEditingOffset, setIsEditingOffset] = useState(false);
   const [offsetInputValue, setOffsetInputValue] = useState('');
-  const [showTopNSliders, setShowTopNSliders] = useState(true);
+  // 設定パネルを開いたらパネル自体へフォーカスし、Escape で確実に閉じられるようにする
+  const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { if (showSettings) settingsPanelRef.current?.focus(); }, [showSettings]);
   const [scrollMode, setScrollMode] = useState<'zoom' | 'pan'>('zoom');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   // 左サイドパネル（ノード詳細）の chrome 状態は useSidePanel に集約。
@@ -447,6 +448,19 @@ export default function RealDataSankeyPage() {
   const isCompactWidth = svgWidth <= COMPACT_CONTROL_MAX_WIDTH;
   // スマホ横（コンパクト幅かつ横長）: オフセットコントロールをサイドパネルでスライドさせる
   const isLandscapeCompact = isCompactWidth && svgWidth > svgHeight;
+
+  // デスクトップの統合パネルはバックドロップを置かず、外側 mousedown で閉じる
+  // （開いたままでも前後ページング等を操作できるようにするため。狭幅⋮はバックドロップ方式のまま）
+  useEffect(() => {
+    if (!showSettings || isCompactWidth) return;
+    const onDown = (e: MouseEvent) => {
+      if (offsetControlRef.current && !offsetControlRef.current.contains(e.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [showSettings, isCompactWidth]);
 
   // 左サイドパネル（ノード詳細）の chrome 状態。effectiveWidth は svgWidth に対する
   // ビューポートクランプ込み（旧: minPanelWidthForViewport/maxPanelWidthForViewport 計算と同一式）
@@ -1221,8 +1235,6 @@ export default function RealDataSankeyPage() {
   const SEARCH_RESULT_SWATCH_PX = scaleSize(8);
   const FILTER_CLEAR_BUTTON_PX = scaleSize(32);
   const FILTER_CLEAR_ICON_PX = scaleSize(18);
-  const FONT_CONTROL_BUTTON_PX = 32;
-  const FONT_CONTROL_ICON_PX = 18;
   const mapLabelFontPx = MAP_LABEL_FONT_PX;
   const mapLabelSlotPx = MAP_LABEL_SLOT_PX;
   const mapLabelVisibleMinHPx = MAP_LABEL_VISIBLE_MIN_H_PX;
@@ -3026,7 +3038,6 @@ export default function RealDataSankeyPage() {
   // これがないと文字拡大時に検索ボックスが設定ボタンを覆い、タップで開けなくなる。
   const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 64px)`;
   const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : effectiveSidePanelWidth + 8) : 8;
-  const fontControlLeft = minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48);
   // 年度変更（トップ中央セレクトとスマホ幅の設定ダイアログで共用）
   const handleYearChange = (value: '2024' | '2025') => {
     pendingHistoryAction.current = 'replace';
@@ -3063,9 +3074,61 @@ export default function RealDataSankeyPage() {
     />
   );
 
+  // 表示オプション（チェックボックス群・並び順）。デスクトップの統合パネルと狭幅の⋮ダイアログで共有
+  const displayOptionsFragment = (
+    <>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ color: '#555' }}>事業ノードの並び順:</span>
+        <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
+          <option value="budget">予算額</option>
+          <option value="spending">支出額</option>
+        </select>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
+      </label>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
+        <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
+      </label>
+    </>
+  );
+
+  // 右上クラスタ共通のボタン外観。YearSelect / PageNavMenu（h-9・rounded-lg・border-black/10・shadow-md）に揃える
+  const clusterButtonStyle = {
+    height: 36,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    border: '1px solid rgba(0,0,0,0.1)',
+    background: 'rgba(255,255,255,0.9)',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+    cursor: 'pointer',
+  } as const;
+
   /**
-   * TopN・オフセットの操作パネル。狭幅では画面下部、通常は右上クラスタの左端に置く。
-   * 右上は［ツール - 表示設定 - 年度 - メニュー］の並びで rs-vis と揃える。
+   * TopN・オフセットの操作パネル。
+   * 通常幅では右上クラスタの左端に「状態表示ボタン（1〜50 / 5794件）＋前後ページング」だけを
+   * 常駐させ、スライダー類はボタンから開くパネルに収める（右上の視覚ノイズを減らすため）。
+   * 狭幅では従来どおり画面下部にカードで置く。
    */
   const offsetControlsBlock = filtered ? (() => {
         // Recipient offset mode
@@ -3091,14 +3154,21 @@ export default function RealDataSankeyPage() {
           pendingHistoryAction.current = 'replace';
           if (isProjectMode) setProjectOffset(v); else setRecipientOffset(v);
         };
-        return (
-          <div ref={offsetControlRef} style={ isCompactWidth
-            ? { position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }
-            // 通常幅では右上クラスタの子として並べる（位置はクラスタ側が持つ）
-            : { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' } }>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 8, rowGap: 4, background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: isCompactWidth ? 6 : '6px 6px 0 6px', border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
-            {/* Row 1: オフセットスライダー（2列スパン） */}
-            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 8, alignItems: 'center' }}>
+        const stepOffset = (delta: number) => {
+          pendingHistoryAction.current = 'replace';
+          pendingFocusId.current = null;
+          if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+          else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
+        };
+        const PAGING_DEFS = [
+          [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
+          [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
+        ] as [number, string, string][];
+        // オフセット操作の1行（対象コンボ・開始位置・スライダー・件数・リセット）。
+        // 狭幅カードとデスクトップのパネルで共有する。ページングは狭幅のみ行内に含める
+        // （デスクトップはパネル外の常駐ボタンが担う。testId の重複を避ける意図もある）
+        const renderOffsetRow = (withPaging: boolean, sliderWidth: number) => (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {/* オフセット対象コンボボックス */}
               <select
                 data-testid={testId('offset-target-select')}
@@ -3131,22 +3201,15 @@ export default function RealDataSankeyPage() {
                   >{activeRangeStart}</button>
                 )}
                 <span style={{ color: '#999', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
-                <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: 60 }} />
+                <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: sliderWidth }} />
                 {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
                 {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
+                {withPaging && (
                 <div style={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                  {([
-                    [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
-                    [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
-                  ] as [number, string, string][]).map(([delta, path, title]) => (
+                  {PAGING_DEFS.map(([delta, path, title]) => (
                     <button key={delta} title={title} aria-label={title}
                       data-testid={testId(delta > 0 ? 'recipient-offset-next' : 'recipient-offset-prev')}
-                      {...offsetRepeat(() => {
-                        pendingHistoryAction.current = 'replace';
-                        pendingFocusId.current = null;
-                        if (isProjectMode) setProjectOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                        else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
-                      }, { stopPropagation: true })}
+                      {...offsetRepeat(() => stepOffset(delta), { stopPropagation: true })}
                       onClick={(e) => {
                         if (e.detail === 0) {
                           setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + delta)));
@@ -3158,6 +3221,7 @@ export default function RealDataSankeyPage() {
                     </button>
                   ))}
                 </div>
+                )}
                 {/* Material Icons: vertical_align_top — オフセットリセット */}
                 <button onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
                   onContextMenu={(e) => e.preventDefault()}
@@ -3167,21 +3231,78 @@ export default function RealDataSankeyPage() {
                 </button>
               </label>
             </div>
-            {/* Row 2: 事業・支出先 TopN スライダー（スマホ幅では設定ダイアログへ移動） */}
-            {!isCompactWidth && showTopNSliders && topNSlidersFragment}
-          </div>
-          {/* トグルボタン（パネル外・下部）— スマホ幅では設定ダイアログにTopNを移すため非表示 */}
-          {!isCompactWidth && (
-          <button
-            onClick={() => setShowTopNSliders(s => !s)}
-            title={showTopNSliders ? 'TopN設定 を隠す' : 'TopN設定 を表示'}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', borderTop: 'none', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderRadius: '0 0 4px 4px', cursor: 'pointer', padding: '0 2px', marginTop: -1, userSelect: 'none' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#bbb">
-              <path d={showTopNSliders ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z' : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'} />
-            </svg>
-          </button>
-          )}
+        );
+
+        // 狭幅: 従来どおり画面下部のカード（ページング込み）
+        if (isCompactWidth) {
+          return (
+            <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
+              <div style={{ background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
+                {renderOffsetRow(true, 60)}
+              </div>
+            </div>
+          );
+        }
+
+        // 通常幅: ［‹｜状態表示｜›］の1ブロックだけを常駐させ、詳細操作は統合パネルに畳む。
+        // パネルは旧⋮ダイアログの内容（表示オプション）と文字サイズも吸収した単一の設定面。
+        const segDividerStyle = { width: 1, alignSelf: 'stretch', background: 'rgba(0,0,0,0.08)' } as const;
+        const segButtonStyle = { height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' } as const;
+        return (
+          <div ref={offsetControlRef} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
+            <div style={{ ...clusterButtonStyle, padding: 0, overflow: 'hidden', cursor: 'default' }}>
+              <button title="前へ" aria-label="前へ"
+                data-testid={testId('recipient-offset-prev')}
+                {...offsetRepeat(() => stepOffset(-1), { stopPropagation: true })}
+                onClick={(e) => { if (e.detail === 0) setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset - 1))); }}
+                style={{ ...segButtonStyle, width: 32, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(16)} width={scaleSize(16)} viewBox="0 0 24 24" fill="#555"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+              </button>
+              <div style={segDividerStyle} aria-hidden="true" />
+              <button
+                data-testid={testId('range-panel-toggle')}
+                onClick={() => setShowSettings(s => !s)}
+                aria-label="表示設定を開く"
+                aria-expanded={showSettings}
+                aria-haspopup="dialog"
+                aria-controls="sankey-topn-settings"
+                title="表示設定（件数・開始位置・文字サイズなど）"
+                style={{ ...segButtonStyle, gap: 4, padding: '0 10px', fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap' }}
+              >
+                <span>{isProjectMode ? '事業' : '支出先'} {activeRangeStart}〜{activeRangeEnd}</span>
+                <span style={{ color: '#999' }}>/{activeTotalCount}件</span>
+                <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ transform: showSettings ? 'rotate(180deg)' : 'none' }} aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
+              </button>
+              <div style={segDividerStyle} aria-hidden="true" />
+              <button title="次へ" aria-label="次へ"
+                data-testid={testId('recipient-offset-next')}
+                {...offsetRepeat(() => stepOffset(1), { stopPropagation: true })}
+                onClick={(e) => { if (e.detail === 0) setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + 1))); }}
+                style={{ ...segButtonStyle, width: 32, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(16)} width={scaleSize(16)} viewBox="0 0 24 24" fill="#555"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+              </button>
+            </div>
+            {showSettings && (
+              <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1}
+                onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }}
+                style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX, minWidth: 400, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
+                  {topNSlidersFragment}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>表示開始位置</span>
+                  {renderOffsetRow(false, 120)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+                  {fontSizeControlsFragment}
+                </div>
+                {displayOptionsFragment}
+              </div>
+            )}
           </div>
         );
       })() : null;
@@ -3581,100 +3702,7 @@ export default function RealDataSankeyPage() {
             />
             )}
 
-            {/* Font size controls（スマホ幅では設定ダイアログへ移動するため非表示） */}
-            {!isCompactWidth && (
-            <div
-              data-pan-disabled="true"
-              style={{
-                position: 'absolute',
-                left: fontControlLeft,
-                bottom: showMinimap ? 8 : 16,
-                zIndex: 12,
-                display: 'flex',
-                alignItems: 'flex-end',
-                gap: 6,
-                transition: 'left 0.2s ease',
-              }}
-            >
-              {!showFontControls && (
-                <button
-                  type="button"
-                  title="フォントサイズ設定"
-                  aria-label="フォントサイズ設定"
-                  aria-expanded={showFontControls}
-                  onClick={(e) => { e.stopPropagation(); setShowFontControls(true); }}
-                  style={{
-                    width: FONT_CONTROL_BUTTON_PX,
-                    height: FONT_CONTROL_BUTTON_PX,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: 'none',
-                    borderRadius: 6,
-                    background: 'rgba(255,255,255,0.7)',
-                    color: '#888',
-                    cursor: 'pointer',
-                    padding: 0,
-                  }}
-                >
-                  {/* Material Icons: format_size */}
-                  <svg xmlns="http://www.w3.org/2000/svg" height={FONT_CONTROL_ICON_PX} width={FONT_CONTROL_ICON_PX} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 4v3h5v12h3V7h5V4H9Zm-6 8h3v7h3v-7h3V9H3v3Z" />
-                  </svg>
-                </button>
-              )}
-              {showFontControls && (
-                <div
-                  role="group"
-                  aria-label="基準フォントサイズ"
-                  style={{
-                    position: 'relative',
-                    boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.95)',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '6px 6px 0 6px',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                    padding: '6px 10px',
-                    color: '#333',
-                    minHeight: FONT_CONTROL_BUTTON_PX,
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  {fontSizeControlsFragment}
-                  <button
-                    type="button"
-                    title="フォントサイズ設定を閉じる"
-                    aria-label="フォントサイズ設定を閉じる"
-                    onClick={(e) => { e.stopPropagation(); setShowFontControls(false); }}
-                    style={{
-                      position: 'absolute',
-                      bottom: -1,
-                      right: -13,
-                      zIndex: 12,
-                      background: 'rgba(255,255,255,0.92)',
-                      borderTop: '1px solid #e0e0e0',
-                      borderRight: '1px solid #e0e0e0',
-                      borderBottom: '1px solid #e0e0e0',
-                      borderLeft: 'none',
-                      borderRadius: '0 4px 4px 0',
-                      width: 14,
-                      height: 20,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#aaa">
-                      <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
-            )}
+            {/* 基準フォントサイズ調整は右上の統合設定パネル（狭幅は⋮ダイアログ）に集約した */}
 
           {/* DOM tooltip — link hover */}
           {hoveredLink && !hoveredNode && !suppressHoverPopup && (() => {
@@ -4831,7 +4859,8 @@ export default function RealDataSankeyPage() {
           />
         )}
 
-        {/* 表示設定(⋮)。ダイアログはこの要素を基準に開く */}
+        {/* 表示設定(⋮)。狭幅のみ（通常幅は表示範囲ブロックの統合パネルに集約） */}
+        {isCompactWidth && (
         <div style={{ position: 'relative', flexShrink: 0 }}>
         <button
           onClick={() => setShowSettings(s => !s)}
@@ -4839,17 +4868,17 @@ export default function RealDataSankeyPage() {
           aria-expanded={showSettings}
           aria-controls="sankey-topn-settings"
           aria-haspopup="dialog"
-          style={{ width: 32, height: 32, border: 'none', borderRadius: 6, background: showSettings ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ ...clusterButtonStyle, width: 36, padding: 0, background: showSettings ? '#fff' : 'rgba(255,255,255,0.9)' }}
         >
           {/* Material Icons: more_vert */}
-          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#888'}>
+          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#666'}>
             <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
           </svg>
         </button>
         {showSettings && (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
-            <div id="sankey-topn-settings" role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') setShowSettings(false); }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333' }}>
+            <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
               {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
               {isCompactWidth && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
@@ -4880,41 +4909,12 @@ export default function RealDataSankeyPage() {
                   {fontSizeControlsFragment}
                 </div>
               )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#555' }}>事業ノードの並び順:</span>
-                <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
-                  <option value="budget">予算額</option>
-                  <option value="spending">支出額</option>
-                </select>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-                <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
-              </label>
+              {displayOptionsFragment}
             </div>
           </>
         )}
         </div>
+        )}
 
         {/* 年度切替（rs-vis の並びに合わせて、ツール類の右・メニューの左）。
             スマホ幅では検索ボックスに隠れるため設定ダイアログ側に置く */}

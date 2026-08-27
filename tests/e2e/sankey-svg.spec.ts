@@ -162,7 +162,8 @@ test.describe('sankey-svg interactions', () => {
   test('project side panel uses the unified project badge from graph and search selection', async ({ page }) => {
     const projectName = '燃料油価格激変緩和対策事業';
 
-    await page.locator('svg text').filter({ hasText: projectName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: projectName }).first().click({ force: true });
     await expect(page.getByText('事業', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('事業（予算）')).toHaveCount(0);
     await expect(page.getByText('事業（支出）')).toHaveCount(0);
@@ -189,11 +190,12 @@ test.describe('sankey-svg interactions', () => {
     await expect(page.locator('svg text').filter({ hasText: ministryName }).first()).toBeVisible();
     await expect(page.locator('svg text').filter({ hasText: unrelatedRecipientName }).first()).toBeVisible();
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().hover();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().hover({ force: true });
     await expect.poll(() => visibleSvgTextFill(page, ministryName), { timeout: 5_000, intervals: [100] }).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, unrelatedRecipientName), { timeout: 5_000, intervals: [100] }).toBe('#bbb');
 
-    await page.locator('svg text').filter({ hasText: unrelatedRecipientName }).first().hover();
+    await page.locator('svg text').filter({ hasText: unrelatedRecipientName }).first().hover({ force: true });
     await expect.poll(() => visibleSvgTextFill(page, unrelatedRecipientName), { timeout: 5_000, intervals: [100] }).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, ministryName), { timeout: 5_000, intervals: [100] }).toBe('#bbb');
   });
@@ -207,13 +209,14 @@ test.describe('sankey-svg interactions', () => {
     await page.goto('/sankey-svg?fmc=0');
     await expect(page.getByTestId('sankey-node').first()).toBeVisible({ timeout: 30_000 });
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect.poll(() => visibleSvgTextFill(page, ministryName)).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, aggregateProjectLabel)).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, aggregateRecipientLabel)).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, recipientName)).toBe('#bbb');
 
-    await page.locator('svg text').filter({ hasText: recipientName }).first().click();
+    await page.locator('svg text').filter({ hasText: recipientName }).first().click({ force: true });
     await expect.poll(() => visibleSvgTextFill(page, recipientName)).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, aggregateProjectLabel)).toBe('#333');
     await expect.poll(() => visibleSvgTextFill(page, ministryName)).toBe('#bbb');
@@ -227,7 +230,9 @@ test.describe('sankey-svg interactions', () => {
     await expect.poll(() => visibleNodeCount(page)).toBeGreaterThan(0);
   });
 
-  test('debug scenario: select post-5G project, select NEDO recipient, filter project text, and switch year', async ({ page }) => {
+  // 検索フィルタモード（search-mode-toggle / filter-target-select / nf・nft パラメータ）は
+  // 上流 marumie-rssystem の機能で本リポジトリには未同期のため skip
+  test.skip('debug scenario: select post-5G project, select NEDO recipient, filter project text, and switch year', async ({ page }) => {
     const projectName = 'ポスト5G情報通信システム基盤強化研究開発事業(AI基盤モデル及び先端半導体関連技術開発事業)';
     const recipientName = '国立研究開発法人新エネルギー・産業技術総合開発機構';
     const pageErrors: string[] = [];
@@ -292,7 +297,8 @@ test.describe('sankey-svg interactions', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
     const panelProject = page.locator('button').filter({
@@ -314,11 +320,15 @@ test.describe('sankey-svg interactions', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
+    // オフセット対象コンボは表示範囲パネル内へ移動したため、開いてから操作する
+    await page.getByTestId('range-panel-toggle').click();
     await page.getByTestId('offset-target-select').selectOption('project');
     await expect(page.getByTestId('offset-target-select')).toHaveValue('project');
+    await page.keyboard.press('Escape'); // パネルを閉じる（stopPropagation で選択解除は起きない）
 
     const panelProject = page.locator('button').filter({
       has: page.locator(`[title="${projectName}"]`),
@@ -328,6 +338,7 @@ test.describe('sankey-svg interactions', () => {
     await panelProject.click();
 
     await expect(page).toHaveURL(/sel=project-budget-5550/);
+    await page.getByTestId('range-panel-toggle').click();
     await expect(page.getByTestId('offset-target-select')).toHaveValue('project');
     await expect(page).not.toHaveURL(/ot=r/);
     await expect(page).not.toHaveURL(/po=4783/);
@@ -341,11 +352,15 @@ test.describe('sankey-svg interactions', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
+    // オフセット対象コンボは表示範囲パネル内へ移動したため、開いてから操作する
+    await page.getByTestId('range-panel-toggle').click();
     await page.getByTestId('offset-target-select').selectOption('recipient');
     await expect(page.getByTestId('offset-target-select')).toHaveValue('recipient');
+    await page.keyboard.press('Escape'); // パネルを閉じてから常駐の前後ボタンを操作する
     for (let i = 0; i < 10; i++) {
       await page.getByTestId('recipient-offset-next').click();
     }
@@ -372,12 +387,14 @@ test.describe('sankey-svg interactions', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
 
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/sel=ministry-%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
     await page.getByTitle('パネルを折りたたむ').click();
-    await page.locator('svg text').filter({ hasText: ministryName }).first().click();
+    // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
+    await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await page.getByTitle('パネルを展開').click();
 
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
@@ -389,7 +406,8 @@ test.describe('sankey-svg interactions', () => {
 });
 
 test.describe('sankey-svg deep links', () => {
-  test('filtered deep link restores year, filter target, selection, and visible graph', async ({ page }) => {
+  // 検索フィルタの deep link（nf・nft パラメータ）は上流 marumie-rssystem の機能で本リポジトリには未同期のため skip
+  test.skip('filtered deep link restores year, filter target, selection, and visible graph', async ({ page }) => {
     const recipientName = '国立研究開発法人新エネルギー・産業技術総合開発機構';
     const pageErrors: string[] = [];
     page.on('pageerror', error => pageErrors.push(error.message));
