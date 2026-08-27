@@ -14,9 +14,10 @@ export function useBaseFontPx(
   defaultValue: number,
   min: number,
   max: number,
-  /** 狭幅（タッチ端末想定）での既定値。保存済み設定がある場合は使わない。
-      SSR とのハイドレーション不整合を避けるため、初期 state ではなく復元 effect 内で適用する */
-  compactOptions?: { maxWidth: number; defaultValue: number },
+  /** 画面幅に応じた既定値のリゾルバ（例: app/lib/font-scale.ts の defaultBaseFontPxForWidth）。
+      保存済み設定がある場合は使わない。SSR とのハイドレーション不整合を避けるため、
+      初期 state ではなく復元 effect 内で適用する */
+  defaultForWidth?: (viewportWidth: number) => number,
 ): [number, Dispatch<SetStateAction<number>>] {
   const [baseFontPx, setBaseFontPx] = useState(defaultValue);
   // 復元・自動既定値の適用では localStorage に書かない（画面幅由来の値を恒久化しないため）。
@@ -39,8 +40,8 @@ export function useBaseFontPx(
           return;
         }
       }
-      if (compactOptions && window.innerWidth <= compactOptions.maxWidth) {
-        setBaseFontPx(Math.min(max, Math.max(min, compactOptions.defaultValue)));
+      if (defaultForWidth) {
+        setBaseFontPx(Math.min(max, Math.max(min, defaultForWidth(window.innerWidth))));
       }
     } catch {
       // localStorage unavailable (private browsing etc.) — ignore

@@ -22,3 +22,17 @@ export function createScaleFont(
   const fontScale = baseFontPx / referencePx;
   return (px: number) => Math.max(1, Math.round(px * fontScale));
 }
+
+/**
+ * 画面幅に応じた baseFontPx の既定値（ユーザーが未設定のときだけ使う）。
+ *
+ * 既定の 12px はラベル実測 11px 相当で、スマホ（視距離が近いが画素密度が高い・タッチ操作）と
+ * フルHD以上の大画面（視距離が遠い）ではどちらも体感的に小さすぎる。
+ *   - 〜767px（タッチ想定）: 14px
+ *   - 1280px 以下: 12px（従来どおり）
+ *   - 1280〜2560px: 12→16px へ連続的に増加（1920px で 14px）
+ */
+export function defaultBaseFontPxForWidth(viewportWidth: number): number {
+  if (viewportWidth <= 767) return 14;
+  return Math.max(12, Math.min(16, Math.round(12 + (viewportWidth - 1280) / 320)));
+}

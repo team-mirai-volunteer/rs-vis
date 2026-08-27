@@ -64,7 +64,7 @@ import { summarizeOffFlowIndirectCosts, INDIRECT_COST_NODE_LABEL, type IndirectC
 import { SidePanelChrome } from '@/client/components/SidePanelChrome';
 import { useSidePanel, SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX } from '@/client/hooks/useSidePanel';
 import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
-import { createScaleFont } from '@/app/lib/font-scale';
+import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 
 // サイドパネルの既定幅は現状の SidePane 固定幅(390)を維持。最小/最大はサンキーと共通の値を使う
@@ -1275,8 +1275,8 @@ function SubcontractDetailPageInner() {
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     'subcontracts-detail-base-font-px', BASE_FONT_PX_DEFAULT, BASE_FONT_PX_MIN, BASE_FONT_PX_MAX,
-    // スマホ幅ではラベルが体感的に小さすぎるため、未設定時のみ既定を引き上げる（サンキーと同値）
-    { maxWidth: 767, defaultValue: 14 },
+    // スマホ幅・フルHD以上ではラベルが体感的に小さすぎるため、未設定時のみ画面幅で既定を引き上げる
+    defaultBaseFontPxForWidth,
   );
   const scaleFont = useMemo(() => createScaleFont(baseFontPx), [baseFontPx]);
 
