@@ -3672,15 +3672,10 @@ export default function RealDataSankeyPage() {
                 const topNodeScreenY = topNode
                   ? pan.y + (MARGIN.top + topNode.y0 + (topNodeShift?.cumShift ?? 0) + (topNodeShift?.topShift ?? 0)) * zoom
                   : pan.y + MARGIN.top * zoom;
-                // ラベルは図の上端に追随しつつ、検索ボックスの実測下端より上には行かない。
-                // searchBoxBottom はフィルタパネル込みの実測値なので、その実高を差し引いて
-                // 「フィルタ非展開時の下端」を基準にする（フィルタパネルは zIndex で前面に重なる）。
-                const pinnedTop = searchBoxBottom - filterPanelHeight + 4;
-                const top = Math.max(pinnedTop, topNodeScreenY - labelBlockH - 8);
-                // 図を上へドラッグしてノードがヘッダー位置に潜り込むときは、重ねずに非表示にする。
-                // 既定のフィット表示はフォントスケール次第で数px食い込むことがあるため、
-                // 8px までの食い込みは許容する（半透明白背景の内側に収まり実質見えない）
-                if (top + labelBlockH > topNodeScreenY + 8) return null;
+                // ラベルは常に図の上端（列の最上ノードの少し上）に追随する。上限では止めず、
+                // 図を上へドラッグしたときは他のノードと同じように検索ボックスの下・画面外へ
+                // 潜り込ませる（検索ボックス等の前面UIより低い zIndex なので自然に隠れる）
+                const top = topNodeScreenY - labelBlockH - 8;
                 return (
                   <div
                     key={i}
