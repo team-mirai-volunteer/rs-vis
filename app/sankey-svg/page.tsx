@@ -155,6 +155,8 @@ const TOOLTIP_META_FONT_PX_DEFAULT = 10;
 // フォントスケールの基準値（baseFontPx ÷ FONT_SCALE_REFERENCE_PX で全フォントを比例拡縮）。
 // 実際の scaleFont 生成は app/lib/font-scale.ts（Pure ヘルパー、他ページと共有）に委譲。
 const BASE_FONT_PX_DEFAULT = 12;
+// 事業・支出先の既定表示件数。50だと下位が1〜5pxに潰れて太さ（金額比例）が読めないため30に絞る
+const TOP_N_DEFAULT = 30;
 const BASE_FONT_PX_MIN = 8;
 const BASE_FONT_PX_MAX = 24;
 // サイドパネルの幅定数（既定/最小/最大/ビューポート予約）は client/hooks/useSidePanel.ts に一元化
@@ -318,8 +320,8 @@ export default function RealDataSankeyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [topMinistry, setTopMinistry] = useState(37);
-  const [topProject, setTopProject] = useState(50);
-  const [topRecipient, setTopRecipient] = useState(50);
+  const [topProject, setTopProject] = useState(TOP_N_DEFAULT);
+  const [topRecipient, setTopRecipient] = useState(TOP_N_DEFAULT);
   const [recipientOffset, setRecipientOffset] = useState(0);
   const [projectOffset, setProjectOffset] = useState(0);
   const [offsetTarget, setOffsetTarget] = useState<'recipient' | 'project'>('project');
@@ -551,7 +553,7 @@ export default function RealDataSankeyPage() {
       // Pre-update prev refs so reset effects don't fire for URL-restored values
       prevOffsetTargetRef.current = parsed.offsetTarget ?? 'project';
       prevProjectSortByRef.current = parsed.projectSortBy ?? 'budget';
-      prevTopProjectRef.current = parsed.topProject ?? 50;
+      prevTopProjectRef.current = parsed.topProject ?? TOP_N_DEFAULT;
       setSelectedNodeId(parsed.selectedNodeId ?? null);
       setPinnedProjectId(parsed.pinnedProjectId ?? null);
       setPinnedRecipientId(parsed.pinnedRecipientId ?? null);
@@ -560,8 +562,8 @@ export default function RealDataSankeyPage() {
       setOffsetTarget(parsed.offsetTarget ?? 'project');
       setProjectOffset(parsed.projectOffset ?? 0);
       setTopMinistry(parsed.topMinistry ?? 37);
-      setTopProject(parsed.topProject ?? 50);
-      setTopRecipient(parsed.topRecipient ?? 50);
+      setTopProject(parsed.topProject ?? TOP_N_DEFAULT);
+      setTopRecipient(parsed.topRecipient ?? TOP_N_DEFAULT);
       setShowLabels(parsed.showLabels ?? true);
       setShowAggRecipient(parsed.showAggRecipient ?? true);
       setShowAggProject(parsed.showAggProject ?? true);
@@ -640,8 +642,8 @@ export default function RealDataSankeyPage() {
     if (offsetTarget === 'recipient') p.set('ot', 'r');
     if (projectOffset !== 0) p.set('po', String(projectOffset));
     if (topMinistry !== 37) p.set('tm', String(topMinistry));
-    if (topProject !== 50) p.set('tp', String(topProject));
-    if (topRecipient !== 50) p.set('tr', String(topRecipient));
+    if (topProject !== TOP_N_DEFAULT) p.set('tp', String(topProject));
+    if (topRecipient !== TOP_N_DEFAULT) p.set('tr', String(topRecipient));
     if (!showLabels) p.set('sl', '0');
     if (!showAggRecipient) p.set('ar', '0');
     if (!showAggProject) p.set('ap', '0');
