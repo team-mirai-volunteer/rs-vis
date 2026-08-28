@@ -3679,7 +3679,7 @@ export default function RealDataSankeyPage() {
                 const amountLine = i === 2 && total != null
                   ? `${formatYen(total)} / ${formatYen(projectSpendingTotal)}`
                   : total != null ? formatYen(total) : '';
-                const labelBlockH = Math.round((amountLine ? 36 : 20) * fontScale);
+                const labelBlockH = Math.round((amountLine ? 31 : 17) * fontScale);
                 const topNode = topNodeByCol[i];
                 const topNodeShift = topNode ? (nodeShiftInfo.get(topNode.id) ?? { cumShift: 0, topShift: 0 }) : null;
                 const topNodeScreenY = topNode
@@ -3688,7 +3688,7 @@ export default function RealDataSankeyPage() {
                 // ラベルは常に図の上端（列の最上ノードの少し上）に追随する。上限では止めず、
                 // 図を上へドラッグしたときは他のノードと同じように検索ボックスの下・画面外へ
                 // 潜り込ませる（検索ボックス等の前面UIより低い zIndex なので自然に隠れる）
-                const top = topNodeScreenY - labelBlockH - 8;
+                const top = topNodeScreenY - labelBlockH - 2;
                 return (
                   <div
                     key={i}
@@ -3698,8 +3698,8 @@ export default function RealDataSankeyPage() {
                       transform: 'translateX(-50%)',
                       textAlign: 'center', fontSize: COLUMN_LABEL_FONT_PX, color: '#999',
                       whiteSpace: 'nowrap', userSelect: 'none', cursor: 'default',
-                      zIndex: 8, lineHeight: 1.4,
-                      background: 'rgba(255,255,255,0.82)', padding: '2px 8px', borderRadius: 4,
+                      zIndex: 8, lineHeight: 1.2,
+                      background: 'rgba(255,255,255,0.82)', padding: '1px 6px', borderRadius: 4,
                     }}
                     onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredColIndex(i); }}
                     onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
