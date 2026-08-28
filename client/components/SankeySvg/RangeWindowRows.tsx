@@ -136,12 +136,11 @@ export function RangeWindowRow({
             cursor: 'grab',
           }}
         />
+        {/* 範囲テキストはバー内・右揃え。テキスト長が変わってもバー長が固定で保たれる */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8, pointerEvents: 'none', fontSize: metaFontPx, color: '#666', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+          {rangeStart}〜{rangeEnd}<span style={{ color: '#999' }}>/{total}件</span>
+        </div>
       </div>
-      {/* 範囲テキスト。バー・件数の双方に密着させる（幅の予約はしない）。
-          テキスト長の行差ぶんだけバー長がわずかに変わるのは許容する */}
-      <span style={{ color: '#777', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-        {rangeStart}〜{rangeEnd}<span style={{ color: '#aaa' }}>/{total}件</span>
-      </span>
       {isEditing ? (
         <input type="number" autoFocus min={TOP_MIN} max={TOP_MAX} step={1}
           value={inputValue}

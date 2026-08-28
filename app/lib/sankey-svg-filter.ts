@@ -53,7 +53,7 @@ export function filterTopN(
   projectOffset: number = 0,
   projectSortBy: 'budget' | 'spending' = 'budget',
   recipientFilterActive: boolean = false,
-): { nodes: RawNode[]; edges: RawEdge[]; totalRecipientCount: number; totalProjectCount: number; aggNodeMembers: Map<string, AggMember[]>; topProjectIds: Set<string> } {
+): { nodes: RawNode[]; edges: RawEdge[]; totalRecipientCount: number; totalProjectCount: number; recipientUniverseCount: number; aggNodeMembers: Map<string, AggMember[]>; topProjectIds: Set<string> } {
   // Build O(1) lookup map
   const nodeById = new Map(allNodes.map(n => [n.id, n]));
 
@@ -198,6 +198,23 @@ export function filterTopN(
     windowRecipients = allSortedRecipients.slice(recipientOffset, recipientOffset + topRecipient);
     tailRecipients = allSortedRecipients.slice(recipientOffset + topRecipient);
   }
+  // 支出先スライダーの母集合（支出先モードで実際にスクロール対象になる件数）。
+  // totalRecipientCount はモード依存（projectOffsetMode では可視事業経由の支出先数）なので、
+  // UI のスライダー表示がモード切替のたびに伸び縮みしないよう、モード非依存の値を別に返す。
+  let recipientUniverseCount = allSortedRecipients.length;
+  if (ministryFocusMode && pinnedMinistryName) {
+    if (ministrySpecificSortedRecipients.length > 0) {
+      recipientUniverseCount = ministrySpecificSortedRecipients.length;
+    } else {
+      const seen = new Set<string>();
+      for (const e of allEdges) {
+        const srcNode = nodeById.get(e.source);
+        if (srcNode?.type === 'project-spending' && srcNode.ministry === pinnedMinistryName && e.target.startsWith('r-')) seen.add(e.target);
+      }
+      recipientUniverseCount = seen.size;
+    }
+  }
+
   // Single-element tail: promote lone recipient to window
   if (tailRecipients.length === 1) {
     windowRecipients = [...windowRecipients, tailRecipients[0]];
@@ -739,7 +756,7 @@ export function filterTopN(
     }));
   }
 
-  return { nodes, edges, totalRecipientCount, totalProjectCount, aggNodeMembers, topProjectIds };
+  return { nodes, edges, totalRecipientCount, totalProjectCount, recipientUniverseCount, aggNodeMembers, topProjectIds };
 }
 
 // ── Custom Layout Engine ──

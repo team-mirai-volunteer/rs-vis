@@ -3248,9 +3248,12 @@ export default function RealDataSankeyPage() {
               markReplace={markHistoryReplace} metaFontPx={META_FONT_PX}
             />
             <RangeWindowRow
-              label="支出先" total={filtered.totalRecipientCount}
+              // 母集合はモード非依存の recipientUniverseCount（支出先モードでの総数）に固定し、
+              // 事業モードとの往復でスライダーが伸び縮みしないようにする
+              label="支出先" total={filtered.recipientUniverseCount}
               topN={topRecipient} setTopN={setTopRecipient}
-              offset={clampedOffset} maxOffset={maxRecipOffset}
+              offset={Math.min(recipientOffset, Math.max(0, filtered.recipientUniverseCount - topRecipient))}
+              maxOffset={Math.max(0, filtered.recipientUniverseCount - topRecipient)}
               onOffsetChange={v => {
                 pendingHistoryAction.current = 'replace';
                 pendingFocusId.current = null;
@@ -3275,7 +3278,7 @@ export default function RealDataSankeyPage() {
         const rangeCard = (
           <div
             data-pan-disabled="true"
-            style={{ ...clusterButtonStyle, height: 'auto', cursor: 'default', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: 4, padding: '5px 8px', width: 430, fontSize: CONTROL_SMALL_FONT_PX }}
+            style={{ ...clusterButtonStyle, height: 'auto', cursor: 'default', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: 4, padding: '5px 8px', width: 280, fontSize: CONTROL_SMALL_FONT_PX }}
           >
             {rangeRows}
           </div>
@@ -4490,7 +4493,7 @@ export default function RealDataSankeyPage() {
                   );
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} ref={accountDropdownRef}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0 }}>会計</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>会計</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
                         <button type="button" ref={accountButtonRef}
                           onClick={() => {
@@ -4545,7 +4548,7 @@ export default function RealDataSankeyPage() {
                   );
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} ref={ministryDropdownRef}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0 }}>省庁</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>省庁</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
                         <button type="button" ref={ministryButtonRef}
                           onClick={() => {
@@ -4599,7 +4602,7 @@ export default function RealDataSankeyPage() {
                   }
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex' }}>
                         <input
                           type="text"
@@ -4633,7 +4636,7 @@ export default function RealDataSankeyPage() {
                     setFilterSubcontract(c <= 1 ? '' : String(c));
                   };
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 44 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 'calc(3.5em + 4px)' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', flexShrink: 0 }}
                         title="オンにすると、直接支出先または再委託先のどちらかに名前がマッチする事業を残します（支出先ノード自体は隠しません）">
                         <input
@@ -4689,7 +4692,7 @@ export default function RealDataSankeyPage() {
                   { label: '支出', minText: filterMinSpendingText, maxText: filterMaxSpendingText, setMin: setFilterMinSpendingText, setMax: setFilterMaxSpendingText },
                 ] as const).map(({ label, minText, maxText, setMin, setMax }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
                     <input type="text" value={minText} onChange={e => setMin(e.target.value)}
                       placeholder="例: 100億、50万"
                       style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(minText) !== null || !minText ? '#ddd' : '#e53935'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
@@ -4720,7 +4723,7 @@ export default function RealDataSankeyPage() {
                   };
                   return (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span title={title} style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: 40, flexShrink: 0, cursor: 'help' }}>{label}</span>
+                      <span title={title} style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'help' }}>{label}</span>
                       <input type="text" inputMode="numeric" value={range.min}
                         onChange={e => { pendingHistoryAction.current = 'replace'; set({ ...range, min: e.target.value }); }}
                         placeholder="下限 0"
