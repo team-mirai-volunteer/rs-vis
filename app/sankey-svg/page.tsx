@@ -3293,7 +3293,7 @@ export default function RealDataSankeyPage() {
         const rangeCard = (
           <div
             data-pan-disabled="true"
-            style={{ ...clusterButtonStyle, height: 'auto', cursor: 'default', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: 4, padding: '5px 8px', width: 280, fontSize: CONTROL_SMALL_FONT_PX }}
+            style={{ ...clusterButtonStyle, height: 'auto', cursor: 'default', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: 2, padding: '3px 8px', width: 280, fontSize: CONTROL_SMALL_FONT_PX }}
           >
             {rangeRows}
           </div>

@@ -164,7 +164,7 @@ export function RangeWindowRow({
               onClick={(e) => { if (e.detail === 0) step(); }}
               style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" height="10" width="10" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
             </button>
           );
         })}
