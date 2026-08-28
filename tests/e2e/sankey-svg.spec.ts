@@ -195,6 +195,9 @@ test.describe('sankey-svg interactions', () => {
     const ministryName = '警察庁';
     const unrelatedRecipientName = '年金受給者';
 
+    // 既定は縦予算ブースト（THICKNESS_BOOST）で下位省庁が画面外のため、1段ズームアウトして全体を収める
+    await page.getByTestId('zoom-out').click();
+
     await expect(page.locator('svg text').filter({ hasText: ministryName }).first()).toBeVisible();
     await expect(page.locator('svg text').filter({ hasText: unrelatedRecipientName }).first()).toBeVisible();
 
@@ -211,11 +214,14 @@ test.describe('sankey-svg interactions', () => {
   test('selected highlight follows aggregate nodes without leaking to unrelated ministries', async ({ page }) => {
     const ministryName = '警察庁';
     const recipientName = '年金受給者';
-    const aggregateProjectLabel = '5,744事業';
-    const aggregateRecipientLabel = '12,741支出先';
+    // 集約ノードの件数は「総数 − 既定表示件数(TOP_N_DEFAULT=30)」
+    const aggregateProjectLabel = '5,764事業';
+    const aggregateRecipientLabel = '12,761支出先';
 
     await page.goto('/sankey-svg?fmc=0');
     await expect(page.getByTestId('sankey-node').first()).toBeVisible({ timeout: 30_000 });
+    // 既定は縦予算ブースト（THICKNESS_BOOST）で下位省庁が画面外のため、1段ズームアウトして全体を収める
+    await page.getByTestId('zoom-out').click();
 
     // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
     await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });

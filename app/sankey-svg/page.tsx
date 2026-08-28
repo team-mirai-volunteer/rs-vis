@@ -157,6 +157,9 @@ const TOOLTIP_META_FONT_PX_DEFAULT = 10;
 const BASE_FONT_PX_DEFAULT = 12;
 // 事業・支出先の既定表示件数。50だと下位が1〜5pxに潰れて太さ（金額比例）が読めないため30に絞る
 const TOP_N_DEFAULT = 30;
+// レイアウトの縦予算の倍率。1より大きくすると図が縦に伸びてバーが太くなり（比率は線形のまま）、
+// 初期表示は幅基準で上端アンカー、はみ出しはパン/スクロールで見る。1で従来の全体フィット
+const THICKNESS_BOOST = 1.5;
 const BASE_FONT_PX_MIN = 8;
 const BASE_FONT_PX_MAX = 24;
 // サイドパネルの幅定数（既定/最小/最大/ビューポート予約）は client/hooks/useSidePanel.ts に一元化
@@ -1551,10 +1554,14 @@ export default function RealDataSankeyPage() {
       const cW = container.clientWidth;
       const reserve = searchBoxReserveRef.current;
       const availH = container.clientHeight - reserve;
-      const { k, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH);
+      // 縦予算ブースト時は「1画面の THICKNESS_BOOST 倍」を基準にフィットさせる
+      // （ズーム値は従来と同水準に保たれ、横幅は不変。縦のはみ出しはパンで見る）
+      const { k, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH * THICKNESS_BOOST);
       setZoom(k);
       setBaseZoom(k);
-      setPan({ x: 0, y: reserve + Math.min((availH - totalH * k) / 2, fitTopPadPxRef.current) });
+      // 収まるときは従来どおり中央寄せ（上限 FIT_TOP_PAD_PX）、縦にはみ出すときも
+      // 列ヘッダーぶんの上パディングを確保する
+      setPan({ x: 0, y: reserve + ((availH - totalH * k) >= 0 ? Math.min((availH - totalH * k) / 2, fitTopPadPxRef.current) : fitTopPadPxRef.current) });
     } else {
       setZoom(1);
       setBaseZoom(1);
@@ -1570,10 +1577,12 @@ export default function RealDataSankeyPage() {
       const cW = container.clientWidth;
       const reserve = searchBoxReserveRef.current;
       const availH = container.clientHeight - reserve;
-      const { k, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH);
+      const { k, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH * THICKNESS_BOOST);
       setZoom(k);
       setBaseZoom(k);
-      setPan({ x: 0, y: reserve + Math.min((availH - totalH * k) / 2, fitTopPadPxRef.current) });
+      // 収まるときは従来どおり中央寄せ（上限 FIT_TOP_PAD_PX）、縦にはみ出すときも
+      // 列ヘッダーぶんの上パディングを確保する
+      setPan({ x: 0, y: reserve + ((availH - totalH * k) >= 0 ? Math.min((availH - totalH * k) / 2, fitTopPadPxRef.current) : fitTopPadPxRef.current) });
     } else {
       setZoom(1);
       setBaseZoom(1);
@@ -1774,16 +1783,18 @@ export default function RealDataSankeyPage() {
 
   const layout = useMemo(() => {
     if (!filtered) return null;
+    // 縦予算を THICKNESS_BOOST 倍して高さ配分（ky）を増やす＝バーを太くする。横は不変
+    const boostedH = MARGIN.top + MARGIN.bottom + (svgHeight - MARGIN.top - MARGIN.bottom) * THICKNESS_BOOST;
     // fitZoom を求めるための第1パス（ギャップなし）
-    const noGap = computeLayout(filtered.nodes, filtered.edges, svgWidth, svgHeight);
-    const availH = Math.max(100, svgHeight - SEARCH_BOX_RESERVE);
+    const noGap = computeLayout(filtered.nodes, filtered.edges, svgWidth, boostedH);
+    const availH = Math.max(100, (svgHeight - SEARCH_BOX_RESERVE) * THICKNESS_BOOST);
     const fitZoom = Math.max(0.1, Math.min(10,
       Math.min(svgWidth / (MARGIN.left + noGap.contentW), availH / (MARGIN.top + noGap.contentH)) * 0.9
     ));
     // Horizontal rendering is screen-fixed; compute x layout once from the fit scale.
     const extraRecipientGapSVG = MAX_RECIPIENT_GAP_PX / fitZoom;
     const extraMinistryGapSVG  = MAX_MINISTRY_GAP_PX  / fitZoom;
-    const result = computeLayout(filtered.nodes, filtered.edges, svgWidth, svgHeight, NODE_PAD, extraRecipientGapSVG, extraMinistryGapSVG);
+    const result = computeLayout(filtered.nodes, filtered.edges, svgWidth, boostedH, NODE_PAD, extraRecipientGapSVG, extraMinistryGapSVG);
     layoutRef.current = { contentW: result.contentW, contentH: result.contentH, nodes: result.nodes };
     return result;
   }, [filtered, svgWidth, svgHeight, SEARCH_BOX_RESERVE]);
