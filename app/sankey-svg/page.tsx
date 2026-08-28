@@ -3652,6 +3652,10 @@ export default function RealDataSankeyPage() {
                 return i === 0 ? (nodes[0]?.value ?? null) : nodes.reduce((s, n) => s + columnAmount(n, i), 0);
               });
               const projectSpendingTotal = layout.nodes.filter(n => n.type === 'project-spending').reduce((s, n) => s + n.value, 0);
+              // 列ごとの最上端ノードを取得（ラベル基準位置とフェード判定に使用）
+              const topNodeByCol = colNodeTypes.map(t =>
+                layout.nodes.filter(n => n.type === t).reduce<typeof layout.nodes[0] | null>((top, n) => (top === null || n.y0 < top.y0 ? n : top), null)
+              );
               return COL_LABELS.map((label, i) => {
                 // Use actual node x0 from layout (accounts for extraMinistryGapSVG / extraRecipientGapSVG)
                 const colNodes = layout.nodes.filter(n => n.type === colNodeTypes[i]);
@@ -3662,13 +3666,21 @@ export default function RealDataSankeyPage() {
                 const amountLine = i === 2 && total != null
                   ? `${formatYen(total)} / ${formatYen(projectSpendingTotal)}`
                   : total != null ? formatYen(total) : '';
-                // ラベルの縦位置は検索ボックスの実測下端に固定する。
-                // 以前は「列の最上ノードの少し上」に追随させていたが、図を下へドラッグすると
-                // ヘッダーが付いてきて予算総計ノード等に重なるため、縦追随はやめた
-                // （横方向は列位置の意味を保つため pan.x に追随したまま）。
+                const labelBlockH = Math.round((amountLine ? 36 : 20) * fontScale);
+                const topNode = topNodeByCol[i];
+                const topNodeShift = topNode ? (nodeShiftInfo.get(topNode.id) ?? { cumShift: 0, topShift: 0 }) : null;
+                const topNodeScreenY = topNode
+                  ? pan.y + (MARGIN.top + topNode.y0 + (topNodeShift?.cumShift ?? 0) + (topNodeShift?.topShift ?? 0)) * zoom
+                  : pan.y + MARGIN.top * zoom;
+                // ラベルは図の上端に追随しつつ、検索ボックスの実測下端より上には行かない。
                 // searchBoxBottom はフィルタパネル込みの実測値なので、その実高を差し引いて
                 // 「フィルタ非展開時の下端」を基準にする（フィルタパネルは zIndex で前面に重なる）。
-                const top = searchBoxBottom - filterPanelHeight + 4;
+                const pinnedTop = searchBoxBottom - filterPanelHeight + 4;
+                const top = Math.max(pinnedTop, topNodeScreenY - labelBlockH - 8);
+                // 図を上へドラッグしてノードがヘッダー位置に潜り込むときは、重ねずに非表示にする。
+                // 既定のフィット表示はフォントスケール次第で数px食い込むことがあるため、
+                // 8px までの食い込みは許容する（半透明白背景の内側に収まり実質見えない）
+                if (top + labelBlockH > topNodeScreenY + 8) return null;
                 return (
                   <div
                     key={i}
