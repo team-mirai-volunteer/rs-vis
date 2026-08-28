@@ -3652,10 +3652,6 @@ export default function RealDataSankeyPage() {
                 return i === 0 ? (nodes[0]?.value ?? null) : nodes.reduce((s, n) => s + columnAmount(n, i), 0);
               });
               const projectSpendingTotal = layout.nodes.filter(n => n.type === 'project-spending').reduce((s, n) => s + n.value, 0);
-              // 列ごとの最上端ノードを取得（ラベル基準位置の計算用）
-              const topNodeByCol = colNodeTypes.map(t =>
-                layout.nodes.filter(n => n.type === t).reduce<typeof layout.nodes[0] | null>((top, n) => (top === null || n.y0 < top.y0 ? n : top), null)
-              );
               return COL_LABELS.map((label, i) => {
                 // Use actual node x0 from layout (accounts for extraMinistryGapSVG / extraRecipientGapSVG)
                 const colNodes = layout.nodes.filter(n => n.type === colNodeTypes[i]);
@@ -3666,19 +3662,13 @@ export default function RealDataSankeyPage() {
                 const amountLine = i === 2 && total != null
                   ? `${formatYen(total)} / ${formatYen(projectSpendingTotal)}`
                   : total != null ? formatYen(total) : '';
-                const labelBlockH = Math.round((amountLine ? 36 : 20) * fontScale);
-                const topNode = topNodeByCol[i];
-                const topNodeShift = topNode ? (nodeShiftInfo.get(topNode.id) ?? { cumShift: 0, topShift: 0 }) : null;
-                const topNodeScreenY = topNode
-                  ? pan.y + (MARGIN.top + topNode.y0 + (topNodeShift?.cumShift ?? 0) + (topNodeShift?.topShift ?? 0)) * zoom
-                  : pan.y + MARGIN.top * zoom;
-                // ラベルの上限位置は検索ボックスの実測下端に合わせる。
-                // 静的なSEARCH_BOX_RESERVE(モバイル92/デスクトップ56)だと
-                // モバイルで一律に下げ過ぎるため、実際の検索ボックス高さに追従させる。
-                // フィルタ展開時も列ヘッダーの位置を固定する。
+                // ラベルの縦位置は検索ボックスの実測下端に固定する。
+                // 以前は「列の最上ノードの少し上」に追随させていたが、図を下へドラッグすると
+                // ヘッダーが付いてきて予算総計ノード等に重なるため、縦追随はやめた
+                // （横方向は列位置の意味を保つため pan.x に追随したまま）。
                 // searchBoxBottom はフィルタパネル込みの実測値なので、その実高を差し引いて
                 // 「フィルタ非展開時の下端」を基準にする（フィルタパネルは zIndex で前面に重なる）。
-                const top = Math.max(searchBoxBottom - filterPanelHeight + 4, topNodeScreenY - labelBlockH - 8);
+                const top = searchBoxBottom - filterPanelHeight + 4;
                 return (
                   <div
                     key={i}
