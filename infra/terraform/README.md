@@ -14,7 +14,23 @@
 `vercel.json` はデプロイごとにコードと一緒にバージョン管理される「アプリの設定」、
 Terraform は「プロジェクトそのものと秘匿値」という役割分担。二重定義しないこと。
 
-## 初回セットアップ
+## 初回セットアップ（デスクトップで実行する手順）
+
+このリポジトリは Vercel 未接続（2026-08-28 時点。GitHub API の deployments が空であることを確認済み）。
+**既存プロジェクトが無いので import は不要**で、そのまま apply すれば GitHub 連携込みで新規作成される:
+
+```bash
+winget install Hashicorp.Terraform   # または choco install terraform
+export VERCEL_API_TOKEN=...          # https://vercel.com/account/tokens
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars   # vercel_team_slug 等を確認
+terraform init
+terraform plan    # vercel_project.app が「作成」になっていることを確認
+terraform apply
+```
+
+apply 後、main に push して GitHub のコミットに Vercel のチェックが付けばデプロイ連携完了。
+CLAUDE.md の Deployment 節の「未接続」注記を消すこと。
 
 ```bash
 cd infra/terraform

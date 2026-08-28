@@ -50,8 +50,10 @@ npx tsc --noEmit         # TypeScript 型チェック
 
 ## Deployment
 
-`main` ブランチへの push → Vercel 自動ビルド（東京リージョン `hnd1`）。
-`prebuild` フックが `.gz` → `.json` を自動展開。
+**現状: Vercel の GitHub 連携は未接続**（自動ビルドはまだ走らない。2026-08-28 に GitHub API で確認）。
+接続は `infra/terraform/` の Terraform で行う（`vercel_project` が GitHub 連携込みで定義済み。手順は infra/terraform/README.md）。
+接続後は `main` への push → Vercel 自動ビルド（東京リージョン `hnd1`）となり、
+`prebuild` フックが `.gz` → `.json` を自動展開する。
 
 ## Agent の行動ルール
 
