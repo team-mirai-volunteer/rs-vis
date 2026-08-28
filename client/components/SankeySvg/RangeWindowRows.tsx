@@ -137,9 +137,9 @@ export function RangeWindowRow({
           }}
         />
       </div>
-      {/* 範囲テキスト。件数(右隣)に寄せる右揃え・カンマなしで幅を最小化しつつ、
-          固定幅で2行のバー長は揃えたまま */}
-      <span style={{ color: '#777', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', width: '8em', flexShrink: 0, textAlign: 'right' }}>
+      {/* 範囲テキスト。バー・件数の双方に密着させる（幅の予約はしない）。
+          テキスト長の行差ぶんだけバー長がわずかに変わるのは許容する */}
+      <span style={{ color: '#777', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
         {rangeStart}〜{rangeEnd}<span style={{ color: '#aaa' }}>/{total}件</span>
       </span>
       {isEditing ? (
