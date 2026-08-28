@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 
 const TOP_MIN = 1;
 const TOP_MAX = 300;
 const clampTop = (v: number) => Math.max(TOP_MIN, Math.min(TOP_MAX, v));
+
+// つまみの最小幅(px)。総件数が多いと topN/total が極小になるため掴めなくなるのを防ぐ
+const THUMB_MIN_PX = 14;
 
 // [delta, SVGパス, ラベル]
 const ARROW_PATHS: [number, string, string][] = [
@@ -18,10 +21,10 @@ export interface RangeWindowRowProps {
   label: string;
   /** フィルタ後の総件数 */
   total: number;
-  /** 表示件数（窓の大きさ）。上下矢印・直接入力で調整する */
+  /** 表示件数（窓の大きさ）。つまみの長さに反映され、上下矢印・直接入力で調整する */
   topN: number;
   setTopN: Dispatch<SetStateAction<number>>;
-  /** 表示開始オフセット（クランプ済み）。スライダー＝窓の位置 */
+  /** 表示開始オフセット（クランプ済み）。つまみの位置 */
   offset: number;
   maxOffset: number;
   /** ページ側で pendingHistoryAction / pendingFocusId の処理を行う */
@@ -31,8 +34,9 @@ export interface RangeWindowRowProps {
 }
 
 /**
- * 「表示範囲」1行 = 窓の位置スライダー + 範囲表示 + 件数（上下矢印つき）。
- * 旧 TopNSliders（件数のみのスライダー）と表示開始位置スライダーを1つのコントロールに統合したもの。
+ * 「表示範囲」1行 = スクロールバー型スライダー + 範囲表示 + 件数（上下矢印つき）。
+ * つまみの長さが表示件数（topN/total）、位置が表示開始オフセットに対応する。
+ * ネイティブ input[type=range] はつまみ長を変えられないため自前で描画する。
  */
 export function RangeWindowRow({
   label, total, topN, setTopN, offset, maxOffset, onOffsetChange, markReplace, metaFontPx,
@@ -40,22 +44,102 @@ export function RangeWindowRow({
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const repeat = useRepeatPress();
+  const trackRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ pointerId: number; startX: number; startOffset: number } | null>(null);
   const rangeStart = offset + 1;
   const rangeEnd = Math.min(offset + topN, total);
   const commitTop = (v: number) => { markReplace(); setTopN(clampTop(v)); };
+  const clampOffset = (v: number) => Math.max(0, Math.min(maxOffset, Math.round(v)));
+
+  // つまみ長 = topN/total（最小 THUMB_MIN_PX）。位置は「トラック残り幅 × offset/maxOffset」のスクロールバー式
+  const thumbWidthCss = `max(${total > 0 ? (Math.min(topN, total) / total) * 100 : 100}%, ${THUMB_MIN_PX}px)`;
+  const posRatio = maxOffset > 0 ? offset / maxOffset : 0;
+
+  /** ドラッグ量(px) → オフセット量。スクロールバーと同じく「残り幅」を基準にする */
+  const dxToOffset = (dx: number) => {
+    const track = trackRef.current;
+    if (!track || maxOffset <= 0) return 0;
+    const trackW = track.getBoundingClientRect().width;
+    const thumbW = Math.max((Math.min(topN, total) / Math.max(total, 1)) * trackW, THUMB_MIN_PX);
+    const freeW = Math.max(trackW - thumbW, 1);
+    return (dx / freeW) * maxOffset;
+  };
+
+  const onThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startOffset: offset };
+  };
+  const onThumbPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    onOffsetChange(clampOffset(drag.startOffset + dxToOffset(e.clientX - drag.startX)));
+  };
+  const onThumbPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === e.pointerId) dragRef.current = null;
+  };
+
+  /** トラックの素の部分をクリック: クリック位置がつまみの中心になるようにジャンプ */
+  const onTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const track = trackRef.current;
+    if (!track || maxOffset <= 0) return;
+    e.preventDefault();
+    const rect = track.getBoundingClientRect();
+    const thumbW = Math.max((Math.min(topN, total) / Math.max(total, 1)) * rect.width, THUMB_MIN_PX);
+    const freeW = Math.max(rect.width - thumbW, 1);
+    const next = clampOffset(((e.clientX - rect.left - thumbW / 2) / freeW) * maxOffset);
+    onOffsetChange(next);
+    // そのままドラッグへ移行できるようにする
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startOffset: next };
+  };
+
+  const onSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    let next: number | null = null;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') next = clampOffset(offset + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') next = clampOffset(offset - 1);
+    else if (e.key === 'PageUp') next = clampOffset(offset + topN);
+    else if (e.key === 'PageDown') next = clampOffset(offset - topN);
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = maxOffset;
+    if (next !== null) { e.preventDefault(); e.stopPropagation(); onOffsetChange(next); }
+  };
+
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
       <span style={{ color: '#555', fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
-      <input
-        type="range" min={0} max={maxOffset} step={1}
-        value={offset}
-        onChange={e => onOffsetChange(Number(e.target.value))}
+      {/* スクロールバー型スライダー。範囲テキストはバー上に重ねて余白を作らない */}
+      <div
+        ref={trackRef}
+        role="slider"
+        tabIndex={0}
         aria-label={`${label}の表示開始位置`}
-        style={{ flex: 1, minWidth: 0, width: 0 }}
-      />
-      <span style={{ color: '#999', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-        {rangeStart}〜{rangeEnd} <span style={{ color: '#bbb' }}>/{total.toLocaleString()}件</span>
-      </span>
+        aria-valuemin={0}
+        aria-valuemax={maxOffset}
+        aria-valuenow={offset}
+        aria-valuetext={`${rangeStart}〜${rangeEnd} / ${total}件`}
+        onKeyDown={onSliderKeyDown}
+        onPointerDown={onTrackPointerDown}
+        onPointerMove={onThumbPointerMove}
+        onPointerUp={onThumbPointerEnd}
+        onPointerCancel={onThumbPointerEnd}
+        style={{ position: 'relative', flex: 1, minWidth: 0, height: 16, borderRadius: 8, background: '#ececec', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)', cursor: 'pointer', touchAction: 'none' }}
+      >
+        <div
+          onPointerDown={onThumbPointerDown}
+          style={{
+            position: 'absolute', top: 1, bottom: 1,
+            left: `calc((100% - ${thumbWidthCss}) * ${posRatio})`,
+            width: thumbWidthCss,
+            borderRadius: 7, background: '#a8c7fa', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)',
+            cursor: 'grab',
+          }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', fontSize: metaFontPx, color: '#555', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+          {rangeStart}〜{rangeEnd} /{total.toLocaleString()}件
+        </div>
+      </div>
       {isEditing ? (
         <input type="number" autoFocus min={TOP_MIN} max={TOP_MAX} step={1}
           value={inputValue}
@@ -84,6 +168,6 @@ export function RangeWindowRow({
           );
         })}
       </div>
-    </label>
+    </div>
   );
 }
