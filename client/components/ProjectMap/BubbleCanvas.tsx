@@ -68,6 +68,10 @@ const MAX_ZOOM = 40;
 /** 勢力圏KDEの格子解像度（長辺のセル数）。粗いほど柔らかい色面になる */
 const REGION_GRID = 150;
 
+/** 事業名ラベルを出し始めるズーム倍率と、完全表示になる倍率（間はフェードイン） */
+const LABEL_ZOOM_START = 2.2;
+const LABEL_ZOOM_FULL = 3.2;
+
 interface Transform { k: number; tx: number; ty: number }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -418,6 +422,39 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
         ctx.strokeText(l.label, s.x, s.y);
         ctx.fillStyle = l.color;
         ctx.fillText(l.label, s.x, s.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // 事業名ラベル。ある程度ズームして点の間隔が広がったら、見えている点に名前を付ける。
+    // 大きい点から順に置き、すでに置いたラベルと重なるものは省く（可読性優先の間引き）。
+    // 倍率に応じてフェードインさせ、ズーム操作中に急に湧いた印象を与えない
+    if (transform.k >= LABEL_ZOOM_START) {
+      const labelAlpha = Math.min(1, (transform.k - LABEL_ZOOM_START) / (LABEL_ZOOM_FULL - LABEL_ZOOM_START));
+      ctx.font = '500 10px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.globalAlpha = labelAlpha * 0.95;
+      const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
+      const MAX_LABELS = 150;
+      for (const i of front) {
+        if (placed.length >= MAX_LABELS) break;
+        if (sx[i] < 0 || sx[i] > size.w || sy[i] < 0 || sy[i] > size.h) continue;
+        const name = points[i].name;
+        const text = name.length > 18 ? name.slice(0, 18) + '…' : name;
+        const w = ctx.measureText(text).width;
+        const lx = sx[i];
+        const ly = sy[i] + r[i] + 8;
+        const box = { x0: lx - w / 2 - 2, y0: ly - 7, x1: lx + w / 2 + 2, y1: ly + 7 };
+        let hit = false;
+        for (const b of placed) {
+          if (box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0) { hit = true; break; }
+        }
+        if (hit) continue;
+        placed.push(box);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = surface;
+        ctx.strokeText(text, lx, ly);
+        ctx.fillStyle = dark ? LABEL_DARK : LABEL_LIGHT;
+        ctx.fillText(text, lx, ly);
       }
       ctx.globalAlpha = 1;
     }
