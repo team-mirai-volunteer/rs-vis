@@ -137,9 +137,10 @@ export function RangeWindowRow({
           }}
         />
       </div>
-      {/* 範囲テキストはバー直後に密着させる。固定幅で2行のバー長は揃えたまま */}
-      <span style={{ color: '#777', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', width: '9.5em', flexShrink: 0, textAlign: 'left' }}>
-        {rangeStart}〜{rangeEnd} <span style={{ color: '#aaa' }}>/{total.toLocaleString()}件</span>
+      {/* 範囲テキスト。件数(右隣)に寄せる右揃え・カンマなしで幅を最小化しつつ、
+          固定幅で2行のバー長は揃えたまま */}
+      <span style={{ color: '#777', fontSize: metaFontPx, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', width: '8em', flexShrink: 0, textAlign: 'right' }}>
+        {rangeStart}〜{rangeEnd}<span style={{ color: '#aaa' }}>/{total}件</span>
       </span>
       {isEditing ? (
         <input type="number" autoFocus min={TOP_MIN} max={TOP_MAX} step={1}
