@@ -102,13 +102,17 @@ test.describe('sankey-svg interactions', () => {
   test('offset controls keep the graph in view', async ({ page }) => {
     await expect.poll(() => visibleNodeCount(page)).toBeGreaterThan(0);
 
-    await page.getByTestId('recipient-offset-next').click();
+    // 右上常設の表示範囲カードの支出先スライダーで1件送る（矢印キー＝1ステップ）
+    const recipientSlider = page.getByLabel('支出先の表示開始位置');
+    await recipientSlider.focus();
+    await page.keyboard.press('ArrowRight');
     await expect.poll(() => visibleNodeCount(page)).toBeGreaterThan(0);
 
     await page.getByTestId('reset-viewport').click();
     await expect.poll(() => visibleNodeCount(page)).toBeGreaterThan(0);
 
-    await page.getByTestId('recipient-offset-prev').click();
+    await recipientSlider.focus();
+    await page.keyboard.press('ArrowLeft');
     await expect.poll(() => visibleNodeCount(page)).toBeGreaterThan(0);
   });
 
@@ -131,6 +135,10 @@ test.describe('sankey-svg interactions', () => {
     await page.getByLabel('基準フォントサイズ編集を開始').click();
     await page.getByLabel('基準フォントサイズ(数値)').fill('24');
     await page.getByLabel('基準フォントサイズ(数値)').press('Enter');
+    // パネルを閉じてから検索結果を操作する（重なり回避）。Enter で入力欄がアンマウントされ
+    // フォーカスが外れるため Escape ではなくトグル再クリックで閉じる
+    await page.getByTestId('range-panel-toggle').click();
+    await expect(page.locator('#sankey-topn-settings')).toHaveCount(0);
 
     const afterWidth = await page.getByTestId('search-input').evaluate(input =>
       input.closest('[data-pan-disabled="true"]')?.getBoundingClientRect().width ?? 0
@@ -324,11 +332,13 @@ test.describe('sankey-svg interactions', () => {
     await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
-    // オフセット対象コンボは表示範囲パネル内へ移動したため、開いてから操作する
-    await page.getByTestId('range-panel-toggle').click();
-    await page.getByTestId('offset-target-select').selectOption('project');
-    await expect(page.getByTestId('offset-target-select')).toHaveValue('project');
-    await page.keyboard.press('Escape'); // パネルを閉じる（stopPropagation で選択解除は起きない）
+    // 事業スライダーに触れて事業モードにする（対象コンボ廃止後は触った行にモードが追従する）。
+    // オフセットは 1→0 と往復して元に戻す
+    const projectSlider = page.getByLabel('事業の表示開始位置');
+    await projectSlider.focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowLeft');
+    await expect(page).not.toHaveURL(/ot=r/);
 
     const panelProject = page.locator('button').filter({
       has: page.locator(`[title="${projectName}"]`),
@@ -338,8 +348,6 @@ test.describe('sankey-svg interactions', () => {
     await panelProject.click();
 
     await expect(page).toHaveURL(/sel=project-budget-5550/);
-    await page.getByTestId('range-panel-toggle').click();
-    await expect(page.getByTestId('offset-target-select')).toHaveValue('project');
     await expect(page).not.toHaveURL(/ot=r/);
     await expect(page).not.toHaveURL(/po=4783/);
     await expect.poll(() => visibleSvgTextMatching(page, projectName)).toBeGreaterThan(0);
@@ -356,13 +364,13 @@ test.describe('sankey-svg interactions', () => {
     await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
-    // オフセット対象コンボは表示範囲パネル内へ移動したため、開いてから操作する
-    await page.getByTestId('range-panel-toggle').click();
-    await page.getByTestId('offset-target-select').selectOption('recipient');
-    await expect(page.getByTestId('offset-target-select')).toHaveValue('recipient');
-    await page.keyboard.press('Escape'); // パネルを閉じてから常駐の前後ボタンを操作する
+    // 支出先スライダーを10ステップ進める（触った行にモードが自動追従し ot=r になる）。
+    // controlled input の再レンダー待ちのため各ステップ間に少し待つ
+    const recipientSlider = page.getByLabel('支出先の表示開始位置');
+    await recipientSlider.focus();
     for (let i = 0; i < 10; i++) {
-      await page.getByTestId('recipient-offset-next').click();
+      await page.keyboard.press('ArrowRight');
+      await page.waitForTimeout(80);
     }
     await expect(page).toHaveURL(/ot=r/);
     await expect(page).toHaveURL(/ro=10/);

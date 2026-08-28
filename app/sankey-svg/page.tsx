@@ -14,7 +14,7 @@ import {
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
-import { TopNSliders } from '@/client/components/SankeySvg/TopNSliders';
+import { RangeWindowRow } from '@/client/components/SankeySvg/RangeWindowRows';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
@@ -1155,11 +1155,18 @@ export default function RealDataSankeyPage() {
     pendingHistoryAction.current = 'replace';
   }, [searchQuery]);
 
+  // 表示範囲行のスライダー操作でモードを自動切替するとき、切替に伴うオフセットリセットで
+  // いま設定した値が消えないように1回だけ抑制するフラグ
+  const skipOffsetResetRef = useRef(false);
   const prevOffsetTargetRef = useRef(offsetTarget);
   useEffect(() => {
     if (prevOffsetTargetRef.current !== offsetTarget) {
       prevOffsetTargetRef.current = offsetTarget;
       pendingHistoryAction.current = 'replace';
+      if (skipOffsetResetRef.current) {
+        skipOffsetResetRef.current = false;
+        return;
+      }
       setRecipientOffset(0);
       setProjectOffset(0);
     }
@@ -3048,17 +3055,6 @@ export default function RealDataSankeyPage() {
   };
 
   // 事業・支出先 TopN スライダー（デスクトップはオフセットパネル内、スマホ幅では設定ダイアログ内に表示）
-  const topNSlidersFragment = (
-    <TopNSliders
-      topProject={topProject}
-      topRecipient={topRecipient}
-      setTopProject={setTopProject}
-      setTopRecipient={setTopRecipient}
-      markReplace={markHistoryReplace}
-      metaFontPx={META_FONT_PX}
-    />
-  );
-
   // 基準フォントサイズ調整（デスクトップは左下フローティング、スマホ幅では設定ダイアログ内に表示）
   const fontSizeControlsFragment = (
     <FontSizeControls
@@ -3125,12 +3121,14 @@ export default function RealDataSankeyPage() {
   } as const;
 
   /**
-   * TopN・オフセットの操作パネル。
-   * 通常幅では右上クラスタの左端に「状態表示ボタン（1〜50 / 5794件）＋前後ページング」だけを
-   * 常駐させ、スライダー類はボタンから開くパネルに収める（右上の視覚ノイズを減らすため）。
-   * 狭幅では従来どおり画面下部にカードで置く。
+   * 表示範囲・設定まわりのUI一式。
+   * - cornerBlock: 通常幅の左下に置く［‹｜対象セレクト＋状態表示｜›］ブロック。状態表示クリックで
+   *   統合設定パネル（表示範囲・文字サイズ・表示オプション）が上方向に開く。
+   *   右上は他ページと同じ［年度・ページ切替］だけにするため、設定の入口を左下（ズーム群の対角）に集約した。
+   * - bottomBar: 狭幅の画面下部クイック操作（従来どおり）
+   * - rangeRows: 「表示範囲」行（窓の位置スライダー＋件数の上下矢印）。パネルと狭幅⋮ダイアログで共有
    */
-  const offsetControlsBlock = filtered ? (() => {
+  const rangeUI = filtered ? (() => {
         // Recipient offset mode
         const maxRecipOffset = Math.max(0, filtered.totalRecipientCount - topRecipient);
         const clampedOffset = Math.min(recipientOffset, maxRecipOffset);
@@ -3233,79 +3231,93 @@ export default function RealDataSankeyPage() {
             </div>
         );
 
-        // 狭幅: 従来どおり画面下部のカード（ページング込み）
-        if (isCompactWidth) {
-          return (
-            <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
-              <div style={{ background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
-                {renderOffsetRow(true, 60)}
-              </div>
-            </div>
-          );
-        }
+        // 「表示範囲」行（窓の位置スライダー＋件数の上下矢印）。1行で位置と件数の両方を操作できる
+        const rangeRows = (
+          <>
+            <RangeWindowRow
+              label="事業" total={filtered.totalProjectCount}
+              topN={topProject} setTopN={setTopProject}
+              offset={clampedProjOffset} maxOffset={maxProjOffset}
+              onOffsetChange={v => {
+                pendingHistoryAction.current = 'replace';
+                pendingFocusId.current = null;
+                // 触った行にモードを自動追従（対象コンボの代替）。切替時のリセットは1回抑制する
+                if (offsetTarget !== 'project') { skipOffsetResetRef.current = true; setOffsetTarget('project'); }
+                setProjectOffset(v);
+              }}
+              markReplace={markHistoryReplace} metaFontPx={META_FONT_PX}
+            />
+            <RangeWindowRow
+              label="支出先" total={filtered.totalRecipientCount}
+              topN={topRecipient} setTopN={setTopRecipient}
+              offset={clampedOffset} maxOffset={maxRecipOffset}
+              onOffsetChange={v => {
+                pendingHistoryAction.current = 'replace';
+                pendingFocusId.current = null;
+                if (offsetTarget !== 'recipient') { skipOffsetResetRef.current = true; setOffsetTarget('recipient'); }
+                setRecipientOffset(v);
+              }}
+              markReplace={markHistoryReplace} metaFontPx={META_FONT_PX}
+            />
+          </>
+        );
 
-        // 通常幅: ［‹｜状態表示｜›］の1ブロックだけを常駐させ、詳細操作は統合パネルに畳む。
-        // パネルは旧⋮ダイアログの内容（表示オプション）と文字サイズも吸収した単一の設定面。
-        const segDividerStyle = { width: 1, alignSelf: 'stretch', background: 'rgba(0,0,0,0.08)' } as const;
-        const segButtonStyle = { height: '100%', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' } as const;
-        return (
-          <div ref={offsetControlRef} style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
-            <div style={{ ...clusterButtonStyle, padding: 0, overflow: 'hidden', cursor: 'default' }}>
-              <button title="前へ" aria-label="前へ"
-                data-testid={testId('recipient-offset-prev')}
-                {...offsetRepeat(() => stepOffset(-1), { stopPropagation: true })}
-                onClick={(e) => { if (e.detail === 0) setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset - 1))); }}
-                style={{ ...segButtonStyle, width: 32, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(16)} width={scaleSize(16)} viewBox="0 0 24 24" fill="#555"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-              </button>
-              <div style={segDividerStyle} aria-hidden="true" />
-              <button
-                data-testid={testId('range-panel-toggle')}
-                onClick={() => setShowSettings(s => !s)}
-                aria-label="表示設定を開く"
-                aria-expanded={showSettings}
-                aria-haspopup="dialog"
-                aria-controls="sankey-topn-settings"
-                title="表示設定（件数・開始位置・文字サイズなど）"
-                style={{ ...segButtonStyle, gap: 4, padding: '0 10px', fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap' }}
-              >
-                <span>{isProjectMode ? '事業' : '支出先'} {activeRangeStart}〜{activeRangeEnd}</span>
-                <span style={{ color: '#999' }}>/{activeTotalCount}件</span>
-                <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ transform: showSettings ? 'rotate(180deg)' : 'none' }} aria-hidden="true"><path d="M7 10l5 5 5-5z"/></svg>
-              </button>
-              <div style={segDividerStyle} aria-hidden="true" />
-              <button title="次へ" aria-label="次へ"
-                data-testid={testId('recipient-offset-next')}
-                {...offsetRepeat(() => stepOffset(1), { stopPropagation: true })}
-                onClick={(e) => { if (e.detail === 0) setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + 1))); }}
-                style={{ ...segButtonStyle, width: 32, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(16)} width={scaleSize(16)} viewBox="0 0 24 24" fill="#555"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-              </button>
+        // 狭幅: 従来どおり画面下部のクイック操作カード（アクティブ対象のページング込み）
+        const bottomBar = (
+          <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
+            <div style={{ background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
+              {renderOffsetRow(true, 60)}
             </div>
-            {showSettings && (
-              <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1}
-                onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }}
-                style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX, minWidth: 400, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
-                  {topNSlidersFragment}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>表示開始位置</span>
-                  {renderOffsetRow(false, 120)}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
-                  {fontSizeControlsFragment}
-                </div>
-                {displayOptionsFragment}
-              </div>
-            )}
           </div>
         );
+
+        // 通常幅: 右上に常設する表示範囲カード（操作系）。設定は左下の settingsCorner に分離する
+        const rangeCard = (
+          <div
+            data-pan-disabled="true"
+            style={{ ...clusterButtonStyle, height: 'auto', cursor: 'default', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', gap: 4, padding: '6px 10px', width: 380, fontSize: CONTROL_SMALL_FONT_PX }}
+          >
+            {rangeRows}
+          </div>
+        );
+
+        return { rangeRows, bottomBar, rangeCard };
       })() : null;
+
+  // 設定（文字サイズ・表示オプション）の入口。左下（ズーム群の対角）に置き、
+  // 操作系（右上の表示範囲カード）と分離する
+  const settingsCorner = (
+    <div
+      ref={offsetControlRef}
+      data-pan-disabled="true"
+      style={{ position: 'absolute', left: minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48), bottom: showMinimap ? 8 : 16, zIndex: 30, display: 'flex', alignItems: 'flex-end', transition: 'left 0.2s ease' }}
+    >
+      <button
+        data-testid={testId('range-panel-toggle')}
+        onClick={() => setShowSettings(s => !s)}
+        aria-label="表示設定を開く"
+        aria-expanded={showSettings}
+        aria-haspopup="dialog"
+        aria-controls="sankey-topn-settings"
+        title="表示設定（文字サイズ・表示オプション）"
+        style={{ ...clusterButtonStyle, width: 36, padding: 0, background: showSettings ? '#fff' : 'rgba(255,255,255,0.9)' }}
+      >
+        {/* Material Icons: settings */}
+        <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={showSettings ? '#333' : '#666'}><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z"/></svg>
+      </button>
+      {showSettings && (
+        <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }}
+          style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX, minWidth: 300, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
+            <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+            {fontSizeControlsFragment}
+          </div>
+          {displayOptionsFragment}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -3702,7 +3714,8 @@ export default function RealDataSankeyPage() {
             />
             )}
 
-            {/* 基準フォントサイズ調整は右上の統合設定パネル（狭幅は⋮ダイアログ）に集約した */}
+            {/* 設定（文字サイズ・表示オプション）の入口（左下・ズーム群の対角） */}
+            {!isCompactWidth && settingsCorner}
 
           {/* DOM tooltip — link hover */}
           {hoveredLink && !hoveredNode && !suppressHoverPopup && (() => {
@@ -4829,15 +4842,12 @@ export default function RealDataSankeyPage() {
       </div>
 
 
-      {/* 狭幅では TopN・オフセット操作を画面下部へ（クラスタには入れない） */}
-      {isCompactWidth && offsetControlsBlock}
+      {/* 狭幅では表示範囲のクイック操作を画面下部へ（クラスタには入れない） */}
+      {isCompactWidth && rangeUI?.bottomBar}
 
-      {/* 右上クラスタ: ［ツール - 探索履歴 - 表示設定 - 年度 - ページ切替］。
-          rs-vis の並び（ツール → 年度 → メニュー）に合わせつつ、marumie 固有の
-          探索履歴と表示設定(⋮)を年度コンボの左に置く。
-          AIチャットパネル展開時は rightControlsOffset ぶん左へ退避する。
-          スマホ幅では表示設定とページ切替だけを残す（ツール・履歴・年度は
-          それぞれ画面下部と設定ダイアログへ移す）。 */}
+      {/* 右上クラスタ: ［表示範囲カード（操作系） - 年度 - ページ切替］。
+          設定（文字サイズ・表示オプション）は左下の settingsCorner に分離。狭幅のみ⋮を設定の入口として残す。
+          AIチャットパネル展開時は rightControlsOffset ぶん左へ退避する。 */}
       <div
         data-pan-disabled="true"
         style={{
@@ -4846,7 +4856,7 @@ export default function RealDataSankeyPage() {
           transition: isResizingAiPanel ? 'none' : 'right 0.2s ease',
         }}
       >
-        {!isCompactWidth && offsetControlsBlock}
+        {!isCompactWidth && rangeUI?.rangeCard}
 
         {/* 探索履歴・発見メモ（IndexedDB のみ・サーバ送信なし）。
             公開ミラーでは NEXT_PUBLIC_FEATURE_EXPLORATION_HISTORY 未設定で非表示 */}
@@ -4895,11 +4905,11 @@ export default function RealDataSankeyPage() {
                   </select>
                 </div>
               )}
-              {/* スマホ幅: オフセットパネルから移動したTopNスライダー */}
+              {/* スマホ幅: 表示範囲（窓の位置スライダー＋件数の上下矢印） */}
               {isCompactWidth && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>表示件数（TopN）</span>
-                  {topNSlidersFragment}
+                  <span style={{ color: '#555', fontWeight: 600 }}>表示範囲（スライダー＝位置、矢印＝件数）</span>
+                  {rangeUI?.rangeRows}
                 </div>
               )}
               {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
