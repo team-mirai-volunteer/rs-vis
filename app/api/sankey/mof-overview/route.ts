@@ -1,58 +1,63 @@
 /**
- * MOF予算全体ビューのAPIエンドポイント
+ * MOF 予算全体ビューの API エンドポイント。
+ *
+ * 生成は npm run generate-mof-data（scripts/generate-mof-budget-overview-data.ts）。
+ * サンキーの組み立ては app/lib/mof-sankey-generator.ts に委譲する。
  */
 
 import { NextResponse } from 'next/server';
-import type { MOFBudgetData } from '@/types/mof-budget-overview';
 import { generateMOFBudgetOverviewSankey } from '@/app/lib/mof-sankey-generator';
+import { generateTransferDetailSankey } from '@/app/lib/mof-transfer-sankey-generator';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
-import { readDataJson } from '@/app/lib/api/data-file';
-
-// キャッシュ用
-let cachedData: ReturnType<typeof generateMOFBudgetOverviewSankey> | null =
-  null;
-let lastLoadTime = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1時間
-
-/**
- * MOFデータを読み込む
- */
-function loadMOFBudgetData(): MOFBudgetData {
-  return readDataJson<MOFBudgetData>(
-    'mof-budget-overview-2023.json',
-    'npm run generate-mof-data を実行してください。'
-  );
-}
+import { availableYears, loadYear } from '@/app/lib/api/mof-budget-overview-loader';
 
 /**
  * GET /api/sankey/mof-overview
+ *
+ * クエリ:
+ *   year — 会計年度（西暦）。省略時は収録済みの最新年度
+ *   view — `transfer` を指定すると特別会計の財源内訳を返す。省略時は全体フロー
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // キャッシュチェック
-    const now = Date.now();
-    if (cachedData && now - lastLoadTime < CACHE_DURATION) {
-      console.log('[MOF Overview API] Using cached data');
-      return NextResponse.json(cachedData, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
+    const years = availableYears();
+    if (years.length === 0) {
+      return NextResponse.json(
+        { error: 'データが生成されていません。npm run generate-mof-data を実行してください。' },
+        { status: 503 }
+      );
     }
 
-    console.log('[MOF Overview API] Loading fresh data');
+    const params = new URL(request.url).searchParams;
+    const raw = params.get('year');
+    const year = raw ? Number(raw) : years[0];
+    if (!years.includes(year)) {
+      return NextResponse.json(
+        { error: `対象外の年度です: ${raw}`, availableYears: years },
+        { status: 400 }
+      );
+    }
 
-    // MOFデータ読み込み
-    const mofData = loadMOFBudgetData();
+    const overview = loadYear(year);
+    const isTransferView = params.get('view') === 'transfer';
+    const data = isTransferView
+      ? generateTransferDetailSankey(overview)
+      : generateMOFBudgetOverviewSankey(overview);
 
-    // サンキー図データ生成
-    const sankeyData = {
-      ...generateMOFBudgetOverviewSankey(mofData),
-      links: { web: '/mof-budget-overview' },
-    };
-
-    // キャッシュ更新
-    cachedData = sankeyData;
-    lastLoadTime = now;
-
-    return NextResponse.json(sankeyData, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
+    // 年度切替の選択肢はクライアントが持たないので、応答に同梱する
+    return NextResponse.json(
+      {
+        ...data,
+        metadata: { ...data.metadata, availableYears: years },
+        links: {
+          web: isTransferView
+            ? '/mof-budget-overview/transfer-detail'
+            : '/mof-budget-overview',
+        },
+      },
+      { headers: { 'Cache-Control': API_CACHE_CONTROL } }
+    );
   } catch (error) {
-    return serverErrorResponse('sankey/mof-overview', error);
+    return serverErrorResponse('MOF Overview API', error);
   }
 }

@@ -41,6 +41,22 @@ export function tryReadDataJson<T>(fileName: string): T | null {
   return null;
 }
 
+/**
+ * ファイルの存在だけを確かめる（中身はパースしない）。
+ * 「どの年度のデータが揃っているか」を列挙するのに使う。
+ */
+export function dataFileExists(fileName: string): boolean {
+  if (path.basename(fileName) !== fileName) {
+    throw new Error(`Invalid fileName: directory traversal is not allowed (${fileName})`);
+  }
+  // path.join の引数は文字列リテラルで書くこと（tryReadDataJson のコメント参照）
+  const candidates = [
+    path.join(process.cwd(), 'public', 'data', fileName),
+    path.join(process.cwd(), 'data', 'server', fileName),
+  ];
+  return candidates.some(base => fs.existsSync(base) || fs.existsSync(`${base}.gz`));
+}
+
 /** tryReadDataJson の必須版。見つからなければ再生成手順のヒント付きでエラー */
 export function readDataJson<T>(fileName: string, regenerateHint: string): T {
   const data = tryReadDataJson<T>(fileName);

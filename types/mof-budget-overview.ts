@@ -1,215 +1,197 @@
 /**
- * MOF予算全体ビューの型定義
+ * MOF 予算全体ビューの型定義。
+ *
+ * 生成物（`public/data/mof-budget-overview-{YEAR}.json`）は**集計値だけ**を持ち、
+ * サンキー図の形は持たない。可視化の都合でデータを作り直さずに済むよう分離している。
+ * ノード・リンクの組み立ては `app/lib/mof-sankey-generator.ts` の責務。
+ *
+ * 捕捉ロジックの根拠は docs/mof-budget-data-guide.md 6節（実測で確定）。
  */
 
 import type { SankeyNode, SankeyLink } from './sankey';
-import type {
-  TransferFromGeneralAccount,
-  InsurancePremiumAllocation,
-  TransferBetweenSpecialAccounts,
-} from './mof-transfer';
 
-/**
- * MOF予算全体ビューのノード種別
- */
-export type MOFBudgetNodeType =
-  | 'tax-detail' // 税目別（消費税、所得税等）
-  | 'public-bonds' // 公債金
-  | 'insurance-premium' // 社会保険料
-  | 'other-revenue' // その他収入
-  | 'account-type' // 会計区分（一般/特別）
-  | 'rs-category' // RS対象区分
-  | 'budget-detail' // 詳細内訳
-  | 'rs-summary' // RS集約
-  | 'other'; // その他
+/** 会計区分 */
+export type MOFAccountKind = 'general' | 'special' | 'agency';
 
-/**
- * 税目の種類
- */
-export type TaxType =
-  | '消費税'
-  | '所得税'
-  | '法人税'
-  | '相続税'
-  | '揮発油税'
-  | '酒税'
-  | '関税'
-  | 'たばこ税'
-  | '石油石炭税'
-  | '自動車重量税'
-  | '電源開発促進税'
-  | 'その他税';
-
-/**
- * MOF予算全体ビューのノード詳細
- */
-export interface MOFBudgetNodeDetails {
-  // 税目別ノード
-  taxType?: TaxType;
-  taxRate?: number; // 税率（該当する場合）
-
-  // 保険料ノード
-  insuranceType?: '年金保険料' | '労働保険料' | 'その他保険料';
-
-  // 会計区分ノード
-  accountType?: '一般会計' | '特別会計';
-  rsTargetAmount?: number; // RS対象額（円）
-  rsExcludedAmount?: number; // RS対象外額（円）
-  rsTargetRate?: number; // RS対象率（%）
-
-  // RS対象区分ノード
-  category?: 'RS対象' | 'RS対象外';
-  parentAccount?: '一般会計' | '特別会計';
-
-  // 詳細内訳ノード
-  detailType?:
-  | '国債費'
-  | '地方交付税'
-  | '国債整理基金'
-  | '地方交付税配付金'
-  | '財政投融資'
-  | '年金給付等'
-  | '年金事業'
-  | '労働保険'
-  | '一般会計事業'
-  | 'その他事業'
-  | 'その他';
-  isRSTarget?: boolean; // RS対象かどうか
-
-  // 共通
-  description?: string; // 説明文
-  sourceType?: string; // 財源種別
-  amount?: number; // 金額（円）
+/** 名前と金額の組。款別・税目別・宛先別などの内訳に使う */
+export interface MOFAmountGroup {
+  name: string;
+  /** 金額（円） */
+  amount: number;
 }
 
-/**
- * MOF予算全体ビューのサンキーデータ
- */
-export interface MOFBudgetOverviewData {
+/** 歳出の内訳。他会計への繰入と、それ以外の実支出に分ける */
+export interface MOFExpenditureBreakdown {
+  /** 歳出合計（円） */
+  total: number;
+  /** 他会計へ繰入（使途別分類コード = 6）。会計をまたぐと二重計上になる分 */
+  transferOut: number;
+  /** 繰入を除いた実支出（円） */
+  net: number;
+  /** 繰入の宛先別内訳（目名ベース） */
+  transfersByDestination: MOFAmountGroup[];
+  /** 使途別分類の内訳（人件費・物件費など） */
+  byPurpose: MOFAmountGroup[];
+}
+
+/** 歳入の内訳 */
+export interface MOFRevenueBreakdown {
+  /** 歳入合計（円） */
+  total: number;
+  /** 款別の内訳 */
+  byCategory: MOFAmountGroup[];
+}
+
+/** 特別会計1つぶんの要約 */
+export interface MOFSpecialAccountSummary {
+  name: string;
+  /** 勘定数（勘定を持たない会計は 0） */
+  subAccountCount: number;
+  revenue: number;
+  expenditure: number;
+  /** 他会計から受け入れた額（款 `他会計より受入` と目 `一般会計より受入` の和集合） */
+  transferIn: number;
+  /** 他会計へ繰り入れた額（使途別分類コード = 6） */
+  transferOut: number;
+  /**
+   * 自前財源比率。歳入のうち他会計からの受入でない割合（0〜1）。
+   * 低いほど「一般会計から回ってきた金を通しているだけ」の性格が強い。
+   */
+  ownRevenueRate: number;
+}
+
+/** 宛先別に送り手と受け手を突き合わせた行 */
+export interface MOFTransferReconciliation {
+  /** 宛先の特別会計名 */
+  account: string;
+  /** 一般会計からの繰入（送り手側の集計） */
+  fromGeneral: number;
+  /** 受入合計（受け手側の集計。他会計すべてを含む） */
+  received: number;
+}
+
+/** 会計間の繰入 */
+export interface MOFTransferSummary {
+  /** 一般会計 → 他会計（使途別 = 6） */
+  generalToOther: number;
+  /** 特別会計 → 他会計（使途別 = 6） */
+  specialToOther: number;
+  /** 特別会計が受け入れた額（款・目の和集合） */
+  receivedBySpecial: number;
+  /** 勘定間の受入（款 `他勘定より受入`） */
+  receivedBetweenSubAccounts: number;
+  /**
+   * 特別会計 → 一般会計。歳出予算には載らず、一般会計歳入の
+   * 款 `諸収入` の目 `◯◯特別会計受入金` にのみ現れる（原資は剰余金）。
+   */
+  specialToGeneral: number;
+  /** 逆方向繰入の内訳 */
+  specialToGeneralDetail: MOFAmountGroup[];
+  /** 宛先別の突合 */
+  reconciliation: MOFTransferReconciliation[];
+}
+
+/** グロスと純計 */
+export interface MOFTotals {
+  /** 一般会計・特別会計・政府関係機関の歳出を単純合計した額 */
+  gross: number;
+  /** グロスから会計間・勘定間の受入を控除した額 */
+  net: number;
+  /** 控除の内訳 */
+  deductions: {
+    receivedBySpecial: number;
+    receivedBetweenSubAccounts: number;
+  };
+}
+
+/** 生成物の本体（年度ごとに1ファイル） */
+export interface MOFBudgetOverview {
   metadata: {
-    generatedAt: string;
     fiscalYear: number;
-    totalBudget: number; // MOF予算総額（円）
-    rsTargetBudget: number; // RS対象予算（円）
-    rsExcludedBudget: number; // RS対象外予算（円）
-    dataSource: string;
-    notes: string[]; // 重要な注記
+    /** 元号表記（例: 令和8年度）。改元年は「令和元年度」 */
+    eraLabel: string;
+    /** 現状は当初予算のみを対象にする */
+    budgetType: '当初予算';
+    /** 収録済みの年度（API が応答時に付与する。生成物には入らない） */
+    availableYears?: number[];
+    generatedAt: string;
+    unit: 'yen';
+    notes: string[];
+  };
+  generalAccount: {
+    revenue: MOFRevenueBreakdown & {
+      /** 租税の税目別内訳 */
+      taxes: MOFAmountGroup[];
+      /** 特別会計からの受入（款 `諸収入` 等の目 `◯◯特別会計受入金`） */
+      fromSpecialAccounts: MOFAmountGroup[];
+    };
+    expenditure: MOFExpenditureBreakdown;
+  };
+  specialAccounts: {
+    revenue: MOFRevenueBreakdown & {
+      /**
+       * 他会計・他勘定からの受入を除いた自前財源。
+       * 会計をまたぐ流れを二重に数えないよう、図の財源にはこちらを使う。
+       */
+      own: MOFRevenueBreakdown;
+    };
+    expenditure: MOFExpenditureBreakdown;
+    /** 会計別の要約（歳出の大きい順） */
+    accounts: MOFSpecialAccountSummary[];
+  };
+  agencies: {
+    revenue: MOFRevenueBreakdown;
+    expenditure: {
+      total: number;
+      byAgency: MOFAmountGroup[];
+    };
+  };
+  transfers: MOFTransferSummary;
+  totals: MOFTotals;
+}
+
+/** サンキーのノード種別 */
+export type MOFBudgetNodeType =
+  /** 財源（税目・公債金・保険収入など） */
+  | 'source'
+  /** 会計（一般会計・特別会計・政府関係機関） */
+  | 'account'
+  /** 他会計へ繰入。会計をまたぐと二重計上になる分 */
+  | 'transfer'
+  /** 繰入を除いた実支出 */
+  | 'net-expenditure'
+  /** 歳入が歳出を上回る差額（積立等） */
+  | 'surplus';
+
+/** ノードに添える詳細 */
+export interface MOFBudgetNodeDetails {
+  nodeType: MOFBudgetNodeType;
+  accountKind?: MOFAccountKind;
+  /** 内訳（税目別・宛先別など） */
+  breakdown?: MOFAmountGroup[];
+  /** 純計を出すときに控除する対象か */
+  isDeduction?: boolean;
+  description?: string;
+}
+
+/** API が返すサンキーデータ */
+export interface MOFBudgetOverviewData {
+  metadata: MOFBudgetOverview['metadata'] & {
+    /** 単純合計（円） */
+    grossTotal: number;
+    /** 一次純計（円） */
+    netTotal: number;
   };
   sankey: {
     nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[];
     links: SankeyLink[];
   };
   summary: {
-    generalAccount: {
-      total: number; // 合計（円）
-      rsTarget: number; // RS対象（円）
-      rsExcluded: number; // RS対象外（円）
-      rsTargetRate: number; // RS対象率（%）
-    };
-    specialAccount: {
-      total: number;
-      rsTarget: number;
-      rsExcluded: number;
-      rsTargetRate: number;
-    };
-    overall: {
-      total: number;
-      rsTarget: number;
-      rsExcluded: number;
-      rsTargetRate: number;
-    };
-  };
-}
-
-/**
- * MOF予算データ（元データ）
- */
-export interface MOFBudgetData {
-  fiscalYear: number;
-  dataType: 'budget' | 'settlement';
-
-  // 一般会計
-  generalAccount: {
-    total: number;
-    revenue: {
-      // 租税詳細
-      taxes: {
-        consumptionTax: number; // 消費税
-        incomeTax: number; // 所得税
-        corporateTax: number; // 法人税
-        inheritanceTax: number; // 相続税
-        gasolineTax: number; // 揮発油税
-        sakeTax: number; // 酒税
-        customsDuty: number; // 関税
-        tobaccoTax: number; // たばこ税
-        petroleumCoalTax: number; // 石油石炭税
-        automobileWeightTax: number; // 自動車重量税
-        powerDevelopmentTax: number; // 電源開発促進税
-        otherTaxes: number; // その他
-        total: number; // 租税合計
-      };
-      publicBonds: number; // 公債金
-      stampRevenue: number; // 印紙収入
-      otherRevenue: number; // その他収入
-      total: number; // 歳入合計
-    };
-    expenditure: {
-      rsTarget: number; // RS対象
-      debtService: number; // 国債費
-      localAllocationTax: number; // 地方交付税
-      reserves: number; // 予備費等
-      total: number; // 歳出合計
-    };
-  };
-
-  // 特別会計
-  specialAccount: {
-    total: number;
-    revenue: {
-      // 社会保険料（シンプル版または詳細版）
-      insurancePremiums:
-        | {
-            pension: number; // 年金保険料
-            labor: number; // 労働保険料
-            other: number; // その他保険料
-            total: number; // 保険料合計
-          }
-        | InsurancePremiumAllocation; // 詳細版（将来実装）
-
-      // 一般会計繰入（総額のみまたは詳細版）
-      transferFromGeneral: number | TransferFromGeneralAccount;
-
-      // 特別会計間繰入（総額のみまたは詳細版）
-      transferFromOther: number | TransferBetweenSpecialAccounts;
-
-      publicBonds: number; // 公債金（借換債）
-      other: number; // その他
-      total: number; // 歳入合計
-    };
-    // 歳出を詳細化
-    expenditure: {
-      // 特別会計ごとの詳細（年金・労働・エネルギー等）
-      accounts: {
-        pension: { total: number; rsTarget: number; rsExcluded: number }; // 年金特会
-        labor: { total: number; rsTarget: number; rsExcluded: number }; // 労働保険特会
-        energy: { total: number; rsTarget: number; rsExcluded: number }; // エネルギー対策特会
-        food: { total: number; rsTarget: number; rsExcluded: number }; // 食料安定供給特会
-        reconstruction: { total: number; rsTarget: number; rsExcluded: number }; // 東日本大震災復興特会
-        forex: { total: number; rsTarget: number; rsExcluded: number }; // 外国為替資金特会
-        debtRetirement: { total: number; rsTarget: number; rsExcluded: number }; // 国債整理基金特会
-        allocationTax: { total: number; rsTarget: number; rsExcluded: number }; // 交付税配付金特会
-        filp: { total: number; rsTarget: number; rsExcluded: number }; // 財政投融資特会
-        others: { total: number; rsTarget: number; rsExcluded: number }; // その他特会
-      };
-
-      // 集計用（互換性維持のため残すが、詳細から算出も可能）
-      rsTarget: {
-        total: number; // RS対象合計
-      };
-      rsExcluded: {
-        total: number; // RS対象外合計
-      };
-      total: number; // 歳出合計
-    };
+    generalAccount: { revenue: number; expenditure: number; transferOut: number; net: number };
+    specialAccounts: { revenue: number; expenditure: number; transferOut: number; net: number };
+    agencies: { expenditure: number };
+    transfers: MOFTransferSummary;
+    totals: MOFTotals;
+    accounts: MOFSpecialAccountSummary[];
   };
 }
