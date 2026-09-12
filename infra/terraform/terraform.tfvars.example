@@ -4,7 +4,7 @@
 #   export SUPABASE_ACCESS_TOKEN=...
 #   export TF_VAR_supabase_database_password=...
 
-vercel_team_slug    = "team-mirai-volunteer"
+vercel_team_slug    = "team-mirai"   # Vercel チームの slug（GitHub org 名 team-mirai-volunteer とは異なる）
 vercel_project_name = "marumie-rssystem"
 github_repo         = "team-mirai-volunteer/rs-vis"
 

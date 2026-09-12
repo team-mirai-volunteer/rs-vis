@@ -14,23 +14,29 @@
 `vercel.json` はデプロイごとにコードと一緒にバージョン管理される「アプリの設定」、
 Terraform は「プロジェクトそのものと秘匿値」という役割分担。二重定義しないこと。
 
-## 初回セットアップ（デスクトップで実行する手順）
+## 現状（2026-09-12）
 
-このリポジトリは Vercel 未接続（2026-08-28 時点。GitHub API の deployments が空であることを確認済み）。
-**既存プロジェクトが無いので import は不要**で、そのまま apply すれば GitHub 連携込みで新規作成される:
+- Vercel: チーム `team-mirai`（slug）にプロジェクト `marumie-rssystem` を Terraform で作成済み
+  （`prj_xRZPq22PXHNpf8zvDLtDZOFILr7e`、GitHub `team-mirai-volunteer/rs-vis` の `main` に連携）。
+- Supabase: 未作成。`supabase_enabled=true` で作成する（下記）。
+- state はこの Terraform を実行したマシンのローカルにのみ存在する。別マシンで操作する場合は
+  `terraform import vercel_project.app prj_xRZPq22PXHNpf8zvDLtDZOFILr7e` から始めること。
+
+## 日常の操作
 
 ```bash
-winget install Hashicorp.Terraform   # または choco install terraform
-export VERCEL_API_TOKEN=...          # https://vercel.com/account/tokens
+winget install Hashicorp.Terraform   # 未導入なら（または choco install terraform）
 cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars   # vercel_team_slug 等を確認
+export VERCEL_API_TOKEN=...          # https://vercel.com/account/tokens（Scope は team-mirai）
+export SUPABASE_ACCESS_TOKEN=...     # Supabase 無効でもプロバイダが必須とするため、未使用時はダミー文字列でよい
+cp terraform.tfvars.example terraform.tfvars   # 初回のみ
 terraform init
-terraform plan    # vercel_project.app が「作成」になっていることを確認
+terraform plan
 terraform apply
 ```
 
-apply 後、main に push して GitHub のコミットに Vercel のチェックが付けばデプロイ連携完了。
-CLAUDE.md の Deployment 節の「未接続」注記を消すこと。
+注意: 環境変数が 0 件のとき Vercel API は BAD_REQUEST を返すため、
+`vercel_project_environment_variables.app` は `count` で 1 件以上あるときだけ作成される。
 
 ```bash
 cd infra/terraform
@@ -50,7 +56,7 @@ terraform import vercel_project.app prj_XXXXXXXXXXXX
 terraform plan   # 差分が「変更なし or 意図した差分のみ」であることを確認してから apply
 ```
 
-環境変数を既にダッシュボードで設定済みの場合は `vercel_project_environment_variables.app` も
+環境変数を既にダッシュボードで設定済みの場合は `vercel_project_environment_variables.app[0]` も
 import するか、いったんダッシュボード側を空にしてから Terraform で入れ直す。
 
 ## Supabase の有効化（DB導入時）

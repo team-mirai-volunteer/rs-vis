@@ -17,14 +17,15 @@ resource "vercel_project" "app" {
     production_branch = var.production_branch
   }
 
-  serverless_function_region = var.vercel_function_region
+  resource_config = {
+    function_default_regions = [var.vercel_function_region]
+  }
 }
 
 # ── 環境変数（本番・プレビュー共通） ──
-resource "vercel_project_environment_variables" "app" {
-  project_id = vercel_project.app.id
-
-  variables = concat(
+# Vercel API は空リストを BAD_REQUEST で拒否するため、1件以上あるときだけリソースを作る
+locals {
+  app_env_variables = concat(
     [for k, v in var.app_env_plain : {
       key       = k
       value     = v
@@ -47,4 +48,11 @@ resource "vercel_project_environment_variables" "app" {
       },
     ] : [],
   )
+}
+
+resource "vercel_project_environment_variables" "app" {
+  count = length(local.app_env_variables) > 0 ? 1 : 0
+
+  project_id = vercel_project.app.id
+  variables  = local.app_env_variables
 }
