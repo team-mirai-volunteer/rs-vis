@@ -53,6 +53,7 @@ import { getAccountBadgeStyle } from '@/app/lib/account-badge';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { testId } from '@/client/lib/testId';
 import {
   useSidePanel,
   SIDE_PANEL_WIDTH_DEFAULT,
@@ -125,8 +126,7 @@ const SCREEN_HORIZONTAL_FIT_RATIO = 0.82;
 const SCREEN_MIN_TOTAL_LABEL_GAP_PX = 112;
 const SCREEN_MIN_MINISTRY_LABEL_WIDTH_PX = 128;
 const SCREEN_MAX_MINISTRY_LABEL_GAP_PX = 72;
-const E2E_TEST_IDS_ENABLED = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_PLAYWRIGHT === '1';
-const testId = (id: string): string | undefined => E2E_TEST_IDS_ENABLED ? id : undefined;
+
 
 const MAP_LABEL_FONT_PX_DEFAULT = 11;
 const MAP_LABEL_SLOT_PX_DEFAULT = 12;
@@ -1579,6 +1579,8 @@ export default function RealDataSankeyPage() {
       const cW = container.clientWidth;
       const reserve = searchBoxReserveRef.current;
       const availH = container.clientHeight - reserve;
+      // 縦予算ブースト時は「1画面の THICKNESS_BOOST 倍」を基準にフィットさせる
+      // （ズーム値は従来と同水準に保たれ、横幅は不変。縦のはみ出しはパンで見る）
       const { k, totalH } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH * THICKNESS_BOOST);
       setZoom(k);
       setBaseZoom(k);
@@ -2793,11 +2795,12 @@ export default function RealDataSankeyPage() {
           const cW = container.clientWidth;
           const reserve = searchBoxReserveRef.current;
           const availH = container.clientHeight - reserve;
-          const { k: fitK } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH);
+          // 縦予算ブースト時は「1画面の THICKNESS_BOOST 倍」を基準にフィットさせる（他の fitZoom 呼び出しと同様）
+          const { k: fitK } = fitZoomWithShifts(l.nodes, l.contentW, l.contentH, cW, availH * THICKNESS_BOOST);
           const restoredTotalH = MARGIN.top + l.contentH + calcShiftExtraH(l.nodes, k, fitK);
           setBaseZoom(fitK);
           setZoom(k);
-          setPan({ x: 0, y: reserve + Math.min((availH - restoredTotalH * k) / 2, fitTopPadPxRef.current) });
+          setPan({ x: 0, y: reserve + ((availH - restoredTotalH * k) >= 0 ? Math.min((availH - restoredTotalH * k) / 2, fitTopPadPxRef.current) : fitTopPadPxRef.current) });
         } else {
           setZoom(k); setBaseZoom(k); setPan({ x: 0, y: searchBoxReserveRef.current });
         }
@@ -2888,6 +2891,9 @@ export default function RealDataSankeyPage() {
     const hitX = anchor === 'end' ? x - width : x;
     return (
       <rect
+        // ラベル文字より広いクリック領域。text の上に重なるので、
+        // e2e から「ラベルを押す」を指すときはこちらを掴む
+        data-testid={testId('node-label-hit')}
         x={hitX}
         y={centerY - innerLabelHitH / 2}
         width={width}
@@ -3069,7 +3075,6 @@ export default function RealDataSankeyPage() {
     setYear(value);
   };
 
-  // 事業・支出先 TopN スライダー（デスクトップはオフセットパネル内、スマホ幅では設定ダイアログ内に表示）
   // 基準フォントサイズ調整（デスクトップは左下フローティング、スマホ幅では設定ダイアログ内に表示）
   const fontSizeControlsFragment = (
     <FontSizeControls
@@ -3667,7 +3672,7 @@ export default function RealDataSankeyPage() {
                 return i === 0 ? (nodes[0]?.value ?? null) : nodes.reduce((s, n) => s + columnAmount(n, i), 0);
               });
               const projectSpendingTotal = layout.nodes.filter(n => n.type === 'project-spending').reduce((s, n) => s + n.value, 0);
-              // 列ごとの最上端ノードを取得（ラベル基準位置とフェード判定に使用）
+              // 列ごとの最上端ノードを取得（ラベル基準位置の計算用）
               const topNodeByCol = colNodeTypes.map(t =>
                 layout.nodes.filter(n => n.type === t).reduce<typeof layout.nodes[0] | null>((top, n) => (top === null || n.y0 < top.y0 ? n : top), null)
               );
@@ -4617,6 +4622,7 @@ export default function RealDataSankeyPage() {
                       <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex' }}>
                         <input
+                          data-testid={testId(`filter-${key}-name`)}
                           type="text"
                           value={value}
                           onChange={e => setValue(e.target.value)}

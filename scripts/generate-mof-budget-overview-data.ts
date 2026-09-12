@@ -1,308 +1,300 @@
-#!/usr/bin/env npx ts-node
+#!/usr/bin/env npx tsx
 /**
- * MOF予算全体ビュー用データ生成スクリプト
+ * MOF 予算全体ビューの集計データ生成スクリプト。
  *
- * 財務省の2023年度予算データからMOF予算全体ビュー用のデータを生成する
+ * 予算書 ZIP 同梱の科目別内訳 CSV から、会計区分・款別・繰入・純計を集計する。
+ * 出力は**集計値だけ**でサンキーの形は持たない（可視化を変えても再生成が要らないように）。
+ *
+ * 使用法:
+ *   tsx scripts/generate-mof-budget-overview-data.ts [FISCAL_YEAR...]
+ *   デフォルト: 2017〜2026（10年度分）
+ *
+ * 出力: public/data/mof-budget-overview-{FISCAL_YEAR}.json
+ *
+ * 対象は**当初予算のみ**（一般会計 11001 / 特別会計 12001 / 政府関係機関 13001）。
+ * 捕捉ロジックの根拠は docs/mof-budget-data-guide.md 6節。
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import type { MOFBudgetData } from '@/types/mof-budget-overview';
-import type { TransferFromGeneralAccount } from '@/types/mof-transfer';
-import { parseMOFTransferData } from './parse-mof-transfer-data';
+import type {
+  MOFAmountGroup,
+  MOFBudgetOverview,
+  MOFSpecialAccountSummary,
+  MOFTransferReconciliation,
+} from '@/types/mof-budget-overview';
+import {
+  amountColumn,
+  groupByName,
+  readBudgetTables,
+  toEraLabel,
+  yen,
+  type CsvRow,
+} from '@/scripts/mof-budget-csv';
 
-// ES Module用のディレクトリ取得
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const DEFAULT_YEARS = [2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
-// 出力先
-const OUTPUT_FILE = path.join(
-  __dirname,
-  '../public/data/mof-budget-overview-2023.json'
-);
-
-/**
- * パースした繰入データから詳細構造を構築
- */
-function buildTransferFromGeneral(): TransferFromGeneralAccount {
-  const transferData = parseMOFTransferData();
-  const transfers = transferData.generalToSpecial;
-
-  // 特別会計別に集計
-  const byAccount = new Map<string, number>();
-  for (const t of transfers) {
-    const current = byAccount.get(t.specialAccount) || 0;
-    byAccount.set(t.specialAccount, current + t.amount * 1000); // 千円 → 円
-  }
-
-  // 年金特会の詳細（項目名から推定）
-  const pensionDetails = {
-    basicPension: 12_200_000_000_000, // 基礎年金
-    nurseryBenefit: 1_374_000_000_000, // 保育給付
-    childAllowance: 1_029_000_000_000, // 児童手当
-    pensionAdministration: 497_000_000_000, // その他
-  };
-  const pensionTotal = Object.values(pensionDetails).reduce((sum, val) => sum + val, 0);
-
-  // 交付税の詳細
-  const localTaxDetails = {
-    generalTransfer: 16_182_000_000_000, // 一般交付税
-    specialTransfer: 217_000_000_000, // 地方特例交付金
-    trafficViolationFund: 52_000_000_000, // 交通反則者納金財源
-  };
-  const localTaxTotal = Object.values(localTaxDetails).reduce((sum, val) => sum + val, 0);
-
-  // 国債整理基金の詳細
-  const debtDetails = {
-    ordinaryBondRedemption: 24_764_000_000_000, // 普通国債等償還
-    pensionBondRedemption: 272_000_000_000, // 年金特例公債償還
-    investmentBondRedemption: 213_000_000_000, // 出資国債等償還
-  };
-  const debtTotal = Object.values(debtDetails).reduce((sum, val) => sum + val, 0);
-
-  // エネルギー対策の詳細
-  const energyDetails = {
-    petroleumCoalTax: 520_000_000_000, // 石油石炭税財源
-    powerDevelopmentTax: 293_000_000_000, // 電源開発促進税財源
-  };
-  const energyTotal = Object.values(energyDetails).reduce((sum, val) => sum + val, 0);
-
-  const totalExcludingDebt = pensionTotal + localTaxTotal + energyTotal +
-    (byAccount.get('食料安定供給') || 0) +
-    (byAccount.get('労働保険') || 0) +
-    (byAccount.get('自動車安全') || 0) +
-    (byAccount.get('東日本大震災復興') || 0) +
-    (byAccount.get('国有林野事業債務管理') || 0) +
-    (byAccount.get('特許') || 0);
-
-  return {
-    total: totalExcludingDebt,
-    totalIncludingDebt: totalExcludingDebt + debtTotal,
-    breakdown: {
-      pension: {
-        total: pensionTotal,
-        details: pensionDetails,
-      },
-      localAllocationTax: {
-        total: localTaxTotal,
-        details: localTaxDetails,
-      },
-      debtRetirement: {
-        total: debtTotal,
-        details: debtDetails,
-      },
-      energy: {
-        total: energyTotal,
-        details: energyDetails,
-      },
-      foodSupply: byAccount.get('食料安定供給') || 315_000_000_000,
-      laborInsurance: byAccount.get('労働保険') || 35_000_000_000,
-      automotiveSafety: byAccount.get('自動車安全') || 33_000_000_000,
-      reconstruction: byAccount.get('東日本大震災復興') || 30_000_000_000,
-      forestryDebtManagement: byAccount.get('国有林野事業債務管理') || 29_000_000_000,
-      patent: byAccount.get('特許') || 2_000_000_000,
-    },
-  };
-}
+/** 他会計へ繰入を表す使途別分類コード（docs/mof-budget-data-guide.md 4-6節） */
+const TRANSFER_PURPOSE_CODE = '6';
 
 /**
- * MOF予算全体ビュー用データを生成
+ * 使途別分類コード表（docs/mof-budget-data-guide.md 4-6節）。
  *
- * 注: この値はdocs/20260202_0000_MOF予算全体とRS対象範囲の可視化.mdの分析結果に基づく
+ * 表に無いコードは `その他` に混ぜず `UNKNOWN_PURPOSE` に分ける。コード9が
+ * 既に `その他` なので、混ぜると新設・空欄のコードが黙って埋もれ、
+ * 内訳が静かに壊れる（検証は byPurpose を見ない）。
  */
-function generateMOFBudgetData(): MOFBudgetData {
-  return {
-    fiscalYear: 2023,
-    dataType: 'budget',
+const PURPOSE_NAMES: Record<string, string> = {
+  '1': '人件費',
+  '2': '旅費',
+  '3': '物件費',
+  '4': '施設費',
+  '5': '補助費・委託費',
+  '6': '他会計へ繰入',
+  '9': 'その他',
+};
 
-    // 一般会計（114.4兆円）
-    generalAccount: {
-      total: 114_380_000_000_000, // 114.38兆円
+/** 表に無い使途別分類コードの表示名。コード9の「その他」とは別枠にする */
+const UNKNOWN_PURPOSE = '分類不明';
 
-      revenue: {
-        // 租税詳細（68.46兆円）
-        taxes: {
-          consumptionTax: 23_380_000_000_000, // 23.38兆円（34.2%）
-          incomeTax: 21_050_000_000_000, // 21.05兆円（30.7%）
-          corporateTax: 14_600_000_000_000, // 14.60兆円（21.3%）
-          inheritanceTax: 2_780_000_000_000, // 2.78兆円（4.1%）
-          gasolineTax: 2_000_000_000_000, // 2.00兆円（2.9%）
-          sakeTax: 1_180_000_000_000, // 1.18兆円（1.7%）
-          customsDuty: 1_120_000_000_000, // 1.12兆円（1.6%）
-          tobaccoTax: 940_000_000_000, // 0.94兆円（1.4%）
-          petroleumCoalTax: 650_000_000_000, // 0.65兆円（0.9%）
-          automobileWeightTax: 380_000_000_000, // 0.38兆円（0.6%）
-          powerDevelopmentTax: 320_000_000_000, // 0.32兆円（0.5%）
-          otherTaxes: 60_000_000_000, // 0.06兆円（0.1%）
-          total: 68_460_000_000_000, // 68.46兆円
-        },
-        publicBonds: 35_620_000_000_000, // 35.62兆円（31.1%）
-        stampRevenue: 980_000_000_000, // 0.98兆円（0.9%）
-        otherRevenue: 9_320_000_000_000, // 9.32兆円（8.1%）
-        total: 114_380_000_000_000, // 114.38兆円
-      },
-
-      expenditure: {
-        rsTarget: 72_560_000_000_000, // 72.56兆円（63.4%）
-        debtService: 25_250_000_000_000, // 25.25兆円（22.1%）
-        localAllocationTax: 16_400_000_000_000, // 16.40兆円（14.3%）
-        reserves: 190_000_000_000, // 0.19兆円（0.2%）
-        total: 114_400_000_000_000, // 114.40兆円
-      },
-    },
-
-    // 特別会計（約443兆円 ※積上げ計算による）
-    specialAccount: {
-      total: 443_430_000_000_000, // 443.43兆円（各会計の合計）
-
-      revenue: {
-        insurancePremiums: {
-          pension: 37_750_000_000_000, // 37.75兆円（決算ベース）
-          labor: 3_650_000_000_000, // 3.65兆円
-          other: 8_770_000_000_000, // 8.77兆円
-          total: 50_170_000_000_000, // 50.17兆円
-        },
-        transferFromGeneral: buildTransferFromGeneral(), // 詳細版
-        publicBonds: 165_120_000_000_000, // 165.12兆円（借換債）
-        transferFromOther: 81_320_000_000_000, // 81.32兆円
-        other: 114_310_000_000_000, // 114.31兆円（調整用）
-        total: 443_430_000_000_000, // 443.43兆円
-      },
-
-      expenditure: {
-        accounts: {
-          pension: {
-            total: 99_510_000_000_000,
-            rsTarget: 68_520_000_000_000,
-            rsExcluded: 30_990_000_000_000,
-          },
-          labor: {
-            total: 8_660_000_000_000,
-            rsTarget: 4_350_000_000_000,
-            rsExcluded: 4_310_000_000_000,
-          },
-          energy: {
-            total: 14_060_000_000_000,
-            rsTarget: 1_510_000_000_000,
-            rsExcluded: 12_550_000_000_000,
-          },
-          food: {
-            total: 1_530_000_000_000,
-            rsTarget: 1_050_000_000_000,
-            rsExcluded: 480_000_000_000,
-          },
-          reconstruction: {
-            total: 730_000_000_000,
-            rsTarget: 540_000_000_000,
-            rsExcluded: 190_000_000_000,
-          },
-          forex: {
-            total: 2_420_000_000_000,
-            rsTarget: 0,
-            rsExcluded: 2_420_000_000_000,
-          },
-          debtRetirement: {
-            total: 239_470_000_000_000,
-            rsTarget: 0,
-            rsExcluded: 239_470_000_000_000,
-          },
-          allocationTax: {
-            total: 49_540_000_000_000,
-            rsTarget: 0,
-            rsExcluded: 49_540_000_000_000,
-          },
-          filp: {
-            total: 24_940_000_000_000,
-            rsTarget: 20_000_000_000,
-            rsExcluded: 24_920_000_000_000,
-          },
-          others: {
-            total: 2_570_000_000_000, // 調整値
-            rsTarget: 2_570_000_000_000, // RS対象合計78.56兆円に合わせるための調整
-            rsExcluded: 0,
-          },
-        },
-        rsTarget: {
-          total: 78_560_000_000_000, // 78.56兆円
-        },
-        rsExcluded: {
-          total: 364_870_000_000_000, // 364.87兆円
-        },
-        total: 443_430_000_000_000, // 443.43兆円
-      },
-    },
-  };
+/**
+ * 特別会計が一般会計へ回した額を、一般会計歳入側で拾うための目名の条件。
+ *
+ * 逆方向の繰入は**歳出予算に載らない**（原資が剰余金のため）。歳出側を探しても
+ * 令和8年度で7億円しか出ず、本体は一般会計歳入の款 `諸収入` にある。
+ */
+function isFromSpecialAccount(itemName: string): boolean {
+  return (
+    itemName.endsWith('特別会計受入金') ||
+    itemName.endsWith('特別会計整理収入') ||
+    itemName.endsWith('特別会計等負担金')
+  );
 }
 
 /**
- * メイン処理
+ * 特別会計が他会計から受け入れた行かどうか。
+ *
+ * **款名だけでは足りない。**年金特別会計は「一般会計より受入」が款 `保険収入` の下に
+ * 置かれており、款で絞ると毎年10〜13兆円を取りこぼす（docs/mof-budget-data-guide.md 6-2節）。
  */
-function main() {
-  console.log('MOF予算全体ビュー用データ生成を開始します...');
-
-  // データ生成
-  const mofBudgetData = generateMOFBudgetData();
-
-  // 検証
-  console.log('\n=== データ検証 ===');
-  console.log(
-    `一般会計合計: ${(mofBudgetData.generalAccount.total / 1e12).toFixed(2)}兆円`
-  );
-  console.log(
-    `特別会計合計: ${(mofBudgetData.specialAccount.total / 1e12).toFixed(2)}兆円`
-  );
-  console.log(
-    `予算総額: ${((mofBudgetData.generalAccount.total + mofBudgetData.specialAccount.total) / 1e12).toFixed(2)}兆円`
-  );
-
-  const totalRSTarget =
-    mofBudgetData.generalAccount.expenditure.rsTarget +
-    mofBudgetData.specialAccount.expenditure.rsTarget.total;
-  console.log(`RS対象合計: ${(totalRSTarget / 1e12).toFixed(2)}兆円`);
-
-  const totalRSExcluded =
-    mofBudgetData.generalAccount.expenditure.debtService +
-    mofBudgetData.generalAccount.expenditure.localAllocationTax +
-    mofBudgetData.generalAccount.expenditure.reserves +
-    mofBudgetData.specialAccount.expenditure.rsExcluded.total;
-  console.log(`RS対象外合計: ${(totalRSExcluded / 1e12).toFixed(2)}兆円`);
-
-  console.log(
-    `\n租税合計: ${(mofBudgetData.generalAccount.revenue.taxes.total / 1e12).toFixed(2)}兆円`
-  );
-  console.log(
-    `  - 消費税: ${(mofBudgetData.generalAccount.revenue.taxes.consumptionTax / 1e12).toFixed(2)}兆円`
-  );
-  console.log(
-    `  - 所得税: ${(mofBudgetData.generalAccount.revenue.taxes.incomeTax / 1e12).toFixed(2)}兆円`
-  );
-  console.log(
-    `  - 法人税: ${(mofBudgetData.generalAccount.revenue.taxes.corporateTax / 1e12).toFixed(2)}兆円`
-  );
-
-  console.log(
-    `\n社会保険料合計: ${(mofBudgetData.specialAccount.revenue.insurancePremiums.total / 1e12).toFixed(2)}兆円`
-  );
-  const premiums = mofBudgetData.specialAccount.revenue.insurancePremiums;
-  const pensionAmount = 'breakdown' in premiums ? premiums.breakdown.pension : premiums.pension;
-  console.log(
-    `  - 年金保険料: ${(pensionAmount / 1e12).toFixed(2)}兆円`
-  );
-
-  // JSONファイルに保存
-  const outputDir = path.dirname(OUTPUT_FILE);
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
-  }
-
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(mofBudgetData, null, 2));
-
-  console.log(`\n✅ データ生成完了: ${OUTPUT_FILE}`);
-  console.log(
-    `   ファイルサイズ: ${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)}KB`
-  );
+function isTransferIn(row: CsvRow): boolean {
+  return row['款名'] === '他会計より受入' || (row['目名'] ?? '').includes('一般会計より受入');
 }
 
-// 実行
+/** 他会計・他勘定から回ってきた行。自前財源を出すときに除く */
+function isInternalReceipt(row: CsvRow): boolean {
+  return isTransferIn(row) || row['款名'] === '他勘定より受入';
+}
+
+/**
+ * 繰入の目名から宛先の特別会計を特定する。会計名の一覧は CSV から作るので固定表を持たない。
+ *
+ * 候補は**長い名前から**照合する。ある会計名が別の会計名の部分文字列だった場合、
+ * CSV の行順に依存して短い方が先に当たると宛先を取り違えるため。
+ */
+function resolveDestination(itemName: string, sortedAccountNames: string[]): string | null {
+  return sortedAccountNames.find(name => itemName.includes(`${name}特別会計`)) ?? null;
+}
+
+function sum(rows: CsvRow[], column: string): number {
+  return rows.reduce((acc, row) => acc + yen(row, column), 0);
+}
+
+function generateYear(fiscalYear: number): void {
+  const eraLabel = toEraLabel(fiscalYear);
+  console.log(`\n=== ${eraLabel}（${fiscalYear}） ===`);
+
+  const general = readBudgetTables(fiscalYear, '11001');
+  const special = readBudgetTables(fiscalYear, '12001');
+  const agency = readBudgetTables(fiscalYear, '13001');
+
+  const gRev = amountColumn(general.revenue);
+  const gExp = amountColumn(general.expenditure);
+  const sRev = amountColumn(special.revenue);
+  const sExp = amountColumn(special.expenditure);
+  const aRev = amountColumn(agency.revenue);
+  const aExp = amountColumn(agency.expenditure);
+
+  // 特別会計の一覧は歳出表から作る（年度により増減するため固定表を持たない）
+  const accountNames = [...new Set(special.expenditure.map(r => r['特別会計']).filter(Boolean))];
+  // 宛先の照合は長い名前を優先する（部分一致の取り違えを防ぐ）
+  const accountNamesByLength = [...accountNames].sort((a, b) => b.length - a.length);
+
+  // --- 一般会計 ---
+  const generalTransfers = general.expenditure.filter(
+    r => r['使途別分類コード'] === TRANSFER_PURPOSE_CODE
+  );
+  const generalTransferOut = sum(generalTransfers, gExp);
+  const generalExpTotal = sum(general.expenditure, gExp);
+  const fromSpecialRows = general.revenue.filter(r => isFromSpecialAccount(r['目名'] ?? ''));
+
+  // --- 特別会計 ---
+  const specialTransfers = special.expenditure.filter(
+    r => r['使途別分類コード'] === TRANSFER_PURPOSE_CODE
+  );
+  const specialTransferOut = sum(specialTransfers, sExp);
+  const specialExpTotal = sum(special.expenditure, sExp);
+  const transferInRows = special.revenue.filter(isTransferIn);
+  const receivedBySpecial = sum(transferInRows, sRev);
+  const receivedBetweenSubAccounts = sum(
+    special.revenue.filter(r => r['款名'] === '他勘定より受入'),
+    sRev
+  );
+  // 自前財源。年金特会は「一般会計より受入」が款「保険収入」の下にあるため、
+  // 款ではなく行単位で除かないと受入が自前財源に混ざる
+  const specialOwnRows = special.revenue.filter(r => !isInternalReceipt(r));
+
+  // 会計別の要約
+  const accounts: MOFSpecialAccountSummary[] = accountNames
+    .map(name => {
+      const revRows = special.revenue.filter(r => r['特別会計'] === name);
+      const expRows = special.expenditure.filter(r => r['特別会計'] === name);
+      const revenue = sum(revRows, sRev);
+      const transferIn = sum(revRows.filter(isTransferIn), sRev);
+      return {
+        name,
+        subAccountCount: new Set(expRows.map(r => r['勘定']).filter(Boolean)).size,
+        revenue,
+        expenditure: sum(expRows, sExp),
+        transferIn,
+        transferOut: sum(
+          expRows.filter(r => r['使途別分類コード'] === TRANSFER_PURPOSE_CODE),
+          sExp
+        ),
+        ownRevenueRate: revenue > 0 ? (revenue - transferIn) / revenue : 0,
+      };
+    })
+    .sort((a, b) => b.expenditure - a.expenditure);
+
+  // 宛先別の突合（送り手＝一般会計の繰入 / 受け手＝特会の受入）
+  const fromGeneralByAccount = new Map<string, number>();
+  for (const row of generalTransfers) {
+    const dest = resolveDestination(row['目名'] ?? '', accountNamesByLength);
+    if (dest) fromGeneralByAccount.set(dest, (fromGeneralByAccount.get(dest) ?? 0) + yen(row, gExp));
+  }
+  const reconciliation: MOFTransferReconciliation[] = accounts
+    .map(a => ({
+      account: a.name,
+      fromGeneral: fromGeneralByAccount.get(a.name) ?? 0,
+      received: a.transferIn,
+    }))
+    .filter(r => r.fromGeneral > 0 || r.received > 0)
+    .sort((a, b) => b.received - a.received);
+
+  const agencyExpTotal = sum(agency.expenditure, aExp);
+  const gross = generalExpTotal + specialExpTotal + agencyExpTotal;
+  const specialToGeneral = sum(fromSpecialRows, gRev);
+
+  const byPurpose = (rows: CsvRow[], column: string): MOFAmountGroup[] =>
+    groupByName(rows, column, r => PURPOSE_NAMES[r['使途別分類コード']] ?? UNKNOWN_PURPOSE);
+
+  const data: MOFBudgetOverview = {
+    metadata: {
+      fiscalYear,
+      eraLabel,
+      budgetType: '当初予算',
+      generatedAt: new Date().toISOString(),
+      unit: 'yen',
+      notes: [
+        '全金額は円単位です（予算書の印字は千円単位。生成時に1000倍しています）',
+        '対象は当初予算のみです（補正予算・決算は含みません）',
+        '一般会計・特別会計・政府関係機関の歳出を単純合算すると会計間の繰入が二重計上されます',
+        '他会計へ繰入は使途別分類コード6で捕捉しています',
+        '特別会計の受入は款「他会計より受入」と目「一般会計より受入」の和集合です（款だけでは年金特会を取りこぼします）',
+        '特別会計から一般会計への繰入は歳出予算に載らず、一般会計歳入の「◯◯特別会計受入金」にのみ現れます',
+      ],
+    },
+    generalAccount: {
+      revenue: {
+        total: sum(general.revenue, gRev),
+        byCategory: groupByName(general.revenue, gRev, r => r['款名']),
+        taxes: groupByName(
+          general.revenue.filter(r => r['款名'] === '租税'),
+          gRev,
+          r => r['目名']
+        ),
+        fromSpecialAccounts: groupByName(fromSpecialRows, gRev, r => r['目名']),
+      },
+      expenditure: {
+        total: generalExpTotal,
+        transferOut: generalTransferOut,
+        net: generalExpTotal - generalTransferOut,
+        transfersByDestination: groupByName(generalTransfers, gExp, r => r['目名']),
+        byPurpose: byPurpose(general.expenditure, gExp),
+      },
+    },
+    specialAccounts: {
+      revenue: {
+        total: sum(special.revenue, sRev),
+        byCategory: groupByName(special.revenue, sRev, r => r['款名']),
+        own: {
+          total: sum(specialOwnRows, sRev),
+          byCategory: groupByName(specialOwnRows, sRev, r => r['款名']),
+        },
+      },
+      expenditure: {
+        total: specialExpTotal,
+        transferOut: specialTransferOut,
+        net: specialExpTotal - specialTransferOut,
+        transfersByDestination: groupByName(specialTransfers, sExp, r => r['目名']),
+        byPurpose: byPurpose(special.expenditure, sExp),
+      },
+      accounts,
+    },
+    agencies: {
+      revenue: {
+        total: sum(agency.revenue, aRev),
+        byCategory: groupByName(agency.revenue, aRev, r => r['款名']),
+      },
+      expenditure: {
+        total: agencyExpTotal,
+        byAgency: groupByName(agency.expenditure, aExp, r => r['政府関係機関']),
+      },
+    },
+    transfers: {
+      generalToOther: generalTransferOut,
+      specialToOther: specialTransferOut,
+      receivedBySpecial,
+      receivedBetweenSubAccounts,
+      specialToGeneral,
+      specialToGeneralDetail: groupByName(fromSpecialRows, gRev, r => r['目名']),
+      reconciliation,
+    },
+    totals: {
+      gross,
+      net: gross - receivedBySpecial - receivedBetweenSubAccounts,
+      deductions: { receivedBySpecial, receivedBetweenSubAccounts },
+    },
+  };
+
+  const outputFile = path.join(
+    process.cwd(),
+    'public',
+    'data',
+    `mof-budget-overview-${fiscalYear}.json`
+  );
+  fs.writeFileSync(outputFile, JSON.stringify(data, null, 2));
+
+  const t = (v: number) => (v / 1e12).toFixed(2);
+  console.log(`  一般会計 歳出 ${t(generalExpTotal)}兆（うち繰入 ${t(generalTransferOut)}兆）`);
+  console.log(`  特別会計 歳出 ${t(specialExpTotal)}兆（うち繰入 ${t(specialTransferOut)}兆）`);
+  console.log(`  政府関係機関 支出 ${t(agencyExpTotal)}兆 / 特会 ${accounts.length}会計`);
+  console.log(`  単純合計 ${t(gross)}兆 → 一次純計 ${t(data.totals.net)}兆`);
+  console.log(`  出力: ${path.basename(outputFile)}`);
+}
+
+function main(): void {
+  const years =
+    process.argv.length > 2
+      ? process.argv.slice(2).map(v => parseInt(v, 10))
+      : DEFAULT_YEARS;
+  if (years.some(y => isNaN(y) || y < 2000 || y > 2100)) {
+    console.error(`Invalid fiscal year: ${process.argv.slice(2).join(' ')}`);
+    process.exit(1);
+  }
+  console.log(`=== MOF 予算全体ビュー生成（対象: ${years.join(', ')}） ===`);
+  for (const year of years) generateYear(year);
+  console.log(`\n完了: ${years.length} 年度分を生成しました。`);
+}
+
 main();

@@ -1,989 +1,467 @@
 /**
- * MOF予算全体ビューのサンキー図生成ロジック
+ * MOF 予算全体ビューのサンキー生成。
+ *
+ * 集計 JSON（`MOFBudgetOverview`）からノードとリンクを組む純粋関数。
+ * HTTP アクセスやファイル読み込みはしない（読み込みは API 層の責務）。
+ *
+ * 図の骨格は「財源 → 会計 → 使途」の3段。会計間の繰入は
+ * **一般会計 → 特別会計 のリンク**として明示し、二重計上される分が
+ * どこで発生しているかを画面から読めるようにする。
+ *
+ * 会計ノードの値は歳入合計で揃える。歳出が歳入を下回る差額は
+ * 「歳入超過」ノードで受け、フローを閉じる（辻褄合わせの項目を作らない）。
  */
 
 import type {
-  MOFBudgetData,
-  MOFBudgetOverviewData,
+  MOFAmountGroup,
   MOFBudgetNodeDetails,
-  MOFBudgetNodeType,
+  MOFBudgetOverview,
+  MOFBudgetOverviewData,
 } from '@/types/mof-budget-overview';
 import type { SankeyNode, SankeyLink } from '@/types/sankey';
 
+type Node = SankeyNode & { details?: MOFBudgetNodeDetails };
+
+/** 財源ノードとして独立させる下限。これ未満は「その他」にまとめる */
+const SOURCE_MIN_RATIO = 0.01;
+
 /**
- * MOF予算全体ビューのサンキー図データを生成
+ * 財源ノードの最大数。
+ * 閾値だけだと年度により20本を超え、ラベルが縦に潰れて読めなくなる。
  */
-export function generateMOFBudgetOverviewSankey(
-  mofData: MOFBudgetData
-): MOFBudgetOverviewData {
-  const nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[] = [];
-  const links: SankeyLink[] = [];
+const SOURCE_MAX_NODES = 8;
 
-  // Column 1: 財源+特会ノード（税収詳細+年金特会+労働保険特会+その他特会）
-  const sourceNodes = createSourceNodes(mofData);
-  nodes.push(...sourceNodes);
+/** 特別会計からの受入が計上される款。目名から款を特定できないときの寄せ先 */
+const MISC_CATEGORY = '諸収入';
 
-  // Column 2: 会計集約ノード（一般会計、特別会計集約）
-  const accountAggregateNodes = createAccountAggregateNodes(mofData);
-  nodes.push(...accountAggregateNodes);
+/** 会計ノードのID */
+const ACCOUNT_IDS = {
+  general: 'account-general',
+  special: 'account-special',
+  agency: 'account-agency',
+} as const;
 
-  // Column 3: RS対象区分ノード
-  const rsCategoryNodes = createRSCategoryNodes(mofData);
-  nodes.push(...rsCategoryNodes);
-
-  // Column 4: 詳細内訳ノード
-  const detailNodes = createBudgetDetailNodes(mofData);
-  nodes.push(...detailNodes);
-
-  // Column 5: RS集約ノード
-  const summaryNodes = createRSSummaryNodes(mofData);
-  nodes.push(...summaryNodes);
-
-  // リンク生成
-  links.push(...createSourceToAggregateLinks(sourceNodes, accountAggregateNodes, mofData));
-  links.push(...createAggregateToRSCategoryLinks(accountAggregateNodes, rsCategoryNodes, mofData));
-  links.push(...createRSCategoryToDetailLinks(rsCategoryNodes, detailNodes));
-  links.push(...createDetailToSummaryLinks(detailNodes, summaryNodes));
-
-  // メタデータとサマリー
-  const metadata = {
-    generatedAt: new Date().toISOString(),
-    fiscalYear: mofData.fiscalYear,
-    totalBudget: mofData.generalAccount.total + mofData.specialAccount.total,
-    rsTargetBudget:
-      mofData.generalAccount.expenditure.rsTarget +
-      mofData.specialAccount.expenditure.rsTarget.total,
-    rsExcludedBudget:
-      mofData.generalAccount.expenditure.debtService +
-      mofData.generalAccount.expenditure.localAllocationTax +
-      mofData.generalAccount.expenditure.reserves +
-      mofData.specialAccount.expenditure.rsExcluded.total,
-    dataSource: '財務省 令和5年度予算（2023年度）',
-    notes: [
-      '予算総額556.3兆円は「予算書上の金額」です（重複含む）',
-      'RS対象範囲は「事業レビュー対象」のみです（151.1兆円、27.2%）',
-      '国債費・地方交付税等の制度的支出（405.2兆円）は含まれません',
-    ],
-  };
-
-  const summary = {
-    generalAccount: {
-      total: mofData.generalAccount.total,
-      rsTarget: mofData.generalAccount.expenditure.rsTarget,
-      rsExcluded:
-        mofData.generalAccount.expenditure.debtService +
-        mofData.generalAccount.expenditure.localAllocationTax +
-        mofData.generalAccount.expenditure.reserves,
-      rsTargetRate:
-        (mofData.generalAccount.expenditure.rsTarget /
-          mofData.generalAccount.total) *
-        100,
-    },
-    specialAccount: {
-      total: mofData.specialAccount.total,
-      rsTarget: mofData.specialAccount.expenditure.rsTarget.total,
-      rsExcluded: mofData.specialAccount.expenditure.rsExcluded.total,
-      rsTargetRate:
-        (mofData.specialAccount.expenditure.rsTarget.total /
-          mofData.specialAccount.total) *
-        100,
-    },
-    overall: {
-      total: mofData.generalAccount.total + mofData.specialAccount.total,
-      rsTarget:
-        mofData.generalAccount.expenditure.rsTarget +
-        mofData.specialAccount.expenditure.rsTarget.total,
-      rsExcluded:
-        mofData.generalAccount.expenditure.debtService +
-        mofData.generalAccount.expenditure.localAllocationTax +
-        mofData.generalAccount.expenditure.reserves +
-        mofData.specialAccount.expenditure.rsExcluded.total,
-      rsTargetRate: 0,
-    },
-  };
-  summary.overall.rsTargetRate =
-    (summary.overall.rsTarget / summary.overall.total) * 100;
-
-  return {
-    metadata,
-    sankey: { nodes, links },
-    summary,
-  };
+function node(
+  id: string,
+  name: string,
+  value: number,
+  details: MOFBudgetNodeDetails
+): Node {
+  return { id, name, value, type: details.nodeType, details } as Node;
 }
 
 /**
- * Column 1: 財源+特会ノード作成
- * 税収詳細（一般会計）+ 年金特会 + 労働保険特会 + その他特会
- * 並び順: 一般会計分を金額降順で上、その後に特会
+ * 内訳を「独立させるもの」と「その他にまとめるもの」に分ける。
+ * 税目や款は年度により増減するため、閾値で機械的に決める（固定表を持たない）。
  */
-function createSourceNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  const nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[] = [];
+function splitByRatio(
+  groups: MOFAmountGroup[],
+  total: number,
+  maxNodes = SOURCE_MAX_NODES
+): { major: MOFAmountGroup[]; othersAmount: number } {
+  const major: MOFAmountGroup[] = [];
+  let othersAmount = 0;
+  for (const g of [...groups].sort((a, b) => b.amount - a.amount)) {
+    if (g.amount <= 0) continue;
+    const big = total > 0 && g.amount / total >= SOURCE_MIN_RATIO;
+    if (big && major.length < maxNodes) major.push(g);
+    else othersAmount += g.amount;
+  }
+  return { major, othersAmount };
+}
 
-  // 一般会計の歳入項目（金額降順でソート）
-  const taxes = mofData.generalAccount.revenue.taxes;
-  const THRESHOLD = 1_000_000_000_000; // 1兆円
+/**
+ * 一般会計の財源。
+ *
+ * 租税だけは税目まで下ろす（現行画面が税目別を出しており後退させないため）。
+ * 特別会計からの受入は独立させる。逆方向の繰入が存在することを図で示すため。
+ */
+function generalSources(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLink[] } {
+  const nodes: Node[] = [];
+  const links: SankeyLink[] = [];
+  const revenue = data.generalAccount.revenue;
 
-  const generalAccountRevenues: (SankeyNode & { details?: MOFBudgetNodeDetails })[] = [
-    {
-      id: 'revenue-consumption-tax',
-      name: '消費税',
-      type: 'tax-detail' as MOFBudgetNodeType,
-      value: taxes.consumptionTax,
-      details: {
-        taxType: '消費税' as const,
-        description: '最大の税収源（34.2%）',
-        amount: taxes.consumptionTax,
-      },
-    },
-    {
-      id: 'revenue-income-tax',
-      name: '所得税',
-      type: 'tax-detail' as MOFBudgetNodeType,
-      value: taxes.incomeTax,
-      details: {
-        taxType: '所得税' as const,
-        description: '個人所得への課税（30.7%）',
-        amount: taxes.incomeTax,
-      },
-    },
-    {
-      id: 'revenue-corporate-tax',
-      name: '法人税',
-      type: 'tax-detail' as MOFBudgetNodeType,
-      value: taxes.corporateTax,
-      details: {
-        taxType: '法人税' as const,
-        description: '企業利益への課税（21.3%）',
-        amount: taxes.corporateTax,
-      },
-    },
-    {
-      id: 'revenue-public-bonds',
-      name: '公債金（国債）',
-      type: 'public-bonds' as MOFBudgetNodeType,
-      value: mofData.generalAccount.revenue.publicBonds,
-      details: {
-        description: '新規国債発行（将来世代の負担）',
-        amount: mofData.generalAccount.revenue.publicBonds,
-      },
-    },
-  ];
+  const push = (id: string, name: string, amount: number, details: MOFBudgetNodeDetails) => {
+    if (amount <= 0) return;
+    nodes.push(node(id, name, amount, details));
+    links.push({ source: id, target: ACCOUNT_IDS.general, value: amount });
+  };
 
-  // その他の税（1兆円以上を個別表示）
-  const otherTaxItems: Array<{ id: string; name: import('@/types/mof-budget-overview').TaxType; value: number }> = [
-    { id: 'inheritance-tax', name: '相続税', value: taxes.inheritanceTax },
-    { id: 'gasoline-tax', name: '揮発油税', value: taxes.gasolineTax },
-    { id: 'sake-tax', name: '酒税', value: taxes.sakeTax },
-    { id: 'customs-duty', name: '関税', value: taxes.customsDuty },
-    { id: 'tobacco-tax', name: 'たばこ税', value: taxes.tobaccoTax },
-    { id: 'petroleum-coal-tax', name: '石油石炭税', value: taxes.petroleumCoalTax },
-    { id: 'automobile-weight-tax', name: '自動車重量税', value: taxes.automobileWeightTax },
-    { id: 'power-development-tax', name: '電源開発促進税', value: taxes.powerDevelopmentTax },
-    { id: 'other-taxes', name: 'その他税', value: taxes.otherTaxes },
-  ];
-
-  let otherTaxesSum = 0;
-  otherTaxItems.forEach(item => {
-    if (item.value >= THRESHOLD) {
-      generalAccountRevenues.push({
-        id: `revenue-${item.id}`,
-        name: item.name,
-        type: 'tax-detail' as MOFBudgetNodeType,
-        value: item.value,
-        details: {
-          taxType: item.name,
-          description: `${item.name}（${(item.value / 1e12).toFixed(1)}兆円）`,
-          amount: item.value,
-        },
-      });
-    } else {
-      otherTaxesSum += item.value;
-    }
+  // 租税は税目別
+  const taxTotal = revenue.byCategory.find(c => c.name === '租税')?.amount ?? 0;
+  const { major: taxes, othersAmount: otherTaxes } = splitByRatio(revenue.taxes, taxTotal, 6);
+  for (const tax of taxes) {
+    push(`src-tax-${tax.name}`, tax.name, tax.amount, {
+      nodeType: 'source',
+      accountKind: 'general',
+      description: '一般会計の租税',
+    });
+  }
+  push('src-tax-other', 'その他の租税', otherTaxes, {
+    nodeType: 'source',
+    accountKind: 'general',
+    description: '一般会計の租税（少額の税目をまとめたもの）',
   });
 
-  // 1兆円未満の税をまとめて「その他税」として追加
-  if (otherTaxesSum > 0) {
-    generalAccountRevenues.push({
-      id: 'revenue-other-taxes',
-      name: 'その他税',
-      type: 'tax-detail' as MOFBudgetNodeType,
-      value: otherTaxesSum,
-      details: {
-        taxType: 'その他税' as const,
-        description: `その他税（${(otherTaxesSum / 1e12).toFixed(1)}兆円）`,
-        amount: otherTaxesSum,
-      },
+  // 租税以外の款。
+  //
+  // 特別会計からの受入は款「諸収入」等に含まれるので、**分割前に**差し引いておく。
+  // 分割後に major の中だけで引くと、その款が少額で「その他」に落ちたときに
+  // 受入が二重に数えられ、一般会計への流入が歳入合計を超える。
+  const fromSpecialTotal = data.transfers.specialToGeneral;
+  const fromSpecialByCategory = new Map<string, number>();
+  for (const item of revenue.fromSpecialAccounts) {
+    const category = revenue.byCategory.find(c => c.name === item.name);
+    // fromSpecialAccounts は目名なので、款は「諸収入」等に含まれる想定。
+    // 款名と一致しない限りは諸収入に寄せる（款別の内訳を持たないため）
+    const key = category ? category.name : MISC_CATEGORY;
+    fromSpecialByCategory.set(key, (fromSpecialByCategory.get(key) ?? 0) + item.amount);
+  }
+  const others = revenue.byCategory
+    .filter(c => c.name !== '租税')
+    .map(c => ({
+      name: c.name,
+      amount: Math.max(c.amount - (fromSpecialByCategory.get(c.name) ?? 0), 0),
+    }));
+  const { major, othersAmount } = splitByRatio(others, revenue.total);
+  for (const category of major) {
+    push(`src-general-${category.name}`, category.name, category.amount, {
+      nodeType: 'source',
+      accountKind: 'general',
+      description: `一般会計の歳入（款: ${category.name}）`,
+    });
+  }
+  push('src-general-other', 'その他の歳入', othersAmount, {
+    nodeType: 'source',
+    accountKind: 'general',
+    description: '一般会計の歳入（少額の款をまとめたもの）',
+  });
+
+  push('src-from-special', '特別会計からの受入', fromSpecialTotal, {
+    nodeType: 'source',
+    accountKind: 'general',
+    breakdown: data.transfers.specialToGeneralDetail,
+    description:
+      '特別会計の剰余金等が一般会計に入るもの。歳出予算には載らず、一般会計歳入の「◯◯特別会計受入金」にのみ現れる',
+  });
+
+  return { nodes, links };
+}
+
+/**
+ * 特別会計の財源。
+ *
+ * 款「他会計より受入」は一般会計からの繰入と重複するため財源には出さず、
+ * 一般会計 → 特別会計 のリンクで表現する。
+ */
+function specialSources(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLink[] } {
+  const nodes: Node[] = [];
+  const links: SankeyLink[] = [];
+  const revenue = data.specialAccounts.revenue;
+
+  // 自前財源は行単位で受入を除いたもの。年金特会は「一般会計より受入」が
+  // 款「保険収入」の下にあり、款で除くと受入が自前財源に混ざる
+  const own = revenue.own;
+  const { major, othersAmount } = splitByRatio(own.byCategory, own.total);
+
+  const push = (id: string, name: string, amount: number, description: string) => {
+    if (amount <= 0) return;
+    nodes.push(
+      node(id, name, amount, { nodeType: 'source', accountKind: 'special', description })
+    );
+    links.push({ source: id, target: ACCOUNT_IDS.special, value: amount });
+  };
+
+  for (const category of major) {
+    // 一般会計側の款と名前が重なる（公債金・租税など）ので会計を添えて区別する
+    push(
+      `src-special-${category.name}`,
+      `${category.name}（特会）`,
+      category.amount,
+      `特別会計の自前財源（款: ${category.name}）`
+    );
+  }
+  push(
+    'src-special-other',
+    'その他の特会歳入',
+    othersAmount,
+    '特別会計の自前財源（少額の款をまとめたもの）'
+  );
+
+  return { nodes, links };
+}
+
+/** 政府関係機関の財源。収入をまとめて1ノードにする（規模が小さく内訳の情報量が乏しいため） */
+function agencySources(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLink[] } {
+  const revenue = data.agencies.revenue.total;
+  const expenditure = data.agencies.expenditure.total;
+  if (expenditure <= 0) return { nodes: [], links: [] };
+
+  const nodes: Node[] = [];
+  const links: SankeyLink[] = [];
+  if (revenue > 0) {
+    nodes.push(
+      node('src-agency', '政府関係機関の収入', revenue, {
+        nodeType: 'source',
+        accountKind: 'agency',
+        breakdown: data.agencies.revenue.byCategory,
+        description: '国が全額出資する法人の収入。予算は国会の議決対象',
+      })
+    );
+    links.push({ source: 'src-agency', target: ACCOUNT_IDS.agency, value: revenue });
+  }
+
+  // 支出が収入を上回る分は借入等で賄われる。差額を隠すと図のフローが閉じないので明示する
+  const shortfall = expenditure - revenue;
+  if (shortfall > 0) {
+    nodes.push(
+      node('src-agency-shortfall', '政府関係機関の収入不足', shortfall, {
+        nodeType: 'source',
+        accountKind: 'agency',
+        description: '支出が収入を上回る分。借入金等で賄われる',
+      })
+    );
+    links.push({
+      source: 'src-agency-shortfall',
+      target: ACCOUNT_IDS.agency,
+      value: shortfall,
     });
   }
 
-  // 一般会計分を金額降順でソート、ただし「その他税」は最後に配置
-  generalAccountRevenues.sort((a, b) => {
-    // 「その他税」は常に最後
-    if (a.name === 'その他税') return 1;
-    if (b.name === 'その他税') return -1;
-    // それ以外は金額降順
-    return (b.value || 0) - (a.value || 0);
-  });
-  nodes.push(...generalAccountRevenues);
-
-  // 特別会計ノード
-  const accounts = mofData.specialAccount.expenditure.accounts;
-
-  // 特別会計（1兆円以上を個別表示）
-  // Note: accounts.othersは常に「その他特会」集約ノードに含める
-  const otherSpecialAccounts = [
-    { id: 'pension', name: '年金特会', data: accounts.pension },
-    { id: 'labor', name: '労働保険特会', data: accounts.labor },
-    { id: 'energy', name: 'エネ対策特会', data: accounts.energy },
-    { id: 'food', name: '食料安定特会', data: accounts.food },
-    { id: 'reconstruction', name: '復興特会', data: accounts.reconstruction },
-    { id: 'forex', name: '外為特会', data: accounts.forex },
-    { id: 'debt-retirement', name: '国債整理基金', data: accounts.debtRetirement },
-    { id: 'allocation-tax', name: '交付税配付', data: accounts.allocationTax },
-    { id: 'filp', name: '財政投融資', data: accounts.filp },
-  ];
-
-  // MOFデータの「その他特会」は常に集約ノードに含める
-  let otherSpecialTotal = accounts.others.total;
-  let otherSpecialRSTarget = accounts.others.rsTarget;
-  let otherSpecialRSExcluded = accounts.others.rsExcluded;
-
-  // 1兆円未満の特会を「その他特会」に集約
-  const individualSpecialAccounts: typeof nodes = [];
-  otherSpecialAccounts.forEach(acc => {
-    if (acc.data.total >= THRESHOLD) {
-      individualSpecialAccounts.push({
-        id: `source-${acc.id}`,
-        name: acc.name,
-        type: 'account-type' as MOFBudgetNodeType,
-        value: acc.data.total,
-        details: {
-          accountType: '特別会計',
-          rsTargetAmount: acc.data.rsTarget,
-          rsExcludedAmount: acc.data.rsExcluded,
-          rsTargetRate: acc.data.total > 0 ? (acc.data.rsTarget / acc.data.total) * 100 : 0,
-          description: `${acc.name}（${(acc.data.total / 1e12).toFixed(1)}兆円）`,
-          amount: acc.data.total,
-        },
-      });
-    } else {
-      otherSpecialTotal += acc.data.total;
-      otherSpecialRSTarget += acc.data.rsTarget;
-      otherSpecialRSExcluded += acc.data.rsExcluded;
-    }
-  });
-
-  // 特会ノードを金額降順でソート、ただし「その他特会」は最後に配置
-  individualSpecialAccounts.sort((a, b) => (b.value || 0) - (a.value || 0));
-  nodes.push(...individualSpecialAccounts);
-
-  // 「その他特会」を最後に追加
-  nodes.push({
-    id: 'source-other-special',
-    name: 'その他特会',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: otherSpecialTotal,
-    details: {
-      accountType: '特別会計',
-      rsTargetAmount: otherSpecialRSTarget,
-      rsExcludedAmount: otherSpecialRSExcluded,
-      rsTargetRate: otherSpecialTotal > 0 ? (otherSpecialRSTarget / otherSpecialTotal) * 100 : 0,
-      description: `その他特会（${(otherSpecialTotal / 1e12).toFixed(1)}兆円）`,
-      amount: otherSpecialTotal,
-    },
-  });
-
-  return nodes;
+  return { nodes, links };
 }
 
 /**
- * Column 2: 会計集約ノード作成
- * 一般会計 + 特別会計（集約）の2つのみ
+ * 会計から使途への流れ。
+ *
+ * 一般会計の繰入は特別会計ノードへ流し、二重計上の発生点を図で示す。
+ * 特別会計の中で完結する再繰入は、宛先が特別会計自身になり閉路になるため
+ * 独立したノード（控除対象）として置く。
  */
-function createAccountAggregateNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  const nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[] = [];
-
-  // 1. 一般会計
-  const generalRSTarget = mofData.generalAccount.expenditure.rsTarget;
-  const generalRSExcluded =
-    mofData.generalAccount.expenditure.debtService +
-    mofData.generalAccount.expenditure.localAllocationTax +
-    mofData.generalAccount.expenditure.reserves;
-
-  nodes.push({
-    id: 'aggregate-general',
-    name: '一般会計',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: mofData.generalAccount.total,
-    details: {
-      accountType: '一般会計',
-      rsTargetAmount: generalRSTarget,
-      rsExcludedAmount: generalRSExcluded,
-      rsTargetRate: (generalRSTarget / mofData.generalAccount.total) * 100,
-      description: '国の基本的な予算（114.4兆円）',
-      amount: mofData.generalAccount.total,
-    },
-  });
-
-  // 2. 特別会計（集約）
-  nodes.push({
-    id: 'aggregate-special',
-    name: '特別会計',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: mofData.specialAccount.total,
-    details: {
-      accountType: '特別会計',
-      rsTargetAmount: mofData.specialAccount.expenditure.rsTarget.total,
-      rsExcludedAmount: mofData.specialAccount.expenditure.rsExcluded.total,
-      rsTargetRate:
-        (mofData.specialAccount.expenditure.rsTarget.total / mofData.specialAccount.total) * 100,
-      description: `特別会計統合（${(mofData.specialAccount.total / 1e12).toFixed(1)}兆円）`,
-      amount: mofData.specialAccount.total,
-    },
-  });
-
-  return nodes;
-}
-
-/**
- * Column 3: 会計詳細ノード作成
- * 一般会計（パススルー） + 主要特別会計（年金、労働保険）+ その他統合
- */
-function createAccountDetailNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  const nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[] = [];
-
-  // 1. 一般会計
-  const generalRSTarget = mofData.generalAccount.expenditure.rsTarget;
-  const generalRSExcluded =
-    mofData.generalAccount.expenditure.debtService +
-    mofData.generalAccount.expenditure.localAllocationTax +
-    mofData.generalAccount.expenditure.reserves;
-
-  nodes.push({
-    id: 'account-general',
-    name: '一般会計',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: mofData.generalAccount.total,
-    details: {
-      accountType: '一般会計',
-      rsTargetAmount: generalRSTarget,
-      rsExcludedAmount: generalRSExcluded,
-      rsTargetRate: (generalRSTarget / mofData.generalAccount.total) * 100,
-      description: '国の基本的な予算（114.4兆円）',
-      amount: mofData.generalAccount.total,
-    },
-  });
-
-  // 2. 年金特別会計（独立表示）
-  const accounts = mofData.specialAccount.expenditure.accounts;
-  nodes.push({
-    id: 'account-pension',
-    name: '年金特会',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: accounts.pension.total,
-    details: {
-      accountType: '特別会計',
-      rsTargetAmount: accounts.pension.rsTarget,
-      rsExcludedAmount: accounts.pension.rsExcluded,
-      rsTargetRate: (accounts.pension.rsTarget / accounts.pension.total) * 100,
-      description: `年金特会（${(accounts.pension.total / 1e12).toFixed(1)}兆円）`,
-      amount: accounts.pension.total,
-    },
-  });
-
-  // 3. 労働保険特別会計（独立表示）
-  nodes.push({
-    id: 'account-labor',
-    name: '労働保険特会',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: accounts.labor.total,
-    details: {
-      accountType: '特別会計',
-      rsTargetAmount: accounts.labor.rsTarget,
-      rsExcludedAmount: accounts.labor.rsExcluded,
-      rsTargetRate: (accounts.labor.rsTarget / accounts.labor.total) * 100,
-      description: `労働保険特会（${(accounts.labor.total / 1e12).toFixed(1)}兆円）`,
-      amount: accounts.labor.total,
-    },
-  });
-
-  // 4. その他特別会計（統合）
-  const otherTotal =
-    accounts.energy.total +
-    accounts.food.total +
-    accounts.reconstruction.total +
-    accounts.forex.total +
-    accounts.debtRetirement.total +
-    accounts.allocationTax.total +
-    accounts.filp.total +
-    accounts.others.total;
-
-  const otherRSTarget =
-    accounts.energy.rsTarget +
-    accounts.food.rsTarget +
-    accounts.reconstruction.rsTarget +
-    accounts.forex.rsTarget +
-    accounts.debtRetirement.rsTarget +
-    accounts.allocationTax.rsTarget +
-    accounts.filp.rsTarget +
-    accounts.others.rsTarget;
-
-  const otherRSExcluded =
-    accounts.energy.rsExcluded +
-    accounts.food.rsExcluded +
-    accounts.reconstruction.rsExcluded +
-    accounts.forex.rsExcluded +
-    accounts.debtRetirement.rsExcluded +
-    accounts.allocationTax.rsExcluded +
-    accounts.filp.rsExcluded +
-    accounts.others.rsExcluded;
-
-  nodes.push({
-    id: 'account-other-special',
-    name: 'その他特会',
-    type: 'account-type' as MOFBudgetNodeType,
-    value: otherTotal,
-    details: {
-      accountType: '特別会計',
-      rsTargetAmount: otherRSTarget,
-      rsExcludedAmount: otherRSExcluded,
-      rsTargetRate: otherTotal > 0 ? (otherRSTarget / otherTotal) * 100 : 0,
-      description: `その他特会統合（${(otherTotal / 1e12).toFixed(1)}兆円）`,
-      amount: otherTotal,
-    },
-  });
-
-  return nodes;
-}
-
-/**
- * Column 3: RS対象区分ノード作成
- * 並び順: RS対象を上に配置（一般会計RS対象、特別会計RS対象、一般会計RS対象外、特別会計RS対象外）
- */
-function createRSCategoryNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  return [
-    // RS対象（上側）
-    {
-      id: 'rs-category-general-target',
-      name: '一般会計RS対象',
-      type: 'rs-category' as MOFBudgetNodeType,
-      value: mofData.generalAccount.expenditure.rsTarget,
-      details: {
-        category: 'RS対象',
-        parentAccount: '一般会計',
-        description: '事業として計上された予算（63.4%）',
-        amount: mofData.generalAccount.expenditure.rsTarget,
-      },
-    },
-    {
-      id: 'rs-category-special-target',
-      name: '特別会計RS対象',
-      type: 'rs-category' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.rsTarget.total,
-      details: {
-        category: 'RS対象',
-        parentAccount: '特別会計',
-        description: '年金・労働保険等の事業（17.8%）',
-        amount: mofData.specialAccount.expenditure.rsTarget.total,
-      },
-    },
-    // RS対象外（下側）
-    {
-      id: 'rs-category-general-excluded',
-      name: '一般会計RS対象外',
-      type: 'rs-category' as MOFBudgetNodeType,
-      value:
-        mofData.generalAccount.expenditure.debtService +
-        mofData.generalAccount.expenditure.localAllocationTax +
-        mofData.generalAccount.expenditure.reserves,
-      details: {
-        category: 'RS対象外',
-        parentAccount: '一般会計',
-        description: '国債費・地方交付税等（36.6%）',
-        amount:
-          mofData.generalAccount.expenditure.debtService +
-          mofData.generalAccount.expenditure.localAllocationTax +
-          mofData.generalAccount.expenditure.reserves,
-      },
-    },
-    {
-      id: 'rs-category-special-excluded',
-      name: '特別会計RS対象外',
-      type: 'rs-category' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.rsExcluded.total,
-      details: {
-        category: 'RS対象外',
-        parentAccount: '特別会計',
-        description: '国債整理・地方交付税配付金等（82.2%）',
-        amount: mofData.specialAccount.expenditure.rsExcluded.total,
-      },
-    },
-  ];
-}
-
-/**
- * Column 4: 詳細内訳ノード作成
- * 並び順: RS対象を上に配置（一般会計事業、特別会計事業たち、一般会計RS対象外たち、特別会計RS対象外たち）
- */
-function createBudgetDetailNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  return [
-    // RS対象（上側）- 一般会計
-    {
-      id: 'detail-general-projects',
-      name: '一般会計事業',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.generalAccount.expenditure.rsTarget,
-      details: {
-        detailType: '一般会計事業',
-        isRSTarget: true,
-        description: '各府省庁の事業予算',
-        amount: mofData.generalAccount.expenditure.rsTarget,
-      },
-    },
-    // RS対象（上側）- 特別会計
-    {
-      id: 'detail-pension-projects',
-      name: '年金事業',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.accounts.pension.rsTarget,
-      details: {
-        detailType: '年金事業',
-        isRSTarget: true,
-        description: '年金制度の運営',
-        amount: mofData.specialAccount.expenditure.accounts.pension.rsTarget,
-      },
-    },
-    {
-      id: 'detail-labor-projects',
-      name: '労働保険',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.accounts.labor.rsTarget,
-      details: {
-        detailType: '労働保険',
-        isRSTarget: true,
-        description: '雇用保険・労災保険',
-        amount: mofData.specialAccount.expenditure.accounts.labor.rsTarget,
-      },
-    },
-    {
-      id: 'detail-other-projects',
-      name: 'その他事業',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value:
-        mofData.specialAccount.expenditure.accounts.energy.rsTarget +
-        mofData.specialAccount.expenditure.accounts.food.rsTarget +
-        mofData.specialAccount.expenditure.accounts.reconstruction.rsTarget +
-        mofData.specialAccount.expenditure.accounts.others.rsTarget,
-      details: {
-        detailType: 'その他事業',
-        isRSTarget: true,
-        description: 'エネルギー対策、食料安定等',
-        amount:
-          mofData.specialAccount.expenditure.accounts.energy.rsTarget +
-          mofData.specialAccount.expenditure.accounts.food.rsTarget +
-          mofData.specialAccount.expenditure.accounts.reconstruction.rsTarget +
-          mofData.specialAccount.expenditure.accounts.others.rsTarget,
-      },
-    },
-    // RS対象外（下側）- 一般会計
-    {
-      id: 'detail-debt-service',
-      name: '国債費',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.generalAccount.expenditure.debtService,
-      details: {
-        detailType: '国債費',
-        isRSTarget: false,
-        description: '国債の利払い・償還',
-        amount: mofData.generalAccount.expenditure.debtService,
-      },
-    },
-    {
-      id: 'detail-local-allocation-tax',
-      name: '地方交付税',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.generalAccount.expenditure.localAllocationTax,
-      details: {
-        detailType: '地方交付税',
-        isRSTarget: false,
-        description: '地方自治体への財源移転',
-        amount: mofData.generalAccount.expenditure.localAllocationTax,
-      },
-    },
-    // RS対象外（下側）- 特別会計
-    {
-      id: 'detail-debt-retirement',
-      name: '国債整理基金',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.accounts.debtRetirement.rsExcluded,
-      details: {
-        detailType: '国債整理基金',
-        isRSTarget: false,
-        description: '借換債が大部分',
-        amount: mofData.specialAccount.expenditure.accounts.debtRetirement.rsExcluded,
-      },
-    },
-    {
-      id: 'detail-local-allocation-distribution',
-      name: '地方交付税配付金',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value:
-        mofData.specialAccount.expenditure.accounts.allocationTax.rsExcluded,
-      details: {
-        detailType: '地方交付税配付金',
-        isRSTarget: false,
-        description: '特別会計からの配付',
-        amount:
-          mofData.specialAccount.expenditure.accounts.allocationTax.rsExcluded,
-      },
-    },
-    {
-      id: 'detail-fiscal-investment-loan',
-      name: '財政投融資',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.accounts.filp.rsExcluded,
-      details: {
-        detailType: '財政投融資',
-        isRSTarget: false,
-        description: '融資・投資活動',
-        amount:
-          mofData.specialAccount.expenditure.accounts.filp.rsExcluded,
-      },
-    },
-    {
-      id: 'detail-pension-benefits',
-      name: '年金給付等',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value: mofData.specialAccount.expenditure.accounts.pension.rsExcluded,
-      details: {
-        detailType: '年金給付等',
-        isRSTarget: false,
-        description: '受給者への給付',
-        amount: mofData.specialAccount.expenditure.accounts.pension.rsExcluded,
-      },
-    },
-    {
-      id: 'detail-other-excluded',
-      name: 'その他対象外',
-      type: 'budget-detail' as MOFBudgetNodeType,
-      value:
-        mofData.specialAccount.expenditure.accounts.labor.rsExcluded +
-        mofData.specialAccount.expenditure.accounts.energy.rsExcluded +
-        mofData.specialAccount.expenditure.accounts.food.rsExcluded +
-        mofData.specialAccount.expenditure.accounts.reconstruction.rsExcluded +
-        mofData.specialAccount.expenditure.accounts.forex.rsExcluded +
-        mofData.specialAccount.expenditure.accounts.others.rsExcluded +
-        mofData.generalAccount.expenditure.reserves,
-      details: {
-        detailType: 'その他',
-        isRSTarget: false,
-        description: '予備費、外為特会等',
-        amount:
-          mofData.specialAccount.expenditure.accounts.labor.rsExcluded +
-          mofData.specialAccount.expenditure.accounts.energy.rsExcluded +
-          mofData.specialAccount.expenditure.accounts.food.rsExcluded +
-          mofData.specialAccount.expenditure.accounts.reconstruction.rsExcluded +
-          mofData.specialAccount.expenditure.accounts.forex.rsExcluded +
-          mofData.specialAccount.expenditure.accounts.others.rsExcluded +
-          mofData.generalAccount.expenditure.reserves,
-      },
-    },
-  ];
-}
-
-/**
- * Column 5: RS集約ノード作成
- */
-function createRSSummaryNodes(
-  mofData: MOFBudgetData
-): (SankeyNode & { details?: MOFBudgetNodeDetails })[] {
-  const rsTargetTotal =
-    mofData.generalAccount.expenditure.rsTarget +
-    mofData.specialAccount.expenditure.rsTarget.total;
-
-  const rsExcludedTotal =
-    mofData.generalAccount.expenditure.debtService +
-    mofData.generalAccount.expenditure.localAllocationTax +
-    mofData.generalAccount.expenditure.reserves +
-    mofData.specialAccount.expenditure.rsExcluded.total;
-
-  return [
-    {
-      id: 'summary-rs-target',
-      name: 'RSシステム対象',
-      type: 'rs-summary' as MOFBudgetNodeType,
-      value: rsTargetTotal,
-      details: {
-        description: '事業レビュー対象（27.2%）',
-        amount: rsTargetTotal,
-      },
-    },
-    {
-      id: 'summary-rs-excluded',
-      name: 'RS対象外',
-      type: 'rs-summary' as MOFBudgetNodeType,
-      value: rsExcludedTotal,
-      details: {
-        description: '制度的支出・給付型支出（72.8%）',
-        amount: rsExcludedTotal,
-      },
-    },
-  ];
-}
-
-/**
- * Column 1 → Column 2 のリンク作成
- * 税収・公債金 → 一般会計、年金特会等 → 特別会計（集約）
- */
-function createSourceToAggregateLinks(
-  sourceNodes: SankeyNode[],
-  accountAggregateNodes: SankeyNode[],
-  _mofData: MOFBudgetData
-): SankeyLink[] {
-  const links: SankeyLink[] = [];
-  const generalAggregate = accountAggregateNodes.find((n) => n.id === 'aggregate-general')!;
-  const specialAggregate = accountAggregateNodes.find((n) => n.id === 'aggregate-special')!;
-
-  sourceNodes.forEach(node => {
-    // 税収・公債金 → 一般会計
-    if (node.type === 'tax-detail' || node.type === 'public-bonds') {
-      links.push({ source: node.id, target: generalAggregate.id, value: node.value || 0 });
-    }
-    // 特会 → 特別会計（集約）
-    else if (node.type === 'account-type') {
-      links.push({ source: node.id, target: specialAggregate.id, value: node.value || 0 });
-    }
-  });
-
-  return links;
-}
-
-/**
- * Column 2 → Column 3 のリンク作成
- * 会計集約 → RS対象区分
- */
-function createAggregateToRSCategoryLinks(
-  accountAggregateNodes: SankeyNode[],
-  rsCategoryNodes: SankeyNode[],
-  _mofData: MOFBudgetData
-): SankeyLink[] {
+function accountFlows(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLink[] } {
+  const nodes: Node[] = [];
   const links: SankeyLink[] = [];
 
-  const generalAggregate = accountAggregateNodes.find((n) => n.id === 'aggregate-general')!;
-  const specialAggregate = accountAggregateNodes.find((n) => n.id === 'aggregate-special')!;
+  const g = data.generalAccount;
+  const s = data.specialAccounts;
+  const a = data.agencies;
 
-  const generalTarget = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-general-target'
-  )!;
-  const generalExcluded = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-general-excluded'
-  )!;
-  const specialTarget = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-special-target'
-  )!;
-  const specialExcluded = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-special-excluded'
-  )!;
-
-  // 一般会計（集約）→ RS対象/対象外
-  links.push(
-    {
-      source: generalAggregate.id,
-      target: generalTarget.id,
-      value: generalTarget.value || 0,
-    },
-    {
-      source: generalAggregate.id,
-      target: generalExcluded.id,
-      value: generalExcluded.value || 0,
-    }
+  nodes.push(
+    node(ACCOUNT_IDS.general, '一般会計', g.revenue.total, {
+      nodeType: 'account',
+      accountKind: 'general',
+      breakdown: g.expenditure.byPurpose,
+      description: '基本的な行政サービスの会計。予算単一の原則における原則側',
+    }),
+    node(ACCOUNT_IDS.special, '特別会計', s.revenue.total, {
+      nodeType: 'account',
+      accountKind: 'special',
+      breakdown: s.revenue.byCategory,
+      description:
+        '特定の歳入を特定の歳出に充てるため区分経理する会計。財政法13条2項に基づく例外',
+    })
   );
+  if (a.expenditure.total > 0) {
+    nodes.push(
+      node(ACCOUNT_IDS.agency, '政府関係機関', a.expenditure.total, {
+        nodeType: 'account',
+        accountKind: 'agency',
+        breakdown: a.expenditure.byAgency,
+        description: '国が全額出資する法人。予算が国会の議決を要する',
+      })
+    );
+  }
 
-  // 特別会計（集約）→ RS対象/対象外
-  links.push(
-    {
-      source: specialAggregate.id,
-      target: specialTarget.id,
-      value: specialTarget.value || 0,
-    },
-    {
-      source: specialAggregate.id,
-      target: specialExcluded.id,
-      value: specialExcluded.value || 0,
-    }
+  // 一般会計 → 特別会計（繰入）。これが二重計上の主因
+  if (g.expenditure.transferOut > 0) {
+    links.push({
+      source: ACCOUNT_IDS.general,
+      target: ACCOUNT_IDS.special,
+      value: g.expenditure.transferOut,
+    });
+  }
+
+  // 特別会計の受入のうち、一般会計からの繰入で説明できない分。
+  // 出し手も特別会計なので閉路になり、リンクにできない。再掲の財源ノードとして置く。
+  const fromOtherSpecial =
+    data.transfers.receivedBySpecial - g.expenditure.transferOut;
+  if (fromOtherSpecial > 0) {
+    nodes.push(
+      node('src-special-reentry', '特別会計間の繰入（再掲）', fromOtherSpecial, {
+        nodeType: 'transfer',
+        accountKind: 'special',
+        isDeduction: true,
+        description:
+          '特別会計が他の特別会計から受け入れた分。出し手も特別会計のため図では再掲として扱う',
+      })
+    );
+    links.push({
+      source: 'src-special-reentry',
+      target: ACCOUNT_IDS.special,
+      value: fromOtherSpecial,
+    });
+  }
+
+  // 勘定間の受入も同じ理由で再掲にする
+  if (data.transfers.receivedBetweenSubAccounts > 0) {
+    nodes.push(
+      node(
+        'src-subaccount-reentry',
+        '勘定間の繰入（再掲）',
+        data.transfers.receivedBetweenSubAccounts,
+        {
+          nodeType: 'transfer',
+          accountKind: 'special',
+          isDeduction: true,
+          description: '同じ特別会計の中で勘定から勘定へ回る分',
+        }
+      )
+    );
+    links.push({
+      source: 'src-subaccount-reentry',
+      target: ACCOUNT_IDS.special,
+      value: data.transfers.receivedBetweenSubAccounts,
+    });
+  }
+
+  // 一般会計の実支出
+  nodes.push(
+    node('net-general', '一般会計の実支出', g.expenditure.net, {
+      nodeType: 'net-expenditure',
+      accountKind: 'general',
+      breakdown: g.expenditure.byPurpose.filter(p => p.name !== '他会計へ繰入'),
+      description: '他会計への繰入を除いた、一般会計が実際に使う額',
+    })
   );
-
-  return links;
-}
-
-/**
- * RS対象区分 → 詳細内訳 のリンク作成
- */
-function createRSCategoryToDetailLinks(
-  rsCategoryNodes: SankeyNode[],
-  detailNodes: SankeyNode[]
-): SankeyLink[] {
-  const links: SankeyLink[] = [];
-
-  const generalTarget = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-general-target'
-  )!;
-  const generalExcluded = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-general-excluded'
-  )!;
-  const specialTarget = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-special-target'
-  )!;
-  const specialExcluded = rsCategoryNodes.find(
-    (n) => n.id === 'rs-category-special-excluded'
-  )!;
-
-  // 一般会計RS対象 → 一般会計事業
-  const generalProjectsNode = detailNodes.find(
-    (n) => n.id === 'detail-general-projects'
-  )!;
   links.push({
-    source: generalTarget.id,
-    target: generalProjectsNode.id,
-    value: generalProjectsNode.value || 0,
+    source: ACCOUNT_IDS.general,
+    target: 'net-general',
+    value: g.expenditure.net,
   });
 
-  // 一般会計RS対象外 → 国債費、地方交付税
-  const debtServiceNode = detailNodes.find(
-    (n) => n.id === 'detail-debt-service'
-  )!;
-  const localAllocationTaxNode = detailNodes.find(
-    (n) => n.id === 'detail-local-allocation-tax'
-  )!;
-  links.push(
-    {
-      source: generalExcluded.id,
-      target: debtServiceNode.id,
-      value: debtServiceNode.value || 0,
-    },
-    {
-      source: generalExcluded.id,
-      target: localAllocationTaxNode.id,
-      value: localAllocationTaxNode.value || 0,
-    }
+  // 一般会計の歳入超過（歳入と歳出の差。通常はほぼ 0）
+  const generalSurplus = g.revenue.total - g.expenditure.total;
+  if (generalSurplus > 0) {
+    nodes.push(
+      node('surplus-general', '一般会計の歳入超過', generalSurplus, {
+        nodeType: 'surplus',
+        accountKind: 'general',
+        description: '歳入が歳出を上回る差額',
+      })
+    );
+    links.push({
+      source: ACCOUNT_IDS.general,
+      target: 'surplus-general',
+      value: generalSurplus,
+    });
+  }
+
+  // 特別会計の中で完結する再繰入（国債整理基金への繰入など）
+  if (s.expenditure.transferOut > 0) {
+    nodes.push(
+      node('transfer-special', '特別会計間の再繰入', s.expenditure.transferOut, {
+        nodeType: 'transfer',
+        accountKind: 'special',
+        isDeduction: true,
+        breakdown: s.expenditure.transfersByDestination,
+        description:
+          '特別会計から他の会計・勘定へ回す分。国債整理基金への繰入が大半を占める。純計では控除する',
+      })
+    );
+    links.push({
+      source: ACCOUNT_IDS.special,
+      target: 'transfer-special',
+      value: s.expenditure.transferOut,
+    });
+  }
+
+  // 特別会計の実支出
+  nodes.push(
+    node('net-special', '特別会計の実支出', s.expenditure.net, {
+      nodeType: 'net-expenditure',
+      accountKind: 'special',
+      breakdown: s.expenditure.byPurpose.filter(p => p.name !== '他会計へ繰入'),
+      description: '他会計への繰入を除いた、特別会計が実際に使う額',
+    })
   );
+  links.push({
+    source: ACCOUNT_IDS.special,
+    target: 'net-special',
+    value: s.expenditure.net,
+  });
 
-  // 特別会計RS対象 → 年金事業、労働保険、その他事業
-  const pensionProjectsNode = detailNodes.find(
-    (n) => n.id === 'detail-pension-projects'
-  )!;
-  const laborProjectsNode = detailNodes.find(
-    (n) => n.id === 'detail-labor-projects'
-  )!;
-  const otherProjectsNode = detailNodes.find(
-    (n) => n.id === 'detail-other-projects'
-  )!;
-  links.push(
-    {
-      source: specialTarget.id,
-      target: pensionProjectsNode.id,
-      value: pensionProjectsNode.value || 0,
-    },
-    {
-      source: specialTarget.id,
-      target: laborProjectsNode.id,
-      value: laborProjectsNode.value || 0,
-    },
-    {
-      source: specialTarget.id,
-      target: otherProjectsNode.id,
-      value: otherProjectsNode.value || 0,
-    }
-  );
+  const specialSurplus = s.revenue.total - s.expenditure.total;
+  if (specialSurplus > 0) {
+    nodes.push(
+      node('surplus-special', '特別会計の歳入超過', specialSurplus, {
+        nodeType: 'surplus',
+        accountKind: 'special',
+        description: '歳入が歳出を上回る差額。積立等に回る',
+      })
+    );
+    links.push({
+      source: ACCOUNT_IDS.special,
+      target: 'surplus-special',
+      value: specialSurplus,
+    });
+  }
 
-  // 特別会計RS対象外 → 各種詳細ノード
-  // Note: Linking from Special Excluded Category node to Detailed nodes
-  // Logic: specialExcluded -> Debt, Allocation, FILP, PensionBenefits, Others.
+  if (a.expenditure.total > 0) {
+    nodes.push(
+      node('net-agency', '政府関係機関の支出', a.expenditure.total, {
+        nodeType: 'net-expenditure',
+        accountKind: 'agency',
+        breakdown: a.expenditure.byAgency,
+        description: '政府関係機関の支出',
+      })
+    );
+    links.push({
+      source: ACCOUNT_IDS.agency,
+      target: 'net-agency',
+      value: a.expenditure.total,
+    });
+  }
 
-  const debtRetirementNode = detailNodes.find(
-    (n) => n.id === 'detail-debt-retirement'
-  )!;
-  const localAllocationDistributionNode = detailNodes.find(
-    (n) => n.id === 'detail-local-allocation-distribution'
-  )!;
-  const fiscalInvestmentLoanNode = detailNodes.find(
-    (n) => n.id === 'detail-fiscal-investment-loan'
-  )!;
-  const pensionBenefitsNode = detailNodes.find(
-    (n) => n.id === 'detail-pension-benefits'
-  )!;
-  const otherExcludedNode = detailNodes.find(
-    (n) => n.id === 'detail-other-excluded'
-  )!;
-
-  links.push(
-    {
-      source: specialExcluded.id,
-      target: debtRetirementNode.id,
-      value: debtRetirementNode.value || 0,
-    },
-    {
-      source: specialExcluded.id,
-      target: localAllocationDistributionNode.id,
-      value: localAllocationDistributionNode.value || 0,
-    },
-    {
-      source: specialExcluded.id,
-      target: fiscalInvestmentLoanNode.id,
-      value: fiscalInvestmentLoanNode.value || 0,
-    },
-    {
-      source: specialExcluded.id,
-      target: pensionBenefitsNode.id,
-      value: pensionBenefitsNode.value || 0,
-    },
-    {
-      source: specialExcluded.id,
-      target: otherExcludedNode.id,
-      value: otherExcludedNode.value || 0,
-    }
-  );
-
-  return links;
+  return { nodes, links };
 }
 
-/**
- * 詳細内訳 → RS集約 のリンク作成
- */
-function createDetailToSummaryLinks(
-  detailNodes: SankeyNode[],
-  summaryNodes: SankeyNode[]
-): SankeyLink[] {
-  const links: SankeyLink[] = [];
+/** 集計 JSON からサンキーデータを組み立てる */
+export function generateMOFBudgetOverviewSankey(
+  data: MOFBudgetOverview
+): MOFBudgetOverviewData {
+  const parts = [
+    generalSources(data),
+    specialSources(data),
+    agencySources(data),
+    accountFlows(data),
+  ];
+  const nodes = parts.flatMap(p => p.nodes);
+  const links = parts.flatMap(p => p.links).filter(l => l.value > 0);
 
-  const rsTargetSummary = summaryNodes.find(
-    (n) => n.id === 'summary-rs-target'
-  )!;
-  const rsExcludedSummary = summaryNodes.find(
-    (n) => n.id === 'summary-rs-excluded'
-  )!;
-
-  detailNodes.forEach((detailNode) => {
-    const details = (detailNode as SankeyNode & { details?: MOFBudgetNodeDetails }).details;
-    if (details) {
-      const target = details.isRSTarget ? rsTargetSummary : rsExcludedSummary;
-      links.push({
-        source: detailNode.id,
-        target: target.id,
-        value: detailNode.value || 0,
-      });
-    }
-  });
-
-  return links;
+  return {
+    metadata: {
+      ...data.metadata,
+      grossTotal: data.totals.gross,
+      netTotal: data.totals.net,
+    },
+    sankey: { nodes, links },
+    summary: {
+      generalAccount: {
+        revenue: data.generalAccount.revenue.total,
+        expenditure: data.generalAccount.expenditure.total,
+        transferOut: data.generalAccount.expenditure.transferOut,
+        net: data.generalAccount.expenditure.net,
+      },
+      specialAccounts: {
+        revenue: data.specialAccounts.revenue.total,
+        expenditure: data.specialAccounts.expenditure.total,
+        transferOut: data.specialAccounts.expenditure.transferOut,
+        net: data.specialAccounts.expenditure.net,
+      },
+      agencies: { expenditure: data.agencies.expenditure.total },
+      transfers: data.transfers,
+      totals: data.totals,
+      accounts: data.specialAccounts.accounts,
+    },
+  };
 }

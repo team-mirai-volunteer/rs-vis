@@ -1,248 +1,133 @@
 /**
- * MOF特別会計財源内訳サンキー図生成器
+ * 特別会計の財源内訳ビューのサンキー生成。
+ *
+ * 「その特別会計は自前の財源で回っているのか、一般会計から回ってきた金を
+ * 通しているだけなのか」を会計ごとに見えるようにする。
+ * 集計 JSON からノードとリンクを組む純粋関数（HTTP・ファイル読み込みはしない）。
  */
 
-import type { MOFBudgetData } from '@/types/mof-budget-overview';
-import type { TransferFromGeneralAccount } from '@/types/mof-transfer';
+import type {
+  MOFAccountFunding,
+  MOFTransferDetailData,
+  MOFTransferFlow,
+} from '@/types/mof-transfer';
+import type { MOFBudgetNodeDetails, MOFBudgetOverview } from '@/types/mof-budget-overview';
 import type { SankeyNode, SankeyLink } from '@/types/sankey';
 
-/**
- * 特別会計443.43兆円の財源内訳を可視化するサンキー図データを生成
- *
- * 構成:
- * - Column 1 (左): 財源詳細（一般会計繰入の内訳、社会保険料の内訳等）
- * - Column 2 (中): 財源カテゴリ（一般会計繰入、社会保険料、公債金等）
- * - Column 3 (右): 特別会計総額 443.43兆円
- */
-export function generateTransferDetailSankey(mofData: MOFBudgetData): {
-  nodes: SankeyNode[];
-  links: SankeyLink[];
-} {
-  const nodes: SankeyNode[] = [];
+type Node = SankeyNode & { details?: MOFBudgetNodeDetails };
+
+/** 財源の種別 */
+const SOURCE_GENERAL = 'fund-from-general';
+const SOURCE_OTHER = 'fund-from-other';
+const SOURCE_OWN = 'fund-own';
+
+/** 集計 JSON から特別会計の財源内訳を組み立てる */
+export function generateTransferDetailSankey(
+  data: MOFBudgetOverview
+): MOFTransferDetailData {
+  const nodes: Node[] = [];
   const links: SankeyLink[] = [];
 
-  const transfer = mofData.specialAccount.revenue.transferFromGeneral;
-  const insurancePremiums = mofData.specialAccount.revenue.insurancePremiums;
+  const reconciliation = new Map(
+    data.transfers.reconciliation.map(r => [r.account, r])
+  );
 
-  // 型チェック: 詳細データが利用可能か確認
-  const hasDetailedTransfer = typeof transfer !== 'number';
-  const transferDetail = hasDetailedTransfer ? (transfer as TransferFromGeneralAccount) : null;
+  const funding: MOFAccountFunding[] = data.specialAccounts.accounts
+    .filter(a => a.revenue > 0)
+    .map(a => ({
+      account: a.name,
+      revenue: a.revenue,
+      transferIn: a.transferIn,
+      ownRevenue: a.revenue - a.transferIn,
+      ownRevenueRate: a.ownRevenueRate,
+      byCategory: [],
+    }))
+    .sort((x, y) => y.revenue - x.revenue);
 
-  // Column 1 (左): 財源詳細
-  if (transferDetail) {
-    // 一般会計繰入の詳細内訳
+  let fromGeneralTotal = 0;
+  let fromOtherTotal = 0;
+  let ownTotal = 0;
+
+  for (const account of funding) {
+    const recon = reconciliation.get(account.account);
+    const fromGeneral = Math.min(recon?.fromGeneral ?? 0, account.transferIn);
+    // 受入のうち一般会計から説明できない分は他の特別会計から来たものとして扱う
+    const fromOther = Math.max(account.transferIn - fromGeneral, 0);
+
+    const id = `sa-${account.account}`;
     nodes.push({
-      id: 'transfer-pension',
-      name: '年金特会へ繰入',
-      value: transferDetail.breakdown.pension.total,
-      type: 'transfer-detail',
-    });
+      id,
+      name: account.account,
+      value: account.revenue,
+      type: 'account',
+      details: {
+        nodeType: 'account',
+        accountKind: 'special',
+        description: `自前財源比率 ${(account.ownRevenueRate * 100).toFixed(1)}%`,
+      },
+    } as Node);
 
-    nodes.push({
-      id: 'transfer-local',
-      name: '交付税配付金へ繰入',
-      value: transferDetail.breakdown.localAllocationTax.total,
-      type: 'transfer-detail',
-    });
-
-    nodes.push({
-      id: 'transfer-debt',
-      name: '国債整理基金へ繰入',
-      value: transferDetail.breakdown.debtRetirement.total,
-      type: 'transfer-detail',
-    });
-
-    nodes.push({
-      id: 'transfer-energy',
-      name: 'エネルギー対策へ繰入',
-      value: transferDetail.breakdown.energy.total,
-      type: 'transfer-detail',
-    });
-
-    const otherTransferTotal =
-      transferDetail.breakdown.foodSupply +
-      transferDetail.breakdown.laborInsurance +
-      transferDetail.breakdown.automotiveSafety +
-      transferDetail.breakdown.reconstruction +
-      transferDetail.breakdown.forestryDebtManagement +
-      transferDetail.breakdown.patent;
-
-    if (otherTransferTotal > 0) {
-      nodes.push({
-        id: 'transfer-other',
-        name: 'その他特会へ繰入',
-        value: otherTransferTotal,
-        type: 'transfer-detail',
-      });
+    if (fromGeneral > 0) {
+      links.push({ source: SOURCE_GENERAL, target: id, value: fromGeneral });
+      fromGeneralTotal += fromGeneral;
+    }
+    if (fromOther > 0) {
+      links.push({ source: SOURCE_OTHER, target: id, value: fromOther });
+      fromOtherTotal += fromOther;
+    }
+    if (account.ownRevenue > 0) {
+      links.push({ source: SOURCE_OWN, target: id, value: account.ownRevenue });
+      ownTotal += account.ownRevenue;
     }
   }
 
-  // 社会保険料の内訳
-  if (typeof insurancePremiums === 'object' && 'pension' in insurancePremiums) {
-    nodes.push({
-      id: 'insurance-pension',
-      name: '年金保険料',
-      value: insurancePremiums.pension,
-      type: 'insurance-detail',
-    });
+  const sourceNodes: Array<[string, string, number, string]> = [
+    [
+      SOURCE_GENERAL,
+      '一般会計からの繰入',
+      fromGeneralTotal,
+      '一般会計の歳出（使途別分類コード6）から回ってきた分',
+    ],
+    [
+      SOURCE_OTHER,
+      '他の特別会計からの繰入',
+      fromOtherTotal,
+      '受入のうち一般会計からの繰入で説明できない分',
+    ],
+    [SOURCE_OWN, '自前財源', ownTotal, '保険料・公債金・運用収入など、その会計自身の歳入'],
+  ];
 
-    nodes.push({
-      id: 'insurance-labor',
-      name: '労働保険料',
-      value: insurancePremiums.labor,
-      type: 'insurance-detail',
-    });
-
-    nodes.push({
-      id: 'insurance-other',
-      name: 'その他保険料',
-      value: insurancePremiums.other,
-      type: 'insurance-detail',
-    });
+  for (const [id, name, value, description] of sourceNodes) {
+    if (value <= 0) continue;
+    nodes.unshift({
+      id,
+      name,
+      value,
+      type: 'source',
+      details: {
+        nodeType: 'source',
+        accountKind: 'special',
+        isDeduction: id !== SOURCE_OWN,
+        description,
+      },
+    } as Node);
   }
 
-  // Column 2 (中): 財源カテゴリ
-  const transferTotal = transferDetail ? transferDetail.totalIncludingDebt : (typeof transfer === 'number' ? transfer : 0);
-  const insuranceTotal = typeof insurancePremiums === 'object' && 'total' in insurancePremiums ? insurancePremiums.total : 0;
+  const flows: MOFTransferFlow[] = data.generalAccount.expenditure.transfersByDestination.map(
+    t => ({
+      from: '一般会計',
+      to:
+        data.specialAccounts.accounts.find(a => t.name.includes(`${a.name}特別会計`))?.name ??
+        t.name,
+      label: t.name,
+      amount: t.amount,
+    })
+  );
 
-  nodes.push({
-    id: 'category-transfer',
-    name: '一般会計繰入',
-    value: transferTotal,
-    type: 'revenue-category',
-  });
-
-  nodes.push({
-    id: 'category-insurance',
-    name: '社会保険料',
-    value: insuranceTotal,
-    type: 'revenue-category',
-  });
-
-  nodes.push({
-    id: 'category-bonds',
-    name: '公債金（借換債）',
-    value: mofData.specialAccount.revenue.publicBonds,
-    type: 'revenue-category',
-  });
-
-  const transferFromOther = mofData.specialAccount.revenue.transferFromOther;
-  nodes.push({
-    id: 'category-other-transfer',
-    name: '他会計繰入',
-    value: typeof transferFromOther === 'number' ? transferFromOther : transferFromOther.total,
-    type: 'revenue-category',
-  });
-
-  nodes.push({
-    id: 'category-other-revenue',
-    name: 'その他収入',
-    value: mofData.specialAccount.revenue.other,
-    type: 'revenue-category',
-  });
-
-  // Column 3 (右): 特別会計総額
-  nodes.push({
-    id: 'special-account-total',
-    name: '特別会計',
-    value: mofData.specialAccount.total,
-    type: 'account-total',
-  });
-
-  // リンク作成
-  // Column 1 → Column 2
-  if (transferDetail) {
-    links.push({
-      source: 'transfer-pension',
-      target: 'category-transfer',
-      value: transferDetail.breakdown.pension.total,
-    });
-
-    links.push({
-      source: 'transfer-local',
-      target: 'category-transfer',
-      value: transferDetail.breakdown.localAllocationTax.total,
-    });
-
-    links.push({
-      source: 'transfer-debt',
-      target: 'category-transfer',
-      value: transferDetail.breakdown.debtRetirement.total,
-    });
-
-    links.push({
-      source: 'transfer-energy',
-      target: 'category-transfer',
-      value: transferDetail.breakdown.energy.total,
-    });
-
-    const otherTransferTotal =
-      transferDetail.breakdown.foodSupply +
-      transferDetail.breakdown.laborInsurance +
-      transferDetail.breakdown.automotiveSafety +
-      transferDetail.breakdown.reconstruction +
-      transferDetail.breakdown.forestryDebtManagement +
-      transferDetail.breakdown.patent;
-
-    if (otherTransferTotal > 0) {
-      links.push({
-        source: 'transfer-other',
-        target: 'category-transfer',
-        value: otherTransferTotal,
-      });
-    }
-  }
-
-  if (typeof insurancePremiums === 'object' && 'pension' in insurancePremiums) {
-    links.push({
-      source: 'insurance-pension',
-      target: 'category-insurance',
-      value: insurancePremiums.pension,
-    });
-
-    links.push({
-      source: 'insurance-labor',
-      target: 'category-insurance',
-      value: insurancePremiums.labor,
-    });
-
-    links.push({
-      source: 'insurance-other',
-      target: 'category-insurance',
-      value: insurancePremiums.other,
-    });
-  }
-
-  // Column 2 → Column 3
-  links.push({
-    source: 'category-transfer',
-    target: 'special-account-total',
-    value: transferTotal,
-  });
-
-  links.push({
-    source: 'category-insurance',
-    target: 'special-account-total',
-    value: insuranceTotal,
-  });
-
-  links.push({
-    source: 'category-bonds',
-    target: 'special-account-total',
-    value: mofData.specialAccount.revenue.publicBonds,
-  });
-
-  links.push({
-    source: 'category-other-transfer',
-    target: 'special-account-total',
-    value: typeof transferFromOther === 'number' ? transferFromOther : transferFromOther.total,
-  });
-
-  links.push({
-    source: 'category-other-revenue',
-    target: 'special-account-total',
-    value: mofData.specialAccount.revenue.other,
-  });
-
-  return { nodes, links };
+  return {
+    metadata: { ...data.metadata, receivedTotal: data.transfers.receivedBySpecial },
+    sankey: { nodes, links: links.filter(l => l.value > 0) },
+    funding,
+    flows,
+  };
 }

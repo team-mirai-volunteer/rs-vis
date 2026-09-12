@@ -50,7 +50,7 @@ decompress_if_needed "project-map-2024.json" optional
 # Vercel の関数には public/data を一切同梱しない（生 .json 込みだと 250MB 上限を
 # 超えるため。next.config.ts の outputFileTracingExcludes 参照）。
 # Next の実装上、excludes は includes 適用後に掛かるため、public/data の中身を
-# include で残すことはできない。そこで .gz（+ .gz を持たない小容量 mof）だけを
+# include で残すことはできない。そこで .gz だけを
 # 別ツリー data/server/ に同期し、そちらを全関数に include する。
 # サーバ側ローダは public/data → data/server の順で探索する（app/lib/api/data-file.ts）。
 BUNDLE_DIR="data/server"
@@ -58,7 +58,6 @@ echo "📦 Syncing server bundle data to $BUNDLE_DIR..."
 mkdir -p "$BUNDLE_DIR"
 rm -f "$BUNDLE_DIR"/*.json "$BUNDLE_DIR"/*.json.gz
 cp "$DATA_DIR"/*.json.gz "$BUNDLE_DIR/"
-cp "$DATA_DIR/mof-budget-overview-2023.json" "$BUNDLE_DIR/"
 # パイプライン専用の入力はサーバ関数から一切読まないので同梱しない。
 # rs{YEAR}-project-outcomes は AI採点スクリプトの入力のみで 8MB 超あり、
 # 全関数のバンドルに乗せると 250MB 上限への余裕を無駄に食う。
