@@ -21,6 +21,13 @@ function isEnabled(value: string | undefined): boolean {
 /** AIチャットパネル（BYOK）を表示するか */
 export const FEATURE_AI_CHAT = isEnabled(process.env.NEXT_PUBLIC_FEATURE_AI_CHAT);
 
+/**
+ * 事業コメント（AIインタビューで集める匿名意見）を表示するか。
+ * 専用フラグは置かず、Supabase の公開 URL が配布されている環境でのみ有効
+ * （サーバ側は SUPABASE_SERVICE_ROLE_KEY も必要。揃っていなければ API が 404 を返し UI は自動で隠れる）
+ */
+export const FEATURE_PROJECT_COMMENTS = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
 /** 探索履歴・発見メモ（IndexedDB・ローカル保存）を表示するか */
 export const FEATURE_EXPLORATION_HISTORY = isEnabled(
   process.env.NEXT_PUBLIC_FEATURE_EXPLORATION_HISTORY,

@@ -72,6 +72,13 @@ interface AiChatPanelProps {
   onDeleteByok: () => Promise<void>;
   /** キーの接続テスト（保存前検証。キーはOpenRouterへのみ送信される） */
   onTestByok: (apiKey: string) => Promise<{ ok: boolean; error?: string }>;
+  /**
+   * 意見インタビューの対象事業（事業ノードを選択中のときだけ非 null）。
+   * 設定されていれば入力欄の上に「この事業に意見を伝える」導線を出す（コメント機能の主導線）
+   */
+  opinionTarget?: { pid: string; name: string } | null;
+  /** 意見インタビューを開く（page 側で InterviewDialog を出す） */
+  onStartOpinionInterview?: () => void;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -120,6 +127,7 @@ export function AiChatPanel({
   sessions, activeSessionId, onSwitchSession, onDeleteSession, onRenameSession, onSaveReport,
   width, isCompactWidth, onResizeStart, isResizing, onResetWidth,
   mode, byokModel, defaultByokModel, onSaveByok, onDeleteByok, onTestByok,
+  opinionTarget = null, onStartOpinionInterview,
 }: AiChatPanelProps) {
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
@@ -631,6 +639,26 @@ export function AiChatPanel({
           >
             <svg xmlns="http://www.w3.org/2000/svg" height="13" width="13" viewBox="0 -960 960 960" fill="#1a73e8"><path d="M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520Z"/></svg>
             この会話をレポートにまとめる
+          </button>
+        </div>
+      )}
+
+      {/* 意見インタビューへの導線（事業選択中のみ）。解説チャットと混同させないため別枠・別配色で出す */}
+      {opinionTarget && onStartOpinionInterview && (
+        <div style={{ flexShrink: 0, borderTop: '1px solid #f0f0f0', padding: '6px 10px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }} title={opinionTarget.name}>
+            選択中: {opinionTarget.name}
+          </span>
+          <button
+            type="button"
+            onClick={onStartOpinionInterview}
+            title="この事業への意見をAIインタビューで伝える（匿名・公開は最後に確認）"
+            style={{
+              flexShrink: 0, fontSize: 11, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid #c2e5cf', background: '#e7f5ec', color: '#1b7f37', fontWeight: 600,
+            }}
+          >
+            この事業に意見を伝える
           </button>
         </div>
       )}

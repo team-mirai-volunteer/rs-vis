@@ -49,6 +49,9 @@ import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import { TagChip } from '@/client/components/TagChip';
 import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
+import { ProjectComments } from '@/client/components/comments/ProjectComments';
+import { InterviewDialog } from '@/client/components/comments/InterviewDialog';
+import { FEATURE_PROJECT_COMMENTS } from '@/app/lib/feature-flags';
 import { getAccountBadgeStyle } from '@/app/lib/account-badge';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
@@ -1862,6 +1865,15 @@ export default function RealDataSankeyPage() {
     if (!rawNode) return null;
     return { ...rawNode, x0: 0, x1: 0, y0: 0, y1: 0, sourceLinks: [], targetLinks: [] } as LayoutNode;
   }, [selectedNodeId, layout, graphData]);
+
+  // 意見インタビューの対象（事業ノード選択中のみ）。AIチャットパネルの導線と InterviewDialog が共用する
+  const opinionTarget = useMemo(() => {
+    if (!FEATURE_PROJECT_COMMENTS || !selectedNode || selectedNode.aggregated || selectedNode.projectId == null) return null;
+    if (selectedNode.type !== 'project-budget' && selectedNode.type !== 'project-spending') return null;
+    return { pid: String(selectedNode.projectId), name: selectedNode.name };
+  }, [selectedNode]);
+  const [opinionDialogOpen, setOpinionDialogOpen] = useState(false);
+  useEffect(() => { if (!opinionTarget) setOpinionDialogOpen(false); }, [opinionTarget]);
 
   const selectedProjectBudgetNode = useMemo(() => {
     if (!selectedNode || selectedNode.aggregated) return undefined;
@@ -4150,6 +4162,19 @@ export default function RealDataSankeyPage() {
                 />
               )}
 
+              {/* みんなの意見（AIインタビューで集めた匿名意見）— 事業ノード選択時のみ。Supabase 未配布環境では描かれない */}
+              {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending') && !selectedNode.aggregated && selectedNode.projectId != null && (
+                <ProjectComments
+                  context={{
+                    pid: String(selectedNode.projectId),
+                    year,
+                    projectName: selectedNode.name,
+                    detail: projectDetailCache.get(`${year}-${selectedNode.projectId}`),
+                  }}
+                  scaleFont={scaleFont}
+                />
+              )}
+
 
               {/* 再委託サマリ — project-budget / project-spending（非集約）のみ。/api/subcontracts から遅延取得 */}
               {selectedNode && (selectedNode.type === 'project-budget' || selectedNode.type === 'project-spending') && !selectedNode.aggregated && selectedNode.projectId != null && (() => {
@@ -5099,7 +5124,22 @@ export default function RealDataSankeyPage() {
         onSaveByok={handleSaveByok}
         onDeleteByok={handleDeleteByok}
         onTestByok={testOpenRouterKey}
+        opinionTarget={opinionTarget}
+        onStartOpinionInterview={() => setOpinionDialogOpen(true)}
       />
+      )}
+
+      {/* 意見インタビュー（AIチャットパネルの導線から）。側パネルの「意見を伝える」は ProjectComments が自前で開く */}
+      {opinionDialogOpen && opinionTarget && (
+        <InterviewDialog
+          context={{
+            pid: opinionTarget.pid,
+            year,
+            projectName: opinionTarget.name,
+            detail: projectDetailCache.get(`${year}-${opinionTarget.pid}`),
+          }}
+          onClose={() => setOpinionDialogOpen(false)}
+        />
       )}
 
       {/* 品質スコア詳細ダイアログ（/quality と共通コンポーネント）

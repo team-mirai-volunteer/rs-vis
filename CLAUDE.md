@@ -57,7 +57,13 @@ GitHub 連携済み（2026-09-12 に `infra/terraform/` の Terraform で作成�
 `prebuild` フックが `.gz` → `.json` を自動展開する。
 プロジェクト・環境変数の変更は Terraform で行う（手順は infra/terraform/README.md）。
 Supabase はプロジェクト `marumie-rssystem`（ref `igtulishrosqdukrrixx`、東京）を作成済みで、
-接続情報は Terraform が Vercel 環境変数へ自動配布する（スキーマは未適用）。
+接続情報は Terraform が Vercel 環境変数へ自動配布する。スキーマは `supabase/schema.sql`（適用済み）。
+
+### 事業コメント機能（AIインタビュー）
+
+- `NEXT_PUBLIC_SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` が揃った環境でのみ有効（専用フラグ無し）。無ければ API は 404、UI は非表示
+- LLM は BYOK（訪問者の OpenRouter キー・ブラウザ直）。サーバは `app/api/projects/[pid]/comments` で保存・一覧のみ
+- 設計: `docs/tasks/20260828_1508_事業コメント機能（みらい議会ライク）設計.md`
 
 ## Agent の行動ルール
 

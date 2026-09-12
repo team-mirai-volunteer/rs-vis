@@ -28,6 +28,7 @@ import type {
 import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
+import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import type { ProjectDetail } from '@/types/project-details';
 import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
 import {
@@ -594,6 +595,20 @@ function SidePane({
           previewHeight={72}
         />
       )}
+
+      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
+      <ProjectComments
+        context={{
+          pid: String(graph.projectId),
+          year: String(year),
+          projectName: graph.projectName,
+          ministry: graph.ministry,
+          detail: projectDetail,
+          budget: graph.budget,
+          execution: graph.execution,
+        }}
+        scaleFont={scaleFont}
+      />
 
       {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
       <PolicyEvaluationBlock

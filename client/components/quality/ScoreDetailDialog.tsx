@@ -14,6 +14,7 @@ import type { ProjectDetail } from '@/types/project-details';
 import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { useScoreDetailData } from '@/client/hooks/useScoreDetailData';
+import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
@@ -290,6 +291,22 @@ ${a.desc}`}>
             )}
           </div>
         )}
+
+        {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
+        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 empty:hidden">
+          <ProjectComments
+            bare
+            context={{
+              pid: item.pid,
+              year,
+              projectName: item.name,
+              ministry: item.ministry,
+              detail: projectInfo ?? undefined,
+              budget: item.budgetAmount,
+              execution: item.execAmount,
+            }}
+          />
+        </div>
 
         {/* 政策評価の取得に失敗したときは黙って消さず、失敗したと分かるようにする */}
         {policyError && !policy && (

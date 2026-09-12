@@ -13,6 +13,7 @@ import {
   type ColorMode, type LegendEntry, type SizeMetric,
 } from '@/app/lib/project-map-view';
 import type { ProjectMapCluster, ProjectMapPoint, ProjectMapResponse } from '@/types/project-map';
+import { ProjectComments } from '@/client/components/comments/ProjectComments';
 
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
@@ -779,6 +780,21 @@ function SelectedPanel({
           近傍{cluster.count}事業の特徴語: {cluster.terms.join('・')}
         </p>
       )}
+      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
+      <div className="mt-2.5 border-t border-black/5 pt-2 empty:hidden dark:border-white/10">
+        <ProjectComments
+          bare
+          context={{
+            pid: point.pid,
+            year,
+            projectName: point.name,
+            ministry: point.ministry,
+            budget: point.budget,
+            execution: point.exec,
+            score: point.score,
+          }}
+        />
+      </div>
       <div className="mt-2.5 flex gap-1.5">
         <Link
           href={`/subcontracts/${point.pid}?year=${year}`}
