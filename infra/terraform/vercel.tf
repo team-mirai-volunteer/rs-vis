@@ -39,12 +39,25 @@ locals {
       sensitive = true
     }],
     # Supabase を有効化したら接続情報を自動で配布する
+    # （変数名は docs/tasks/20260828_1508 事業コメント機能設計 に合わせる）
     var.supabase_enabled ? [
       {
         key       = "NEXT_PUBLIC_SUPABASE_URL"
         value     = "https://${supabase_project.db[0].id}.supabase.co"
         target    = ["production", "preview"]
         sensitive = false
+      },
+      {
+        key       = "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+        value     = data.supabase_apikeys.db[0].anon_key
+        target    = ["production", "preview"]
+        sensitive = false
+      },
+      {
+        key       = "SUPABASE_SERVICE_ROLE_KEY"
+        value     = data.supabase_apikeys.db[0].service_role_key
+        target    = ["production", "preview"]
+        sensitive = true
       },
     ] : [],
   )

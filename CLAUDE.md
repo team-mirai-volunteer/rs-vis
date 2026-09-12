@@ -55,7 +55,8 @@ GitHub 連携済み（2026-09-12 に `infra/terraform/` の Terraform で作成�
 `main` への push → Vercel 自動ビルド（東京リージョン `hnd1`）となり、
 `prebuild` フックが `.gz` → `.json` を自動展開する。
 プロジェクト・環境変数の変更は Terraform で行う（手順は infra/terraform/README.md）。
-Supabase は未作成（`supabase_enabled=true` で同じ Terraform から作成する）。
+Supabase はプロジェクト `marumie-rssystem`（ref `igtulishrosqdukrrixx`、東京）を作成済みで、
+接続情報は Terraform が Vercel 環境変数へ自動配布する（スキーマは未適用）。
 
 ## Agent の行動ルール
 

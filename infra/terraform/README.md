@@ -18,9 +18,13 @@ Terraform は「プロジェクトそのものと秘匿値」という役割分�
 
 - Vercel: チーム `team-mirai`（slug）にプロジェクト `marumie-rssystem` を Terraform で作成済み
   （`prj_xRZPq22PXHNpf8zvDLtDZOFILr7e`、GitHub `team-mirai-volunteer/rs-vis` の `main` に連携）。
-- Supabase: 未作成。`supabase_enabled=true` で作成する（下記）。
+- Supabase: org `team-mirai`（`drotyunmgutoaowxzpya`）にプロジェクト `marumie-rssystem`
+  （ref `igtulishrosqdukrrixx`、ap-northeast-1）を作成済み。URL / anon key / service_role key は
+  Terraform が Vercel 環境変数（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` /
+  `SUPABASE_SERVICE_ROLE_KEY`）へ自動配布する。DB スキーマは未適用（コメント機能実装時に流す）。
 - state はこの Terraform を実行したマシンのローカルにのみ存在する。別マシンで操作する場合は
-  `terraform import vercel_project.app prj_xRZPq22PXHNpf8zvDLtDZOFILr7e` から始めること。
+  `terraform import vercel_project.app prj_xRZPq22PXHNpf8zvDLtDZOFILr7e` と
+  `terraform import 'supabase_project.db[0]' igtulishrosqdukrrixx` から始めること。
 
 ## 日常の操作
 

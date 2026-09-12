@@ -13,6 +13,6 @@ app_env_plain = {
   # NEXT_PUBLIC_FEATURE_AI_CHAT = "true"
 }
 
-# Supabase はDB導入時に有効化
-supabase_enabled = false
-# supabase_organization_id = "xxxxxxxxxxxx"
+# Supabase（2026-09-12 に作成済み。org ID は team-mirai の Supabase org）
+supabase_enabled         = true
+supabase_organization_id = "drotyunmgutoaowxzpya"
