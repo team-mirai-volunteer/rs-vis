@@ -28,6 +28,14 @@ resource "vercel_project" "app" {
   }
 }
 
+# ── カスタムドメイン（本番） ──
+resource "vercel_project_domain" "app" {
+  for_each = toset(var.custom_domains)
+
+  project_id = vercel_project.app.id
+  domain     = each.value
+}
+
 # ── 環境変数（本番・プレビュー共通） ──
 # Vercel API は空リストを BAD_REQUEST で拒否するため、1件以上あるときだけリソースを作る
 locals {

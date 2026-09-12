@@ -6,7 +6,7 @@
 
 | 対象 | 管理方法 |
 |------|---------|
-| Vercel プロジェクトの存在・GitHub連携・Functionsリージョン | ここ（`vercel.tf`） |
+| Vercel プロジェクトの存在・GitHub連携・Functionsリージョン・カスタムドメイン・Deployment Protection | ここ（`vercel.tf`） |
 | Vercel の環境変数（本番・プレビュー） | ここ（`vercel.tf` + tfvars/TF_VAR） |
 | ビルドコマンド・ヘッダ・regions | リポジトリの `vercel.json`（アプリと同居のまま） |
 | Supabase プロジェクト（将来のDB） | ここ（`supabase.tf`、`supabase_enabled=true` で作成） |
@@ -18,6 +18,8 @@ Terraform は「プロジェクトそのものと秘匿値」という役割分�
 
 - Vercel: チーム `team-mirai`（slug）にプロジェクト `marumie-rssystem` を Terraform で作成済み
   （`prj_xRZPq22PXHNpf8zvDLtDZOFILr7e`、GitHub `team-mirai-volunteer/rs-vis` の `main` に連携）。
+  本番ドメインは `rs-vis.team-mir.ai`（`vercel_project_domain`。team-mir.ai はチーム登録済みで DNS も
+  Vercel 管理・ワイルドカード ALIAS あり、レコード追加は不要）。Deployment Protection は公開サイトのため無効。
 - Supabase: org `team-mirai`（`drotyunmgutoaowxzpya`）にプロジェクト `marumie-rssystem`
   （ref `igtulishrosqdukrrixx`、ap-northeast-1）を作成済み。URL / anon key / service_role key は
   Terraform が Vercel 環境変数（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` /

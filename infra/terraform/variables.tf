@@ -22,6 +22,12 @@ variable "production_branch" {
   default     = "main"
 }
 
+variable "custom_domains" {
+  description = "本番に割り当てるカスタムドメイン。team-mir.ai は Vercel チームに登録済み・DNS も Vercel 管理のため追加レコード不要"
+  type        = list(string)
+  default     = ["rs-vis.team-mir.ai"]
+}
+
 variable "vercel_function_region" {
   description = "Serverless Functions のリージョン（東京 = hnd1。vercel.json の regions と揃える）"
   type        = string

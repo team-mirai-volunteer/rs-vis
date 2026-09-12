@@ -50,6 +50,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 
 ## Deployment
 
+**本番 URL: https://rs-vis.team-mir.ai**（Vercel 既定 URL は marumie-rssystem-team-mirai.vercel.app）。
 Vercel チーム `team-mirai` のプロジェクト `marumie-rssystem`（`prj_xRZPq22PXHNpf8zvDLtDZOFILr7e`）に
 GitHub 連携済み（2026-09-12 に `infra/terraform/` の Terraform で作成）。
 `main` への push → Vercel 自動ビルド（東京リージョン `hnd1`）となり、

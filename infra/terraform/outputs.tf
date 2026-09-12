@@ -3,6 +3,11 @@ output "vercel_project_id" {
   value       = vercel_project.app.id
 }
 
+output "production_urls" {
+  description = "本番 URL（カスタムドメイン）"
+  value       = [for d in var.custom_domains : "https://${d}"]
+}
+
 output "supabase_project_id" {
   description = "Supabase プロジェクト ID（ref）。未有効化なら null"
   value       = var.supabase_enabled ? supabase_project.db[0].id : null
