@@ -20,6 +20,12 @@ resource "vercel_project" "app" {
   resource_config = {
     function_default_regions = [var.vercel_function_region]
   }
+
+  # 公開サイトのため Deployment Protection（Vercel SSO）を無効化する。
+  # チームの既定は「standard_protection」= 本番以外を SSO 保護だが、本番 URL も 302 で SSO へ飛ぶため none にする
+  vercel_authentication = {
+    deployment_type = "none"
+  }
 }
 
 # ── 環境変数（本番・プレビュー共通） ──
