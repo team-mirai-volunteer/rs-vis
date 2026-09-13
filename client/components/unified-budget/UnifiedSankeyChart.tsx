@@ -40,8 +40,21 @@ const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
-function shorten(name: string, max: number): string {
-  return name.length > max ? `${name.slice(0, max - 1)}…` : name;
+/** 名前を max 文字に切る。切ったかどうかは呼び出し側が省略記号を描くために使う */
+function truncateName(name: string, max: number): { text: string; truncated: boolean } {
+  return name.length > max ? { text: name.slice(0, max), truncated: true } : { text: name, truncated: false };
+}
+
+/**
+ * 省略記号。Noto Sans JP の「…」は全角幅で前後に空きが出て 1 文字ぶん場所を食うので、
+ * textLength で半角幅に詰めて描く（隣のラベルと被る幅を減らす）
+ */
+function Ellipsis({ fontPx }: { fontPx: number }) {
+  return (
+    <tspan textLength={fontPx * 0.5} lengthAdjust="spacingAndGlyphs">
+      …
+    </tspan>
+  );
 }
 
 export function UnifiedSankeyChart({
@@ -198,6 +211,22 @@ export function UnifiedSankeyChart({
     for (const node of layout.nodes) map.set(node.column, node.x);
     return map;
   }, [layout]);
+  /**
+   * 列ごとのラベル最大文字数。隣の列の箱に届かない長さに収める。
+   * 使える幅 = 次の列までの距離 − 箱の幅 − 余白。金額の括弧書き（"(30.04兆円)" ≒ 7em）を差し引き、
+   * 残りを 1 文字 1em（和文）として数える。最右列は右余白いっぱいまで使える
+   */
+  const labelMaxChars = useMemo(() => {
+    const xs = [...new Set(columnX.values())].sort((a, b) => a - b);
+    const map = new Map<number, number>();
+    for (const [index, x] of columnX) {
+      const nextX = xs.find(v => v > x);
+      const spanPx = (nextX ?? width) - x;
+      const availableEm = (spanPx - UNIFIED_LAYOUT.nodeWidth - 16) / fontPx;
+      map.set(index, Math.max(6, Math.min(18, Math.floor(availableEm - 7))));
+    }
+    return map;
+  }, [columnX, width, fontPx]);
   const headerY = useMemo(() => Math.min(...layout.nodes.map(n => n.y), Number.POSITIVE_INFINITY) - 10, [layout.nodes]);
   const columnTotal = useMemo(() => {
     const map = new Map<number, number>();
@@ -425,7 +454,16 @@ export function UnifiedSankeyChart({
                     paintOrder="stroke"
                     opacity={dim ? 0.35 : 1}
                   >
-                    {`${shorten(node.name, labelLeft ? 16 : 18)} (${formatBudgetFromYen(node.value)})`}
+                    {(() => {
+                      const { text, truncated } = truncateName(node.name, labelMaxChars.get(node.column) ?? 12);
+                      return (
+                        <>
+                          {text}
+                          {truncated && <Ellipsis fontPx={fontPx} />}
+                          {` (${formatBudgetFromYen(node.value)})`}
+                        </>
+                      );
+                    })()}
                   </text>
                 )}
               </g>
