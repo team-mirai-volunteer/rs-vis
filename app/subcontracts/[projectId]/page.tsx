@@ -17,6 +17,10 @@ import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronDown, Maximize, Minus, Move, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { YearSelect } from '@/components/navigation/YearSelect';
+import { cn } from '@/lib/utils';
 import type {
   SubcontractGraph,
   BlockNode,
@@ -72,7 +76,6 @@ import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls
 const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 390;
 
 const COLOR_BACK_EDGE = 'rgba(217,69,69,0.65)';
-const COLOR_CANVAS = '#fff';
 const COLOR_DIRECT_BODY = '#f8d3d3';
 const COLOR_SUBCONTRACT_BODY = '#f5e3c0';
 const COLOR_DIRECT_BODY_TEXT = '#8f1f1f';
@@ -194,7 +197,17 @@ function originKindBadgeColor(kind: BlockOriginKind): { bg: string; fg: string }
 const COLOR_CONTEXT_BODY = '#d8f1df';
 const COLOR_CONTEXT_BODY_TEXT = '#1f6b3a';
 const COLOR_CONTEXT_BODY_SUBTLE = '#2d7d46';
-const COLOR_PANEL_BORDER = '#e5e7eb';
+// サイドパネル内の共通クラス（チームみらいデザインシステムのトークン。色はここで揃える）
+const PANEL_INPUT_CLASS =
+  'w-full min-w-0 rounded-md border border-mirai-border bg-card px-[9px] py-[7px] text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary';
+const PANEL_SELECT_CLASS =
+  'rounded-md border border-mirai-border bg-card px-2 py-[7px] text-xs text-mirai-text transition-colors focus-visible:border-primary';
+/** 一覧行（ブロック / 支出先）のボタン。Button のピル既定を打ち消して罫線付きの全幅行にする */
+const PANEL_ROW_BUTTON_CLASS =
+  'flex h-auto w-full flex-col items-stretch gap-[3px] whitespace-normal rounded-none border-b border-border px-0 py-[7px] text-left text-xs font-normal text-mirai-text-secondary hover:bg-mirai-surface-teal/60';
+/** フィルタチップ（すべて / 直接 / 再委託 …）の選択状態 */
+const chipClass = (selected: boolean) =>
+  cn('h-auto rounded-full px-[9px] py-1 text-[11px] font-bold', selected ? 'border-primary bg-primary/10 text-primary-accent' : 'border-mirai-border text-mirai-text-secondary');
 // フォントスケール機構（サンキー = app/sankey-svg/page.tsx と共通の app/lib/font-scale.ts + client/hooks/useBaseFontPx.ts を使用）。
 // 以下の "_DEFAULT" 定数は等倍（baseFontPx = BASE_FONT_PX_DEFAULT）時の値。実描画では scaleFont(...) を通す。
 const BASE_FONT_PX_DEFAULT = 12;
@@ -210,7 +223,8 @@ const CARD_RADIUS = 8;
 const CARD_BORDER_W = 1;
 const CARD_BORDER_NEUTRAL = '#e2e8f0';
 const CARD_SHADOW = 'drop-shadow(0 1px 2px rgba(15,23,42,0.10)) drop-shadow(0 1px 1px rgba(15,23,42,0.06))';
-const CARD_SELECTED_RING = 'rgba(74,144,217,0.28)';
+// 選択リング（UI の active 状態）はプライマリのティール。ノード色（意味色）とは別系統
+const CARD_SELECTED_RING = 'rgba(42,166,147,0.35)';
 // ズーム倍率レンジ（/sankey-svg の ZOOM_MIN_ABS/MAX_ABS/MULTIPLIER と同じ考え方: 絶対上下限と
 // baseZoom（フィット倍率）からの相対上下限の両方で挟む）
 const ZOOM_MIN_ABS = 0.05;
@@ -530,32 +544,25 @@ function SidePane({
   ];
 
   return (
-    <aside style={{
-      width: '100%',
-      height: '100%',
-      background: '#fff',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
+    <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      <div style={{ flexShrink: 0, background: '#fff' }}>
+      <div className="shrink-0 bg-card">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
-      <div style={{ padding: '14px 16px 12px', borderBottom: `1px solid ${COLOR_PANEL_BORDER}` }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: PANEL_TITLE_FONT_PX, color: '#111', wordBreak: 'break-all', lineHeight: 1.4 }}>
+      <div className="border-b border-border px-4 pb-3 pt-3.5">
+        <div className="flex items-start gap-1.5">
+          <div className="min-w-0 flex-1">
+            <div className="break-all font-bold leading-[1.4] tracking-normal text-mirai-text" style={{ fontSize: PANEL_TITLE_FONT_PX }}>
               {graph.projectName}
             </div>
             {/* 予算額 / 支出額（メイン画面と同じ2列＋1円単位のサブ表記。予算vs支出で用語統一） */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 12, rowGap: 4, marginTop: 5 }}>
+            <div className="mt-[5px] flex flex-wrap items-start gap-x-3 gap-y-1">
               {([['予算額', graph.budget], ['支出額', graph.execution]] as [string, number][]).map(([label, value]) => (
-                <div key={label} style={{ flex: `1 1 ${scaleFont(112)}px`, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: PANEL_META_FONT_PX, color: '#aaa', fontWeight: 400, marginBottom: 1 }}>{label}</span>
-                  <span style={{ display: 'block', fontSize: PANEL_PRIMARY_VALUE_FONT_PX, fontWeight: 600, color: '#222', whiteSpace: 'nowrap' }}>
+                <div key={label} className="min-w-0" style={{ flex: `1 1 ${scaleFont(112)}px` }}>
+                  <span className="mb-px block font-normal text-mirai-text-placeholder" style={{ fontSize: PANEL_META_FONT_PX }}>{label}</span>
+                  <span className="block whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_PRIMARY_VALUE_FONT_PX }}>
                     {value > 0 ? formatYen(value) : '—'}
                   </span>
-                  <span style={{ display: 'block', fontSize: PANEL_META_FONT_PX, color: '#999', marginTop: 1, whiteSpace: 'nowrap' }}>
+                  <span className="mt-px block whitespace-nowrap text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
                     {value > 0 ? `${Math.round(value).toLocaleString()}円` : ''}
                   </span>
                 </div>
@@ -565,7 +572,7 @@ function SidePane({
                 出典が別（5-1 ブロック支出 / 2-1 執行額）で合計は支出額に一致しないため、
                 式ではなく併記に留める */}
             {(graph.directExpenseTotal > 0 || indirect.total > 0) && (
-              <div style={{ fontSize: PANEL_META_FONT_PX, color: '#888', marginTop: 4 }}>
+              <div className="mt-1 text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
                 支出先 {graph.directExpenseTotal > 0 ? formatYen(graph.directExpenseTotal) : '—'}
                 {indirect.total > 0 && <> ／ 間接経費 {formatYen(indirect.total)}</>}
               </div>
@@ -573,12 +580,13 @@ function SidePane({
           </div>
         </div>
         {/* メイン画面と同型: 事業タグ＋PID＋省庁＋組織のみ（構造サマリは下の「再委託」節へ） */}
-        <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: PANEL_META_FONT_PX }}>
-          <span style={{ background: SEMANTIC_PROJECT, color: '#fff', padding: '2px 7px', borderRadius: 10, fontWeight: 500 }}>事業</span>
-          <span style={{ color: '#aaa' }}>PID:{graph.projectId}</span>
-          <span style={{ color: '#666' }}>{graph.ministry}</span>
-          {orgChain.length > 0 && <span style={{ color: '#777' }}>{orgChain.join(' / ')}</span>}
-          {!orgChain.length && projectDetail?.bureau && <span style={{ color: '#777' }}>{projectDetail.bureau}</span>}
+        <div className="mt-2 flex flex-wrap items-center gap-[5px]" style={{ fontSize: PANEL_META_FONT_PX }}>
+          {/* 「事業」タグの緑は Sankey の事業ノード色（意味色）に合わせる */}
+          <span className="rounded-full px-[7px] py-0.5 font-medium text-white" style={{ background: SEMANTIC_PROJECT }}>事業</span>
+          <span className="text-mirai-text-placeholder">PID:{graph.projectId}</span>
+          <span className="text-mirai-text-subtle">{graph.ministry}</span>
+          {orgChain.length > 0 && <span className="text-mirai-text-muted">{orgChain.join(' / ')}</span>}
+          {!orgChain.length && projectDetail?.bureau && <span className="text-mirai-text-muted">{projectDetail.bureau}</span>}
         </div>
       </div>
 
@@ -623,14 +631,14 @@ function SidePane({
       />
 
       {/* 再委託（構造サマリ）— メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
-      <div style={{ borderBottom: `1px solid ${COLOR_PANEL_BORDER}`, padding: '7px 16px 9px' }}>
-        <div style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>再委託</div>
-        <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap', fontSize: PANEL_META_FONT_PX }}>
-          <span style={{ padding: '2px 6px', borderRadius: 999, background: '#f3f4f6', color: '#475569' }}>ブロック {graph.totalBlockCount}</span>
-          <span style={{ padding: '2px 6px', borderRadius: 999, background: '#f3f4f6', color: '#475569' }}>支出先 {graph.totalRecipientCount.toLocaleString()}</span>
-          <span style={{ padding: '2px 6px', borderRadius: 999, background: '#f3f4f6', color: '#475569' }}>階層 {graph.maxDepth}</span>
+      <div className="border-b border-border px-4 pb-[9px] pt-[7px]">
+        <div className="font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_META_FONT_PX }}>再委託</div>
+        <div className="mt-[5px] flex flex-wrap gap-1.5" style={{ fontSize: PANEL_META_FONT_PX }}>
+          <span className="rounded-full bg-mirai-surface-light px-1.5 py-0.5 text-mirai-text-subtle">ブロック {graph.totalBlockCount}</span>
+          <span className="rounded-full bg-mirai-surface-light px-1.5 py-0.5 text-mirai-text-subtle">支出先 {graph.totalRecipientCount.toLocaleString()}</span>
+          <span className="rounded-full bg-mirai-surface-light px-1.5 py-0.5 text-mirai-text-subtle">階層 {graph.maxDepth}</span>
         </div>
-        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexWrap: 'wrap' }}>
+        <div className="mt-1.5 flex flex-wrap gap-[5px]">
           <TagChip kind="direct" fontSize={PANEL_META_FONT_PX}>直接 {graph.directBlockCount}</TagChip>
           <TagChip kind="subcontract" fontSize={PANEL_META_FONT_PX}>再委託 {Math.max(0, graph.totalBlockCount - graph.directBlockCount - graph.separateOriginCount)}</TagChip>
           {graph.separateOriginCount > 0 && (
@@ -654,51 +662,45 @@ function SidePane({
           BlockInspector と selectedBlockFlows を戻す。 */}
 
       {/* タブヘッダー */}
-      <div style={{
-        display: 'flex',
-        borderBottom: `1px solid ${COLOR_PANEL_BORDER}`,
-        background: '#fff',
-      }}>
+      <div className="flex border-b border-border bg-card" role="tablist">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           const isDisabled = tab.disabled;
           return (
-            <button
+            <Button
               key={tab.key}
+              variant="ghost"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => !isDisabled && onChangeTab(tab.key)}
               disabled={isDisabled}
-              style={{
-                flex: 1,
-                background: isActive ? '#f1f5f9' : '#fff',
-                border: 'none',
-                borderBottom: isActive ? '2px solid #4a90d9' : '2px solid transparent',
-                padding: '10px 4px 8px',
-                fontSize: 12,
-                fontWeight: 700,
-                color: isDisabled ? '#cbd5e1' : (isActive ? '#111827' : '#475569'),
-                cursor: isDisabled ? 'not-allowed' : 'pointer',
-              }}
+              className={cn(
+                'h-auto flex-1 rounded-none border-b-2 px-1 pb-2 pt-2.5 text-xs font-bold',
+                isActive
+                  ? 'border-primary bg-primary/10 text-primary-accent hover:bg-primary/10 hover:text-primary-accent'
+                  : 'border-transparent text-mirai-text-subtle hover:bg-mirai-surface hover:text-mirai-text',
+              )}
             >
               {tab.label}
               {typeof tab.count === 'number' && (
-                <span style={{ marginLeft: 4, fontSize: 10, color: isDisabled ? '#cbd5e1' : '#94a3b8' }}>
+                <span className={cn('ml-1 text-[10px]', isActive ? 'text-primary' : 'text-mirai-text-muted')}>
                   {tab.count.toLocaleString()}
                 </span>
               )}
-            </button>
+            </Button>
           );
         })}
       </div>
       </div>
 
       {/* タブ本体 — ここだけがスクロールする（ヘッダ・タブは固定） */}
-      <div style={{ padding: 12, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {activeTab === 'flow' && (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={{ fontSize: 11, color: '#64748b' }}>{filteredFlows.length.toLocaleString()}本 / {graph.flows.length.toLocaleString()}本</div>
+            <div className="mb-2 flex items-baseline justify-between">
+              <div className="text-[11px] text-mirai-text-subtle">{filteredFlows.length.toLocaleString()}本 / {graph.flows.length.toLocaleString()}本</div>
             </div>
-            <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div className="mb-2 flex flex-wrap gap-1">
               {([
                 ['all', 'すべて'],
                 ['direct', '直接'],
@@ -707,26 +709,20 @@ function SidePane({
                 ['subcontract', '再委託'],
                 ['reference', '参考'],
               ] as const).map(([key, label]) => (
-                <button
+                <Button
                   key={key}
+                  variant="outline"
+                  size="xs"
+                  aria-pressed={flowFilter === key}
                   onClick={() => setFlowFilter(key)}
-                  style={{
-                    border: `1px solid ${flowFilter === key ? '#94a3b8' : COLOR_PANEL_BORDER}`,
-                    background: flowFilter === key ? '#f1f5f9' : '#fff',
-                    borderRadius: 999,
-                    padding: '4px 9px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#334155',
-                    cursor: 'pointer',
-                  }}
+                  className={chipClass(flowFilter === key)}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
             {filteredFlows.length === 0 && (
-              <div style={{ fontSize: 12, color: '#9ca3af' }}>該当するフローがありません</div>
+              <div className="text-xs text-mirai-text-muted">該当するフローがありません</div>
             )}
             {/* 対象ブロックでグルーピング（合流は同一対象への複数流入を1グループに集約）。
                 並びはフロー図に合わせ金額順。ただし群は 直接→再委託→別財源 の順にし、
@@ -764,48 +760,42 @@ function SidePane({
 
         {activeTab === 'blocks' && (
           <>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+            <div className="mb-2 text-[11px] text-mirai-text-subtle">
               {filteredBlocks.length.toLocaleString()}件 / {graph.blocks.length.toLocaleString()}件
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 112px', gap: 8, marginBottom: 8 }}>
+            <div className="mb-2 grid grid-cols-[1fr_112px] gap-2">
               <input
                 value={blockQuery}
                 onChange={(e) => setBlockQuery(e.target.value)}
                 placeholder="ブロック名・役割で検索"
-                style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 9px', fontSize: 12 }}
+                className={PANEL_INPUT_CLASS}
               />
               <select
                 value={blockSort}
                 onChange={(e) => setBlockSort(e.target.value as typeof blockSort)}
-                style={{ border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 8px', fontSize: 12, background: '#fff' }}
+                className={PANEL_SELECT_CLASS}
               >
                 <option value="amount-desc">金額順</option>
                 <option value="name-asc">名称順</option>
               </select>
             </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            <div className="mb-2.5 flex flex-wrap gap-1.5">
               {([
                 ['all', 'すべて'],
                 ['direct', '直接'],
                 ['subcontract', '再委託'],
                 ['separate-origin', '別財源'],
               ] as const).map(([key, label]) => (
-                <button
+                <Button
                   key={key}
+                  variant="outline"
+                  size="xs"
+                  aria-pressed={blockFilter === key}
                   onClick={() => setBlockFilter(key)}
-                  style={{
-                    border: `1px solid ${blockFilter === key ? '#94a3b8' : COLOR_PANEL_BORDER}`,
-                    background: blockFilter === key ? '#f1f5f9' : '#fff',
-                    borderRadius: 999,
-                    padding: '5px 10px',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#334155',
-                    cursor: 'pointer',
-                  }}
+                  className={cn(chipClass(blockFilter === key), 'px-2.5 py-[5px]')}
                 >
                   {label}
-                </button>
+                </Button>
               ))}
             </div>
             {filteredBlocks.map((b) => (
@@ -824,27 +814,27 @@ function SidePane({
           <>
             {!block && (
               <>
-                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                <div className="mb-2 text-[11px] text-mirai-text-subtle">
                   {filteredAllRecipients.length.toLocaleString()}件 / {allRecipients.length.toLocaleString()}件（事業全体）
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 112px', gap: 8, marginBottom: 8 }}>
+                <div className="mb-2 grid grid-cols-[1fr_112px] gap-2">
                   <input
                     value={recipientQuery}
                     onChange={(e) => setRecipientQuery(e.target.value)}
                     placeholder="支出先名・契約・ブロックで検索"
-                    style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 9px', fontSize: 12 }}
+                    className={PANEL_INPUT_CLASS}
                   />
                   <select
                     value={recipientSort}
                     onChange={(e) => setRecipientSort(e.target.value as typeof recipientSort)}
-                    style={{ border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 8px', fontSize: 12, background: '#fff' }}
+                    className={PANEL_SELECT_CLASS}
                   >
                     <option value="amount-desc">金額順</option>
                     <option value="amount-asc">金額昇順</option>
                     <option value="name-asc">名称順</option>
                   </select>
                 </div>
-                <div style={{ fontSize: 10.5, color: '#9ca3af', marginBottom: 6 }}>
+                <div className="mb-1.5 text-[10.5px] text-mirai-text-muted">
                   ブロックを選ぶとそのブロック内訳（費目・使途）に切り替わります
                 </div>
                 {filteredAllRecipients.map(({ r, blockId, originKind }, i) => {
@@ -856,32 +846,30 @@ function SidePane({
                     .filter(Boolean).join(' ・ ');
                   const meta = [contract || null, expense || null].filter(Boolean).join(' ・ ');
                   return (
-                    <button
+                    <Button
                       key={`${blockId}-${r.name}-${i}`}
+                      variant="ghost"
                       onClick={() => b && onSelectBlock(b)}
                       title={`${blockId} ${b?.blockName ?? ''}\n${r.name}${meta ? `\n${meta}` : ''}`}
-                      style={{
-                        width: '100%', display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left',
-                        border: 'none', borderBottom: '1px solid #f1f5f9', background: 'transparent',
-                        borderRadius: 0, padding: '7px 0', margin: 0, cursor: 'pointer',
-                      }}
+                      className={cn(PANEL_ROW_BUTTON_CLASS, 'gap-0.5')}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', width: '100%' }}>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 400, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <span style={{ color: '#94a3b8', marginRight: 4 }}>{blockId}</span>
+                      <div className="flex w-full items-baseline justify-between gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs font-normal text-mirai-text-secondary">
+                          <span className="mr-1 text-mirai-text-muted">{blockId}</span>
                           {r.name}
                         </span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatYen(r.amount)}</span>
+                        <span className="shrink-0 whitespace-nowrap text-xs font-bold text-mirai-text-subtle">{formatYen(r.amount)}</span>
                       </div>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, width: '100%' }}>
-                        <span style={{ padding: '0 6px', borderRadius: 999, background: badge.bg, color: badge.fg, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                      <div className="flex w-full min-w-0 items-center gap-1.5">
+                        {/* 種別バッジの色は意味色（直接=赤 / 再委託=橙 / 別財源=紫） */}
+                        <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold" style={{ background: badge.bg, color: badge.fg }}>
                           {originKindLabel(originKind)}
                         </span>
                         {meta && (
-                          <span style={{ fontSize: 10.5, color: '#888', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</span>
+                          <span className="min-w-0 truncate text-[10.5px] text-mirai-text-muted">{meta}</span>
                         )}
                       </div>
-                    </button>
+                    </Button>
                   );
                 })}
               </>
@@ -889,62 +877,54 @@ function SidePane({
             {block && (
               <>
                 {/* 選択中ブロックの要約 */}
-                <div style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 6, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <div className="mb-3 rounded-xl border border-mirai-border bg-mirai-surface px-3 py-2.5">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     {(() => {
                       const badge = originKindBadgeColor(block.originKind);
                       return (
-                        <span style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          background: badge.bg,
-                          color: badge.fg,
-                          flexShrink: 0,
-                        }}>
+                        <span className="shrink-0 rounded-md px-1.5 py-px text-[10px] font-bold" style={{ background: badge.bg, color: badge.fg }}>
                           {originKindLabel(block.originKind)}
                         </span>
                       );
                     })()}
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="truncate text-[13px] font-bold text-mirai-text">
                       {block.blockId} {block.blockName}
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: '#475569', marginTop: 6 }}>
+                  <div className="mt-1.5 text-[11px] text-mirai-text-subtle">
                     {formatYen(block.totalAmount)} ／ 支出先 {block.recipientCount.toLocaleString()}件
                     ／ 構成比 {percentOf(block.totalAmount, Math.max(graph.execution, graph.budget, block.totalAmount))}
                   </div>
                   {block.role && (
-                    <div style={{ fontSize: 11, color: '#374151', marginTop: 4, padding: '3px 6px', background: '#fff', borderRadius: 4, border: '1px solid #e2e8f0' }}>
+                    <div className="mt-1 rounded-md border border-border bg-card px-1.5 py-[3px] text-[11px] text-mirai-text-secondary">
                       {block.role}
                     </div>
                   )}
                   {(downstreamBlocks.length > 0 || upstreamBlocks.length > 0) && (
-                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>
+                    <div className="mt-1.5 text-[10px] text-mirai-text-subtle">
                       上流 {upstreamBlocks.length}件 ／ 下流 {downstreamBlocks.length}件
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 112px', gap: 8, marginBottom: 8 }}>
+                <div className="mb-2 grid grid-cols-[1fr_112px] gap-2">
                   <input
                     value={recipientQuery}
                     onChange={(e) => setRecipientQuery(e.target.value)}
                     placeholder="支出先・法人番号・契約で検索"
-                    style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 9px', fontSize: 12 }}
+                    className={PANEL_INPUT_CLASS}
                   />
                   <select
                     value={recipientSort}
                     onChange={(e) => setRecipientSort(e.target.value as typeof recipientSort)}
-                    style={{ border: `1px solid ${COLOR_PANEL_BORDER}`, borderRadius: 6, padding: '7px 8px', fontSize: 12, background: '#fff' }}
+                    className={PANEL_SELECT_CLASS}
                   >
                     <option value="amount-desc">金額大</option>
                     <option value="amount-asc">金額小</option>
                     <option value="name-asc">名称順</option>
                   </select>
                 </div>
-                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>{sortedRecipients.length.toLocaleString()}件</div>
+                <div className="mb-1.5 text-[11px] text-mirai-text-subtle">{sortedRecipients.length.toLocaleString()}件</div>
                 {sortedRecipients.map((r, i) => (
                   <RecipientCard
                     key={`${r.name}-${r.corporateNumber}-${i}`}
@@ -957,7 +937,7 @@ function SidePane({
                   />
                 ))}
                 {sortedRecipients.length === 0 && (
-                  <p style={{ fontSize: 12, color: '#9ca3af' }}>該当する支出先がありません</p>
+                  <p className="text-xs text-mirai-text-muted">該当する支出先がありません</p>
                 )}
               </>
             )}
@@ -966,29 +946,29 @@ function SidePane({
 
         {activeTab === 'indirect-cost' && (
           <>
-            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+            <div className="mb-2 text-[11px] text-mirai-text-subtle">
               国自らが支出する間接経費 {indirectCount.toLocaleString()}件
               {indirect.total > 0 && <> ・ 合計 {formatYen(indirect.total)}</>}
             </div>
             {indirectCount === 0 && (
-              <div style={{ fontSize: 12, color: '#9ca3af' }}>間接経費の記録はありません</div>
+              <div className="text-xs text-mirai-text-muted">間接経費の記録はありません</div>
             )}
             {indirect.items.map((cost, i) => (
-              <div key={i} style={{ borderBottom: '1px solid #f1f5f9', padding: '8px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 400, color: '#333', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div key={i} className="border-b border-border py-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="min-w-0 truncate text-xs font-normal text-mirai-text-secondary">
                     {cost.category || cost.kind || '（項目なし）'}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <div className="shrink-0 whitespace-nowrap text-xs font-bold text-mirai-text-subtle">
                     {cost.amount > 0 ? formatYen(cost.amount) : '—'}
                   </div>
                 </div>
-                <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                  {cost.kind && <span style={{ marginRight: 8 }}>{cost.kind}</span>}
+                <div className="mt-0.5 text-[10px] text-mirai-text-subtle">
+                  {cost.kind && <span className="mr-2">{cost.kind}</span>}
                   {cost.blockHint && <span>{cost.blockHint}</span>}
                 </div>
                 {cost.note && (
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{cost.note}</div>
+                  <div className="mt-0.5 text-[10px] text-mirai-text-muted">{cost.note}</div>
                 )}
               </div>
             ))}
@@ -1015,48 +995,31 @@ function BlockListRow({ block, selected, onClick, scaleFont }: { block: BlockNod
   const PANEL_META_FONT_PX = scaleFont(PANEL_META_FONT_PX_DEFAULT);
 
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={onClick}
-      style={{
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3,
-        textAlign: 'left',
-        border: 'none',
-        borderBottom: '1px solid #f1f5f9',
-        background: selected ? '#f8fafc' : 'transparent',
-        borderRadius: 0,
-        padding: '7px 0',
-        margin: 0,
-        cursor: 'pointer',
-      }}
+      aria-pressed={selected}
+      className={cn(PANEL_ROW_BUTTON_CLASS, selected && 'bg-primary/10 hover:bg-primary/10')}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', width: '100%' }}>
-        <div title={`${block.blockId} ${block.blockName}`} style={{ flex: 1, fontSize: PANEL_LIST_NAME_FONT_PX, fontWeight: 400, color: '#333', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div className="flex w-full items-baseline justify-between gap-2">
+        <div title={`${block.blockId} ${block.blockName}`} className="min-w-0 flex-1 truncate font-normal text-mirai-text-secondary" style={{ fontSize: PANEL_LIST_NAME_FONT_PX }}>
           {block.blockId} {block.blockName}
         </div>
-        <div style={{ fontSize: PANEL_LIST_VALUE_FONT_PX, fontWeight: 600, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatYen(block.totalAmount)}</div>
+        <div className="shrink-0 whitespace-nowrap font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_LIST_VALUE_FONT_PX }}>{formatYen(block.totalAmount)}</div>
       </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: PANEL_META_FONT_PX, color: '#888', width: '100%', minWidth: 0 }}>
-        <span style={{
-          padding: '1px 6px',
-          borderRadius: 999,
-          background: badge.bg,
-          color: badge.fg,
-          fontWeight: 700,
-          flexShrink: 0,
-        }}>
+      <div className="flex w-full min-w-0 items-center gap-1.5 text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
+        {/* 種別バッジの色は意味色（直接=赤 / 再委託=橙 / 別財源=紫） */}
+        <span className="shrink-0 rounded-full px-1.5 py-px font-bold" style={{ background: badge.bg, color: badge.fg }}>
           {badgeText}
         </span>
         <span>支出先 {block.recipientCount.toLocaleString()}件</span>
         {block.role && (
-          <span title={block.role} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span title={block.role} className="min-w-0 truncate">
             {block.role}
           </span>
         )}
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -1090,7 +1053,7 @@ function FlowGroupRow({
   // 他タブと同じ2行構成に合わせる。上流→下流を縦方向で表現し、
   // 上段=起点（上流。合流時は複数行）、下段=「→ 対象ブロック」＋流入額（右寄せ）。
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: '1px solid #f1f5f9', padding: '7px 0', minWidth: 0 }}>
+    <div className="flex min-w-0 flex-col gap-0.5 border-b border-border py-[7px]">
       {/* 上段: 起点（上流）。合流時は複数行になる */}
       {incoming.map((f, i) => {
         const src = f.sourceBlock ? blockById.get(f.sourceBlock) ?? null : null;
@@ -1099,55 +1062,60 @@ function FlowGroupRow({
           : src ? `${src.blockId} ${src.blockName}` : f.sourceBlock;
         const badge = flowOriginBadgeColor(f.origin);
         return (
-          <div key={`${f.sourceBlock ?? 'root'}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: META_PX, color: '#64748b', minWidth: 0 }}>
-            <span style={{ padding: '0 6px', borderRadius: 999, background: badge.bg, color: badge.fg, fontWeight: 700, flexShrink: 0, fontSize: Math.max(9, META_PX - 1) }}>
+          <div key={`${f.sourceBlock ?? 'root'}-${i}`} className="flex min-w-0 items-center gap-[5px] text-mirai-text-subtle" style={{ fontSize: META_PX }}>
+            {/* 起点種別バッジの色は意味色（直接=赤 / 再委託=橙 / 別財源=紫 / 移替・参考=グレー） */}
+            <span className="shrink-0 rounded-full px-1.5 font-bold" style={{ background: badge.bg, color: badge.fg, fontSize: Math.max(9, META_PX - 1) }}>
               {flowOriginLabel(f.origin)}
             </span>
             {src ? (
-              <button
+              <Button
+                variant="link"
                 onClick={() => onSelectBlock(src)}
                 title={srcLabel}
-                style={{ flex: 1, minWidth: 0, fontSize: META_PX, color: '#4a90d9', background: 'none', border: 'none', textAlign: 'left', padding: 0, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                className="min-w-0 flex-1 justify-start truncate text-left font-normal no-underline hover:text-primary-accent hover:underline"
+                style={{ fontSize: META_PX }}
               >
                 {srcLabel}
-              </button>
+              </Button>
             ) : (
-              <span title={srcLabel} style={{ flex: 1, minWidth: 0, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span title={srcLabel} className="min-w-0 flex-1 truncate text-mirai-text-secondary">
                 {srcLabel}
               </span>
             )}
-            {f.isReference && <span style={{ color: '#94a3b8', flexShrink: 0 }}>参考</span>}
+            {f.isReference && <span className="shrink-0 text-mirai-text-muted">参考</span>}
           </div>
         );
       })}
       {/* 下段: → 対象ブロック（下流）＋流入額（右寄せ・他タブと同様） */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, minWidth: 0, marginTop: 1 }}>
-        <span style={{ color: '#94a3b8', flexShrink: 0, fontSize: NAME_PX }}>→</span>
+      <div className="mt-px flex min-w-0 items-baseline gap-[5px]">
+        <span className="shrink-0 text-mirai-text-muted" style={{ fontSize: NAME_PX }}>→</span>
         {isMerge && (
-          <span style={{ padding: '0 6px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: Math.max(9, META_PX - 1), flexShrink: 0 }}>
+          <span className="shrink-0 rounded-full bg-mirai-badge-yellow px-1.5 font-bold text-mirai-text-secondary" style={{ fontSize: Math.max(9, META_PX - 1) }}>
             合流 {mergeCount}本
           </span>
         )}
         {target ? (
-          <button
+          <Button
+            variant="link"
             onClick={() => onSelectBlock(target)}
             title={targetLabel}
-            style={{ flex: 1, minWidth: 0, fontSize: NAME_PX, fontWeight: 400, color: '#333', background: 'none', border: 'none', textAlign: 'left', padding: 0, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            className="min-w-0 flex-1 justify-start truncate text-left font-normal text-mirai-text-secondary no-underline hover:text-primary-accent hover:underline"
+            style={{ fontSize: NAME_PX }}
           >
             {targetLabel}
-          </button>
+          </Button>
         ) : (
-          <span title={targetLabel} style={{ flex: 1, minWidth: 0, fontSize: NAME_PX, fontWeight: 400, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span title={targetLabel} className="min-w-0 flex-1 truncate font-normal text-mirai-text-secondary" style={{ fontSize: NAME_PX }}>
             {targetLabel}
           </span>
         )}
-        <span title="対象ブロックへの流入額（合計）" style={{ fontSize: VALUE_PX, fontWeight: 600, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <span title="対象ブロックへの流入額（合計）" className="shrink-0 whitespace-nowrap font-bold text-mirai-text-subtle" style={{ fontSize: VALUE_PX }}>
           {inflow > 0 ? formatYen(inflow) : '—'}
         </span>
       </div>
       {/* 補足（note を持つ辺があれば列挙） */}
       {notes.map((f, i) => (
-        <div key={`note-${i}`} title={f.note} style={{ fontSize: META_PX, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: 14 }}>
+        <div key={`note-${i}`} title={f.note} className="truncate pl-3.5 text-mirai-text-muted" style={{ fontSize: META_PX }}>
           補足: {f.note}
         </div>
       ))}
@@ -1172,53 +1140,44 @@ function RecipientCard({
   const PANEL_META_FONT_PX = scaleFont(PANEL_META_FONT_PX_DEFAULT);
 
   return (
-    <div style={{
-      borderBottom: '1px solid #f1f5f9',
-      fontSize: PANEL_LIST_NAME_FONT_PX,
-    }}>
+    <div className="border-b border-border" style={{ fontSize: PANEL_LIST_NAME_FONT_PX }}>
       <div
-        style={{
-          padding: '7px 0',
-          background: 'transparent',
-          cursor: hasDetails ? 'pointer' : 'default',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 8,
-        }}
+        className={cn('flex items-start gap-2 py-[7px]', hasDetails ? 'cursor-pointer' : 'cursor-default')}
         onClick={hasDetails ? onToggle : undefined}
       >
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-            <div title={recipient.name || '（氏名なし）'} style={{ flex: 1, minWidth: 0, fontWeight: 400, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipient.name || '（氏名なし）'}</div>
-            <div style={{ color: '#555', fontSize: PANEL_LIST_VALUE_FONT_PX, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{formatYen(recipient.amount)}</div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <div title={recipient.name || '（氏名なし）'} className="min-w-0 flex-1 truncate font-normal text-mirai-text-secondary">{recipient.name || '（氏名なし）'}</div>
+            <div className="shrink-0 whitespace-nowrap font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_LIST_VALUE_FONT_PX }}>{formatYen(recipient.amount)}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <div style={{ width: 52, height: 3, background: '#eef2f7', borderRadius: 999, overflow: 'hidden', flexShrink: 0 }}>
-              <div style={{ width: `${share}%`, height: '100%', background: barColor }} />
+          <div className="mt-1 flex items-center gap-2">
+            {/* 構成比バー。バー色はブロック種別の意味色（barColor） */}
+            <div className="h-[3px] w-[52px] shrink-0 overflow-hidden rounded-full bg-mirai-surface-light">
+              <div className="h-full" style={{ width: `${share}%`, background: barColor }} />
             </div>
-            <div style={{ color: '#999', fontSize: PANEL_META_FONT_PX, whiteSpace: 'nowrap' }}>構成比 {percentOf(recipient.amount, totalAmount)}</div>
+            <div className="whitespace-nowrap text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>構成比 {percentOf(recipient.amount, totalAmount)}</div>
           </div>
           {recipient.corporateNumber && (
-            <div style={{ color: '#aaa', fontSize: PANEL_META_FONT_PX, marginTop: 1 }}>法人番号: {recipient.corporateNumber}</div>
+            <div className="mt-px text-mirai-text-placeholder" style={{ fontSize: PANEL_META_FONT_PX }}>法人番号: {recipient.corporateNumber}</div>
           )}
         </div>
         {hasDetails && (
-          <span style={{ color: '#aaa', fontSize: 12, marginTop: 1, flexShrink: 0 }}>{expanded ? '▲' : '▼'}</span>
+          <ChevronDown aria-hidden="true" className={cn('mt-0.5 size-3.5 shrink-0 text-mirai-text-placeholder transition-transform', expanded && 'rotate-180')} />
         )}
       </div>
 
       {expanded && (
-        <div style={{ padding: '0 0 8px 60px', background: '#fff' }}>
+        <div className="bg-card pb-2 pl-[60px]">
           {recipient.contractSummaries.map((cs, j) => (
-            <div key={j} style={{ color: '#555', marginBottom: 4, lineHeight: 1.5 }}>{cs}</div>
+            <div key={j} className="mb-1 leading-normal text-mirai-text-subtle">{cs}</div>
           ))}
           {recipient.expenses.length > 0 && (
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#888', marginBottom: 4 }}>費目・使途</div>
+            <div className="mt-1.5">
+              <div className="mb-1 font-bold text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>費目・使途</div>
               {recipient.expenses.map((e, j) => (
-                <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: '#555', gap: 8 }}>
-                  <span style={{ color: '#777', minWidth: 0 }}>{e.category} / {e.purpose}</span>
-                  <span style={{ whiteSpace: 'nowrap', fontWeight: 500, color: '#555' }}>{formatYen(e.amount)}</span>
+                <div key={j} className="flex justify-between gap-2 py-0.5 text-mirai-text-subtle">
+                  <span className="min-w-0 text-mirai-text-muted">{e.category} / {e.purpose}</span>
+                  <span className="whitespace-nowrap font-medium text-mirai-text-subtle">{formatYen(e.amount)}</span>
                 </div>
               ))}
             </div>
@@ -1720,17 +1679,17 @@ function SubcontractDetailPageInner() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb' }}>
-        <p style={{ color: '#6b7280' }}>読み込み中...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-mirai-text-muted">読み込み中...</p>
       </div>
     );
   }
 
   if (error || !graph) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', gap: 12 }}>
-        <p style={{ color: '#ef4444' }}>エラー: {error ?? 'データなし'}</p>
-        <Link href="/subcontracts" style={{ color: '#4a90d9', fontSize: 14 }}>← 一覧に戻る</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
+        <p className="text-destructive">エラー: {error ?? 'データなし'}</p>
+        <Link href="/subcontracts" className="text-sm text-primary underline-offset-4 hover:text-primary-accent hover:underline">← 一覧に戻る</Link>
       </div>
     );
   }
@@ -1802,102 +1761,59 @@ function SubcontractDetailPageInner() {
   // フロー端点用: ブロックID→シフト（root=null はシフト0）
   const ribbonShiftOf = (blockId: string | null): number => (blockId === null ? 0 : ribbonBarShift.get(blockId) ?? 0);
   return (
-    <div style={{ display: 'flex', height: '100vh', background: COLOR_CANVAS, overflow: 'hidden' }}>
-      {/* SVGキャンバス */}
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* SVGキャンバス（ページ背景の warm gray の上に描く。ノード・リンク色は意味色のまま） */}
       <div
         ref={containerRef}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          overflow: 'hidden',
-          position: 'relative',
-          backgroundColor: COLOR_CANVAS,
-        }}
+        className="relative min-w-0 flex-1 overflow-hidden bg-background"
       >
         {/* 一覧へ戻る — 左上（サイドパネルが左表示のときは退避） */}
         <div style={{ position: 'absolute', top: 12, left: leftFloatOffset, zIndex: 15, transition: sidePanel.isResizing ? 'none' : 'left 0.2s ease' }}>
-          <Link
-            href={`/subcontracts?year=${year}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: 13,
-              border: '1px solid #e0e0e0',
-              borderRadius: 8,
-              padding: '6px 12px',
-              background: 'rgba(255,255,255,0.95)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-              color: '#333',
-              cursor: 'pointer',
-              textDecoration: 'none',
-            }}
-          >
-            ← 一覧
-          </Link>
+          <Button asChild variant="outline" size="sm" className="border-mirai-border text-[13px] font-medium">
+            <Link href={`/subcontracts?year=${year}`}>
+              ← 一覧
+            </Link>
+          </Button>
         </div>
 
-        {/* 年度切替 — 上部中央 */}
+        {/* 年度切替 — 上部中央（全ページ共通の YearSelect） */}
         <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 15 }}>
-          <select
-            value={year}
-            onChange={(e) => router.push(`/subcontracts/${projectId}?year=${e.target.value}`)}
-            style={{
-              fontSize: 13,
-              border: '1px solid #e0e0e0',
-              borderRadius: 8,
-              padding: '6px 28px 6px 10px',
-              background: 'rgba(255,255,255,0.95)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-              color: '#333',
-              cursor: 'pointer',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-            }}
-          >
-            <option value={2025}>2025年度</option>
-            <option value={2024}>2024年度</option>
-          </select>
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#999" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-            <path d="M7 10l5 5 5-5z"/>
-          </svg>
+          <YearSelect
+            value={String(year)}
+            onChange={(y) => router.push(`/subcontracts/${projectId}?year=${y}`)}
+            years={[2025, 2024]}
+            theme="light"
+          />
         </div>
 
-        {/* 表示切り替え — 年度ピルの右隣（フロー図=既定 / ブロック図） */}
+        {/* 表示切り替え — 年度ピルの右隣（フロー図=既定 / ブロック図）。セグメント型トグル */}
         <div
           data-pan-disabled="true"
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: 'calc(50% + 108px)',
-            zIndex: 15,
-            display: 'flex',
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            background: 'rgba(255,255,255,0.95)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            overflow: 'hidden',
-          }}
+          role="group"
+          aria-label="表示切り替え"
+          className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs"
+          style={{ position: 'absolute', top: 12, left: 'calc(50% + 108px)', zIndex: 15 }}
         >
           {([
             ['ribbon', 'フロー図'],
             ['block', 'ブロック図'],
           ] as const).map(([mode, label]) => (
-            <button
+            <Button
               key={mode}
+              variant="ghost"
+              size="sm"
+              aria-pressed={viewMode === mode}
               onClick={() => setViewMode(mode)}
               title={mode === 'block' ? '縦ブロック図' : 'サンキー風横フロー（既定）'}
-              style={{
-                border: 'none',
-                background: viewMode === mode ? '#eff6ff' : 'transparent',
-                color: viewMode === mode ? '#1e40af' : '#555',
-                fontWeight: viewMode === mode ? 700 : 500,
-                fontSize: 12,
-                padding: '6px 12px',
-                cursor: 'pointer',
-              }}
+              className={cn(
+                'rounded-none px-3 text-xs',
+                viewMode === mode
+                  ? 'bg-primary/10 font-bold text-primary-accent hover:bg-primary/10 hover:text-primary-accent'
+                  : 'font-medium text-mirai-text-subtle hover:bg-mirai-surface hover:text-mirai-text',
+              )}
             >
               {label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -2633,13 +2549,11 @@ function SubcontractDetailPageInner() {
             return (
               <div
                 key={col.key}
+                className="pointer-events-none select-none whitespace-nowrap rounded-md bg-background/80 px-2 py-0.5 text-center leading-[1.4] text-mirai-text-muted"
                 style={{
                   position: 'absolute', left: screenX, top,
-                  transform: 'translateX(-50%)', textAlign: 'center',
-                  fontSize: labelPx, color: '#999', whiteSpace: 'nowrap',
-                  userSelect: 'none', cursor: 'default', pointerEvents: 'none',
-                  zIndex: 6, lineHeight: 1.4,
-                  background: 'rgba(255,255,255,0.82)', padding: '2px 8px', borderRadius: 4,
+                  transform: 'translateX(-50%)',
+                  fontSize: labelPx, cursor: 'default', zIndex: 6,
                 }}
               >
                 <div>{col.label}</div>
@@ -2717,81 +2631,67 @@ function SubcontractDetailPageInner() {
               : null;
           const titleText = isRoot ? graph.projectName : isIndirect ? INDIRECT_COST_NODE_LABEL : bud ? bud.label : rf ? `${rfSourceName} → ${rfTargetName}` : lb!.blockName;
           return (
-            <div style={{
-              position: 'absolute',
-              left: tipX,
-              top: tipY,
-              width: tipW,
-              boxSizing: 'border-box',
-              background: 'rgba(255,255,255,0.97)',
-              borderRadius: 6,
-              padding: '6px 10px',
-              color: '#222',
-              lineHeight: 1.3,
-              wordBreak: 'break-word',
-              border: '1px solid #e0e0e0',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              pointerEvents: 'none',
-              zIndex: 20,
-              fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 5 }}>
-                <span title={titleText} style={{ fontWeight: 600, fontSize: scaleFont(12), color: '#111', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div
+              className="pointer-events-none box-border break-words rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 leading-[1.3] text-mirai-text shadow-soft"
+              style={{ position: 'absolute', left: tipX, top: tipY, width: tipW, zIndex: 20 }}
+            >
+              <div className="mb-[5px] flex items-baseline gap-1.5">
+                <span title={titleText} className="min-w-0 truncate font-bold text-mirai-text" style={{ fontSize: scaleFont(12) }}>
                   {titleText}
                 </span>
-                <span style={{ flexShrink: 0 }}>{titleTag}</span>
+                <span className="shrink-0">{titleTag}</span>
               </div>
-              <div style={{ fontSize: scaleFont(11), lineHeight: 1.45, color: '#555' }}>
+              <div className="leading-[1.45] text-mirai-text-subtle" style={{ fontSize: scaleFont(11) }}>
                 {isRoot ? (
                   <>
                     <div>PID {graph.projectId} ・ {graph.ministry}</div>
                     {visibleOrgChain.length > 0 && <div>{visibleOrgChain.join(' / ')}</div>}
-                    <div>予算 <b style={{ color: '#222' }}>{graph.budget > 0 ? formatYen(graph.budget) : '—'}</b> ・ 支出 <b style={{ color: '#222' }}>{graph.execution > 0 ? formatYen(graph.execution) : '—'}</b></div>
+                    <div>予算 <b className="text-mirai-text">{graph.budget > 0 ? formatYen(graph.budget) : '—'}</b> ・ 支出 <b className="text-mirai-text">{graph.execution > 0 ? formatYen(graph.execution) : '—'}</b></div>
                   </>
                 ) : isIndirect ? (
                   <>
-                    <div><b style={{ color: '#222' }}>{formatYen(indirectSummary.total)}</b> ・ {indirectSummary.count.toLocaleString()}件</div>
-                    <div style={{ color: '#777' }}>支出先ブロックを持たない支出（クリックで一覧）</div>
+                    <div><b className="text-mirai-text">{formatYen(indirectSummary.total)}</b> ・ {indirectSummary.count.toLocaleString()}件</div>
+                    <div className="text-mirai-text-muted">支出先ブロックを持たない支出（クリックで一覧）</div>
                     {indirectTopItems.map((c, i) => (
-                      <div key={`${c.category}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 1 }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i + 1}. {c.category || c.kind || '（項目なし）'}</span>
-                        <span style={{ flexShrink: 0, color: '#222' }}>{formatYen(c.amount)}</span>
+                      <div key={`${c.category}-${i}`} className="mt-px flex justify-between gap-2">
+                        <span className="truncate">{i + 1}. {c.category || c.kind || '（項目なし）'}</span>
+                        <span className="shrink-0 text-mirai-text">{formatYen(c.amount)}</span>
                       </div>
                     ))}
                   </>
                 ) : bud ? (
                   <>
-                    <div>予算額 <b style={{ color: '#222' }}>{formatYen(bud.amount)}</b>
-                      {bud.nextYearRequestAmount > 0 && <> ・ 翌年度要求 <b style={{ color: '#222' }}>{formatYen(bud.nextYearRequestAmount)}</b></>}
+                    <div>予算額 <b className="text-mirai-text">{formatYen(bud.amount)}</b>
+                      {bud.nextYearRequestAmount > 0 && <> ・ 翌年度要求 <b className="text-mirai-text">{formatYen(bud.nextYearRequestAmount)}</b></>}
                     </div>
                     {(bud.item.trim() || bud.subItem.trim()) && (
-                      <div style={{ color: '#777' }}>
+                      <div className="text-mirai-text-muted">
                         {bud.item.trim() && <>項: {bud.item}</>}
                         {bud.subItem.trim() && <>{bud.item.trim() ? ' ・ ' : ''}目: {bud.subItem}</>}
                       </div>
                     )}
                     {bud.note.trim() && (
-                      <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #eee' }}>補足: {bud.note}</div>
+                      <div className="mt-1 border-t border-border pt-1">補足: {bud.note}</div>
                     )}
                   </>
                 ) : rf ? (
                   <>
-                    <div><b style={{ color: '#222' }}>{formatYen(Math.round(rf.amount))}</b>
+                    <div><b className="text-mirai-text">{formatYen(Math.round(rf.amount))}</b>
                       {rf.isReference && ' ・ 参考標記'}
                       {rf.targetIncomingBlockCount >= 2 && ` ・ 合流 ${rf.targetIncomingBlockCount}本`}
                     </div>
                     {rf.note && (
-                      <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px solid #eee' }}>補足: {rf.note}</div>
+                      <div className="mt-1 border-t border-border pt-1">補足: {rf.note}</div>
                     )}
                   </>
                 ) : (
                   <>
-                    <div><b style={{ color: '#222' }}>{formatYen(lb!.totalAmount)}</b> ・ 支出先 {lb!.recipients.length.toLocaleString()}件</div>
-                    {lb!.role && <div style={{ color: '#777' }}>{lb!.role}</div>}
+                    <div><b className="text-mirai-text">{formatYen(lb!.totalAmount)}</b> ・ 支出先 {lb!.recipients.length.toLocaleString()}件</div>
+                    {lb!.role && <div className="text-mirai-text-muted">{lb!.role}</div>}
                     {topRecipients.map((r, i) => (
-                      <div key={`${r.name}-${r.corporateNumber}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 1 }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i + 1}. {r.name || '（氏名なし）'}</span>
-                        <span style={{ flexShrink: 0, color: '#222' }}>{formatYen(r.amount)}</span>
+                      <div key={`${r.name}-${r.corporateNumber}-${i}`} className="mt-px flex justify-between gap-2">
+                        <span className="truncate">{i + 1}. {r.name || '（氏名なし）'}</span>
+                        <span className="shrink-0 text-mirai-text">{formatYen(r.amount)}</span>
                       </div>
                     ))}
                   </>
@@ -2811,22 +2711,28 @@ function SubcontractDetailPageInner() {
           transition: sidePanel.isResizing ? 'none' : 'right 0.2s ease',
         }}>
           {/* スクロールモード切替ボタン（/sankey-svg と同じ意匠） */}
-          <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
-            <button
+          <div className="w-11 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label={scrollMode === 'pan' ? 'スクロール移動モード（クリックでズームモードへ）' : 'スクロール移動モードに切替'}
+              aria-pressed={scrollMode === 'pan'}
               title={scrollMode === 'pan' ? 'スクロール: 移動モード\nCtrl/Cmd+スクロール = ズーム\nクリックでズームモードへ' : 'スクロール: ズームモード\nクリックで移動モードへ'}
               onClick={() => setScrollMode(m => m === 'zoom' ? 'pan' : 'zoom')}
-              style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', border: 'none', background: scrollMode === 'pan' ? '#e8f0fe' : 'transparent', cursor: 'pointer' }}
+              className={cn(
+                'h-8 w-full rounded-none',
+                scrollMode === 'pan' ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary-accent' : 'text-mirai-text-placeholder hover:text-mirai-text',
+              )}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={scrollMode === 'pan' ? '#1a73e8' : '#bbb'}><path d="M480-80 310-250l57-57 73 73v-166H274l73 74-57 57L120-440l170-170 57 57-74 73h166v-166l-73 73-57-57 170-170 170 170-57 57-73-73v166h166l-74-73 57-57 170 170-170 170-57-57 74-74H520v166l73-73 57 57L480-80Z"/></svg>
-            </button>
+              <Move className="size-[18px]" aria-hidden="true" />
+            </Button>
           </div>
           {/* + / スライダー / - */}
-          <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <button aria-label="ズームイン" onClick={() => applyZoom(1.5)} title="ズームイン" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', background: 'transparent', border: 'none', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="#555"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </button>
-            <div style={{ padding: '4px 0', display: 'flex', justifyContent: 'center', borderBottom: '1px solid #e5e7eb' }}>
+          <div className="flex w-11 flex-col items-center overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
+            <Button variant="ghost" size="icon" aria-label="ズームイン" onClick={() => applyZoom(1.5)} title="ズームイン" className="h-8 w-full rounded-none border-b border-border text-mirai-text-subtle hover:text-mirai-text">
+              <Plus className="size-[18px]" aria-hidden="true" />
+            </Button>
+            <div className="flex justify-center border-b border-border py-1">
               <input
                 type="range"
                 aria-label="ズーム倍率"
@@ -2835,16 +2741,17 @@ function SubcontractDetailPageInner() {
                 step={0.01}
                 value={Math.log10(Math.max(Math.max(ZOOM_MIN_ABS, baseZoom * ZOOM_MIN_MULTIPLIER), Math.min(Math.min(ZOOM_MAX_ABS, baseZoom * ZOOM_MAX_MULTIPLIER), transform.scale)))}
                 onChange={e => { const newK = Math.pow(10, parseFloat(e.target.value)); applyZoom(newK / transform.scale); }}
+                className="accent-primary"
                 style={{ writingMode: 'vertical-lr', direction: 'rtl', width: 16, height: 80 }}
                 title={`Zoom: ${Math.round(transform.scale / baseZoom * 100)}%`}
               />
             </div>
-            <button aria-label="ズームアウト" onClick={() => applyZoom(1 / 1.5)} title="ズームアウト" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="#555"><path d="M19 13H5v-2h14v2z"/></svg>
-            </button>
+            <Button variant="ghost" size="icon" aria-label="ズームアウト" onClick={() => applyZoom(1 / 1.5)} title="ズームアウト" className="h-8 w-full rounded-none text-mirai-text-subtle hover:text-mirai-text">
+              <Minus className="size-[18px]" aria-hidden="true" />
+            </Button>
           </div>
           {/* Zoom% */}
-          <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
+          <div className="w-11 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
             {isEditingZoom ? (
               <input
                 type="number"
@@ -2854,21 +2761,22 @@ function SubcontractDetailPageInner() {
                 onChange={e => setZoomInputValue(e.target.value)}
                 onBlur={() => { const v = Number(zoomInputValue); if (!isNaN(v) && v > 0) applyZoom((v / 100 * baseZoom) / transform.scale); setIsEditingZoom(false); }}
                 onKeyDown={e => { if (e.key === 'Enter') { const v = Number(zoomInputValue); if (!isNaN(v) && v > 0) applyZoom((v / 100 * baseZoom) / transform.scale); setIsEditingZoom(false); } else if (e.key === 'Escape') { setIsEditingZoom(false); } }}
-                style={{ width: '100%', fontSize: 10, textAlign: 'center', padding: '3px 0', border: 'none', outline: 'none', background: 'transparent', color: '#555', boxSizing: 'border-box' }}
+                className="box-border w-full border-0 bg-transparent py-[3px] text-center text-[10px] text-mirai-text-subtle outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
               />
             ) : (
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => { setZoomInputValue(String(Math.round(transform.scale / baseZoom * 100))); setIsEditingZoom(true); }}
                 title="クリックしてZoom率を入力"
-                style={{ width: '100%', fontSize: 10, textAlign: 'center', padding: '4px 0', border: 'none', background: 'transparent', color: '#888', cursor: 'text' }}
-              >{Math.round(transform.scale / baseZoom * 100)}%</button>
+                className="h-auto w-full cursor-text rounded-none px-0 py-1 text-[10px] font-normal text-mirai-text-muted hover:text-mirai-text"
+              >{Math.round(transform.scale / baseZoom * 100)}%</Button>
             )}
           </div>
           {/* 全体表示 */}
-          <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
-            <button aria-label="全体表示" onClick={resetViewport} title="全体表示" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="#666"><path d="M792-576v-120H672v-72h120q30 0 51 21.15T864-696v120h-72Zm-696 0v-120q0-30 21.15-51T168-768h120v72H168v120H96Zm576 384v-72h120v-120h72v120q0 30-21.15 51T792-192H672Zm-504 0q-30 0-51-21.15T96-264v-120h72v120h120v72H168Zm72-144v-288h480v288H240Zm72-72h336v-144H312v144Zm0 0v-144 144Z"/></svg>
-            </button>
+          <div className="w-11 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
+            <Button variant="ghost" size="icon" aria-label="全体表示" onClick={resetViewport} title="全体表示" className="h-8 w-full rounded-none text-mirai-text-subtle hover:text-mirai-text">
+              <Maximize className="size-[18px]" aria-hidden="true" />
+            </Button>
           </div>
         </div>
 
@@ -2876,18 +2784,12 @@ function SubcontractDetailPageInner() {
             サイドパネルが左表示のときは退避） */}
         <div
           data-pan-disabled="true"
+          className="flex items-center rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 shadow-xs"
           style={{
             position: 'absolute',
             left: leftFloatOffset,
             bottom: 12,
             zIndex: 15,
-            display: 'flex',
-            alignItems: 'center',
-            background: 'rgba(255,255,255,0.95)',
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-            padding: '6px 10px',
             transition: sidePanel.isResizing ? 'none' : 'left 0.2s ease',
           }}
         >
@@ -2939,7 +2841,7 @@ function SubcontractDetailPageInner() {
 
 export default function SubcontractDetailPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24, color: '#6b7280', fontSize: 14 }}>読み込み中...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-mirai-text-muted">読み込み中...</div>}>
       <SubcontractDetailPageInner />
     </Suspense>
   );

@@ -1,6 +1,8 @@
 'use client';
 
 import type { RefObject, MutableRefObject } from 'react';
+import { ChevronLeft, Map } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface MinimapOverlayProps {
   show: boolean;
@@ -21,6 +23,7 @@ export function MinimapOverlay({ show, onShow, onHide, left, minimapW, minimapH,
         data-pan-disabled="true"
         style={{ position: 'absolute', left, bottom: 8, zIndex: 10, transition: 'left 0.2s ease' }}
       >
+        {/* ミニマップ本体（canvas 描画）はデータ可視化なので配色はそのまま。枠だけトークン化 */}
         <canvas
           ref={canvasRef}
           width={minimapW}
@@ -30,29 +33,35 @@ export function MinimapOverlay({ show, onShow, onHide, left, minimapW, minimapH,
           onMouseMove={(e) => { if (dragging.current) navigate(e); }}
           onMouseUp={() => { dragging.current = false; }}
           onMouseLeave={() => { dragging.current = false; }}
-          style={{ display: 'block', border: '1px solid #ccc', borderRadius: '4px 4px 0px 4px', cursor: 'crosshair', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}
+          className="block cursor-crosshair border border-mirai-border shadow-xs"
+          style={{ borderRadius: '4px 4px 0px 4px' }}
         />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           title="ミニマップを隠す"
+          aria-label="ミニマップを隠す"
           onClick={(e) => { e.stopPropagation(); onHide(); }}
-          style={{ position: 'absolute', bottom: 0, right: -13, zIndex: 12, background: 'rgba(255,255,255,0.92)', borderTop: '1px solid #ccc', borderRight: '1px solid #ccc', borderBottom: '1px solid #ccc', borderLeft: 'none', borderRadius: '0 4px 4px 0', width: 14, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+          className="h-5 w-[14px] rounded-none rounded-r-md border border-l-0 border-mirai-border bg-card p-0 text-mirai-text-placeholder hover:bg-mirai-surface hover:text-mirai-text"
+          style={{ position: 'absolute', bottom: 0, right: -13, zIndex: 12 }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 0 24 24" width="18px" fill="#aaa"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
-        </button>
+          <ChevronLeft className="size-3.5" aria-hidden="true" />
+        </Button>
       </div>
     );
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       data-pan-disabled="true"
       title="ミニマップを表示"
+      aria-label="ミニマップを表示"
       onClick={(e) => { e.stopPropagation(); onShow(); }}
-      style={{ position: 'absolute', left: left + 8, bottom: 16, zIndex: 11, background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 6, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, transition: 'left 0.2s ease' }}
+      className="size-8 rounded-md bg-card text-mirai-text-muted shadow-xs hover:bg-mirai-surface hover:text-mirai-text"
+      style={{ position: 'absolute', left: left + 8, bottom: 16, zIndex: 11, transition: 'left 0.2s ease' }}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="#888"><path d="m600-120-240-84-186 72q-20 8-37-4.5T120-170v-560q0-13 7.5-23t20.5-15l212-72 240 84 186-72q20-8 37 4.5t17 33.5v560q0 13-7.5 23T812-192l-212 72Zm-40-98v-468l-160-56v468l160 56Zm80 0 120-40v-474l-120 46v468Zm-440-10 120-46v-468l-120 40v474Zm440-458v468-468Zm-320-56v468-468Z"/></svg>
-    </button>
+      <Map className="size-[18px]" aria-hidden="true" />
+    </Button>
   );
 }

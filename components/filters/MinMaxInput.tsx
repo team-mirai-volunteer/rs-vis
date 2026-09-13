@@ -1,5 +1,8 @@
-import type { CSSProperties } from 'react';
+import { X } from 'lucide-react';
 import { parseAmountToYen } from '@/app/lib/format/yen';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { FILTER_INPUT_CLASS } from './FilterTextInput';
 
 interface MinMaxInputProps {
   minVal: string;
@@ -16,17 +19,8 @@ export function MinMaxInput({
 }: MinMaxInputProps) {
   const minOk = !minVal || parseAmountToYen(minVal) !== null;
   const maxOk = !maxVal || parseAmountToYen(maxVal) !== null;
-  const inputStyle = (ok: boolean): CSSProperties => ({
-    flex: 1,
-    minWidth: 0,
-    fontSize: 12,
-    border: `1px solid ${ok ? '#ddd' : '#e53935'}`,
-    borderRadius: 4,
-    padding: '3px 6px',
-    background: '#fafafa',
-    color: '#333',
-    outline: 'none',
-  });
+  const inputClass = (ok: boolean) =>
+    cn(FILTER_INPUT_CLASS, 'flex-1', !ok && 'border-destructive focus-visible:border-destructive');
 
   return (
     <>
@@ -36,26 +30,29 @@ export function MinMaxInput({
         onChange={(e) => onMinChange(e.target.value)}
         placeholder="下限"
         title="下限 (例: 100億, 1兆)"
-        style={inputStyle(minOk)}
+        aria-invalid={!minOk || undefined}
+        className={inputClass(minOk)}
       />
-      <span style={{ color: '#aaa', fontSize: 11 }}>~</span>
+      <span className="text-[11px] text-mirai-text-muted">~</span>
       <input
         type="text"
         value={maxVal}
         onChange={(e) => onMaxChange(e.target.value)}
         placeholder="上限"
         title="上限 (例: 1兆, 5000億)"
-        style={inputStyle(maxOk)}
+        aria-invalid={!maxOk || undefined}
+        className={inputClass(maxOk)}
       />
       {(minVal || maxVal) && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => { onMinChange(''); onMaxChange(''); }}
           aria-label="クリア"
-          style={{ background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', padding: 2, fontSize: 11, flexShrink: 0 }}
+          className="size-5 shrink-0 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
         >
-          ✕
-        </button>
+          <X className="size-3" />
+        </Button>
       )}
     </>
   );

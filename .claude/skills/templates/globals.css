@@ -1,0 +1,326 @@
+/* ============================================================
+ * チームみらい Web プロダクト用 globals.css 標準版
+ *
+ * 出典: team-mirai/mirai-gikai/web/src/app/globals.css (develop)
+ * このファイルをそのまま src/app/globals.css にコピーすれば、
+ * チームみらい標準のトークン・フォーカスリング・グラデーション
+ * ユーティリティ・カスタムアニメーションが揃う。
+ *
+ * 新色を追加する場合は @theme inline の対応カテゴリ末尾に追加し、
+ * docs/handbook/04-development/design-system/references/02-tokens.md
+ * を同時更新する。
+ * ============================================================ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* チャット UI のマークダウン表示用（streamdown を使う場合のみ） */
+/* @source "../../node_modules/streamdown/dist/index.js"; */
+
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ---- Breakpoints（チームみらい標準） ---- */
+  --breakpoint-sm: 500px;   /* スマホ縦 */
+  --breakpoint-md: 700px;   /* タブレット縦 */
+  --breakpoint-pc: 1000px;  /* PC 標準 */
+  --breakpoint-pcl: 1400px; /* 大画面 */
+
+  /* ---- shadcn 標準（意味タグ） ---- */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-noto-sans-jp);
+  --font-lexend: var(--font-lexend-giga);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-accent: var(--primary-accent);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-gray-300: #c7c7cc;
+
+  /* ============================================================
+   * Mirai Design System Color Tokens（ちみ独自）
+   * ============================================================ */
+
+  /* ---- Text（テキスト階層） ---- */
+  --color-mirai-text: #1f2937;             /* 本文 */
+  --color-mirai-text-secondary: #404040;   /* サブ見出し */
+  --color-mirai-text-muted: #8e8e93;       /* 補足・メタ */
+  --color-mirai-text-placeholder: #aeaeb2; /* placeholder */
+  --color-mirai-text-note: #4c4c4c;        /* 注釈 */
+  --color-mirai-text-subtle: #666666;      /* やや薄い文字 */
+  --color-mirai-text-close: #9f9b9b;       /* 閉じるアイコン */
+
+  /* ---- Surface（背景の階層） ---- */
+  --color-mirai-surface: #f7f4f0;          /* ページ背景 */
+  --color-mirai-surface-light: #eeeeee;    /* サブセクション */
+  --color-mirai-surface-grouped: #f2f2f7;  /* iOS 風グルーピング */
+  --color-mirai-surface-muted: #e5e5ea;    /* 無効行 */
+  --color-mirai-surface-tag: #e8e8e8;      /* タグ */
+  --color-mirai-surface-warm: #eae6dd;     /* warm 差別化 */
+  --color-mirai-surface-gray: #f6f6f6;     /* テーブル偶数行 */
+
+  /* ---- Border（ボーダー） ---- */
+  --color-mirai-border: #d2d2d2;
+  --color-mirai-border-light: #b1b1b1;
+  --color-mirai-border-muted: #bebcbc;
+
+  /* ---- Stance（賛成・反対・中立） ---- */
+  --color-stance-for-bg: #ecfcf1;
+  --color-stance-for-badge-start: #e2f6f3;
+  --color-stance-for-badge-end: #eef6e2;
+  --color-stance-against: #c9272a;
+  --color-stance-against-light: #d23c3f;
+  --color-stance-against-bg: #fff1f1;
+  --color-stance-against-badge-bg: #ffeaea;
+  --color-stance-neutral: #805f34;
+  --color-stance-neutral-badge-bg: #f7e8db;
+
+  /* ---- Reaction（リアクション） ---- */
+  --color-mirai-reaction-active: #dd425f;
+  --color-mirai-reaction-inactive: var(--color-mirai-text-muted);
+
+  /* ---- Accent（強調） ---- */
+  --color-mirai-star: #ff9500;
+  --color-mirai-highlight: #f4ff5f;
+  --color-mirai-badge-yellow: #fffd96;
+  --color-mirai-info-blue: #b2d3e8;
+
+  /* ---- Progress ---- */
+  --color-mirai-progress-track: #d9d9d9;
+  --color-mirai-progress-fill: #a9e89d;
+
+  /* ---- Gradient endpoints（hero / CTA / badge 用） ---- */
+  --color-mirai-gradient-start: #64d8c6;
+  --color-mirai-gradient-end: #bcecd3;
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #f7f4ee;
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #2aa693;
+  --primary-accent: #0f8472;
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.656 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* CJK 向け行間（日本語本文は 1.875 推奨） */
+  --leading-relaxed: 1.875;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.608 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  /* フォーカスインジケーター（キーボードナビゲーション用のみ） */
+  *:focus { outline: none; }
+  *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  button:focus { outline: none; }
+  button:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  a:focus { outline: none; }
+  a:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  table:focus { outline: none; }
+  table:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* prefers-reduced-motion 対応 */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* メイングラデーション（CTA / badge）。1 画面 1 箇所だけに留める */
+  .bg-mirai-gradient {
+    background-image: linear-gradient(
+      to bottom right,
+      var(--color-mirai-gradient-start),
+      var(--color-mirai-gradient-end)
+    );
+  }
+
+  /* 軽量グラデ（hero 背景 / 柔らかい差別化） */
+  .bg-mirai-light-gradient {
+    background-image: linear-gradient(to bottom, #e2f6f3, #eef6e2);
+  }
+
+  /* 画像 → 白フェード */
+  .bg-mirai-white-fade {
+    background-image: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.3) 0%,
+      rgb(255, 255, 255) 62%
+    );
+  }
+
+  /* グラデーションボーダー */
+  .border-mirai-gradient {
+    border: 2px solid transparent;
+    background-image:
+      linear-gradient(white, white),
+      linear-gradient(
+        -45deg,
+        var(--color-mirai-gradient-end) 0%,
+        var(--color-mirai-gradient-start) 100%
+      );
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+  }
+
+  /* アクセント英字フォント */
+  .font-lexend {
+    font-family: var(--font-lexend-giga), system-ui, sans-serif;
+  }
+}
+
+/* ============================================================
+ * カスタムアニメーション
+ * ============================================================ */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-1px); }
+  40%, 80% { transform: translateX(1px); }
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+  animation-iteration-count: 1;
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
+}
+.animate-bounce-gentle {
+  animation: bounce-gentle 2s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+/* ボタンのカーソル統一 */
+button {
+  cursor: pointer;
+}

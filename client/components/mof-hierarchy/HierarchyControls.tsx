@@ -20,6 +20,9 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { ArrowUpToLine, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { TopNSliderRow } from '@/client/components/SankeySvg/TopNSliders';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 import {
@@ -56,14 +59,14 @@ const TOP_N_COLUMNS: readonly RankableColumn[] = MOF_HIERARCHY_COLUMNS.filter(
   (c): c is RankableColumn => c === 'organization' || c === 'section' || c === 'item'
 );
 
-// [delta, SVGパス, ラベル]
-const ARROW_PATHS: [number, string, string][] = [
-  [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
-  [1, 'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
+// [delta, アイコン, ラベル]
+const ARROWS: [number, typeof ChevronLeft, string][] = [
+  [-1, ChevronLeft, '前へ'],
+  [1, ChevronRight, '次へ'],
 ];
 
 const SELECT_CLASS =
-  'h-[19px] cursor-pointer rounded border border-gray-300 bg-white px-1 text-[11px] text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+  'h-[19px] cursor-pointer rounded border border-mirai-border bg-card px-1 text-[11px] text-mirai-text-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
 export function HierarchyControls({
   topN,
@@ -121,7 +124,7 @@ export function HierarchyControls({
 
   return (
     <div className="flex flex-col items-end" data-pan-disabled="true">
-      <div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-t-md rounded-bl-md border border-gray-200 bg-white/95 px-2.5 py-[5px] text-xs backdrop-blur">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-t-md rounded-bl-md border border-border bg-card px-2.5 py-[5px] text-xs">
         {/* 1行目: 表示位置。対象を1列選んで窓をずらす（2列にまたがる） */}
         <div className="col-span-2 flex items-center gap-1.5">
           <select
@@ -136,7 +139,7 @@ export function HierarchyControls({
               </option>
             ))}
           </select>
-          <span className="shrink-0 text-[11px] text-gray-500">Top</span>
+          <span className="shrink-0 text-[11px] text-mirai-text-muted">Top</span>
           {isEditing ? (
             <input
               type="number"
@@ -162,23 +165,23 @@ export function HierarchyControls({
                   setIsEditing(false);
                 }
               }}
-              className="w-10 rounded border border-gray-300 text-center text-[11px]"
+              className="w-10 rounded border border-mirai-border text-center text-[11px]"
             />
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               title="クリックして開始位置を入力"
               aria-label={`${targetLabel}の開始位置を直接入力`}
               onClick={() => {
                 setInput(String(rangeStart));
                 setIsEditing(true);
               }}
-              className="cursor-text text-[11px] tabular-nums text-gray-500"
+              className="h-auto cursor-text rounded-none p-0 text-[11px] font-normal tabular-nums text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
             >
               {rangeStart.toLocaleString()}
-            </button>
+            </Button>
           )}
-          <span className="shrink-0 text-[11px] tabular-nums text-gray-500">
+          <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
             〜{rangeEnd.toLocaleString()}
           </span>
           <input
@@ -192,50 +195,41 @@ export function HierarchyControls({
             onChange={e => commitOffset(Number(e.target.value))}
             className="w-[60px] min-w-0"
           />
-          <span className="shrink-0 text-[11px] tabular-nums text-gray-500">
+          <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
             /{total.toLocaleString()}件
           </span>
           <div className="flex shrink-0 items-center gap-0.5">
-            {ARROW_PATHS.map(([delta, path, title]) => {
+            {ARROWS.map(([delta, Icon, title]) => {
               const step = () => stepBy(delta);
               return (
-                <button
+                <Button
                   key={delta}
-                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   title={title}
                   aria-label={`${targetLabel}の表示位置を${title}`}
                   {...repeat(step)}
                   onClick={e => {
                     if (e.detail === 0) step();
                   }}
-                  className="flex items-center justify-center"
+                  className="size-5 text-mirai-text-subtle"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#555">
-                    <path d={path} />
-                  </svg>
-                </button>
+                  <Icon className="size-3.5" aria-hidden="true" />
+                </Button>
               );
             })}
           </div>
-          {/* Material Icons: vertical_align_top — オフセットリセット */}
-          <button
-            type="button"
+          {/* オフセットリセット */}
+          <Button
+            variant="ghost"
+            size="icon-sm"
             title="先頭へリセット"
             aria-label={`${targetLabel}の表示位置を先頭へリセット`}
             onClick={() => commitOffset(0)}
-            className="flex shrink-0 items-center justify-center"
+            className="size-5 shrink-0 text-mirai-text-subtle"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="14"
-              width="14"
-              viewBox="0 0 24 24"
-              fill="#555"
-              style={{ transform: 'rotate(-90deg)' }}
-            >
-              <path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z" />
-            </svg>
-          </button>
+            <ArrowUpToLine className="size-3.5 -rotate-90" aria-hidden="true" />
+          </Button>
         </div>
 
         {/* 2行目以降: 列ごとの表示数。/sankey-svg と同じく外側の grid に
@@ -266,24 +260,19 @@ export function HierarchyControls({
       </div>
 
       {/* トグル（パネル外・下部）。/sankey-svg の TopN パネルと同じ作法 */}
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         title={open ? '表示数 を隠す' : '表示数 を表示'}
         aria-label={open ? '表示数 を隠す' : '表示数 を表示'}
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
-        className="-mt-px flex items-center justify-center rounded-b border border-t-0 border-gray-200 bg-white/95 px-1 backdrop-blur"
+        className="-mt-px h-4 rounded-none rounded-b border border-t-0 border-border bg-card px-1 text-mirai-text-placeholder hover:bg-card hover:text-mirai-text-muted"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#bbb">
-          <path
-            d={
-              open
-                ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z'
-                : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'
-            }
-          />
-        </svg>
-      </button>
+        <ChevronDown
+          className={cn('size-3.5 transition-transform', open && 'rotate-180')}
+          aria-hidden="true"
+        />
+      </Button>
     </div>
   );
 }

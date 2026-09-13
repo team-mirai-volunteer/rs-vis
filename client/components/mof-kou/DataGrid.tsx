@@ -12,6 +12,8 @@
  */
 
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 
 export interface GridColumn<T> {
@@ -98,7 +100,7 @@ export function DataGrid<T>({
   }
 
   if (rows.length === 0) {
-    return <p className="p-3 text-neutral-400">{emptyMessage}</p>;
+    return <p className="p-3 text-mirai-text-muted">{emptyMessage}</p>;
   }
 
   const tableWidth = columns.reduce((sum, c) => sum + (widths[c.key] ?? c.width), 0);
@@ -110,19 +112,23 @@ export function DataGrid<T>({
           <col key={c.key} style={{ width: widths[c.key] ?? c.width }} />
         ))}
       </colgroup>
-      <thead className="sticky top-0 z-10 bg-neutral-50 text-left font-medium text-neutral-400 dark:bg-neutral-900">
+      <thead className="sticky top-0 z-10 bg-mirai-surface text-left font-bold text-mirai-text-subtle">
         <tr>
           {columns.map(col => {
             const active = sortKey === col.key;
             return (
               <th key={col.key} scope="col" className="relative select-none p-0">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => toggleSort(col)}
                   disabled={!col.sortValue}
-                  className={`flex w-full items-center gap-0.5 overflow-hidden px-2 py-1.5 ${
-                    col.sortValue ? 'hover:bg-neutral-200 dark:hover:bg-neutral-700' : 'cursor-default'
-                  } ${col.numeric ? 'justify-end' : 'justify-start'} ${active ? 'text-neutral-900 dark:text-neutral-100' : ''}`}
+                  className={cn(
+                    'h-auto w-full gap-0.5 overflow-hidden rounded-none px-2 py-1.5 text-[11px] font-bold text-inherit disabled:opacity-100 hover:text-inherit',
+                    col.sortValue ? 'hover:bg-mirai-surface-light' : 'cursor-default hover:bg-transparent',
+                    col.numeric ? 'justify-end' : 'justify-start',
+                    active && 'text-primary-accent'
+                  )}
                 >
                   <span className="min-w-0 truncate">{col.label}</span>
                   {col.sortValue && (
@@ -130,25 +136,25 @@ export function DataGrid<T>({
                       {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                     </span>
                   )}
-                </button>
+                </Button>
                 <span
                   role="separator"
                   aria-orientation="vertical"
                   aria-label={`${col.label}の列幅を変更`}
                   onMouseDown={e => startResize(e, col.key)}
                   onClick={e => e.stopPropagation()}
-                  className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-neutral-400/60"
+                  className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-mirai-border-light"
                 />
               </th>
             );
           })}
         </tr>
       </thead>
-      <tbody className="text-neutral-600 dark:text-neutral-400">
+      <tbody className="text-mirai-text-subtle">
         {sorted.map(row => (
           <tr
             key={rowKey(row)}
-            className="border-t border-neutral-100 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+            className="border-t border-border hover:bg-mirai-surface-teal/60"
           >
             {columns.map(col => (
               <td key={col.key} className={`truncate px-2 py-1.5 ${col.numeric ? 'text-right tabular-nums' : ''}`}>

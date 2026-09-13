@@ -14,6 +14,9 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { SlidersHorizontal } from 'lucide-react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -469,7 +472,7 @@ export default function MOFKouMokuPage() {
   if (error) {
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <p className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+        <p className="rounded-xl border border-destructive bg-stance-against-bg p-4 text-sm text-stance-against">
           データの読み込みに失敗しました: {error}
           <br />
           <code className="text-xs">npm run generate-mof-kou-moku</code> で生成してください。
@@ -481,31 +484,31 @@ export default function MOFKouMokuPage() {
   if (!data) {
     return (
       <main className="mx-auto max-w-3xl p-8">
-        <p className="text-sm text-neutral-500">読み込み中…</p>
+        <p className="text-sm text-mirai-text-muted">読み込み中…</p>
       </main>
     );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-neutral-50 dark:bg-neutral-900">
+    <div className="flex h-screen flex-col bg-background">
       <header className="flex shrink-0 items-start justify-between gap-4 px-3 pb-2 pt-3">
         <div>
-          <h1 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
+          <h1 className="text-base font-bold text-mirai-text">
             予算書「科目別内訳」（項・目）一覧
           </h1>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-neutral-500">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-mirai-text-muted">
             <a
               href={mofArchiveUrl(data.metadata.fiscalYear)}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-neutral-700 dark:hover:text-neutral-300"
+              className="underline underline-offset-4 hover:text-primary-accent"
             >
               {data.metadata.eraLabel}／財務省 予算書データベース
             </a>
-            <span className="text-neutral-300 dark:text-neutral-700">|</span>
+            <span className="text-mirai-text-placeholder">|</span>
             <span>
               全{' '}
-              <b className="font-semibold text-neutral-700 dark:text-neutral-300">
+              <b className="font-semibold text-mirai-text-secondary">
                 {data.summary.count.toLocaleString()}
               </b>{' '}
               目
@@ -515,7 +518,7 @@ export default function MOFKouMokuPage() {
                 {g.key} {g.count.toLocaleString()}件 / {formatYen(g.amount)}
               </span>
             ))}
-            <span className="text-neutral-300 dark:text-neutral-700">|</span>
+            <span className="text-mirai-text-placeholder">|</span>
             {data.summary.byAccountType.map(g => (
               <span key={g.key}>
                 {g.key === 'general' ? '一般会計' : g.key === 'special' ? '特別会計' : '政府関係機関'}{' '}
@@ -535,38 +538,39 @@ export default function MOFKouMokuPage() {
       </header>
 
       <section className="flex shrink-0 flex-wrap items-center gap-2 px-3 pb-2 text-xs">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="xs"
           onClick={() => setShowFilters(v => !v)}
           aria-expanded={showFilters}
-          className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 ${
+          className={cn(
+            'font-medium',
             showFilters || activeFilterCount > 0
-              ? 'border-neutral-800 bg-neutral-800 text-white dark:border-neutral-200 dark:bg-neutral-200 dark:text-neutral-900'
-              : 'border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
-          }`}
+              ? 'border-primary bg-primary/10 text-primary-accent hover:bg-primary/10'
+              : 'border-mirai-border text-mirai-text-subtle'
+          )}
         >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M2 3h12M4 8h8M6.5 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
+          <SlidersHorizontal className="size-3" aria-hidden="true" />
           フィルタ
           {activeFilterCount > 0 && (
-            <span className="rounded-full bg-white/20 px-1.5 text-[10px]">{activeFilterCount}</span>
+            <span className="rounded-full bg-primary/20 px-1.5 text-[10px]">{activeFilterCount}</span>
           )}
-        </button>
+        </Button>
 
-        <span className="whitespace-nowrap text-neutral-500">
+        <span className="whitespace-nowrap text-mirai-text-muted">
           該当 {filtered.length.toLocaleString()} 件
           {filteredTotal !== null && <> / {formatYen(filteredTotal)}</>}
         </span>
 
         {widthsChanged && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="xs"
             onClick={() => setWidths(DEFAULT_WIDTHS)}
-            className="whitespace-nowrap rounded border border-neutral-300 px-2 py-1 text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="border-mirai-border font-medium text-mirai-text-muted"
           >
             列幅をリセット
-          </button>
+          </Button>
         )}
       </section>
 
@@ -597,12 +601,12 @@ export default function MOFKouMokuPage() {
               onMouseDown={startSidebarResize}
               className="flex w-3 shrink-0 cursor-col-resize items-stretch justify-center"
             >
-              <div className="w-1 rounded-full transition-colors hover:bg-neutral-300 dark:hover:bg-neutral-700" />
+              <div className="w-1 rounded-full transition-colors hover:bg-mirai-border" />
             </div>
           </>
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-mirai-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <KouMokuTable
               items={pageItems}
@@ -617,31 +621,33 @@ export default function MOFKouMokuPage() {
             />
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-neutral-200 bg-neutral-50 px-3 py-1.5 dark:border-neutral-800 dark:bg-neutral-900">
-            <button
-              type="button"
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-mirai-surface px-3 py-1.5">
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => goToPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="rounded border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-100 disabled:opacity-30 dark:border-neutral-600 dark:hover:bg-neutral-800"
+              className="border-mirai-border font-medium"
             >
               前へ
-            </button>
-            <span className="font-mono text-xs text-neutral-500">
+            </Button>
+            <span className="font-mono text-xs text-mirai-text-muted">
               {page} / {totalPages}
-              <span className="ml-2 text-neutral-400">
+              <span className="ml-2 text-mirai-text-muted">
                 {filtered.length === 0
                   ? '0 件'
                   : `${((page - 1) * PAGE_SIZE + 1).toLocaleString()}–${Math.min(page * PAGE_SIZE, filtered.length).toLocaleString()} 件目`}
               </span>
             </span>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => goToPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="rounded border border-neutral-300 px-2.5 py-1 text-xs hover:bg-neutral-100 disabled:opacity-30 dark:border-neutral-600 dark:hover:bg-neutral-800"
+              className="border-mirai-border font-medium"
             >
               次へ
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -654,7 +660,7 @@ export default function MOFKouMokuPage() {
               onMouseDown={startPanelResize}
               className="flex w-3 shrink-0 cursor-col-resize items-stretch justify-center"
             >
-              <div className="w-1 rounded-full transition-colors hover:bg-neutral-300 dark:hover:bg-neutral-700" />
+              <div className="w-1 rounded-full transition-colors hover:bg-mirai-border" />
             </div>
             <KouMokuSidePanel
               row={selectedRow}
@@ -679,7 +685,7 @@ export default function MOFKouMokuPage() {
       </div>
 
       <div className="shrink-0 px-3 pb-3">
-        <details className="text-[11px] text-neutral-500">
+        <details className="text-[11px] text-mirai-text-muted">
           <summary className="cursor-pointer">データの読み方（{data.metadata.documents.length}帳票）</summary>
           <div className="mt-1 space-y-1 pl-4">
             {data.metadata.notes.map(note => (
@@ -692,7 +698,7 @@ export default function MOFKouMokuPage() {
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline hover:text-neutral-700"
+                    className="underline underline-offset-4 hover:text-primary-accent"
                   >
                     {doc.title}
                   </a>

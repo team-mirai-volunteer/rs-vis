@@ -8,6 +8,9 @@
  * ガタつくのを防ぐ）。
  */
 
+import { FilterX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 export function HierarchyFilterClearButton({
   active,
   onClear,
@@ -16,8 +19,9 @@ export function HierarchyFilterClearButton({
   onClear: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="icon"
       onClick={onClear}
       title="フィルタを解除"
       aria-label="フィルタを解除"
@@ -28,12 +32,9 @@ export function HierarchyFilterClearButton({
         visibility: active ? 'visible' : 'hidden',
         pointerEvents: active ? 'auto' : 'none',
       }}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white/95 text-gray-500 shadow-md backdrop-blur hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className="shrink-0 border-mirai-border bg-card text-mirai-text-muted hover:bg-card"
     >
-      {/* Material Icons: filter_list_off */}
-      <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="currentColor">
-        <path d="M791-55 55-791l57-57 736 736-57 57ZM633-440l-80-80h167v80h-87ZM433-640l-80-80h487v80H433Zm-33 400v-80h160v80H400ZM240-440v-80h166v80H240ZM120-640v-80h86v80h-86Z" />
-      </svg>
-    </button>
+      <FilterX className="size-[18px]" aria-hidden="true" />
+    </Button>
   );
 }

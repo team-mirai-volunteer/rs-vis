@@ -6,8 +6,15 @@
  * 表示専用コンポーネント: API 呼び出し・チャット状態の保持・結果の適用はすべて
  * page.tsx がコールバック経由で行う（client/components は直接APIコール禁止）。
  * AI の結果は自動適用せず、結果カードの「この条件で図を表示」で明示適用する。
+ *
+ * 配色はデザインシステムのトークン（bg-card / mirai-surface / primary）で統一し、
+ * インライン style は位置・幅・フォントサイズなどレイアウトにのみ使う。
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, FileText, Loader2, MessagesSquare, Send, Settings, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import type { SankeyChatProgressEvent, SankeyChatResult } from '@/types/sankey-ai-chat';
 import type { ChatSessionMeta } from '@/client/lib/ai/chat-history-store';
 import { relativeTime } from '@/client/lib/relative-time';
@@ -97,6 +104,17 @@ const REPORT_PROMPT =
   '最後に「再現情報」として、適用したフィルタ条件（SankeyQuery JSON）と、主要な数値がどのツール・条件から得られたかを付記してください。';
 
 const PANEL_Z_INDEX = 210; // 右上の設定ボタン(200)より前面。ScoreDetailDialog は body へ portal されるため影響しない
+
+/** ヘッダの小さなアイコンボタン（会話一覧・設定）。選択中はティールで示す */
+const HEADER_ICON_BUTTON_CLASS = 'rounded-md border-mirai-border text-mirai-text-subtle shadow-none';
+const HEADER_ICON_BUTTON_ACTIVE_CLASS = 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal';
+
+/** パネル内のテキスト入力欄（設定ビュー・セッション名編集） */
+const INPUT_CLASS =
+  'w-full min-w-0 rounded-md border border-mirai-border bg-card px-2.5 py-1.5 text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary disabled:bg-mirai-surface';
+
+/** 文中の小さなテキストリンク風ボタン（コピー・メモに保存・チャットに戻る 等） */
+const TEXT_LINK_CLASS = 'font-normal text-mirai-text-muted hover:text-mirai-text hover:opacity-100';
 
 /**
  * 送信中インジケータの日本語ラベル。progress イベント（構造化データ）を人間向け文言へ変換する。
@@ -257,42 +275,38 @@ export function AiChatPanel({
   // 閉状態: 右端中央の開閉タブのみ表示
   if (!open) {
     return (
-      <button
+      <Button
+        variant="ghost"
         data-pan-disabled="true"
         onClick={onToggle}
         title="AIアシスタントを開く"
         aria-label="AIアシスタントを開く"
+        className="h-16 w-7 flex-col gap-0.5 rounded-none rounded-l-md border border-r-0 border-mirai-border bg-card p-0 text-mirai-text-muted shadow-xs hover:bg-mirai-surface hover:text-mirai-text"
         style={{
           position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)',
-          width: 28, height: 64, zIndex: PANEL_Z_INDEX,
-          background: '#fff', border: '1px solid #e0e0e0', borderRight: 'none',
-          borderRadius: '6px 0 0 6px', boxShadow: '-2px 0 4px rgba(0,0,0,0.08)',
-          cursor: 'pointer', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 2, padding: 0,
+          zIndex: PANEL_Z_INDEX,
         }}
       >
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#1a73e8' }}>AI</span>
-        <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 6 9 12 15 18" />
-        </svg>
-      </button>
+        <span className="text-[11px] font-bold text-primary-accent">AI</span>
+        <ChevronLeft className="size-4" strokeWidth={2.5} aria-hidden="true" />
+      </Button>
     );
   }
 
   return (
     <div
       data-pan-disabled="true"
+      className={cn(
+        'flex flex-col bg-card text-mirai-text shadow-soft',
+        !isCompactWidth && 'border-l border-mirai-border',
+      )}
       style={{
         position: 'fixed', right: 0, top: 0, height: '100%',
         width: isCompactWidth ? '100%' : width,
-        background: '#fff',
-        borderLeft: isCompactWidth ? 'none' : '1px solid #e0e0e0',
-        boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
         zIndex: PANEL_Z_INDEX,
         transition: isResizing ? 'none' : 'width 0.2s ease',
-        display: 'flex', flexDirection: 'column',
         cursor: 'default',
-        colorScheme: 'light', color: '#333',
+        colorScheme: 'light',
       }}
     >
       {/* 幅リサイズハンドル — 左端（コンパクト幅では非表示） */}
@@ -312,52 +326,64 @@ export function AiChatPanel({
             userSelect: 'none',
           }}
         >
-          <div style={{ width: 3, height: 32, borderRadius: 2, background: isResizing ? '#a0a0a0' : 'transparent' }} />
+          <div className={cn('h-8 w-[3px] rounded-sm', isResizing ? 'bg-mirai-border-light' : 'bg-transparent')} />
         </div>
       )}
 
       {/* ヘッダ */}
-      <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#333', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-bold text-mirai-text">
           AIアシスタント
           {mode !== null && (
-            <span
+            <Badge
+              variant="outline"
               title={mode === 'byok' ? 'あなたのAPIキーで実行中（ブラウザからOpenRouterへ直接接続）' : 'サイト提供のAIで実行中'}
-              style={{
-                fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 9,
-                color: mode === 'byok' ? '#1b7f37' : '#6b5b95',
-                background: mode === 'byok' ? '#e7f5ec' : '#f1edf9',
-                border: `1px solid ${mode === 'byok' ? '#c2e5cf' : '#ddd3f0'}`,
-                whiteSpace: 'nowrap',
-              }}
-            >{mode === 'byok' ? '自分のキー' : 'サイト提供'}</span>
+              className={cn(
+                'rounded-full px-1.5 py-0 text-[10px] font-bold',
+                mode === 'byok'
+                  ? 'border-primary bg-stance-for-bg text-primary-accent'
+                  : 'border-mirai-border bg-mirai-surface-light text-mirai-text-secondary',
+              )}
+            >{mode === 'byok' ? '自分のキー' : 'サイト提供'}</Badge>
           )}
         </span>
         {/* 会話セッション一覧 */}
         <div ref={sessionsRef} style={{ position: 'relative' }}>
-          <button
+          <Button
+            variant="outline"
+            size="icon-sm"
             onClick={() => setShowSessions(v => !v)}
             title="会話の一覧"
             aria-label="会話の一覧"
-            style={{ background: showSessions ? '#eef3ff' : 'transparent', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer', padding: '3px 6px', display: 'flex', alignItems: 'center' }}
+            aria-expanded={showSessions}
+            className={cn(HEADER_ICON_BUTTON_CLASS, showSessions && HEADER_ICON_BUTTON_ACTIVE_CLASS)}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="#666"><path d="M280-240q-17 0-28.5-11.5T240-280v-80h520v-360h80q17 0 28.5 11.5T880-680v600L720-240H280Zm-40-160L80-240v-560q0-17 11.5-28.5T120-840h520q17 0 28.5 11.5T680-800v360q0 17-11.5 28.5T640-400H240Z"/></svg>
-          </button>
+            <MessagesSquare aria-hidden="true" />
+          </Button>
           {showSessions && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 280, maxHeight: '50vh', overflowY: 'auto',
-              background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 5,
-            }}>
-              <button
+            <div
+              className="rounded-xl border border-mirai-border bg-card shadow-soft"
+              style={{
+                position: 'absolute', top: 'calc(100% + 6px)', right: 0, width: 280, maxHeight: '50vh', overflowY: 'auto',
+                zIndex: 5,
+              }}
+            >
+              <Button
+                variant="ghost"
                 onClick={() => { onClear(); setShowSessions(false); }}
-                style={{ width: '100%', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#1a73e8', background: '#f5f8ff', border: 'none', borderBottom: '1px solid #eee', padding: '8px 10px', cursor: 'pointer' }}
-              >+ 新しい会話</button>
+                className="h-auto w-full justify-start rounded-none rounded-t-xl border-b border-border bg-mirai-surface-teal px-2.5 py-2 text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal hover:text-primary-accent"
+              >+ 新しい会話</Button>
               {sessions.length === 0 && (
-                <div style={{ padding: '10px', fontSize: 11.5, color: '#999' }}>保存された会話はまだありません</div>
+                <div className="p-2.5 text-[11.5px] text-mirai-text-muted">保存された会話はまだありません</div>
               )}
               {sessions.map(s => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px', borderBottom: '1px solid #f4f4f4', background: s.id === activeSessionId ? '#f5f8ff' : 'transparent' }}>
+                <div
+                  key={s.id}
+                  className={cn(
+                    'flex items-center gap-1.5 border-b border-border px-2.5 py-[7px]',
+                    s.id === activeSessionId ? 'bg-mirai-surface-teal' : 'bg-transparent',
+                  )}
+                >
                   {editingSessionId === s.id ? (
                     <input
                       type="text"
@@ -370,65 +396,73 @@ export function AiChatPanel({
                       }}
                       onBlur={() => commitSessionTitle(s.id)}
                       placeholder="タイトル（空にすると自動）"
-                      style={{ flex: 1, minWidth: 0, fontSize: 12, padding: '4px 8px', border: '1px solid #1a73e8', borderRadius: 4, outline: 'none', fontFamily: 'inherit', color: '#333', background: '#fff' }}
+                      className={cn(INPUT_CLASS, 'flex-1 border-primary px-2 py-1')}
                     />
                   ) : (
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => { onSwitchSession(s.id); setShowSessions(false); }}
                       disabled={sending}
                       title={s.title}
-                      style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: sending ? 'default' : 'pointer' }}
+                      className="h-auto min-w-0 flex-1 flex-col items-start rounded-md p-0 text-left font-normal hover:bg-transparent disabled:opacity-100"
                     >
-                      <div style={{ fontSize: 12, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
-                      <div style={{ fontSize: 10.5, color: '#999' }}>{relativeTime(s.ts)}・{s.messageCount}件</div>
-                    </button>
+                      <span className="block w-full truncate text-xs text-mirai-text">{s.title}</span>
+                      <span className="block text-[10.5px] text-mirai-text-muted">{relativeTime(s.ts)}・{s.messageCount}件</span>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => { setEditingSessionId(s.id); setSessionTitleInput(s.title); }}
                     disabled={sending}
                     title="タイトルを変更"
                     aria-label="タイトルを変更"
-                    style={{ background: 'transparent', border: 'none', padding: 2, cursor: sending ? 'default' : 'pointer', color: '#888', fontSize: 11, flexShrink: 0 }}
-                  >変更</button>
-                  <button
+                    className="h-auto shrink-0 rounded-md p-0.5 text-[11px] font-normal text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+                  >変更</Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => onDeleteSession(s.id)}
                     disabled={sending}
                     title="この会話を削除"
                     aria-label="この会話を削除"
-                    style={{ background: 'transparent', border: 'none', padding: 2, cursor: sending ? 'default' : 'pointer', color: '#c66', fontSize: 11, flexShrink: 0 }}
-                  >削除</button>
+                    className="h-auto shrink-0 rounded-md p-0.5 text-[11px] font-normal text-destructive hover:bg-transparent hover:text-destructive"
+                  >削除</Button>
                 </div>
               ))}
-              <div style={{ padding: '6px 10px', fontSize: 10.5, color: '#aaa' }}>会話はこのブラウザにのみ保存されます</div>
+              <div className="px-2.5 py-1.5 text-[10.5px] text-mirai-text-placeholder">会話はこのブラウザにのみ保存されます</div>
             </div>
           )}
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="icon-sm"
           onClick={() => (showSettings ? setShowSettings(false) : openSettings())}
           title="APIキー設定"
           aria-label="APIキー設定"
-          style={{ background: showSettings ? '#eef3ff' : 'transparent', border: '1px solid #ddd', borderRadius: 4, cursor: 'pointer', padding: '3px 6px', display: 'flex', alignItems: 'center' }}
+          aria-expanded={showSettings}
+          className={cn(HEADER_ICON_BUTTON_CLASS, showSettings && HEADER_ICON_BUTTON_ACTIVE_CLASS)}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="#666"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z"/></svg>
-        </button>
+          <Settings aria-hidden="true" />
+        </Button>
         {messages.length > 0 && (
-          <button
+          <Button
+            variant="outline"
+            size="xs"
             onClick={onClear}
             disabled={sending}
             title="新しい会話を開始（この会話は一覧に残ります）"
-            style={{ fontSize: 11, color: '#888', background: 'transparent', border: '1px solid #ddd', borderRadius: 4, padding: '3px 8px', cursor: sending ? 'default' : 'pointer' }}
-          >クリア</button>
+            className="rounded-md border-mirai-border text-[11px] font-normal text-mirai-text-muted shadow-none hover:text-mirai-text"
+          >クリア</Button>
         )}
-        <button
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onToggle}
           title="パネルを閉じる"
           aria-label="パネルを閉じる"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
+          className="text-mirai-text-muted hover:text-mirai-text"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+          <X className="size-[18px]" strokeWidth={2.5} aria-hidden="true" />
+        </Button>
       </div>
 
       {/* Markdown 描画用スタイル（メッセージごとではなくパネルで1回だけ描画する） */}
@@ -436,18 +470,18 @@ export function AiChatPanel({
 
       {/* APIキー設定ビュー（表示中はメッセージリストを隠す） */}
       {showSettings && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 8px', fontSize: 12, color: '#444', lineHeight: 1.7 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#333', marginBottom: 8 }}>あなたのAPIキーで使う</div>
-          <p style={{ margin: '0 0 10px' }}>
-            <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#1a73e8' }}>OpenRouter</a> のAPIキーを登録すると、AIチャットをあなたのアカウントで実行できます。
+        <div className="flex-1 overflow-y-auto px-3.5 pb-2 pt-3.5 text-xs leading-relaxed text-mirai-text-secondary">
+          <div className="mb-2 text-[13px] font-bold text-mirai-text">あなたのAPIキーで使う</div>
+          <p className="mb-2.5">
+            <a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">OpenRouter</a> のAPIキーを登録すると、AIチャットをあなたのアカウントで実行できます。
           </p>
-          <ul style={{ margin: '0 0 12px', paddingLeft: 18, color: '#666' }}>
+          <ul className="mb-3 list-disc pl-[18px] text-mirai-text-subtle">
             <li>キーは<b>このブラウザ（IndexedDB）にのみ保存</b>され、当サイトのサーバーには送信されません（ブラウザからOpenRouterへ直接接続します）</li>
             <li>会話の本文が当サイトのサーバーへ送られることはありません（データ検索時は<b>検索キーワードのみ</b>公開データAPIに送られます）</li>
             <li>万一に備え、OpenRouter側で<b>利用上限（クレジット制限）を設定したキー</b>のご利用を推奨します</li>
           </ul>
-          <label style={{ display: 'block', marginBottom: 10 }}>
-            <span style={{ display: 'block', fontSize: 11, color: '#777', marginBottom: 3 }}>APIキー{mode === 'byok' && '（登録済み。変更する場合のみ入力）'}</span>
+          <label className="mb-2.5 block">
+            <span className="mb-0.5 block text-[11px] text-mirai-text-subtle">APIキー{mode === 'byok' && '（登録済み。変更する場合のみ入力）'}</span>
             <input
               type="password"
               value={keyInput}
@@ -455,11 +489,11 @@ export function AiChatPanel({
               placeholder="sk-or-…"
               autoComplete="off"
               disabled={settingsBusy}
-              style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '7px 10px', border: '1px solid #ddd', borderRadius: 6, outline: 'none', fontFamily: 'inherit', color: '#333', background: '#fff' }}
+              className={INPUT_CLASS}
             />
           </label>
-          <label style={{ display: 'block', marginBottom: 12 }}>
-            <span style={{ display: 'block', fontSize: 11, color: '#777', marginBottom: 3 }}>モデル（OpenRouterのモデルID）</span>
+          <label className="mb-3 block">
+            <span className="mb-0.5 block text-[11px] text-mirai-text-subtle">モデル（OpenRouterのモデルID）</span>
             <input
               type="text"
               value={modelInput}
@@ -467,90 +501,104 @@ export function AiChatPanel({
               placeholder={defaultByokModel}
               autoComplete="off"
               disabled={settingsBusy}
-              style={{ width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '7px 10px', border: '1px solid #ddd', borderRadius: 6, outline: 'none', fontFamily: 'inherit', color: '#333', background: '#fff' }}
+              className={INPUT_CLASS}
             />
-            <span style={{ display: 'block', fontSize: 10.5, color: '#999', marginTop: 3 }}>
+            <span className="mt-0.5 block text-[10.5px] text-mirai-text-muted">
               空欄なら既定（{defaultByokModel}）。ツール呼び出し（function calling）対応モデルが必要です
             </span>
           </label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <button
+          <div className="mb-2 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleSave}
               disabled={settingsBusy || !canSave}
-              style={{ flex: 1, fontSize: 12, fontWeight: 600, color: '#fff', background: settingsBusy || !canSave ? '#9e9e9e' : '#1a73e8', border: 'none', borderRadius: 6, padding: '8px 0', cursor: settingsBusy || !canSave ? 'default' : 'pointer' }}
-            >保存</button>
-            <button
+              className="flex-1 border-primary text-xs text-primary-accent hover:bg-mirai-surface-teal"
+            >保存</Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleTest}
               disabled={settingsBusy || !keyInput.trim()}
-              style={{ fontSize: 12, color: '#1a73e8', background: '#fff', border: '1px solid #1a73e8', borderRadius: 6, padding: '8px 14px', cursor: settingsBusy || !keyInput.trim() ? 'default' : 'pointer', opacity: settingsBusy || !keyInput.trim() ? 0.5 : 1 }}
-            >テスト</button>
+              className="border-mirai-border text-xs"
+            >テスト</Button>
             {mode === 'byok' && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleDelete}
                 disabled={settingsBusy}
-                style={{ fontSize: 12, color: '#c62828', background: '#fff', border: '1px solid #e5b4b0', borderRadius: 6, padding: '8px 14px', cursor: settingsBusy ? 'default' : 'pointer' }}
-              >削除</button>
+                className="border-destructive text-xs text-destructive hover:bg-stance-against-bg"
+              >削除</Button>
             )}
           </div>
           {settingsStatus && (
-            <div style={{ fontSize: 11.5, color: settingsStatus.kind === 'ok' ? '#1b7f37' : '#c62828', marginBottom: 8 }}>
+            <div className={cn('mb-2 text-[11.5px]', settingsStatus.kind === 'ok' ? 'text-primary-accent' : 'text-destructive')}>
               {settingsStatus.text}
             </div>
           )}
-          <button
+          <Button
+            variant="link"
             onClick={() => setShowSettings(false)}
-            style={{ fontSize: 11.5, color: '#777', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline' }}
-          >チャットに戻る</button>
+            className={cn(TEXT_LINK_CLASS, 'py-1 text-[11.5px] text-mirai-text-subtle')}
+          >チャットに戻る</Button>
         </div>
       )}
 
       {/* メッセージリスト */}
       {!showSettings && (
-      <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 12px 4px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div ref={listRef} className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-3 pb-1 pt-3">
         {messages.length === 0 && mode === null && (
-          <div style={{ fontSize: 12, color: '#777', lineHeight: 1.7 }}>
-            <p style={{ margin: '0 0 8px' }}>
+          <div className="text-xs leading-relaxed text-mirai-text-subtle">
+            <p className="mb-2">
               AIチャットを使うには OpenRouter のAPIキーの登録が必要です。
               キーはこのブラウザにのみ保存され、当サイトのサーバーには送信されません。
             </p>
-            <button
+            <Button
+              variant="default"
+              size="sm"
               onClick={openSettings}
-              style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#1a73e8', border: 'none', borderRadius: 6, padding: '8px 14px', cursor: 'pointer' }}
-            >APIキーを設定する</button>
+              className="text-xs"
+            >APIキーを設定する</Button>
           </div>
         )}
         {messages.length === 0 && mode !== null && (
-          <div style={{ fontSize: 12, color: '#777', lineHeight: 1.7 }}>
-            <p style={{ margin: '0 0 8px' }}>
+          <div className="text-xs leading-relaxed text-mirai-text-subtle">
+            <p className="mb-2">
               見たい条件やデータへの質問を自然な言葉でどうぞ。
               図の絞り込み条件の組み立てのほか、金額・品質スコア・再委託・年度比較の質問に答えます。
               絞り込みは件数を確認してから図に反映できます。
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="flex flex-col gap-1.5">
               {EXAMPLE_PROMPTS.map(p => (
-                <button
+                <Button
                   key={p}
+                  variant="outline"
                   onClick={() => setInput(p)}
-                  style={{ textAlign: 'left', fontSize: 12, color: '#1a73e8', background: '#f5f8ff', border: '1px solid #dbe6ff', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', lineHeight: 1.5 }}
-                >{p}</button>
+                  className="h-auto justify-start whitespace-normal rounded-md border-mirai-border bg-mirai-surface px-2.5 py-1.5 text-left text-xs font-normal leading-normal text-primary-accent shadow-none hover:border-primary hover:bg-mirai-surface-teal"
+                >{p}</Button>
               ))}
             </div>
           </div>
         )}
 
         {messages.map((m, i) => (
-          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div style={{
-              maxWidth: '88%',
-              padding: '7px 11px',
-              borderRadius: m.role === 'user' ? '12px 12px 3px 12px' : '12px 12px 12px 3px',
-              background: m.role === 'user' ? '#e8f0fe' : m.isError ? '#fdecea' : '#f4f4f4',
-              color: m.isError ? '#c62828' : '#333',
-              fontSize: 13, lineHeight: 1.6,
-              // assistant の通常応答は Markdown が段落を扱うため pre-wrap にしない（二重改行を防ぐ）
-              whiteSpace: m.role === 'assistant' && !m.isError ? 'normal' : 'pre-wrap',
-              wordBreak: 'break-word',
-            }}>
+          <div key={i} className={cn('flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
+            <div
+              className={cn(
+                'max-w-[88%] px-[11px] py-[7px] text-[13px] leading-relaxed',
+                m.role === 'user'
+                  ? 'rounded-[12px_12px_3px_12px] bg-mirai-surface-teal text-mirai-text'
+                  : m.isError
+                    ? 'rounded-[12px_12px_12px_3px] bg-stance-against-bg text-stance-against'
+                    : 'rounded-[12px_12px_12px_3px] bg-mirai-surface text-mirai-text',
+              )}
+              style={{
+                // assistant の通常応答は Markdown が段落を扱うため pre-wrap にしない（二重改行を防ぐ）
+                whiteSpace: m.role === 'assistant' && !m.isError ? 'normal' : 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
               {m.role === 'assistant' && !m.isError
                 ? (
                   <Suspense fallback={<span style={{ whiteSpace: 'pre-wrap' }}>{m.content}</span>}>
@@ -560,51 +608,53 @@ export function AiChatPanel({
                 : m.content}
             </div>
             {m.role === 'assistant' && !m.isError && (
-              <div style={{ display: 'flex', gap: 10, marginTop: 3, paddingLeft: 4 }}>
-                <button
+              <div className="mt-[3px] flex gap-2.5 pl-1">
+                <Button
+                  variant="link"
                   onClick={() => handleCopyMessage(i, m.content)}
                   title="この応答をMarkdownでコピー"
-                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#999', fontSize: 10.5, textDecoration: 'underline' }}
-                >{copiedMsgIndex === i ? 'コピーしました' : 'コピー'}</button>
-                <button
+                  className={cn(TEXT_LINK_CLASS, 'text-[10.5px]')}
+                >{copiedMsgIndex === i ? 'コピーしました' : 'コピー'}</Button>
+                <Button
+                  variant="link"
                   onClick={() => handleSaveReport(i, m.content)}
                   title="この応答を発見メモ（履歴パネル）に保存"
-                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#999', fontSize: 10.5, textDecoration: 'underline' }}
-                >{savedMsgIndex === i ? '保存しました' : 'メモに保存'}</button>
+                  className={cn(TEXT_LINK_CLASS, 'text-[10.5px]')}
+                >{savedMsgIndex === i ? '保存しました' : 'メモに保存'}</Button>
               </div>
             )}
             {m.result && (
-              <div style={{ marginTop: 6, maxWidth: '88%', minWidth: '70%', border: '1px solid #dbe6ff', borderRadius: 8, background: '#f9fbff', padding: '8px 11px', fontSize: 12 }}>
+              <div className="mt-1.5 min-w-[70%] max-w-[88%] rounded-xl border border-mirai-border bg-card px-[11px] py-2 text-xs shadow-xs">
                 {m.result.interpretation && (
-                  <div style={{ marginBottom: 6, fontSize: 11, color: '#777' }}>
+                  <div className="mb-1.5 text-[11px] text-mirai-text-subtle">
                     解釈: {m.result.interpretation}
                   </div>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, color: '#444' }}>
+                <div className="flex flex-col gap-[3px] text-mirai-text-secondary">
                   <div>マッチ事業: <b>{m.result.summary.projects.count.toLocaleString()}件</b>（予算 {formatYen(m.result.summary.projects.budgetTotal)}）</div>
                   <div>支出先: <b>{m.result.summary.recipients.count.toLocaleString()}件</b> ／ 府省庁: <b>{m.result.summary.ministries.count}</b></div>
                 </div>
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => onApplyResult(m.result!)}
                   disabled={m.result.summary.projects.count === 0}
-                  style={{ marginTop: 8, width: '100%', fontSize: 12, fontWeight: 600, color: '#fff', background: m.result.summary.projects.count > 0 ? '#1a73e8' : '#9e9e9e', border: 'none', borderRadius: 6, padding: '7px 0', cursor: m.result.summary.projects.count > 0 ? 'pointer' : 'default' }}
-                >この条件で図を表示</button>
+                  className="mt-2 h-8 w-full border-primary text-xs text-primary-accent hover:bg-mirai-surface-teal"
+                >この条件で図を表示</Button>
               </div>
             )}
             {m.role === 'assistant' && m.suggestions && m.suggestions.length > 0 && (
-              <div style={{ marginTop: 6, maxWidth: '88%', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div className="mt-1.5 flex max-w-[88%] flex-wrap gap-1.5">
                 {m.suggestions.map((s, si) => (
-                  <button
+                  <Button
                     key={si}
+                    variant="outline"
+                    size="xs"
                     onClick={() => submitSuggestion(s)}
                     disabled={sending}
                     title={s}
-                    style={{
-                      fontSize: 11.5, color: '#1a73e8', background: '#f5f8ff', border: '1px solid #dbe6ff',
-                      borderRadius: 14, padding: '4px 10px', cursor: sending ? 'default' : 'pointer',
-                      opacity: sending ? 0.6 : 1,
-                    }}
-                  >{s}</button>
+                    className="h-auto whitespace-normal border-mirai-border bg-card px-2.5 py-1 text-left text-[11.5px] font-normal leading-normal text-primary-accent shadow-none hover:border-primary hover:bg-mirai-surface-teal"
+                  >{s}</Button>
                 ))}
               </div>
             )}
@@ -612,14 +662,9 @@ export function AiChatPanel({
         ))}
 
         {sending && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#888', fontSize: 12, padding: '2px 4px' }}>
-            <span style={{
-              width: 14, height: 14, borderRadius: '50%',
-              border: '2px solid #d0d0d0', borderTopColor: '#1a73e8',
-              animation: 'ai-chat-spin 0.9s linear infinite', display: 'inline-block',
-            }} />
+          <div className="flex items-center gap-2 px-1 py-0.5 text-xs text-mirai-text-muted" role="status">
+            <Loader2 className="size-3.5 animate-spin text-primary" aria-hidden="true" />
             {progressLabel(progress)}
-            <style>{'@keyframes ai-chat-spin { to { transform: rotate(360deg); } }'}</style>
           </div>
         )}
       </div>
@@ -627,44 +672,40 @@ export function AiChatPanel({
 
       {/* レポート化ボタン — 調査（assistant応答あり）が進んだ会話でのみ表示 */}
       {!showSettings && mode !== null && !sending && messages.some(m => m.role === 'assistant' && !m.isError) && (
-        <div style={{ flexShrink: 0, padding: '6px 10px 0' }}>
-          <button
+        <div className="shrink-0 px-2.5 pt-1.5">
+          <Button
+            variant="outline"
+            size="xs"
             onClick={() => onSend(REPORT_PROMPT)}
             title="ここまでの会話を、出典付きのレポートにまとめます"
-            style={{
-              width: '100%', fontSize: 11.5, color: '#1a73e8', background: '#f5f8ff',
-              border: '1px solid #dbe6ff', borderRadius: 6, padding: '6px 10px', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            }}
+            className="h-auto w-full gap-1.5 rounded-md border-mirai-border bg-mirai-surface px-2.5 py-1.5 text-[11.5px] font-normal text-primary-accent shadow-none hover:border-primary hover:bg-mirai-surface-teal"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" height="13" width="13" viewBox="0 -960 960 960" fill="#1a73e8"><path d="M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520Z"/></svg>
+            <FileText className="size-[13px]" aria-hidden="true" />
             この会話をレポートにまとめる
-          </button>
+          </Button>
         </div>
       )}
 
       {/* 意見インタビューへの導線（事業選択中のみ）。解説チャットと混同させないため別枠・別配色で出す */}
       {opinionTarget && onStartOpinionInterview && (
-        <div style={{ flexShrink: 0, borderTop: '1px solid #f0f0f0', padding: '6px 10px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }} title={opinionTarget.name}>
+        <div className="flex shrink-0 items-center gap-2 border-t border-border px-2.5 pt-1.5">
+          <span className="min-w-0 flex-1 truncate text-[11px] text-mirai-text-muted" title={opinionTarget.name}>
             選択中: {opinionTarget.name}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="xs"
             onClick={onStartOpinionInterview}
             title="この事業への意見をAIインタビューで伝える（匿名・公開は最後に確認）"
-            style={{
-              flexShrink: 0, fontSize: 11, padding: '3px 10px', borderRadius: 999, cursor: 'pointer',
-              border: '1px solid #c2e5cf', background: '#e7f5ec', color: '#1b7f37', fontWeight: 600,
-            }}
+            className="h-auto shrink-0 border-primary bg-stance-for-bg px-2.5 py-[3px] text-[11px] text-primary-accent shadow-none hover:bg-mirai-surface-teal"
           >
             この事業に意見を伝える
-          </button>
+          </Button>
         </div>
       )}
 
       {/* 入力欄 */}
-      <div style={{ flexShrink: 0, borderTop: '1px solid #f0f0f0', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+      <div className="flex shrink-0 items-end gap-2 border-t border-border p-2.5">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
@@ -679,27 +720,19 @@ export function AiChatPanel({
           placeholder={mode === null ? 'APIキーを設定すると利用できます' : '例: 再エネ関連で予算100億円以上'}
           rows={2}
           disabled={sending || mode === null}
-          style={{
-            flex: 1, minWidth: 0, resize: 'none', fontSize: 13, lineHeight: 1.5,
-            padding: '7px 10px', border: '1px solid #ddd', borderRadius: 8,
-            outline: 'none', fontFamily: 'inherit', background: sending || mode === null ? '#fafafa' : '#fff',
-            boxSizing: 'border-box', color: '#333',
-          }}
+          className="min-w-0 flex-1 resize-none rounded-lg border border-mirai-border bg-card px-2.5 py-[7px] text-[13px] leading-normal text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary disabled:bg-mirai-surface"
         />
-        <button
+        <Button
+          variant="default"
+          size="icon"
           onClick={submit}
           disabled={sending || !input.trim() || mode === null}
           title="送信（Enter）"
           aria-label="送信"
-          style={{
-            width: 36, height: 36, flexShrink: 0, borderRadius: 8, border: 'none',
-            background: sending || !input.trim() || mode === null ? '#e0e0e0' : '#1a73e8',
-            cursor: sending || !input.trim() || mode === null ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}
+          className="shrink-0"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="#fff"><path d="M120-160v-640l760 320-760 320Zm72-110 474-210-474-210v147l240 63-240 63v147Zm0 0v-420 420Z"/></svg>
-        </button>
+          <Send className="size-4" aria-hidden="true" />
+        </Button>
       </div>
     </div>
   );

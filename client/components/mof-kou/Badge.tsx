@@ -27,7 +27,7 @@ import type { MOFKouMokuAccountType } from '@/types/mof-kou-moku';
 export function Badge({ label, background }: { label: string; background: string }) {
   return (
     <span
-      className="inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-semibold leading-snug text-white"
+      className="inline-block whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-semibold leading-snug text-white"
       style={{ background }}
     >
       {label}
@@ -39,7 +39,7 @@ export function Badge({ label, background }: { label: string; background: string
 export function OutlineBadge({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="inline-block whitespace-nowrap rounded border-2 bg-white px-1.5 text-[10px] font-semibold leading-snug text-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+      className="inline-block whitespace-nowrap rounded-md border-2 bg-card px-1.5 text-[10px] font-semibold leading-snug text-mirai-text"
       style={{ borderColor: color }}
     >
       {label}

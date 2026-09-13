@@ -49,8 +49,8 @@ export function JikouHistory({
   loading: boolean;
   error: string | null;
 }) {
-  if (error) return <p className="text-[11px] text-red-600">推移の取得に失敗しました: {error}</p>;
-  if (loading || !history) return <p className="text-[11px] text-neutral-400">推移を読み込み中…</p>;
+  if (error) return <p className="text-[11px] text-destructive">推移の取得に失敗しました: {error}</p>;
+  if (loading || !history) return <p className="text-[11px] text-mirai-text-muted">推移を読み込み中…</p>;
 
   // その事項に実際に現れた予算種別だけを列にする
   const types = BUDGET_TYPE_ORDER.filter(t =>
@@ -60,11 +60,11 @@ export function JikouHistory({
 
   return (
     <div>
-      <div className="mb-1 text-[11px] font-medium text-neutral-400">
+      <div className="mb-1 text-[11px] font-medium text-mirai-text-muted">
         年度推移（{history.years.length} / {history.availableYears.length} 年度に計上）
       </div>
       <table className="border-collapse text-[11px]">
-        <thead className="text-neutral-400">
+        <thead className="text-mirai-text-muted">
           <tr>
             <th className="whitespace-nowrap px-2 py-1 text-left font-medium">年度</th>
             {types.map(t => (
@@ -82,13 +82,13 @@ export function JikouHistory({
             <th className="whitespace-nowrap px-2 py-1 text-left font-medium">項</th>
           </tr>
         </thead>
-        <tbody className="text-neutral-600 dark:text-neutral-400">
+        <tbody className="text-mirai-text-subtle">
           {history.years.map(y => {
             const settlement = pick(y.items, '決算');
             const exec = settlement ? executionRate(settlement) : null;
             const section = y.items[0];
             return (
-              <tr key={y.fiscalYear} className="border-t border-neutral-200 dark:border-neutral-800">
+              <tr key={y.fiscalYear} className="border-t border-border">
                 <td className="whitespace-nowrap px-2 py-1">{y.eraLabel}（{y.fiscalYear}）</td>
                 {types.map(t => (
                   <td key={t} className="whitespace-nowrap px-2 py-1 text-right tabular-nums">
@@ -97,7 +97,7 @@ export function JikouHistory({
                 ))}
                 {hasSettlement && (
                   <>
-                    <td className="whitespace-nowrap px-2 py-1 text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+                    <td className="whitespace-nowrap px-2 py-1 text-right tabular-nums text-mirai-text">
                       {formatYen(settlement?.spent ?? null)}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1 text-right tabular-nums">
@@ -106,11 +106,11 @@ export function JikouHistory({
                     <td
                       className={`whitespace-nowrap px-2 py-1 text-right tabular-nums ${
                         exec === null
-                          ? 'text-neutral-400'
+                          ? 'text-mirai-text-muted'
                           : exec < 0.5
-                            ? 'text-red-600 dark:text-red-400'
+                            ? 'text-destructive '
                             : exec < 0.9
-                              ? 'text-amber-700 dark:text-amber-500'
+                              ? 'text-amber-700 '
                               : ''
                       }`}
                     >
@@ -118,7 +118,7 @@ export function JikouHistory({
                     </td>
                   </>
                 )}
-                <td className="whitespace-nowrap px-2 py-1 text-neutral-400">
+                <td className="whitespace-nowrap px-2 py-1 text-mirai-text-muted">
                   {section.sectionCode} {section.sectionName}
                 </td>
               </tr>
@@ -127,7 +127,7 @@ export function JikouHistory({
         </tbody>
       </table>
       {history.years.length < history.availableYears.length && (
-        <p className="mt-1 text-[11px] text-neutral-400">
+        <p className="mt-1 text-[11px] text-mirai-text-muted">
           計上のない年度は行がありません。事項名が改称されると別の事項として扱われるため、
           実態としては継続でも欠けて見えることがあります。
         </p>

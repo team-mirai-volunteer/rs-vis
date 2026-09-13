@@ -1,38 +1,36 @@
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 interface FilterTextInputProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
+/** フィルタ欄の共通 input クラス（MinMaxInput / MultiSelectDropdown と揃える） */
+export const FILTER_INPUT_CLASS =
+  'w-full min-w-0 rounded-md border border-mirai-border bg-card px-1.5 py-[3px] text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary';
+
 export function FilterTextInput({ value, onChange, placeholder }: FilterTextInputProps) {
   return (
-    <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+    <div className="relative min-w-0 flex-1">
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        style={{
-          width: '100%',
-          boxSizing: 'border-box',
-          fontSize: 12,
-          border: '1px solid #ddd',
-          borderRadius: 4,
-          padding: '3px 22px 3px 6px',
-          background: '#fafafa',
-          color: '#333',
-          outline: 'none',
-        }}
+        className={`${FILTER_INPUT_CLASS} pr-6`}
       />
       {value && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => onChange('')}
           aria-label="クリア"
-          style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', padding: 2, fontSize: 11 }}
+          className="absolute right-0.5 top-1/2 size-5 -translate-y-1/2 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
         >
-          ✕
-        </button>
+          <X className="size-3" />
+        </Button>
       )}
     </div>
   );

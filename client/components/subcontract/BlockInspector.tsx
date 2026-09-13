@@ -1,9 +1,9 @@
+import { X } from 'lucide-react';
 import { formatYen } from '@/app/lib/subcontract-layout';
+import { Button } from '@/components/ui/button';
 import { TagChip } from '@/client/components/TagChip';
 import { originKindLabel, originKindToTagKind } from '@/client/components/subcontract/origin-kind';
 import type { BlockNode, BlockEdge } from '@/types/subcontract';
-
-const PANEL_BORDER = '#e5e7eb';
 
 /**
  * 選択中ブロックのインスペクター（再委託ビューのサイドパネル上部）。
@@ -11,6 +11,7 @@ const PANEL_BORDER = '#e5e7eb';
  * パンくずで事業の全体表示へ戻る。フローの受入元／再委託先はクリックで当該ブロックへ移動する。
  *
  * ページ側の状態・APIには依存しない純粋な表示コンポーネント（props でデータとコールバックを受ける）。
+ * 見た目はチームみらいデザインシステム（.claude/skills/SKILL.md）のトークンに従う。
  */
 export function BlockInspector({
   block,
@@ -32,19 +33,19 @@ export function BlockInspector({
   const FlowLine = ({ label, otherId, note }: { label: string; otherId: string | null; note?: string }) => {
     const other = otherId ? blockById.get(otherId) : null;
     return (
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, padding: '2px 0', minWidth: 0 }}>
-        <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0, width: 44 }}>{label}</span>
+      <div className="flex min-w-0 items-baseline gap-1.5 py-0.5">
+        <span className="w-11 shrink-0 text-[10px] text-mirai-text-muted">{label}</span>
         {other ? (
-          <button
+          <Button
+            variant="link"
             onClick={() => onSelectBlock(other)}
             title={`${other.blockId} ${other.blockName} を選択`}
-            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer',
-              fontSize: 11, color: '#1d4ed8', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            className="min-w-0 justify-start truncate text-left text-[11px] font-normal no-underline hover:text-primary-accent hover:underline"
           >
             {other.blockId} {other.blockName}
-          </button>
+          </Button>
         ) : (
-          <span style={{ fontSize: 11, color: '#475569', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span className="min-w-0 truncate text-[11px] text-mirai-text-subtle">
             {note || '事業（直接支出）'}
           </span>
         )}
@@ -53,35 +54,40 @@ export function BlockInspector({
   };
 
   return (
-    <div style={{ padding: '9px 16px 11px', background: '#f8fafc', borderBottom: `1px solid ${PANEL_BORDER}` }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <button
+    <div className="border-b border-border bg-mirai-surface px-4 pb-[11px] pt-[9px]">
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="link"
           onClick={onDeselect}
           title="事業の全体表示に戻る (Esc)"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: '#1d4ed8', fontSize: 11, fontWeight: 600, flexShrink: 0 }}
-        >← 事業に戻る</button>
-        <button
+          className="shrink-0 text-[11px] font-bold no-underline hover:text-primary-accent hover:underline"
+        >← 事業に戻る</Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onDeselect}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#64748b', fontSize: 14, flexShrink: 0 }}
+          className="size-6 shrink-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text"
           aria-label="選択解除" title="選択解除 (Esc)"
-        >✕</button>
+        >
+          <X className="size-3.5" aria-hidden="true" />
+        </Button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 5 }}>
+      <div className="mt-[5px] flex items-baseline gap-1.5">
         <TagChip kind={originKindToTagKind(block.originKind)}>{originKindLabel(block.originKind)}</TagChip>
-        <span title={`${block.blockId} ${block.blockName}`} style={{ fontSize: 13, fontWeight: 700, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <span style={{ color: '#94a3b8', marginRight: 3 }}>{block.blockId}</span>{block.blockName}
+        <span title={`${block.blockId} ${block.blockName}`} className="min-w-0 truncate text-[13px] font-bold text-mirai-text">
+          <span className="mr-[3px] text-mirai-text-muted">{block.blockId}</span>{block.blockName}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 11, color: '#475569', flexWrap: 'wrap' }}>
-        <span>支出額 <b style={{ color: '#111827' }}>{block.totalAmount > 0 ? formatYen(block.totalAmount) : '金額内訳なし'}</b></span>
-        <span>支出先 <b style={{ color: '#111827' }}>{block.recipientCount.toLocaleString()}件</b></span>
-        {block.isTerminal && <span style={{ color: '#94a3b8' }}>終端（再委託なし）</span>}
+      <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-mirai-text-subtle">
+        <span>支出額 <b className="text-mirai-text">{block.totalAmount > 0 ? formatYen(block.totalAmount) : '金額内訳なし'}</b></span>
+        <span>支出先 <b className="text-mirai-text">{block.recipientCount.toLocaleString()}件</b></span>
+        {block.isTerminal && <span className="text-mirai-text-muted">終端（再委託なし）</span>}
       </div>
       {block.role && (
-        <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 3, lineHeight: 1.45 }}>役割: {block.role}</div>
+        <div className="mt-[3px] text-[10.5px] leading-[1.45] text-mirai-text-subtle">役割: {block.role}</div>
       )}
       {(incoming.length > 0 || outgoing.length > 0) && (
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e2e8f0' }}>
+        <div className="mt-1.5 border-t border-dashed border-border pt-1.5">
           {incoming.map((f, i) => (
             <FlowLine key={`in-${i}`} label="受入元" otherId={f.sourceBlock} note={f.origin === 'direct' ? '事業（直接支出）' : undefined} />
           ))}

@@ -6,6 +6,8 @@
  */
 
 import { formatYen } from '@/client/components/mof-jikou/format';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { changeRate, formatChangeRate } from '@/client/components/mof-jikou/format';
 import type { MOFKouSectionSummary } from '@/types/mof-kou';
 import { AccountBadge, BudgetTypeBadge } from './Badge';
@@ -24,11 +26,11 @@ interface Props {
 }
 
 function rateClass(rate: number | null | 'new'): string {
-  if (rate === null) return 'text-neutral-400';
-  if (rate === 'new') return 'text-blue-600';
-  if (rate > 0) return 'text-emerald-700 dark:text-emerald-500';
-  if (rate < 0) return 'text-red-600 dark:text-red-400';
-  return 'text-neutral-400';
+  if (rate === null) return 'text-mirai-text-muted';
+  if (rate === 'new') return 'text-primary';
+  if (rate > 0) return 'text-emerald-700 ';
+  if (rate < 0) return 'text-destructive ';
+  return 'text-mirai-text-muted';
 }
 
 export function KouTable({
@@ -66,7 +68,7 @@ export function KouTable({
   }
 
   if (items.length === 0) {
-    return <p className="p-6 text-center text-xs text-neutral-400">{emptyMessage}</p>;
+    return <p className="p-6 text-center text-xs text-mirai-text-muted">{emptyMessage}</p>;
   }
 
   return (
@@ -76,7 +78,7 @@ export function KouTable({
           <col key={c.key} style={{ width: widths[c.key] ?? c.width }} />
         ))}
       </colgroup>
-      <thead className="sticky top-0 z-10 bg-neutral-100 text-left text-neutral-500 dark:bg-neutral-800">
+      <thead className="sticky top-0 z-10 bg-mirai-surface text-left text-mirai-text-subtle">
         <tr>
           {COLUMNS.map(col => {
             const active = sortKey === col.key;
@@ -86,27 +88,29 @@ export function KouTable({
                 scope="col"
                 title={col.note}
                 aria-sort={active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
-                className={`relative select-none p-0 font-medium ${active ? 'text-neutral-900 dark:text-neutral-100' : ''}`}
+                className={cn('relative select-none p-0 font-bold', active && 'text-primary-accent')}
               >
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="xs"
                   onClick={() => onToggleSort(col)}
-                  className={`flex w-full items-center gap-0.5 overflow-hidden px-2 py-2 hover:bg-neutral-200 dark:hover:bg-neutral-700 ${
+                  className={cn(
+                    'h-auto w-full gap-0.5 overflow-hidden rounded-none px-2 py-2 text-xs font-bold text-inherit hover:bg-mirai-surface-light hover:text-inherit',
                     col.numeric ? 'justify-end' : 'justify-start'
-                  }`}
+                  )}
                 >
                   <span className="min-w-0 truncate">{col.label}</span>
                   <span className="w-2.5 shrink-0 text-[9px]">
                     {active ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                   </span>
-                </button>
+                </Button>
                 <span
                   role="separator"
                   aria-orientation="vertical"
                   aria-label={`${col.label}の列幅を変更`}
                   onMouseDown={e => startResize(e, col.key)}
                   onClick={e => e.stopPropagation()}
-                  className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-neutral-400/60"
+                  className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-mirai-border-light"
                 />
               </th>
             );
@@ -129,9 +133,10 @@ export function KouTable({
                 }
               }}
               aria-selected={isSelected}
-              className={`cursor-pointer border-t border-neutral-100 align-middle hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900 ${
-                isSelected ? 'bg-blue-50 dark:bg-blue-950/40' : ''
-              }`}
+              className={cn(
+                'cursor-pointer border-t border-border align-middle hover:bg-mirai-surface-teal/60',
+                isSelected && 'bg-primary/10'
+              )}
             >
               <td className="truncate px-2 py-1.5">
                 <BudgetTypeBadge budgetType={row.budgetType} />
@@ -139,41 +144,41 @@ export function KouTable({
               <td className="truncate px-2 py-1.5">
                 <AccountBadge accountType={row.accountType} />
               </td>
-              <td className="px-2 py-1.5 text-neutral-600 dark:text-neutral-400">
+              <td className="px-2 py-1.5 text-mirai-text-subtle">
                 <span className="line-clamp-2">{row.ministry || '—'}</span>
               </td>
-              <td className="px-2 py-1.5 text-neutral-600 dark:text-neutral-400">
+              <td className="px-2 py-1.5 text-mirai-text-subtle">
                 <span className="line-clamp-2">{orgColumn(row) || '—'}</span>
               </td>
-              <td className="px-2 py-1.5 text-neutral-600 dark:text-neutral-400">
+              <td className="px-2 py-1.5 text-mirai-text-subtle">
                 <span className="line-clamp-2">{row.subAccount || '—'}</span>
               </td>
-              <td className="truncate px-2 py-1.5 tabular-nums text-neutral-500">{row.sectionCode}</td>
-              <td className="px-2 py-1.5 font-medium text-neutral-900 dark:text-neutral-100">
+              <td className="truncate px-2 py-1.5 tabular-nums text-mirai-text-muted">{row.sectionCode}</td>
+              <td className="px-2 py-1.5 font-medium text-mirai-text">
                 <span className="line-clamp-2">{row.sectionName}</span>
               </td>
-              <td className="truncate px-2 py-1.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
+              <td className="truncate px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">
                 {row.jikouCount.toLocaleString()}
               </td>
-              <td className="truncate px-2 py-1.5 text-right tabular-nums text-neutral-600 dark:text-neutral-400">
+              <td className="truncate px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">
                 {row.kouMokuCount.toLocaleString()}
               </td>
               <td
                 className={`truncate px-2 py-1.5 text-right tabular-nums ${
                   row.rsProjectCount > 0
-                    ? 'font-medium text-emerald-700 dark:text-emerald-400'
-                    : 'text-neutral-300 dark:text-neutral-700'
+                    ? 'font-medium text-emerald-700 '
+                    : 'text-mirai-text-placeholder '
                 }`}
               >
                 {row.rsProjectCount.toLocaleString()}
               </td>
-              <td className="truncate px-2 py-1.5 text-right tabular-nums text-neutral-900 dark:text-neutral-100">
+              <td className="truncate px-2 py-1.5 text-right tabular-nums text-mirai-text">
                 {formatYen(row.amount)}
               </td>
-              <td className="truncate px-2 py-1.5 text-right tabular-nums text-neutral-500">
+              <td className="truncate px-2 py-1.5 text-right tabular-nums text-mirai-text-muted">
                 {formatYen(row.previousAmount)}
               </td>
-              <td className="truncate px-2 py-1.5 text-right tabular-nums text-neutral-500">
+              <td className="truncate px-2 py-1.5 text-right tabular-nums text-mirai-text-muted">
                 {formatYen(row.difference)}
               </td>
               <td className={`truncate px-2 py-1.5 text-right tabular-nums ${rateClass(rate)}`}>

@@ -3,12 +3,18 @@
  * /quality ページと /sankey-svg のスコア詳細ダイアログで共用する（重複定義を置かないこと）。
  */
 
+/**
+ * スコア帯の意味色。green / yellow は Tailwind 標準色のまま（データのエンコーディング）。
+ * 70-89 帯は旧来の青からデザインシステムのプライマリ（ティール）へ寄せ、
+ * 50 未満は destructive トークン（#dc2626 = red-600 と同値）を使う。
+ * /quality のヒストグラム（bg-primary/60 など）と帯の対応を揃えること。
+ */
 export function scoreColor(score: number | null): string {
-  if (score === null) return 'text-gray-400';
-  if (score >= 90) return 'text-green-600 dark:text-green-400';
-  if (score >= 70) return 'text-blue-600 dark:text-blue-400';
-  if (score >= 50) return 'text-yellow-600 dark:text-yellow-400';
-  return 'text-red-600 dark:text-red-400';
+  if (score === null) return 'text-mirai-text-muted';
+  if (score >= 90) return 'text-green-600';
+  if (score >= 70) return 'text-primary';
+  if (score >= 50) return 'text-yellow-600';
+  return 'text-destructive';
 }
 
 export function formatAmount(yen: number | null): string {

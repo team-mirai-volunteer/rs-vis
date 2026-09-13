@@ -7,9 +7,9 @@ interface FilterRowProps {
 
 export function FilterRow({ label, children }: FilterRowProps) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <span style={{ fontSize: 11, color: '#555', width: 40, flexShrink: 0, fontWeight: 600 }}>{label}</span>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+    <div className="flex items-center gap-1.5">
+      <span className="w-10 shrink-0 text-[11px] font-bold text-mirai-text-subtle">{label}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-1">
         {children}
       </div>
     </div>

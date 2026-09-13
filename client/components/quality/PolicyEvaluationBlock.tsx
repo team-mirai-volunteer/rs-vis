@@ -6,7 +6,15 @@
  * データの取り方はページごとに違う（サンキーは全件サマリを既に持っている、
  * 再委託ビューは1事業だけ引く）ため、このコンポーネントは表示に専念し、
  * 呼び出し側が `view` を組み立てて渡す。
+ *
+ * 色はチームみらいデザインシステムのトークン（Tailwind クラス）で当てる。
+ * フォントサイズだけは呼び出し側のフォントスケール（labelPx / metaPx）に従うため inline のまま。
  */
+
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { scoreColor } from '@/client/components/quality/score-format';
+import { TONE_CLS, ACTION_CLS } from '@/client/components/quality/score-meta';
 
 /** 表示に必要な最小セット。呼び出し側がサマリ or 単体評価から組み立てる */
 export interface PolicyEvaluationView {
@@ -24,21 +32,12 @@ export interface PolicyEvaluationView {
   categoryLabel: string | null;
 }
 
-/** /quality と同じ配色。判断の強さで色を変える */
-function recommendationColor(rec: string | null): string {
-  if (!rec) return '#999';
-  if (rec === '継続') return '#2d7d46';
-  if (rec === '要改善') return '#3b82f6';
-  if (rec === '再設計' || rec === '終了・廃止候補') return '#d94545';
-  return '#d98a20';
-}
-
-function scoreColor(v: number | null): string {
-  if (v == null) return '#999';
-  if (v >= 90) return '#2d7d46';
-  if (v >= 70) return '#3b82f6';
-  if (v >= 50) return '#d98a20';
-  return '#d94545';
+/** /quality の推奨バッジ（TONE_CLS）と同じ配色。判断の強さで色を変える */
+function recommendationCls(rec: string): string {
+  if (rec === '継続') return TONE_CLS.green;
+  if (rec === '要改善') return TONE_CLS.blue;
+  if (rec === '再設計' || rec === '終了・廃止候補') return TONE_CLS.red;
+  return TONE_CLS.amber;
 }
 
 export function PolicyEvaluationBlock({
@@ -66,9 +65,9 @@ export function PolicyEvaluationBlock({
 }) {
   if (error) {
     return (
-      <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '7px 14px' }}>
-        <span style={{ fontSize: labelPx, fontWeight: 600, color: '#555' }}>政策評価</span>
-        <span style={{ marginLeft: 8, fontSize: metaPx, color: '#c0392b' }}>
+      <div className="shrink-0 border-b border-border px-3.5 py-[7px]">
+        <span className="font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}>政策評価</span>
+        <span className="ml-2 text-destructive" style={{ fontSize: metaPx }}>
           読み込めませんでした（{error}）
         </span>
       </div>
@@ -83,51 +82,62 @@ export function PolicyEvaluationBlock({
   ];
 
   return (
-    <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0, padding: '8px 14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <span style={{ fontSize: labelPx, fontWeight: 600, color: '#555' }}>政策評価</span>
-        <span style={{ fontSize: metaPx, color: '#aaa' }}>暫定</span>
+    <div className="shrink-0 border-b border-border px-3.5 py-2">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <span className="font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}>政策評価</span>
+        <span className="text-mirai-text-muted" style={{ fontSize: metaPx }}>暫定</span>
         {view.categoryLabel && (
-          <span style={{ background: '#f0f0f0', color: '#666', padding: '1px 6px', borderRadius: 9, fontSize: metaPx, whiteSpace: 'nowrap' }}>
+          <span
+            className="whitespace-nowrap rounded-full bg-mirai-surface-light px-1.5 py-px text-mirai-text-subtle"
+            style={{ fontSize: metaPx }}
+          >
             {view.categoryLabel}
           </span>
         )}
         {onOpenDetail && (
-          <button
-            type="button"
+          <Button
+            variant="link"
             onClick={onOpenDetail}
             disabled={detailLoading}
             title="スコアの詳細（判定理由・支出先一覧）を開く"
-            style={{
-              marginLeft: 'auto', fontSize: metaPx, color: '#4a90d9', background: 'none',
-              border: 'none', padding: 0, cursor: detailLoading ? 'wait' : 'pointer', flexShrink: 0,
-            }}
-          >{detailLoading ? '読込中…' : '詳細'}</button>
+            className={cn('ml-auto shrink-0 font-normal no-underline hover:underline hover:text-primary-accent', detailLoading && 'cursor-wait')}
+            style={{ fontSize: metaPx }}
+          >{detailLoading ? '読込中…' : '詳細'}</Button>
         )}
         <a
           href={`/quality?pid=${pid}&year=${year}`}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ marginLeft: onOpenDetail ? 8 : 'auto', fontSize: metaPx, color: '#4a90d9', textDecoration: 'none', flexShrink: 0 }}
+          className={cn('shrink-0 text-primary underline-offset-4 hover:underline hover:text-primary-accent', onOpenDetail ? 'ml-2' : 'ml-auto')}
+          style={{ fontSize: metaPx }}
         >一覧で見る →</a>
       </div>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+      <div className="flex items-end gap-3.5">
         {cells.map(([label, value]) => (
-          <div key={label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: labelPx + 4, fontWeight: 700, lineHeight: 1, color: scoreColor(value), fontFamily: 'monospace' }}>
+          <div key={label} className="text-center">
+            <div
+              className={cn('font-mono font-bold leading-none', scoreColor(value))}
+              style={{ fontSize: labelPx + 4 }}
+            >
               {value ?? '—'}
             </div>
-            <div style={{ fontSize: metaPx, color: '#999', marginTop: 3 }}>{label}</div>
+            <div className="mt-[3px] text-mirai-text-muted" style={{ fontSize: metaPx }}>{label}</div>
           </div>
         ))}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+        <div className="ml-auto flex flex-wrap justify-end gap-1">
           {view.recommendation && (
-            <span style={{ background: recommendationColor(view.recommendation), color: '#fff', padding: '2px 7px', borderRadius: 10, fontSize: metaPx, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <span
+              className={cn('whitespace-nowrap rounded-full px-[7px] py-0.5 font-bold', recommendationCls(view.recommendation))}
+              style={{ fontSize: metaPx }}
+            >
               {view.recommendation}
             </span>
           )}
           {view.improvementAction && (
-            <span style={{ background: '#e8f1fb', color: '#2b6cb0', padding: '2px 7px', borderRadius: 10, fontSize: metaPx, fontWeight: 600, whiteSpace: 'nowrap' }}>
+            <span
+              className={cn('whitespace-nowrap rounded-full px-[7px] py-0.5 font-bold', ACTION_CLS)}
+              style={{ fontSize: metaPx }}
+            >
               {view.improvementAction}
             </span>
           )}

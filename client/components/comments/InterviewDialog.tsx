@@ -7,9 +7,16 @@
  * 「意見をまとめる」→ 整形プレビュー（編集可） → 「匿名で公開する」確定 → 完了。
  * LLM は訪問者自身のキーでブラウザから直接呼ぶ。サーバへ送るのは確定した本文と transcript のみ。
  * document.body に portal で出し、背面（サンキー図など）へイベントを伝播させない。
+ *
+ * 見た目はチームみらいデザインシステムのモーダル作法（rounded-3xl / bg-card / border-mirai-border /
+ * shadow-soft、オーバーレイ bg-black/40）。各ステップの確定ボタンは <Button variant="default">、
+ * 戻る・補助操作は outline。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { InterviewTurn, PostProjectCommentResponse } from '@/types/project-comments';
 import {
   COMMENT_BODY_MAX_CHARS,
@@ -39,32 +46,9 @@ type Step = 'loading' | 'key' | 'interview' | 'summarizing' | 'review' | 'submit
 
 const MIN_TURNS_TO_SUMMARIZE = 2;
 
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.45)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-};
-const cardStyle: React.CSSProperties = {
-  width: 'min(640px, 100%)', maxHeight: 'min(85vh, 760px)', display: 'flex', flexDirection: 'column',
-  background: '#fff', color: '#222', borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.25)', overflow: 'hidden',
-  fontSize: 13, lineHeight: 1.6,
-};
-const headerStyle: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-  background: '#f3efe6', borderBottom: '1px solid #e6dfd0',
-};
-const primaryBtn: React.CSSProperties = {
-  padding: '8px 14px', borderRadius: 8, border: 'none', background: '#1b7f37', color: '#fff',
-  fontWeight: 600, cursor: 'pointer', fontSize: 13,
-};
-const secondaryBtn: React.CSSProperties = {
-  padding: '8px 14px', borderRadius: 8, border: '1px solid #ccc', background: '#fff', color: '#333',
-  cursor: 'pointer', fontSize: 13,
-};
-const disabledBtn: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' };
-const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid #ccc',
-  fontSize: 13, fontFamily: 'inherit', background: '#fff', color: '#222',
-};
+/** テキスト入力・textarea の共通クラス（フィルタ入力と同系統。ダイアログ用にやや大きめ） */
+const INPUT_CLASS =
+  'w-full min-w-0 rounded-md border border-mirai-border bg-card px-2.5 py-2 text-[13px] text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50';
 
 export function InterviewDialog({ context: initialContext, onClose, onSubmitted }: InterviewDialogProps) {
   const [step, setStep] = useState<Step>('loading');
@@ -236,92 +220,96 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
 
   const body = (
     <div
-      style={overlayStyle}
+      className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4"
       onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
       onWheel={stopPropagation}
       role="presentation"
     >
-      <div style={cardStyle} role="dialog" aria-modal="true" aria-labelledby="interview-dialog-title" onMouseDown={stopPropagation}>
-        <div style={headerStyle}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div id="interview-dialog-title" style={{ fontWeight: 700, fontSize: 14, color: '#5a4a2a' }}>
+      <div
+        className="flex w-[min(640px,100%)] max-h-[min(85vh,760px)] flex-col overflow-hidden rounded-3xl border border-mirai-border bg-card text-[13px] leading-relaxed text-mirai-text shadow-soft"
+        role="dialog" aria-modal="true" aria-labelledby="interview-dialog-title" onMouseDown={stopPropagation}
+      >
+        <div className="flex items-center gap-2.5 border-b border-border bg-mirai-surface-teal px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <div id="interview-dialog-title" className="text-sm font-bold tracking-normal text-mirai-text">
               意見インタビュー
-              <span style={{ marginLeft: 8, fontWeight: 400, fontSize: 11, color: '#7a6a4a' }}>匿名・公開は最後に確認します</span>
+              <span className="ml-2 text-[11px] font-normal text-mirai-text-subtle">匿名・公開は最後に確認します</span>
             </div>
-            <div style={{ fontSize: 12, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={context.projectName}>
+            <div className="truncate text-xs text-mirai-text-subtle" title={context.projectName}>
               {context.projectName}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="閉じる"
-            style={{ border: 'none', background: 'transparent', fontSize: 20, lineHeight: 1, cursor: 'pointer', color: '#666', padding: 4 }}>×</button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="閉じる" className="shrink-0 text-mirai-text-subtle hover:bg-card">
+            <X aria-hidden="true" />
+          </Button>
         </div>
 
         {step === 'loading' && (
-          <div style={{ padding: 24, color: '#777' }}>準備しています...</div>
+          <div className="p-6 text-mirai-text-muted">準備しています...</div>
         )}
 
         {step === 'key' && (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
-            <p style={{ margin: 0 }}>
+          <div className="flex flex-col gap-2.5 overflow-y-auto p-4">
+            <p className="m-0">
               インタビューの AI は<strong>あなたの OpenRouter API キー</strong>でブラウザから直接動きます。
               キーはこのブラウザにのみ保存され、このサイトのサーバには送信されません。
             </p>
-            <p style={{ margin: 0, fontSize: 12, color: '#777' }}>
+            <p className="m-0 text-xs text-mirai-text-muted">
               利用上限（クレジット制限）を設定したキーの使用をおすすめします。
-              キーは <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" style={{ color: '#4a90d9' }}>openrouter.ai/keys</a> で発行できます。
+              キーは <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">openrouter.ai/keys</a> で発行できます。
             </p>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 11, color: '#777', marginBottom: 3 }}>APIキー</span>
+            <label className="block">
+              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">APIキー</span>
               <input type="password" value={keyInput} onChange={e => setKeyInput(e.target.value)} autoComplete="off"
-                placeholder="sk-or-v1-..." style={inputStyle} />
+                placeholder="sk-or-v1-..." className={INPUT_CLASS} />
             </label>
-            <label style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontSize: 11, color: '#777', marginBottom: 3 }}>モデル（空欄なら {DEFAULT_BYOK_MODEL}）</span>
-              <input type="text" value={modelInput} onChange={e => setModelInput(e.target.value)} placeholder={DEFAULT_BYOK_MODEL} style={inputStyle} />
+            <label className="block">
+              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">モデル（空欄なら {DEFAULT_BYOK_MODEL}）</span>
+              <input type="text" value={modelInput} onChange={e => setModelInput(e.target.value)} placeholder={DEFAULT_BYOK_MODEL} className={INPUT_CLASS} />
             </label>
-            {keyTestMsg && <div style={{ fontSize: 12, color: keyTestMsg === '接続できました' ? '#1b7f37' : '#b00020' }}>{keyTestMsg}</div>}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={handleTestKey} disabled={!keyInput.trim() || keyTesting}
-                style={{ ...secondaryBtn, ...(!keyInput.trim() || keyTesting ? disabledBtn : {}) }}>
+            {keyTestMsg && (
+              <div className={cn('text-xs', keyTestMsg === '接続できました' ? 'text-primary-accent' : 'text-destructive')}>{keyTestMsg}</div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={handleTestKey} disabled={!keyInput.trim() || keyTesting} className="border-mirai-border">
                 {keyTesting ? 'テスト中...' : '接続テスト'}
-              </button>
-              <button type="button" onClick={handleSaveKey} disabled={!keyInput.trim()}
-                style={{ ...primaryBtn, ...(!keyInput.trim() ? disabledBtn : {}) }}>
+              </Button>
+              <Button variant="default" size="sm" onClick={handleSaveKey} disabled={!keyInput.trim()}>
                 保存して始める
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {(step === 'interview' || step === 'summarizing') && (
           <>
-            <div ref={logRef} style={{ flex: 1, minHeight: 240, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, background: '#fafaf7' }}>
+            <div ref={logRef} className="flex min-h-60 flex-1 flex-col gap-2 overflow-y-auto bg-mirai-surface px-3.5 py-3">
               {turns.map((t, i) => (
-                <div key={i} style={{
-                  alignSelf: t.role === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%', padding: '8px 12px', borderRadius: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  background: t.role === 'user' ? '#dcefe2' : '#fff',
-                  border: t.role === 'user' ? '1px solid #c2e5cf' : '1px solid #e6e6e6',
-                }}>
+                <div key={i} className={cn(
+                  'max-w-[85%] whitespace-pre-wrap break-words rounded-2xl border px-3 py-2',
+                  t.role === 'user'
+                    ? 'self-end border-primary/30 bg-mirai-surface-teal'
+                    : 'self-start border-border bg-card',
+                )}>
                   {t.content}
                 </div>
               ))}
               {(thinking || step === 'summarizing') && (
-                <div style={{ alignSelf: 'flex-start', color: '#888', fontSize: 12, padding: '4px 6px' }}>
+                <div className="self-start px-1.5 py-1 text-xs text-mirai-text-muted">
                   {step === 'summarizing' ? '意見文にまとめています...' : '考えています...'}
                   {retryWaitMs != null && `（混雑のため ${Math.ceil(retryWaitMs / 1000)} 秒待って再試行）`}
                 </div>
               )}
               {error && (
-                <div style={{ alignSelf: 'stretch', color: '#b00020', fontSize: 12, background: '#fdecee', border: '1px solid #f5c2c7', borderRadius: 8, padding: '6px 10px' }}>
-                  {error}
+                <div className="flex flex-wrap items-center gap-2 self-stretch rounded-xl border border-destructive/30 bg-stance-against-bg px-2.5 py-1.5 text-xs text-destructive">
+                  <span>{error}</span>
                   {turns.length === 0 && settings && (
-                    <button type="button" onClick={() => void askInterviewer([], settings, context)} style={{ ...secondaryBtn, marginLeft: 8, padding: '2px 8px', fontSize: 12 }}>再試行</button>
+                    <Button variant="outline" size="xs" onClick={() => void askInterviewer([], settings, context)} className="border-mirai-border">再試行</Button>
                   )}
                 </div>
               )}
             </div>
-            <div style={{ borderTop: '1px solid #eee', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="flex flex-col gap-2 border-t border-border px-3.5 py-2.5">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -330,75 +318,72 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
                 placeholder={reachedMax ? '発言回数の上限に達しました。「意見をまとめる」へ進んでください' : 'ここに入力（Ctrl+Enter で送信）'}
                 rows={2}
                 disabled={thinking || step === 'summarizing' || reachedMax}
-                style={{ ...inputStyle, resize: 'vertical' }}
+                className={cn(INPUT_CLASS, 'resize-y')}
               />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: '#999' }}>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-mirai-text-muted">
                   {input.length}/{INTERVIEW_INPUT_MAX_CHARS}字 ・ 発言 {userTurnCount}/{INTERVIEW_MAX_USER_TURNS}
                 </span>
-                <span style={{ flex: 1 }} />
-                <button type="button" onClick={handleSummarize}
+                <span className="flex-1" />
+                <Button variant="outline" size="sm" onClick={handleSummarize}
                   disabled={userTurnCount < MIN_TURNS_TO_SUMMARIZE || thinking || step === 'summarizing'}
                   title={userTurnCount < MIN_TURNS_TO_SUMMARIZE ? `${MIN_TURNS_TO_SUMMARIZE}回以上お話しいただくと、意見文にまとめられます` : 'ここまでの内容を公開用の意見文にまとめる'}
-                  style={{ ...secondaryBtn, ...(userTurnCount < MIN_TURNS_TO_SUMMARIZE || thinking || step === 'summarizing' ? disabledBtn : {}) }}>
+                  className="border-mirai-border">
                   意見をまとめる
-                </button>
-                <button type="button" onClick={handleSend}
-                  disabled={!input.trim() || thinking || step === 'summarizing' || reachedMax}
-                  style={{ ...primaryBtn, ...(!input.trim() || thinking || step === 'summarizing' || reachedMax ? disabledBtn : {}) }}>
+                </Button>
+                <Button variant="default" size="sm" onClick={handleSend}
+                  disabled={!input.trim() || thinking || step === 'summarizing' || reachedMax}>
                   送信
-                </button>
+                </Button>
               </div>
             </div>
           </>
         )}
 
         {(step === 'review' || step === 'submitting') && (
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
-            <p style={{ margin: 0 }}>
+          <div className="flex flex-col gap-2.5 overflow-y-auto p-4">
+            <p className="m-0">
               インタビューの内容を意見文にまとめました。<strong>この内容が匿名で公開されます。</strong>
               必要なら編集してください。個人が特定できる情報は書かないでください。
             </p>
-            {stance && <div style={{ fontSize: 12, color: '#777' }}>立場の整理: {stance}</div>}
+            {stance && <div className="text-xs text-mirai-text-muted">立場の整理: {stance}</div>}
             <textarea
               value={draftBody}
               onChange={e => setDraftBody(e.target.value.slice(0, COMMENT_BODY_MAX_CHARS))}
               rows={8}
               disabled={step === 'submitting'}
-              style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
+              className={cn(INPUT_CLASS, 'resize-y leading-relaxed')}
             />
-            <div style={{ fontSize: 11, color: '#999' }}>{draftBody.length}/{COMMENT_BODY_MAX_CHARS}字</div>
-            {error && <div style={{ color: '#b00020', fontSize: 12 }}>{error}</div>}
-            <p style={{ margin: 0, fontSize: 11, color: '#777' }}>
+            <div className="text-[11px] text-mirai-text-muted">{draftBody.length}/{COMMENT_BODY_MAX_CHARS}字</div>
+            {error && <div className="text-xs text-destructive">{error}</div>}
+            <p className="m-0 text-[11px] text-mirai-text-muted">
               公開前に機械的なチェック（連絡先・URL 等）を行います。問題があれば公開を保留します。
               インタビューの全文は公開されず、運営の確認用にのみ保存されます。
             </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setStep('interview'); setError(null); }} disabled={step === 'submitting'}
-                style={{ ...secondaryBtn, ...(step === 'submitting' ? disabledBtn : {}) }}>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setStep('interview'); setError(null); }} disabled={step === 'submitting'} className="border-mirai-border">
                 インタビューに戻る
-              </button>
-              <button type="button" onClick={handleSubmit}
-                disabled={!draftBody.trim() || step === 'submitting'}
-                style={{ ...primaryBtn, ...(!draftBody.trim() || step === 'submitting' ? disabledBtn : {}) }}>
+              </Button>
+              <Button variant="default" size="sm" onClick={handleSubmit}
+                disabled={!draftBody.trim() || step === 'submitting'}>
                 {step === 'submitting' ? '投稿中...' : '匿名で公開する'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {step === 'done' && result && (
-          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-2.5 p-5">
             {result.status === 'published' ? (
-              <p style={{ margin: 0 }}>ご意見を公開しました。ありがとうございました。</p>
+              <p className="m-0">ご意見を公開しました。ありがとうございました。</p>
             ) : (
-              <p style={{ margin: 0 }}>
+              <p className="m-0">
                 ご意見を受け付けましたが、公開は保留になりました。
-                {result.reason && <><br /><span style={{ color: '#777', fontSize: 12 }}>理由: {result.reason}</span></>}
+                {result.reason && <><br /><span className="text-xs text-mirai-text-muted">理由: {result.reason}</span></>}
               </p>
             )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={onClose} style={primaryBtn}>閉じる</button>
+            <div className="flex justify-end">
+              <Button variant="default" size="sm" onClick={onClose}>閉じる</Button>
             </div>
           </div>
         )}

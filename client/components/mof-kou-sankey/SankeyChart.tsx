@@ -10,6 +10,9 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Maximize, Minus, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { computeMOFSankeyLayout, mofRibbonPath } from '@/app/lib/mof-sankey-layout';
 import { MOF_KOU_SANKEY_COLUMN_INDEX, MOF_KOU_SANKEY_LAYOUT, mofKouSankeyNodeColor } from '@/app/lib/mof-kou-sankey-constants';
 import { koumokuAncestorsOfRsStatus, recipientBreakdown, relatedNodeIds, rsStatusAncestorOfRecipient, rsStatusBreakdown } from '@/app/lib/mof-kou-sankey-focus';
@@ -187,7 +190,7 @@ export function SankeyChart({
   );
 
   return (
-    <div ref={containerRef} className="relative h-full w-full select-none overflow-hidden bg-white">
+    <div ref={containerRef} className="relative h-full w-full select-none overflow-hidden bg-card">
       <svg
         data-testid={testId('mof-kou-sankey-canvas')}
         width="100%"
@@ -273,24 +276,40 @@ export function SankeyChart({
         </g>
       </svg>
 
-      <div data-pan-disabled="true" className="absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border border-black/10 bg-white/90 p-1 shadow backdrop-blur">
-        <button type="button" title="拡大" onClick={() => zoomAt(ZOOM_STEP)} className="h-7 w-7 rounded text-gray-600 hover:bg-gray-100">
-          ＋
-        </button>
-        <button type="button" title="縮小" onClick={() => zoomAt(1 / ZOOM_STEP)} className="h-7 w-7 rounded text-gray-600 hover:bg-gray-100">
-          －
-        </button>
-        <button
-          type="button"
+      <div data-pan-disabled="true" className="absolute right-3 top-3 z-30 flex flex-col gap-1 rounded-lg border border-mirai-border bg-card p-1 shadow-xs">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="拡大"
+          aria-label="拡大"
+          onClick={() => zoomAt(ZOOM_STEP)}
+          className="rounded text-mirai-text-subtle hover:bg-mirai-surface"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          title="縮小"
+          aria-label="縮小"
+          onClick={() => zoomAt(1 / ZOOM_STEP)}
+          className="rounded text-mirai-text-subtle hover:bg-mirai-surface"
+        >
+          <Minus className="size-3.5" aria-hidden="true" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           title="表示をリセット"
+          aria-label="表示をリセット"
           onClick={() => {
             setZoom(1);
             setPan({ x: 0, y: 0 });
           }}
-          className="h-7 w-7 rounded text-xs text-gray-600 hover:bg-gray-100"
+          className="rounded text-mirai-text-subtle hover:bg-mirai-surface"
         >
-          ⟲
-        </button>
+          <Maximize className="size-3.5" aria-hidden="true" />
+        </Button>
       </div>
 
       {selectedId !== null && (
@@ -308,25 +327,26 @@ export function SankeyChart({
         >
           {selectedPanelNode && (
             <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-shrink-0 border-b border-gray-100 p-4 pb-3">
+              <div className="flex-shrink-0 border-b border-border p-4 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="break-all text-sm font-semibold text-gray-900">{selectedPanelNode.name}</div>
-                    <div className="mt-0.5 text-lg font-bold text-gray-800">{formatBudgetFromYen(selectedPanelNode.value ?? 0)}</div>
-                    <div className="text-[11px] text-gray-400">{Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円</div>
+                    <div className="break-all text-sm font-semibold text-mirai-text">{selectedPanelNode.name}</div>
+                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value ?? 0)}</div>
+                    <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円</div>
                     {!selectedNode && (
                       <div className="mt-1 text-[11px] text-amber-600">表示数の上限から溢れているため図には出ていません</div>
                     )}
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     title="選択を解除"
                     aria-label="選択を解除"
                     onClick={() => onSelect(null)}
-                    className="shrink-0 rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text-subtle"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   {selectedDetails?.column && (
@@ -338,14 +358,14 @@ export function SankeyChart({
                     </span>
                   )}
                   {selectedDetails?.aggregated && (
-                    <span className="rounded-full bg-gray-400 px-2 py-0.5 text-[11px] font-medium text-white">集約</span>
+                    <span className="rounded-full bg-mirai-border-light px-2 py-0.5 text-[11px] font-medium text-white">集約</span>
                   )}
                   {selectedPanelNode && rsSvgUrlFor(selectedPanelNode) && (
                     <a
                       href={rsSvgUrlFor(selectedPanelNode) ?? undefined}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-blue-600 underline hover:text-blue-800"
+                      className="text-[11px] text-primary underline hover:text-primary-accent"
                     >
                       /sankey-svgで開く
                     </a>
@@ -355,13 +375,13 @@ export function SankeyChart({
 
               {selectedDetails?.aggregatedTop && selectedDetails.aggregatedTop.length > 0 && (
                 <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '30%' }}>
-                  <div className="text-xs text-gray-600">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
-                  <div className="mt-2 border-t border-gray-100 pt-2">
-                    <div className="mb-1 text-[11px] text-gray-400">内訳（金額の大きい順）</div>
+                  <div className="text-xs text-mirai-text-subtle">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
+                  <div className="mt-2 border-t border-border pt-2">
+                    <div className="mb-1 text-[11px] text-mirai-text-muted">内訳（金額の大きい順）</div>
                     {selectedDetails.aggregatedTop.map((member, index) => (
-                      <div key={`${index}-${member.name}`} className="flex justify-between gap-3 text-xs text-gray-700">
+                      <div key={`${index}-${member.name}`} className="flex justify-between gap-3 text-xs text-mirai-text-secondary">
                         <span className="truncate">{member.name}</span>
-                        <span className="shrink-0 tabular-nums text-gray-500">{formatBudgetFromYen(member.amount)}</span>
+                        <span className="shrink-0 tabular-nums text-mirai-text-muted">{formatBudgetFromYen(member.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -370,22 +390,25 @@ export function SankeyChart({
               )}
 
               {tabs.length > 0 && (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-gray-100">
-                  <div role="tablist" className="flex flex-shrink-0 border-b border-gray-100 px-2">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
+                  <div role="tablist" className="flex flex-shrink-0 border-b border-border px-2">
                     {tabs.map(({ id, label, count }) => (
-                      <button
+                      <Button
                         key={id}
-                        type="button"
+                        variant="ghost"
                         role="tab"
                         aria-selected={activeTab === id}
                         onClick={() => setPanelTab(id)}
-                        className={`flex-1 border-b-2 px-1 py-1.5 text-[11px] font-semibold ${
-                          activeTab === id ? 'border-blue-500 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'
-                        }`}
+                        className={cn(
+                          'h-auto flex-1 rounded-none border-b-2 px-1 py-1.5 text-[11px] font-semibold hover:bg-transparent',
+                          activeTab === id
+                            ? 'border-primary text-mirai-text hover:text-mirai-text'
+                            : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'
+                        )}
                       >
                         {label}
                         <span className="ml-0.5 font-normal">({count.toLocaleString()})</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
@@ -394,15 +417,15 @@ export function SankeyChart({
                       ?.items.map(item => {
                         const rsLink = rsSvgUrlFor(item);
                         return (
-                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-gray-50 py-1.5">
-                            <button
-                              type="button"
+                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
+                            <Button
+                              variant="ghost"
                               onClick={() => onSelect(item.id)}
-                              className="flex min-w-0 flex-1 items-baseline justify-between gap-3 text-left hover:bg-gray-50"
+                              className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 whitespace-normal rounded-none p-0 text-left font-normal hover:bg-mirai-surface"
                             >
-                              <span className="truncate text-xs text-gray-700">{item.name}</span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-gray-500">{formatBudgetFromYen(item.value ?? 0)}</span>
-                            </button>
+                              <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(item.value ?? 0)}</span>
+                            </Button>
                             {rsLink && (
                               <a
                                 href={rsLink}
@@ -410,7 +433,7 @@ export function SankeyChart({
                                 rel="noopener noreferrer"
                                 title="/sankey-svgで開く"
                                 onClick={e => e.stopPropagation()}
-                                className="shrink-0 px-0.5 text-gray-400 hover:text-blue-600"
+                                className="shrink-0 px-0.5 text-mirai-text-muted hover:text-primary-accent"
                               >
                                 ↗
                               </a>

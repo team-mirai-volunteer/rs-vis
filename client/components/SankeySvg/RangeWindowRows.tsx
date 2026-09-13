@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 
 const TOP_MIN = 1;
@@ -11,11 +13,15 @@ const clampTop = (v: number) => Math.max(TOP_MIN, Math.min(TOP_MAX, v));
 // つまみの最小幅(px)。総件数が多いと topN/total が極小になるため掴めなくなるのを防ぐ
 const THUMB_MIN_PX = 14;
 
-// [delta, SVGパス, ラベル]
-const ARROW_PATHS: [number, string, string][] = [
-  [1, 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '増やす'],
-  [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '減らす'],
+// [delta, アイコン, ラベル]
+const ARROWS: [number, typeof ChevronUp, string][] = [
+  [1, ChevronUp, '増やす'],
+  [-1, ChevronDown, '減らす'],
 ];
+
+/** 上下矢印（長押し対応）の共通クラス。縦2段で並べるため高さは親に合わせる */
+const STEP_BUTTON_CLASS =
+  'h-auto w-4 flex-1 select-none touch-none rounded-none p-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text';
 
 export interface RangeWindowRowProps {
   label: string;
@@ -108,7 +114,7 @@ export function RangeWindowRow({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-      <span style={{ color: '#555', fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
+      <span className="text-mirai-text-subtle" style={{ fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
       {/* スクロールバー型スライダー。範囲テキストはバー上に重ねて余白を作らない */}
       <div
         ref={trackRef}
@@ -124,21 +130,20 @@ export function RangeWindowRow({
         onPointerMove={onThumbPointerMove}
         onPointerUp={onThumbPointerEnd}
         onPointerCancel={onThumbPointerEnd}
-        style={{ position: 'relative', flex: 1, minWidth: 0, height: 16, borderRadius: 8, background: '#ececec', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.06)', cursor: 'pointer', touchAction: 'none' }}
+        className="relative h-4 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-mirai-surface-light ring-1 ring-inset ring-black/5"
       >
         <div
           onPointerDown={onThumbPointerDown}
+          className="absolute cursor-grab rounded-full bg-mirai-surface-teal ring-1 ring-inset ring-primary"
           style={{
-            position: 'absolute', top: 1, bottom: 1,
+            top: 1, bottom: 1,
             left: `calc((100% - ${thumbWidthCss}) * ${posRatio})`,
             width: thumbWidthCss,
-            borderRadius: 7, background: '#a8c7fa', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)',
-            cursor: 'grab',
           }}
         />
         {/* 範囲テキストはバー内・右揃え。テキスト長が変わってもバー長が固定で保たれる */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 8, pointerEvents: 'none', fontSize: metaFontPx, color: '#666', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-          {rangeStart}〜{rangeEnd}<span style={{ color: '#999' }}>/{total}件</span>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-end whitespace-nowrap pr-2 tabular-nums text-mirai-text-subtle" style={{ fontSize: metaFontPx }}>
+          {rangeStart}〜{rangeEnd}<span className="text-mirai-text-muted">/{total}件</span>
         </div>
       </div>
       {isEditing ? (
@@ -147,25 +152,28 @@ export function RangeWindowRow({
           onChange={e => setInputValue(e.target.value)}
           onBlur={() => { const v = Number(inputValue); if (!isNaN(v) && v >= 1) commitTop(v); setIsEditing(false); }}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
-          style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: metaFontPx }}
+          className="rounded-md border border-mirai-border bg-card text-center text-mirai-text focus-visible:border-primary"
+          style={{ width: 36, fontSize: metaFontPx }}
         />
       ) : (
-        <button onClick={() => { setInputValue(String(topN)); setIsEditing(true); }} title="クリックして件数を直接入力"
+        <Button variant="ghost" onClick={() => { setInputValue(String(topN)); setIsEditing(true); }} title="クリックして件数を直接入力"
           aria-label={`${label}の表示件数`}
-          style={{ color: '#555', fontSize: metaFontPx, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 24, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-        >{topN}</button>
+          className="h-auto min-w-6 cursor-text rounded-none p-0 text-right font-normal tabular-nums text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text"
+          style={{ fontSize: metaFontPx }}
+        >{topN}</Button>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-        {ARROW_PATHS.map(([delta, path, title]) => {
+        {ARROWS.map(([delta, Icon, title]) => {
           const step = () => { markReplace(); setTopN(prev => clampTop(prev + delta)); };
           return (
-            <button key={delta} title={`件数を${title}`} aria-label={`${label}の件数を${title}`}
+            <Button key={delta} variant="ghost" title={`件数を${title}`} aria-label={`${label}の件数を${title}`}
               {...repeat(step)}
               onClick={(e) => { if (e.detail === 0) step(); }}
-              style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+              className={STEP_BUTTON_CLASS}
+              style={{ WebkitTouchCallout: 'none' }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="10" width="10" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
-            </button>
+              <Icon className="size-2.5" aria-hidden="true" />
+            </Button>
           );
         })}
       </div>

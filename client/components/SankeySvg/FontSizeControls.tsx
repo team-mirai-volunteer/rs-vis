@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 
-// [delta, SVGパス, ラベル]
-const ARROW_PATHS: [number, string, string][] = [
-  [1, 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '大きく'],
-  [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '小さく'],
+// [delta, アイコン, ラベル]
+const ARROWS: [number, typeof ChevronUp, string][] = [
+  [1, ChevronUp, '大きく'],
+  [-1, ChevronDown, '小さく'],
 ];
+
+/** 上下矢印（長押し対応）の共通クラス。縦2段で並べるため高さは親に合わせる */
+const STEP_BUTTON_CLASS =
+  'h-auto w-4 flex-1 select-none touch-none rounded-none p-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text';
 
 interface FontSizeControlsProps {
   baseFontPx: number;
@@ -52,6 +58,7 @@ export function FontSizeControls({
         type="range" min={min} max={max} step={1}
         value={baseFontPx}
         onChange={e => { markReplace(); setBaseFontPx(Number(e.target.value)); }}
+        className="accent-primary"
         style={isCompactWidth ? { flex: 1, minWidth: 0, boxSizing: 'border-box', margin: 0 } : { width: 60, boxSizing: 'border-box', margin: 0 }}
         data-pan-disabled
         aria-label="基準フォントサイズ"
@@ -66,48 +73,48 @@ export function FontSizeControls({
             if (e.key === 'Enter') { commitInput(); setIsEditing(false); }
             else if (e.key === 'Escape') { setInputValue(String(baseFontPx)); setIsEditing(false); }
           }}
-          style={{ width: `${Math.max(40, String(max).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: controlSmallFontPx }}
+          className="rounded-md border border-mirai-border bg-card text-center text-mirai-text focus-visible:border-primary"
+          style={{ width: `${Math.max(40, String(max).length * 8 + 20)}px`, fontSize: controlSmallFontPx }}
           data-pan-disabled
           aria-label="基準フォントサイズ(数値)"
         />
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => { setInputValue(String(baseFontPx)); setIsEditing(true); }}
           title="クリックしてフォントサイズを入力"
-          style={{ color: '#999', fontSize: numberFontPx, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
+          className="h-auto min-w-5 cursor-text rounded-none p-0 text-right font-normal tabular-nums text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+          style={{ fontSize: numberFontPx }}
           data-pan-disabled
           aria-label="基準フォントサイズ編集を開始"
-        >{baseFontPx}</button>
+        >{baseFontPx}</Button>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-        {ARROW_PATHS.map(([delta, path, title]) => {
+        {ARROWS.map(([delta, Icon, title]) => {
           const step = () => { markReplace(); setBaseFontPx(prev => clampFont(prev + delta)); };
           return (
-            <button key={delta} type="button" title={title} aria-label={title}
+            <Button key={delta} variant="ghost" title={title} aria-label={title}
               {...repeat(step, { stopPropagation: true })}
               onClick={(e) => { if (e.detail === 0) step(); }}
-              style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+              className={STEP_BUTTON_CLASS}
+              style={{ WebkitTouchCallout: 'none' }}
               data-pan-disabled
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
-            </button>
+              <Icon className="size-3" aria-hidden="true" />
+            </Button>
           );
         })}
       </div>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={() => { markReplace(); setBaseFontPx(defaultValue); }}
         title="既定値に戻す"
         aria-label="既定値に戻す"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', color: '#555' }}
+        className="h-auto select-none rounded-none p-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text"
         data-pan-disabled
       >
-        {/* Material Icons: reset_settings */}
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="currentColor">
-          <path d="M520-330v-60h160v60H520Zm60 210v-50h-60v-60h60v-50h60v160h-60Zm100-50v-60h160v60H680Zm40-110v-160h60v50h60v60h-60v50h-60Zm111-280h-83q-26-88-99-144t-169-56q-117 0-198.5 81.5T200-480q0 72 32.5 132t87.5 98v-110h80v240H160v-80h94q-62-50-98-122.5T120-480q0-75 28.5-140.5t77-114q48.5-48.5 114-77T480-840q129 0 226.5 79.5T831-560Z" />
-        </svg>
-      </button>
+        <RotateCcw className="size-3.5" aria-hidden="true" />
+      </Button>
     </div>
   );
 }

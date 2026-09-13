@@ -3,12 +3,13 @@
 /**
  * ビュー切替のセレクト。
  *
- * 見た目は `components/navigation/YearSelect` と揃える（h-9・rounded-lg・
- * border-black/10・shadow-md・自前の矢印）。右上に年度セレクトと並べるので、
+ * 見た目は `components/navigation/YearSelect` と揃える（h-9・rounded-full・
+ * border-mirai-border・shadow-xs・lucide の矢印）。右上に年度セレクトと並べるので、
  * 高さや枠線が違うと段差になって目立つため。
  */
 
 import { useRouter } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 
 export interface ViewOption {
   value: string;
@@ -34,7 +35,7 @@ export function ViewSelect({
           const next = options.find(o => o.value === e.target.value);
           if (next) router.push(next.href);
         }}
-        className="h-9 cursor-pointer appearance-none rounded-lg border border-black/10 bg-white/90 pl-2.5 pr-7 text-xs text-neutral-700 shadow-md backdrop-blur focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+        className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >
         {options.map(o => (
           <option key={o.value} value={o.value}>
@@ -42,16 +43,10 @@ export function ViewSelect({
           </option>
         ))}
       </select>
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        height="14"
-        width="14"
-        viewBox="0 0 24 24"
+      <ChevronDown
         aria-hidden="true"
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 fill-neutral-400"
-      >
-        <path d="M7 10l5 5 5-5z" />
-      </svg>
+        className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted"
+      />
     </div>
   );
 }

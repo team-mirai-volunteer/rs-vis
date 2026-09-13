@@ -25,18 +25,18 @@ export function SpecialAccountTable({
 }) {
   if (accounts.length === 0) return null;
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 className="text-lg font-bold text-gray-800 mb-1">
+    <div className="bg-card rounded-xl border border-mirai-border shadow-xs p-6 mb-6">
+      <h2 className="text-lg font-bold text-mirai-text mb-1">
         特別会計 {accounts.length}会計
       </h2>
-      <p className="mb-3 text-xs text-gray-500">
+      <p className="mb-3 text-xs text-mirai-text-muted">
         自前財源比率 = 歳入のうち他会計からの受入でない割合。低いほど一般会計等から
         回ってきた金を通している性格が強くなります。
       </p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-xs">
-          <thead className="text-gray-500">
-            <tr className="border-b border-gray-200">
+          <thead className="text-mirai-text-muted">
+            <tr className="border-b border-border">
               <th className="px-2 py-2 text-left font-medium">特別会計</th>
               <th className="px-2 py-2 text-right font-medium">勘定</th>
               <th className="px-2 py-2 text-right font-medium">歳出</th>
@@ -46,11 +46,11 @@ export function SpecialAccountTable({
               <th className="px-2 py-2 text-left font-medium">自前財源比率</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700">
+          <tbody className="text-mirai-text-secondary">
             {accounts.map(a => (
-              <tr key={a.name} className="border-b border-gray-100">
+              <tr key={a.name} className="border-b border-border">
                 <td className="px-2 py-2 whitespace-nowrap">{a.name}</td>
-                <td className="px-2 py-2 text-right tabular-nums text-gray-500">
+                <td className="px-2 py-2 text-right tabular-nums text-mirai-text-muted">
                   {a.subAccountCount || '—'}
                 </td>
                 <td className="px-2 py-2 text-right tabular-nums">
@@ -67,13 +67,13 @@ export function SpecialAccountTable({
                 </td>
                 <td className="px-2 py-2">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-24 rounded bg-gray-100">
+                    <div className="h-2 w-24 rounded bg-mirai-surface-light">
                       <div
                         className={`h-2 rounded ${rateColor(a.ownRevenueRate)}`}
                         style={{ width: `${Math.round(a.ownRevenueRate * 100)}%` }}
                       />
                     </div>
-                    <span className="tabular-nums text-xs text-gray-600">
+                    <span className="tabular-nums text-xs text-mirai-text-subtle">
                       {(a.ownRevenueRate * 100).toFixed(1)}%
                     </span>
                   </div>

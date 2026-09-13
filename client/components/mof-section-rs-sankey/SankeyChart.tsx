@@ -9,6 +9,9 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Maximize, Minus, Plus, type LucideIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   computeMOFSankeyLayout,
   mofRibbonPath,
@@ -750,25 +753,26 @@ export function SankeyChart({
         >
           {selectedPanelNode && (
             <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-shrink-0 border-b border-gray-100 p-4 pb-3">
+              <div className="flex-shrink-0 border-b border-border p-4 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="break-all text-sm font-semibold text-gray-900">{selectedPanelNode.name}</div>
-                    <div className="mt-0.5 text-lg font-bold text-gray-800">{formatBudgetFromYen(selectedPanelNode.value ?? 0)}</div>
-                    <div className="text-[11px] text-gray-400">{Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円</div>
+                    <div className="break-all text-sm font-semibold text-mirai-text">{selectedPanelNode.name}</div>
+                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value ?? 0)}</div>
+                    <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円</div>
                     {!selectedNode && (
                       <div className="mt-1 text-[11px] text-amber-600">表示数の上限から溢れているため図には出ていません</div>
                     )}
                   </div>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     title="選択を解除"
                     aria-label="選択を解除"
                     onClick={() => onSelect(null)}
-                    className="shrink-0 rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                    className="shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text-subtle"
                   >
                     ×
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -787,7 +791,7 @@ export function SankeyChart({
                     </span>
                   )}
                   {selectedDetails?.aggregated && (
-                    <span className="rounded-full bg-gray-400 px-2 py-0.5 text-[11px] font-medium text-white">集約</span>
+                    <span className="rounded-full bg-mirai-border-light px-2 py-0.5 text-[11px] font-medium text-white">集約</span>
                   )}
                   {selectedDetails?.column === 'section' && selectedDetails.rsLinked !== undefined && (
                     <span
@@ -804,7 +808,7 @@ export function SankeyChart({
                       href={selectedDetails.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-blue-600 underline hover:text-blue-800"
+                      className="text-[11px] text-primary underline hover:text-primary-accent"
                     >
                       出典 p.{selectedDetails.page}
                     </a>
@@ -814,7 +818,7 @@ export function SankeyChart({
                       href={selectedRsSvgUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-blue-600 underline hover:text-blue-800"
+                      className="text-[11px] text-primary underline hover:text-primary-accent"
                     >
                       /sankey-svgで開く
                     </a>
@@ -825,46 +829,49 @@ export function SankeyChart({
               {(selectedDetails?.aggregated || focusRelated) && (
                 <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '40%' }}>
                   {selectedDetails?.aggregated && (
-                    <div className="text-xs text-gray-600">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
+                    <div className="text-xs text-mirai-text-subtle">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
                   )}
                   {selectedDetails?.aggregatedTop && selectedDetails.aggregatedTop.length > 0 && (
-                    <div className="mt-2 border-t border-gray-100 pt-2">
-                      <div className="mb-1 text-[11px] text-gray-400">内訳（金額の大きい順）</div>
+                    <div className="mt-2 border-t border-border pt-2">
+                      <div className="mb-1 text-[11px] text-mirai-text-muted">内訳（金額の大きい順）</div>
                       {selectedDetails.aggregatedTop.map((member, index) => (
-                        <div key={`${index}-${member.name}`} className="flex justify-between gap-3 text-xs text-gray-700">
+                        <div key={`${index}-${member.name}`} className="flex justify-between gap-3 text-xs text-mirai-text-secondary">
                           <span className="truncate">{member.name}</span>
-                          <span className="shrink-0 tabular-nums text-gray-500">{formatBudgetFromYen(member.amount)}</span>
+                          <span className="shrink-0 tabular-nums text-mirai-text-muted">{formatBudgetFromYen(member.amount)}</span>
                         </div>
                       ))}
                       {(selectedDetails.aggregatedCount ?? 0) > selectedDetails.aggregatedTop.length && (
-                        <div className="text-[11px] text-gray-400">
+                        <div className="text-[11px] text-mirai-text-muted">
                           ほか {((selectedDetails.aggregatedCount ?? 0) - selectedDetails.aggregatedTop.length).toLocaleString()} 件
                         </div>
                       )}
                     </div>
                   )}
-                  {focusRelated && <div className="mt-2 text-[11px] text-gray-400">この筋に連なるノードだけを表示しています</div>}
+                  {focusRelated && <div className="mt-2 text-[11px] text-mirai-text-muted">この筋に連なるノードだけを表示しています</div>}
                   <div className="h-3" />
                 </div>
               )}
 
               {tabs.length > 0 && (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-gray-100">
-                  <div role="tablist" className="flex flex-shrink-0 border-b border-gray-100 px-2">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
+                  <div role="tablist" className="flex flex-shrink-0 border-b border-border px-2">
                     {tabs.map(({ id, label, count }) => (
-                      <button
+                      <Button
                         key={id}
-                        type="button"
+                        variant="ghost"
                         role="tab"
                         aria-selected={activeTab === id}
                         onClick={() => setPanelTab(id)}
-                        className={`flex-1 border-b-2 px-1 py-1.5 text-[11px] font-semibold ${
-                          activeTab === id ? 'border-blue-500 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'
-                        }`}
+                        className={cn(
+                          'h-auto flex-1 rounded-none border-b-2 px-1 py-1.5 text-[11px] font-semibold hover:bg-transparent',
+                          activeTab === id
+                            ? 'border-primary text-mirai-text hover:text-mirai-text'
+                            : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'
+                        )}
                       >
                         {label}
                         {count !== undefined && <span className="ml-0.5 font-normal">({count.toLocaleString()})</span>}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto">
@@ -892,17 +899,17 @@ export function SankeyChart({
                                 ? sankeySvgProjectUrl(item.details.projectId, item.name ?? '', rsYear)
                                 : null;
                             return (
-                              <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-gray-50 py-1.5">
-                                <button
-                                  type="button"
+                              <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
+                                <Button
+                                  variant="ghost"
                                   onClick={() => onSelect(item.id)}
-                                  className="flex min-w-0 flex-1 items-baseline justify-between gap-3 text-left hover:bg-gray-50"
+                                  className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 whitespace-normal rounded-none p-0 text-left font-normal hover:bg-mirai-surface"
                                 >
-                                  <span className="truncate text-xs text-gray-700">{item.name}</span>
-                                  <span className="shrink-0 text-[11px] tabular-nums text-gray-500">
+                                  <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+                                  <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
                                     {formatBudgetFromYen(item.value ?? 0)}
                                   </span>
-                                </button>
+                                </Button>
                                 {rsLink && (
                                   <a
                                     href={rsLink}
@@ -910,7 +917,7 @@ export function SankeyChart({
                                     rel="noopener noreferrer"
                                     title="/sankey-svgで開く"
                                     onClick={e => e.stopPropagation()}
-                                    className="shrink-0 px-0.5 text-gray-400 hover:text-blue-600"
+                                    className="shrink-0 px-0.5 text-mirai-text-muted hover:text-primary-accent"
                                   >
                                     ↗
                                   </a>
@@ -941,10 +948,10 @@ export function SankeyChart({
       />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
-        <ZoomButton label="＋" title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
-        <ZoomButton label="－" title="縮小" onClick={() => zoomFromButton(1 / ZOOM_STEP)} />
+        <ZoomButton icon={Plus} title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
+        <ZoomButton icon={Minus} title="縮小" onClick={() => zoomFromButton(1 / ZOOM_STEP)} />
         <ZoomButton
-          label="⤢"
+          icon={Maximize}
           title="全体を表示"
           onClick={() => {
             setZoom(1);
@@ -976,38 +983,39 @@ export function SankeyChart({
                 setIsEditingZoom(false);
               }
             }}
-            className="w-full rounded border border-black/10 bg-white px-1 py-0.5 text-center text-[10px] text-gray-700 shadow"
+            className="w-full rounded border border-mirai-border bg-card px-1 py-0.5 text-center text-[10px] text-mirai-text-secondary shadow-xs"
           />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             title="クリックしてズーム率を入力"
             onClick={() => {
               setZoomInputValue(String(Math.round(zoom * 100)));
               setIsEditingZoom(true);
             }}
-            className="w-full cursor-text rounded border border-black/10 bg-white/90 px-1 py-0.5 text-center text-[10px] text-gray-500 shadow"
+            className="h-auto w-full cursor-text rounded border-mirai-border bg-card px-1 py-0.5 text-[10px] font-normal text-mirai-text-muted hover:bg-card"
           >
             {Math.round(zoom * 100)}%
-          </button>
+          </Button>
         )}
       </div>
     </div>
   );
 }
 
-function ZoomButton({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: string; onClick: () => void }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="icon-sm"
       title={title}
       aria-label={title}
       onMouseDown={e => e.stopPropagation()}
       onClick={onClick}
-      className="h-7 w-7 rounded border border-black/10 bg-white/90 text-sm text-gray-600 shadow hover:bg-white"
+      className="rounded border-mirai-border bg-card text-mirai-text-subtle hover:bg-card"
     >
-      {label}
-    </button>
+      <Icon className="size-3.5" aria-hidden="true" />
+    </Button>
   );
 }
 
@@ -1015,14 +1023,14 @@ function SectionRsTooltip({ node, x, y }: { node: MOFLayoutNode; x: number; y: n
   const details = node.details as MOFSectionRsNode['details'] | undefined;
   return (
     <div
-      className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg"
+      className="pointer-events-none fixed z-50 max-w-md rounded border border-border bg-card px-3 py-2 shadow-soft"
       style={{ left: x + 12, top: y + 12 }}
     >
-      {details?.column && <div className="text-[11px] font-medium text-gray-400">{MOF_SECTION_RS_COLUMN_LABELS[details.column]}</div>}
-      <div className="font-semibold text-gray-900">{node.name}</div>
-      <div className="text-lg font-bold text-gray-800">{formatBudgetFromYen(node.value)}</div>
+      {details?.column && <div className="text-[11px] font-medium text-mirai-text-muted">{MOF_SECTION_RS_COLUMN_LABELS[details.column]}</div>}
+      <div className="font-semibold text-mirai-text">{node.name}</div>
+      <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
       {details?.aggregated && (
-        <div className="mt-1 text-xs text-gray-600">TopN から溢れた {details.aggregatedCount} 件をまとめたもの</div>
+        <div className="mt-1 text-xs text-mirai-text-subtle">TopN から溢れた {details.aggregatedCount} 件をまとめたもの</div>
       )}
       {details?.column === 'section' && details.rsLinked !== undefined && (
         <div className="mt-1 text-xs font-medium" style={{ color: sectionRsNodeColor({ rsStatus: details.rsLinked ? 'linked' : 'unlinked' }) }}>
@@ -1037,13 +1045,13 @@ function SectionRsLinkTooltip({ link, x, y }: { link: MOFLayoutLink; x: number; 
   return (
     <div
       data-testid={testId('section-rs-link-tooltip')}
-      className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg"
+      className="pointer-events-none fixed z-50 max-w-md rounded border border-border bg-card px-3 py-2 shadow-soft"
       style={{ left: x + 12, top: y + 12 }}
     >
-      <div className="text-xs text-gray-600">
+      <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
-      <div className="text-lg font-bold text-gray-800">{formatBudgetFromYen(link.value)}</div>
+      <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
     </div>
   );
 }

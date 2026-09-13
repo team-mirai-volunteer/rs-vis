@@ -18,8 +18,8 @@ import { SankeyChart } from '@/client/components/mof-kou-sankey/SankeyChart';
 
 function CenterMessage({ text, error }: { text: string; error?: boolean }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-white">
-      <p className={error ? 'text-sm text-red-600' : 'text-sm text-gray-500'}>{text}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-background">
+      <p className={error ? 'text-sm text-destructive' : 'text-sm text-mirai-text-muted'}>{text}</p>
     </div>
   );
 }
@@ -80,7 +80,7 @@ function MOFKouSankeyContent({ params }: { params: Promise<{ id: string }> }) {
   if (!data) return <CenterMessage text="読み込み中…" />;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-white">
+    <div className="fixed inset-0 overflow-hidden bg-background">
       <SankeyChart
         nodes={data.sankey.nodes}
         links={data.sankey.links}
@@ -91,12 +91,12 @@ function MOFKouSankeyContent({ params }: { params: Promise<{ id: string }> }) {
         rsYear={data.metadata.rsYear}
       />
 
-      <div className="absolute left-3 top-3 z-30 flex items-center gap-2 rounded-lg border border-black/10 bg-white/90 px-3 py-1.5 text-xs text-gray-600 shadow-md backdrop-blur">
-        <Link href="/mof-kou" className="text-blue-600 underline hover:text-blue-800">
+      <div className="absolute left-3 top-3 z-30 flex items-center gap-2 rounded-2xl border border-mirai-border bg-card px-3 py-1.5 text-xs text-mirai-text-subtle shadow-xs">
+        <Link href="/mof-kou" className="text-primary underline underline-offset-4 hover:text-primary-accent">
           ← 項一覧
         </Link>
-        <span className="text-gray-300">|</span>
-        <span className="font-medium text-gray-800">{data.metadata.sectionName}</span>
+        <span className="text-mirai-text-placeholder">|</span>
+        <span className="font-bold text-mirai-text">{data.metadata.sectionName}</span>
         <span>
           {data.metadata.ministry} / {data.metadata.eraLabel} {data.metadata.budgetType}
           {data.metadata.rsYear ? ` / RS${data.metadata.rsYear}年度データ` : ''}

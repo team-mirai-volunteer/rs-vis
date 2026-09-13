@@ -2,22 +2,137 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+ * チームみらい デザインシステム トークン（Tailwind v3 版）
+ * 出典: .claude/skills/templates/globals.css（mirai-gikai/web 正典）
+ * 色は必ずここに定義し、Tailwind の arbitrary value（text-[#xxx]）や
+ * インライン style の hex 直書きはしない。
+ * ============================================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.625rem;
+
+  /* shadcn 意味タグ */
+  --background: #f7f4ee;          /* warm gray（ページ背景） */
+  --foreground: #1f2937;
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+  --primary: #2aa693;             /* チームみらいティール */
+  --primary-accent: #0f8472;      /* 見出し強調 */
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #262626;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #262626;
+  --destructive: #dc2626;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #2aa693;
+
+  /* Mirai 独自トークン */
+  --mirai-text: #1f2937;
+  --mirai-text-secondary: #404040;
+  --mirai-text-muted: #8e8e93;
+  --mirai-text-placeholder: #aeaeb2;
+  --mirai-text-note: #4c4c4c;
+  --mirai-text-subtle: #666666;
+  --mirai-text-close: #9f9b9b;
+
+  --mirai-surface: #f7f4f0;
+  --mirai-surface-light: #eeeeee;
+  --mirai-surface-grouped: #f2f2f7;
+  --mirai-surface-muted: #e5e5ea;
+  --mirai-surface-tag: #e8e8e8;
+  --mirai-surface-warm: #eae6dd;
+  --mirai-surface-gray: #f6f6f6;
+  --mirai-surface-teal: #e2f6f3;  /* marumie ヒーロー背景（薄ティール） */
+
+  --mirai-border: #d2d2d2;
+  --mirai-border-light: #b1b1b1;
+  --mirai-border-muted: #bebcbc;
+
+  --stance-for-bg: #ecfcf1;
+  --stance-against: #c9272a;
+  --stance-against-bg: #fff1f1;
+  --stance-neutral: #805f34;
+  --stance-neutral-badge-bg: #f7e8db;
+
+  --mirai-reaction-active: #dd425f;
+  --mirai-star: #ff9500;
+  --mirai-highlight: #f4ff5f;
+  --mirai-badge-yellow: #fffd96;
+  --mirai-info-blue: #b2d3e8;
+
+  --mirai-progress-track: #d9d9d9;
+  --mirai-progress-fill: #a9e89d;
+
+  --mirai-gradient-start: #64d8c6;
+  --mirai-gradient-end: #bcecd3;
+
+  /* RGB チャンネル版（Tailwind の不透明度修飾子 bg-primary/10 等のため。hex と同じ値を保つ） */
+  --background-rgb: 247 244 238;
+  --foreground-rgb: 31 41 55;
+  --card-rgb: 255 255 255;
+  --primary-rgb: 42 166 147;
+  --primary-accent-rgb: 15 132 114;
+  --destructive-rgb: 220 38 38;
+  --mirai-text-rgb: 31 41 55;
+  --mirai-text-muted-rgb: 142 142 147;
+  --mirai-border-rgb: 210 210 210;
+  --mirai-surface-rgb: 247 244 240;
+  --mirai-surface-teal-rgb: 226 246 243;
+
+  /* 和文フォント（app/layout.tsx の next/font が --font-noto-sans-jp を注入する） */
+  --font-fallback: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* フォーカスインジケーター（キーボードナビゲーション時のみ） */
+  *:focus {
+    outline: none;
+  }
+  *:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* メイングラデーション（hero / プライマリ CTA）。1 画面 1 箇所を目安に */
+  .bg-mirai-gradient {
+    background-image: linear-gradient(
+      to bottom right,
+      var(--mirai-gradient-start),
+      var(--mirai-gradient-end)
+    );
+  }
+
+  /* 軽量グラデ（hero 背景 / 柔らかい差別化） */
+  .bg-mirai-light-gradient {
+    background-image: linear-gradient(to bottom, #e2f6f3, #eef6e2);
+  }
 }
 
 @layer utilities {

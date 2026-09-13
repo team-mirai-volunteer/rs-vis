@@ -22,15 +22,15 @@ function Kpi({
   note: string;
   color: 'blue' | 'green' | 'red';
 }) {
-  const border = { blue: 'border-blue-600', green: 'border-green-600', red: 'border-red-600' }[
+  const border = { blue: 'border-mirai-text-secondary', green: 'border-primary', red: 'border-destructive' }[
     color
   ];
-  const text = { blue: 'text-blue-600', green: 'text-green-600', red: 'text-red-600' }[color];
+  const text = { blue: 'text-mirai-text', green: 'text-primary-accent', red: 'text-destructive' }[color];
   return (
     <div className={`border-l-4 ${border} pl-3`}>
-      <div className="text-sm text-gray-600 mb-1">{label}</div>
+      <div className="text-sm text-mirai-text-subtle mb-1">{label}</div>
       <div className={`text-2xl font-bold ${text}`}>{formatBudgetFromYen(amount)}</div>
-      <div className="text-xs text-gray-500 mt-1">{note}</div>
+      <div className="text-xs text-mirai-text-muted mt-1">{note}</div>
     </div>
   );
 }
@@ -38,7 +38,7 @@ function Kpi({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <tr>
-      <td className="py-1 text-gray-600">{label}</td>
+      <td className="py-1 text-mirai-text-subtle">{label}</td>
       <td className="py-1 text-right font-semibold">{value}</td>
     </tr>
   );
@@ -53,8 +53,8 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
     whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '—';
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 className="text-lg font-bold mb-4 text-gray-800">予算サマリー</h2>
+    <div className="bg-card rounded-xl border border-mirai-border shadow-xs p-6 mb-6">
+      <h2 className="text-lg font-bold mb-4 text-mirai-text">予算サマリー</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Kpi
@@ -77,9 +77,9 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
         />
       </div>
 
-      <div className="pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="pt-4 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">一般会計</h4>
+          <h4 className="font-semibold text-mirai-text mb-2 text-sm">一般会計</h4>
           <table className="w-full text-xs">
             <tbody>
               <Row label="歳入" value={yen(generalAccount.revenue)} />
@@ -94,7 +94,7 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">特別会計</h4>
+          <h4 className="font-semibold text-mirai-text mb-2 text-sm">特別会計</h4>
           <table className="w-full text-xs">
             <tbody>
               <Row label="歳入" value={yen(specialAccounts.revenue)} />
@@ -109,7 +109,7 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">会計間の繰入</h4>
+          <h4 className="font-semibold text-mirai-text mb-2 text-sm">会計間の繰入</h4>
           <table className="w-full text-xs">
             <tbody>
               <Row label="一般会計 → 他会計" value={yen(transfers.generalToOther)} />
@@ -118,20 +118,20 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
               <Row label="特別会計 → 一般会計" value={yen(transfers.specialToGeneral)} />
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-mirai-text-muted">
             逆方向は原資が剰余金のため歳出予算を通らず、一般会計歳入の
             「◯◯特別会計受入金」にのみ現れます。
           </p>
         </div>
 
         <div>
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">政府関係機関</h4>
+          <h4 className="font-semibold text-mirai-text mb-2 text-sm">政府関係機関</h4>
           <table className="w-full text-xs">
             <tbody>
               <Row label="支出" value={yen(agencies.expenditure)} />
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-mirai-text-muted">
             国が全額出資する法人のうち、予算が国会の議決を要するもの。
           </p>
         </div>
