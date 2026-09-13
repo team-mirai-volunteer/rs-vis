@@ -32,8 +32,8 @@ export function UnifiedControls({
   const rows = UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c) && isRankable(c));
   if (rows.length === 0) return null;
   return (
-    // 横並び（1 列 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
-    <div data-pan-disabled="true" className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
+    // 列ごとに独立したカードを横に並べる（1 枚 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
+    <div data-pan-disabled="true" className="flex flex-wrap items-center gap-2">
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
@@ -47,7 +47,7 @@ export function UnifiedControls({
           onTopNChange(patch);
         };
         return (
-          <div key={column} className="w-[260px] min-w-0">
+          <div key={column} className="w-[260px] min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
           <RangeWindowRow
             label={UNIFIED_COLUMN_LABELS[column]}
             total={total}
