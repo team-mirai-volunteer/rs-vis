@@ -11,7 +11,7 @@ import {
   TYPE_COLORS, TYPE_LABELS,
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -3167,7 +3167,7 @@ export default function RealDataSankeyPage() {
     </>
   );
 
-  // 右上クラスタ共通のカード外観。YearSelect / PageNavMenu（h-9・bg-card・border-mirai-border・shadow-xs）に揃える
+  // 右上クラスタ共通のカード外観。AppHeader 内の YearSelect / メニュー（h-9・bg-card・border-mirai-border・shadow-xs）に揃える
   const clusterButtonStyle = {
     height: 36,
     display: 'flex',
@@ -3390,10 +3390,24 @@ export default function RealDataSankeyPage() {
   );
 
   return (
+    <>
+    <AppHeader position="fixed" current="/sankey-svg">
+      {/* 年度切替。スマホ幅では設定ダイアログ側に置くためヘッダーには出さない */}
+      {!isCompactWidth && (
+        <YearSelect
+          value={year}
+          onChange={y => handleYearChange(y as '2024' | '2025')}
+          years={[2025, 2024]}
+          // 他ページは text-xs(12px)。フォントスケール機能があるので倍率だけ合わせる
+          fontPx={scaleFont(12)}
+          testId={testId('year-select')}
+        />
+      )}
+    </AppHeader>
     <div
       ref={containerRef}
       data-testid={testId('sankey-svg-root')}
-      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: 'var(--background)', cursor: isPanning ? 'grabbing' : 'grab' }}
+      style={{ position: 'fixed', top: 'var(--app-header-h)', left: 0, right: 0, bottom: 0, overflow: 'hidden', background: 'var(--background)', cursor: isPanning ? 'grabbing' : 'grab' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -4927,7 +4941,7 @@ export default function RealDataSankeyPage() {
       {/* 狭幅では表示範囲のクイック操作を画面下部へ（クラスタには入れない） */}
       {isCompactWidth && rangeUI?.bottomBar}
 
-      {/* 右上クラスタ: ［表示範囲カード（操作系） - 年度 - ページ切替］。
+      {/* 右上クラスタ: ［表示範囲カード（操作系）］。年度・ページ切替は AppHeader へ移動。
           設定（文字サイズ・表示オプション）は左下の settingsCorner に分離。狭幅のみ⋮を設定の入口として残す。
           AIチャットパネル展開時は rightControlsOffset ぶん左へ退避する。 */}
       <div
@@ -5006,22 +5020,6 @@ export default function RealDataSankeyPage() {
         )}
         </div>
         )}
-
-        {/* 年度切替（rs-vis の並びに合わせて、ツール類の右・メニューの左）。
-            スマホ幅では検索ボックスに隠れるため設定ダイアログ側に置く */}
-        {!isCompactWidth && (
-          <YearSelect
-            value={year}
-            onChange={y => handleYearChange(y as '2024' | '2025')}
-            years={[2025, 2024]}
-            theme="light"
-            // 他ページは text-xs(12px)。フォントスケール機能があるので倍率だけ合わせる
-            fontPx={scaleFont(12)}
-            testId={testId('year-select')}
-          />
-        )}
-
-        <PageNavMenu current="/sankey-svg" theme="light" />
       </div>
 
       {/* Zoom controls — bottom right (sankey2 style) */}
@@ -5198,5 +5196,6 @@ export default function RealDataSankeyPage() {
         document.body,
       )}
     </div>
+    </>
   );
 }

@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation';
 import { useMofBudgetData } from '@/client/components/mof-budget/useMofBudgetData';
 import type { MOFTransferDetailData } from '@/types/mof-transfer';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { SankeyChart } from '@/client/components/mof-budget/SankeyChart';
@@ -65,17 +65,14 @@ function TransferDetailContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 年度とページ切替。全ページ共通で右上に置く */}
-      <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
+      <AppHeader current="/mof-budget-overview">
         <ViewSelect value="transfer" options={mofBudgetViewOptions(metadata.fiscalYear)} />
         <YearSelect
           value={String(year ?? metadata.fiscalYear)}
           onChange={y => fetchData(Number(y))}
           years={metadata.availableYears ?? [metadata.fiscalYear]}
-          theme="light"
         />
-        <PageNavMenu current="/mof-budget-overview" theme="light" />
-      </div>
+      </AppHeader>
 
       <div className="max-w-7xl mx-auto px-8">
         {/* ヘッダー。図と地続きに見えるよう罫線と影は置かない */}

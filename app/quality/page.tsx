@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -415,20 +415,17 @@ export default function QualityPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      <AppHeader current="/quality">
+        <YearSelect value={year} onChange={y => setYear(y as '2024' | '2025')} years={[2025, 2024]} />
+      </AppHeader>
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={() => setDialogItem(null)} year={year} />}
       {/* Header */}
       <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
         <div>
-          <div className="flex items-start gap-2 mb-1">
+          <div className="mb-1">
             <h1 className="min-w-0 text-lg font-bold text-mirai-text">
               事業別 政策評価・執行透明性スコア
             </h1>
-            {/* 年度とページ切替。全ページ共通で右上に置く。
-                タイトルが折り返しても上端に固定する（items-start + shrink-0） */}
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <YearSelect value={year} onChange={y => setYear(y as '2024' | '2025')} years={[2025, 2024]} />
-              <PageNavMenu current="/quality" />
-            </div>
           </div>
           <p className="text-sm text-mirai-text-muted mt-1">
             {(() => {

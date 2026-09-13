@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { ChevronDown, Maximize, Minus, Move, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { YearSelect } from '@/components/navigation/YearSelect';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { cn } from '@/lib/utils';
 import type {
   SubcontractGraph,
@@ -1761,7 +1762,15 @@ function SubcontractDetailPageInner() {
   // フロー端点用: ブロックID→シフト（root=null はシフト0）
   const ribbonShiftOf = (blockId: string | null): number => (blockId === null ? 0 : ribbonBarShift.get(blockId) ?? 0);
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <AppHeader current="/subcontracts">
+        <YearSelect
+          value={String(year)}
+          onChange={(y) => router.push(`/subcontracts/${projectId}?year=${y}`)}
+          years={[2025, 2024]}
+        />
+      </AppHeader>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       {/* SVGキャンバス（ページ背景の warm gray の上に描く。ノード・リンク色は意味色のまま） */}
       <div
         ref={containerRef}
@@ -1776,23 +1785,13 @@ function SubcontractDetailPageInner() {
           </Button>
         </div>
 
-        {/* 年度切替 — 上部中央（全ページ共通の YearSelect） */}
-        <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 15 }}>
-          <YearSelect
-            value={String(year)}
-            onChange={(y) => router.push(`/subcontracts/${projectId}?year=${y}`)}
-            years={[2025, 2024]}
-            theme="light"
-          />
-        </div>
-
-        {/* 表示切り替え — 年度ピルの右隣（フロー図=既定 / ブロック図）。セグメント型トグル */}
+        {/* 表示切り替え — 上部中央（フロー図=既定 / ブロック図）。セグメント型トグル */}
         <div
           data-pan-disabled="true"
           role="group"
           aria-label="表示切り替え"
           className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs"
-          style={{ position: 'absolute', top: 12, left: 'calc(50% + 108px)', zIndex: 15 }}
+          style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 15 }}
         >
           {([
             ['ribbon', 'フロー図'],
@@ -2835,6 +2834,7 @@ function SubcontractDetailPageInner() {
             scaleFont={scaleFont}
           />
         </SidePanelChrome>
+      </div>
     </div>
   );
 }

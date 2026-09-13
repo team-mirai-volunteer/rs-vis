@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SlidersHorizontal } from 'lucide-react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { usePersistedState } from '@/client/hooks/usePersistedState';
 import { mofArchiveUrl } from '@/app/lib/mof-archive-url';
@@ -491,6 +491,13 @@ export default function MOFKouMokuPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      <AppHeader current="/mof-kou-moku">
+        <YearSelect
+          value={String(data.metadata.fiscalYear)}
+          onChange={y => changeYear(Number(y))}
+          years={data.metadata.availableYears ?? [data.metadata.fiscalYear]}
+        />
+      </AppHeader>
       <header className="flex shrink-0 items-start justify-between gap-4 px-3 pb-2 pt-3">
         <div>
           <h1 className="text-base font-bold text-mirai-text">
@@ -526,14 +533,6 @@ export default function MOFKouMokuPage() {
               </span>
             ))}
           </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <YearSelect
-            value={String(data.metadata.fiscalYear)}
-            onChange={y => changeYear(Number(y))}
-            years={data.metadata.availableYears ?? [data.metadata.fiscalYear]}
-          />
-          <PageNavMenu current="/mof-kou-moku" />
         </div>
       </header>
 

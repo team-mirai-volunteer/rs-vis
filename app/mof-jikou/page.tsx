@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { usePersistedState } from '@/client/hooks/usePersistedState';
 import { mofArchiveUrl } from '@/app/lib/mof-archive-url';
@@ -346,6 +346,13 @@ export default function MOFJikouPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      <AppHeader current="/mof-jikou">
+        <YearSelect
+          value={String(data.metadata.fiscalYear)}
+          onChange={y => changeYear(Number(y))}
+          years={data.metadata.availableYears ?? [data.metadata.fiscalYear]}
+        />
+      </AppHeader>
       <header className="flex shrink-0 items-start justify-between gap-4 px-3 pb-2 pt-3">
         <div>
           <h1 className="text-base font-bold text-mirai-text">
@@ -381,15 +388,6 @@ export default function MOFJikouPage() {
               </span>
             ))}
           </p>
-        </div>
-        {/* 年度とページ切替。全ページ共通で右上に置く */}
-        <div className="flex shrink-0 items-center gap-2">
-          <YearSelect
-            value={String(data.metadata.fiscalYear)}
-            onChange={y => changeYear(Number(y))}
-            years={data.metadata.availableYears ?? [data.metadata.fiscalYear]}
-          />
-          <PageNavMenu current="/mof-jikou" />
         </div>
       </header>
 

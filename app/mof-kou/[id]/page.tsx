@@ -13,7 +13,7 @@ import { Suspense, use, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { MOFKouSankeyData } from '@/types/mof-kou-sankey';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { SankeyChart } from '@/client/components/mof-kou-sankey/SankeyChart';
 
 function CenterMessage({ text, error }: { text: string; error?: boolean }) {
@@ -80,7 +80,9 @@ function MOFKouSankeyContent({ params }: { params: Promise<{ id: string }> }) {
   if (!data) return <CenterMessage text="読み込み中…" />;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-background">
+    <>
+    <AppHeader position="fixed" current="/mof-kou" />
+    <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-background">
       <SankeyChart
         nodes={data.sankey.nodes}
         links={data.sankey.links}
@@ -102,9 +104,7 @@ function MOFKouSankeyContent({ params }: { params: Promise<{ id: string }> }) {
           {data.metadata.rsYear ? ` / RS${data.metadata.rsYear}年度データ` : ''}
         </span>
       </div>
-      <div className="absolute right-3 top-3 z-30">
-        <PageNavMenu current="/mof-kou" theme="light" />
-      </div>
     </div>
+    </>
   );
 }

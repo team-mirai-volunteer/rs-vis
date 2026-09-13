@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import {
   COLOR_MODE_LABELS, SIZE_METRIC_LABELS,
@@ -277,8 +277,12 @@ export default function ProjectMapPage() {
   };
 
   return (
-    // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる
-    <div className="relative h-dvh w-full overflow-hidden bg-background text-mirai-text">
+    // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる（ヘッダー分だけ上を空ける）
+    <div className="flex h-dvh flex-col bg-background text-mirai-text">
+    <AppHeader position="static" current="/project-bubble">
+      <YearSelect value={year} onChange={y => setYear(y as Year)} years={YEARS} />
+    </AppHeader>
+    <div className="relative min-h-0 w-full flex-1 overflow-hidden">
       {/* 視覚上のタイトルは廃止した（フロートUIの面積を図に譲る）。ページ名はメニューと文書タイトルが担う */}
       <h1 className="sr-only">事業バブルチャート</h1>
 
@@ -480,7 +484,7 @@ export default function ProjectMapPage() {
 
       </div>
 
-      {/* ── 右上: ヘルプ・年度・ページ切替メニュー ── */}
+      {/* ── 右上: ヘルプ（年度・ページ切替メニューは AppHeader へ） ── */}
       <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
         <div className="relative">
           <Button
@@ -520,8 +524,6 @@ export default function ProjectMapPage() {
             </>
           )}
         </div>
-        <YearSelect value={year} onChange={y => setYear(y as Year)} years={YEARS} />
-        <PageNavMenu current="/project-bubble" />
       </div>
 
       {/* ── 右フロート: 凡例と選択中の事業（メニューボタンの下から） ── */}
@@ -555,6 +557,7 @@ export default function ProjectMapPage() {
           />
         </div>
       )}
+    </div>
     </div>
   );
 }

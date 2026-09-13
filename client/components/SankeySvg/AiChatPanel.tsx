@@ -301,7 +301,7 @@ export function AiChatPanel({
         !isCompactWidth && 'border-l border-mirai-border',
       )}
       style={{
-        position: 'fixed', right: 0, top: 0, height: '100%',
+        position: 'fixed', right: 0, top: 'var(--app-header-h, 0px)', height: 'calc(100% - var(--app-header-h, 0px))',
         width: isCompactWidth ? '100%' : width,
         zIndex: PANEL_Z_INDEX,
         transition: isResizing ? 'none' : 'width 0.2s ease',

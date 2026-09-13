@@ -64,8 +64,8 @@ export function SidePanelChrome({
   const rootStyle: CSSProperties = {
     position: 'fixed',
     [isLeft ? 'left' : 'right']: 0,
-    top: 0,
-    height: '100%',
+    top: 'var(--app-header-h, 0px)',
+    height: 'calc(100% - var(--app-header-h, 0px))',
     width: open ? width : 0,
     zIndex,
     transition: isResizing ? 'none' : 'width 0.2s ease',

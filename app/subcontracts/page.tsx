@@ -30,7 +30,7 @@ import { FilterRow } from '@/components/filters/FilterRow';
 import { FilterTextInput } from '@/components/filters/FilterTextInput';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { ProjectReferenceLinks } from '@/components/subcontracts/ProjectReferenceLinks';
 import { formatYen, parseAmountToYen } from '@/app/lib/format/yen';
@@ -561,12 +561,13 @@ function SubcontractsPageInner() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <AppHeader current="/subcontracts">
+        <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} />
+      </AppHeader>
       {/* ── 上部: フィルタ群 ── */}
       <div className="w-full shrink-0 p-3">
-        {/* コントロール（/sankey-svg と同じトーン）。
-            年度・ページ切替は折り返し対象から外し、狭幅でも常に1行目右端に固定する */}
-        <div className="mb-3 flex items-start gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        {/* コントロール（/sankey-svg と同じトーン） */}
+        <div className="mb-3 flex flex-wrap items-center gap-2">
 
           {/* 検索 */}
           <div className="relative min-w-[180px] flex-1">
@@ -617,13 +618,6 @@ function SubcontractsPageInner() {
             列幅リセット
           </Button>
 
-        </div>
-
-        {/* 年度とページ切替。全ページ共通で右上に置く（折り返し行の外なので2行目に落ちない） */}
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} theme="light" />
-          <PageNavMenu current="/subcontracts" theme="light" />
-        </div>
         </div>
 
         {/* 折りたたみフィルタパネル（/sankey-svg ライク） */}

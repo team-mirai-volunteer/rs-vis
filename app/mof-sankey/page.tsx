@@ -25,7 +25,7 @@ import {
 } from '@/types/mof-section-rs-sankey';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import { parseAmountToYen } from '@/app/lib/format/yen';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { SankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/mof-section-rs-sankey/SankeyChart';
@@ -211,7 +211,15 @@ function MOFSectionRsSankeyContent() {
   const { metadata } = data;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-card">
+    <>
+    <AppHeader position="fixed" current="/mof-sankey">
+      <YearSelect
+        value={String(year ?? metadata.fiscalYear)}
+        onChange={y => fetchData(Number(y))}
+        years={metadata.availableYears}
+      />
+    </AppHeader>
+    <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-card">
       <SankeyChart
         nodes={data.sankey.nodes}
         links={data.sankey.links}
@@ -268,15 +276,8 @@ function MOFSectionRsSankeyContent() {
             metadata.rsYear ? ` / RS${metadata.rsYear}年度データ${metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''}` : ''
           }`}
         />
-
-        <YearSelect
-          value={String(year ?? metadata.fiscalYear)}
-          onChange={y => fetchData(Number(y))}
-          years={metadata.availableYears}
-          theme="light"
-        />
-        <PageNavMenu current="/mof-sankey" theme="light" />
       </div>
     </div>
+    </>
   );
 }
