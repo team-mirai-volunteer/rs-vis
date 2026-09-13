@@ -313,6 +313,22 @@ export function UnifiedSankeyChart({
   }, [onSelect]);
 
   const amountLabel = rsAmountKind === 'request' ? '要求額' : '予算額';
+  /** 執行年度（支出先まで繋がる年度）か。事業(支出)ノードがあれば執行年度 */
+  const isExecutionYear = useMemo(() => nodes.some(n => n.details.column === 'program-spending'), [nodes]);
+  /**
+   * 列見出し。事業〜支出先は「何年度の・何の額か」で混乱しやすいので年度と測定量を添える
+   * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は MOF の当初予算
+   */
+  const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
+    const base = UNIFIED_COLUMN_LABELS[column];
+    if (column === 'program') {
+      const measure = rsAmountKind === 'request' ? '翌年度要求額' : isExecutionYear ? '歳出予算現額' : '当初予算';
+      return { label: `${base}_${budgetYear}`, measure };
+    }
+    if (column === 'program-spending') return { label: `${base}_${budgetYear}`, measure: '支出額' };
+    if (column === 'recipient') return { label: `${base}_${budgetYear}`, measure: '支出額' };
+    return { label: `${base}_${budgetYear}`, measure: '当初予算' };
+  };
 
   return (
     <div
@@ -354,7 +370,12 @@ export function UnifiedSankeyChart({
             return (
               <g key={column}>
                 <text x={columnX.get(index) ?? 0} y={headerY - 16} fontSize={12} fontWeight={700} style={{ fill: 'var(--mirai-text-secondary)' }}>
-                  {UNIFIED_COLUMN_LABELS[column]}
+                  {columnHeader(column).label}
+                  {columnHeader(column).measure && (
+                    <tspan fontSize={10} fontWeight={500} style={{ fill: 'var(--mirai-text-muted)' }}>
+                      {` ${columnHeader(column).measure}`}
+                    </tspan>
+                  )}
                 </text>
                 <text x={columnX.get(index) ?? 0} y={headerY} fontSize={11} style={{ fill: 'var(--mirai-text-muted)' }}>
                   {formatBudgetFromYen(columnTotal.get(index) ?? 0)}
