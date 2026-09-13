@@ -12,7 +12,7 @@ import { PRIMARY_PAGES, PRODUCT_NAME, type NavPageHref } from './pages';
  * 白い rounded-2xl のカードが warm gray の地に浮く。左にワードマークと製品名、
  * 中央（xl 以上）に主要ナビ、右に各ページ固有のコントロール（年度セレクト等）と全件メニュー。
  *
- * 高さは globals.css の `--app-header-h`（60px = pt-3 12px + 島 48px）。
+ * 高さは globals.css の `--app-header-h`（72px = 上下 12px + 島 48px。下の 12px がサイドパネルやキャンバスとの隙間）。
  * - `position="static"`（既定）: 縦 flex のページで最初の子として置く
  * - `position="fixed"`: 全画面キャンバス型ページで使う。キャンバス側は
  *   `top: var(--app-header-h)` から始める（`fixed inset-x-0 bottom-0 top-[var(--app-header-h)]`）
@@ -33,7 +33,7 @@ export function AppHeader({
     <header
       data-pan-disabled="true"
       className={cn(
-        'z-40 shrink-0 px-3 pt-3',
+        'z-40 shrink-0 px-3 py-3',
         position === 'fixed' && 'pointer-events-none fixed inset-x-0 top-0',
         className
       )}
