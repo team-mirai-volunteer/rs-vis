@@ -30,6 +30,8 @@ import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
+import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
+import type { WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -268,6 +270,14 @@ export function UnifiedSankeyChart({
 
   const descendantColumns = useMemo(() => (selectedId ? descendantsByColumn(browseNodes, browseLinks, selectedId) : new Map<UnifiedColumn, UnifiedViewNode[]>()), [browseNodes, browseLinks, selectedId]);
   const ancestorColumns = useMemo(() => (selectedId ? ancestorsByColumn(browseNodes, browseLinks, selectedId) : new Map<UnifiedColumn, UnifiedViewNode[]>()), [browseNodes, browseLinks, selectedId]);
+  /** 配下の RS事業（選択ノードからの寄与額つき）。項・目・所管などの加重平均評価に使う */
+  const downstreamPrograms = useMemo<WeightedProgram[]>(
+    () =>
+      (descendantColumns.get('program') ?? [])
+        .filter(n => (!n.details.kind || n.details.kind === 'rs') && !n.details.aggregated && n.details.projectId !== undefined)
+        .map(n => ({ pid: n.details.projectId as number, weight: n.value })),
+    [descendantColumns]
+  );
   const relatedColumnList = useMemo(() => {
     const merged = new Map<UnifiedColumn, UnifiedViewNode[]>();
     for (const [column, items] of ancestorColumns) merged.set(column, items);
@@ -600,6 +610,12 @@ export function UnifiedSankeyChart({
 
               <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '60%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
+                {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
+                {['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
+                  <div className="-mx-4 mt-3 border-t border-border">
+                    <UnifiedAggregateEvaluation programs={downstreamPrograms} rsSheetYear={rsSheetYear} fontPx={fontPx} />
+                  </div>
+                )}
                 {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託・予算執行） */}
                 {(selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
                   (!selectedDetails.kind || selectedDetails.kind === 'rs') &&

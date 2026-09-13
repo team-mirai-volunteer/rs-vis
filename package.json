@@ -6,7 +6,7 @@
     "generate-tax-burden-data": "tsx scripts/generate-tax-burden-data.ts",
     "validate-tax-burden-data": "tsx scripts/validate-tax-burden-data.ts",
     "test:tax-burden": "tsx --test tests/tax-burden.test.ts tests/tax-burden-api.test.ts",
-    "test:unified-budget": "tsx --test tests/unified-budget-sort.test.ts",
+    "test:unified-budget": "tsx --test tests/unified-budget-sort.test.ts tests/unified-budget-policy-aggregate.test.ts",
     "dev": "next dev --turbopack",
     "prebuild": "bash scripts/decompress-data.sh",
     "build": "next build",
