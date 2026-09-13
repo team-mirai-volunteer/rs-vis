@@ -1,108 +1,62 @@
 /**
- * MOF一般会計・特別会計繰入の詳細型定義
+ * 会計間の繰入（内部振替）の詳細ビュー用の型定義。
+ *
+ * 会計名・宛先名は年度により増減するため、固定のフィールドではなく
+ * 名前と金額の組の配列で持つ（新設・廃止された特別会計に型変更なしで追随するため）。
+ * 捕捉ロジックは docs/mof-budget-data-guide.md 6節。
  */
 
-/**
- * 一般会計から特別会計への繰入詳細
- */
-export interface TransferFromGeneralAccount {
-  /** 実質的な繰入総額（国債整理基金除く、円単位） */
-  total: number;
+import type {
+  MOFAmountGroup,
+  MOFBudgetNodeDetails,
+  MOFBudgetOverview,
+} from './mof-budget-overview';
+import type { SankeyNode, SankeyLink } from './sankey';
 
-  /** 繰入総額（国債整理基金含む、参考値、円単位） */
-  totalIncludingDebt: number;
+/** 繰入の1本 */
+export interface MOFTransferFlow {
+  /** 送り手の会計（`一般会計` または特別会計名） */
+  from: string;
+  /** 宛先。特別会計名を特定できたものはその名前、できないものは目名のまま */
+  to: string;
+  /** 予算書上の目名（`普通国債等償還財源等国債整理基金特別会計へ繰入` など） */
+  label: string;
+  /** 金額（円） */
+  amount: number;
+}
 
-  /** 個別特会への配分 */
-  breakdown: {
-    /** 年金特別会計への繰入 */
-    pension: {
-      total: number;
-      details: {
-        basicPension: number;          // 基礎年金
-        nurseryBenefit: number;        // 子どものための教育・保育給付
-        childAllowance: number;        // 児童手当
-        pensionAdministration: number; // 年金制度関連その他
-      };
-    };
-
-    /** 交付税及び譲与税配付金特別会計への繰入 */
-    localAllocationTax: {
-      total: number;
-      details: {
-        generalTransfer: number;       // 一般交付税交付金
-        specialTransfer: number;       // 地方特例交付金
-        trafficViolationFund: number;  // 交通反則者納金財源
-      };
-    };
-
-    /** 国債整理基金特別会計への繰入（別枠参考値） */
-    debtRetirement: {
-      total: number;
-      details: {
-        ordinaryBondRedemption: number;  // 普通国債等償還財源
-        pensionBondRedemption: number;   // 年金特例公債償還財源
-        investmentBondRedemption: number; // 出資国債等償還財源
-      };
-    };
-
-    /** エネルギー対策特別会計への繰入 */
-    energy: {
-      total: number;
-      details: {
-        petroleumCoalTax: number;      // 石油石炭税財源
-        powerDevelopmentTax: number;   // 電源開発促進税財源
-      };
-    };
-
-    /** 食料安定供給特別会計への繰入 */
-    foodSupply: number;
-
-    /** 労働保険特別会計への繰入 */
-    laborInsurance: number;
-
-    /** 自動車安全特別会計への繰入 */
-    automotiveSafety: number;
-
-    /** 東日本大震災復興特別会計への繰入 */
-    reconstruction: number;
-
-    /** 国有林野事業債務管理特別会計への繰入 */
-    forestryDebtManagement: number;
-
-    /** 特許特別会計への繰入 */
-    patent: number;
-  };
+/** 特別会計1つぶんの財源内訳 */
+export interface MOFAccountFunding {
+  account: string;
+  /** 歳入合計（円） */
+  revenue: number;
+  /** 他会計から受け入れた額（円） */
+  transferIn: number;
+  /** 自前財源（歳入 − 受入、円） */
+  ownRevenue: number;
+  /** 自前財源比率（0〜1） */
+  ownRevenueRate: number;
+  /** 款別の歳入内訳 */
+  byCategory: MOFAmountGroup[];
 }
 
 /**
- * 社会保険料の特別会計別配分
+ * 特別会計の財源内訳ビューの API レスポンス。
+ *
+ * `MOFBudgetOverviewData` と同じくレイヤをまたぐ契約なので `types/` に置く
+ * （生成は `app/lib/mof-transfer-sankey-generator.ts`）。
  */
-export interface InsurancePremiumAllocation {
-  total: number;
-
-  breakdown: {
-    /** 年金特別会計（年金保険料） */
-    pension: number;
-
-    /** 労働保険特別会計（労働保険料） */
-    labor: number;
-
-    /** その他特別会計（健康保険料等） */
-    other: number;
+export interface MOFTransferDetailData {
+  metadata: MOFBudgetOverview['metadata'] & {
+    /** 特別会計が他会計から受け入れた総額（円） */
+    receivedTotal: number;
   };
-}
-
-/**
- * 特別会計間の繰入詳細
- */
-export interface TransferBetweenSpecialAccounts {
-  total: number;
-
-  /** 主要な繰入フロー */
-  majorFlows: Array<{
-    from: string;          // 繰入元特別会計
-    to: string;            // 繰入先特別会計
-    amount: number;        // 金額（円）
-    purpose: string;       // 目的・用途
-  }>;
+  sankey: {
+    nodes: (SankeyNode & { details?: MOFBudgetNodeDetails })[];
+    links: SankeyLink[];
+  };
+  /** 会計別の財源内訳（歳入の大きい順） */
+  funding: MOFAccountFunding[];
+  /** 一般会計からの繰入の宛先別内訳 */
+  flows: MOFTransferFlow[];
 }
