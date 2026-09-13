@@ -272,6 +272,7 @@ function main() {
         rsMinistry: n.ministry,
         accountCategory: n.accountCategory,
         ...(n.budgetSummary ? { budgetSummary: n.budgetSummary } : {}),
+        ...(n.budgetBreakdown && n.budgetBreakdown.length > 0 ? { budgetBreakdown: n.budgetBreakdown } : {}),
       });
       programValue.set(n.projectId, rsMeasure(n));
     }

@@ -15,7 +15,7 @@
  * - 事業(支出)・支出先は sankey-svg-{RSシート年度}-graph.json をそのまま引き継ぐ（執行年度のみ）。
  */
 
-import type { BudgetSummary } from './sankey-svg';
+import type { BudgetBreakdownItem, BudgetSummary } from './sankey-svg';
 import type { MOFBudgetType } from './mof-jikou';
 import type { MofRsAmountKind } from './mof-rs-kou-moku-linkage';
 
@@ -114,6 +114,8 @@ export interface UnifiedNode {
   rsMinistry?: string;
   accountCategory?: 'general' | 'special' | 'both';
   budgetSummary?: BudgetSummary;
+  /** 事業列のRS事業のみ。会計区分・歳出項目ごとの予算内訳（サイドパネルの予算・執行アコーディオン用） */
+  budgetBreakdown?: BudgetBreakdownItem[];
   /** 支出先ノード（sankey-svg から引き継ぎ） */
   representativeCorporateNumber?: string;
   corporateNumberCount?: number;

@@ -28,7 +28,9 @@ import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
-import { ExternalLink, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
+import { Building2, ExternalLink, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
+import { externalCorporateLinks } from '@/app/lib/api/links';
+import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -537,6 +539,37 @@ export function UnifiedSankeyChart({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="break-all text-sm font-semibold text-mirai-text">{selectedPanelNode.name}</div>
+                    {selectedDetails.column === 'recipient' && selectedDetails.representativeCorporateNumber && (
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mirai-text-subtle">
+                        <span className="inline-flex items-center gap-1 font-mono" title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
+                          法人番号 {selectedDetails.representativeCorporateNumber}
+                          {(() => {
+                            const links = externalCorporateLinks(selectedDetails.representativeCorporateNumber);
+                            if (!links) return null;
+                            return (
+                              <a
+                                href={links.gbizinfo}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`gBizINFO で法人番号を確認: ${selectedDetails.representativeCorporateNumber}`}
+                                className="inline-flex text-primary-accent"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <Building2 className="size-3.5" aria-hidden="true" />
+                              </a>
+                            );
+                          })()}
+                        </span>
+                        {(selectedDetails.corporateNumberCount ?? 0) >= 2 && (
+                          <span
+                            className="whitespace-nowrap rounded-md bg-stance-neutral-badge-bg px-1.5 font-bold text-stance-neutral"
+                            title={`この支出先名には${selectedDetails.corporateNumberCount}件の法人番号が紐づいています（表記揺れ・誤記載・複数実体の可能性）`}
+                          >
+                            他{(selectedDetails.corporateNumberCount ?? 1) - 1}件
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value)}</div>
                     <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
                     {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
@@ -575,8 +608,22 @@ export function UnifiedSankeyChart({
                 </div>
               </div>
 
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '45%' }}>
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '60%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
+                {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託・予算執行） */}
+                {(selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
+                  (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
+                  !selectedDetails.aggregated &&
+                  selectedDetails.projectId !== undefined && (
+                    <UnifiedProjectSections
+                      pid={selectedDetails.projectId}
+                      projectName={selectedPanelNode.name}
+                      rsSheetYear={rsSheetYear}
+                      budgetSummary={selectedDetails.budgetSummary}
+                      budgetBreakdown={selectedDetails.budgetBreakdown}
+                      fontPx={fontPx}
+                    />
+                  )}
                 {selectedDetails.aggregated && (
                   <div className="text-xs text-mirai-text-subtle">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
                 )}
