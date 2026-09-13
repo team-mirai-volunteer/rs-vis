@@ -43,7 +43,7 @@ import { FilterFields } from './FilterFields';
 import { KouMokuTab } from './KouMokuTab';
 import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
-import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { E2E_TEST_IDS_ENABLED, testId } from '@/client/lib/testId';
 
@@ -119,7 +119,8 @@ export function SankeyChart({
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
   const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
-  const panelOpenWidth = selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
+  const panelOpenWidth =
+    selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0; // 浮島の左右余白ぶんを含む
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);

@@ -67,7 +67,7 @@ import {
   type RibbonBudgetItem,
 } from '@/app/lib/subcontract-ribbon-layout';
 import { summarizeOffFlowIndirectCosts, INDIRECT_COST_NODE_LABEL, type IndirectCostSummary } from '@/app/lib/subcontracts/indirect-costs';
-import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel, SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX } from '@/client/hooks/useSidePanel';
 import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
 import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale';
@@ -1246,7 +1246,7 @@ function SubcontractDetailPageInner() {
   const sidePanel = useSidePanel({ side: sidePanelSide, defaultWidth: SUBCONTRACT_PANEL_WIDTH_DEFAULT });
   // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが左表示の
   // ときだけ退避オフセットが必要（サンキーの left: selectedNodeId... と同じ流儀）
-  const leftFloatOffset = sidePanelSide === 'left' && !sidePanel.collapsed ? sidePanel.effectiveWidth + 12 : 12;
+  const leftFloatOffset = sidePanelSide === 'left' && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
@@ -2705,7 +2705,7 @@ function SubcontractDetailPageInner() {
             キャンバスは全幅を使う＝このコントロールの座標系はビューポート全体に一致する） */}
         <div style={{
           position: 'absolute', bottom: 12,
-          right: sidePanelSide === 'right' && !sidePanel.collapsed ? sidePanel.effectiveWidth + 12 : 12,
+          right: sidePanelSide === 'right' && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12,
           zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4,
           transition: sidePanel.isResizing ? 'none' : 'right 0.2s ease',
         }}>

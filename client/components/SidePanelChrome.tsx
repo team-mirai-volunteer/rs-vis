@@ -18,6 +18,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+/** 浮島パネルの画面端・下端からの余白(px)。ページ側が隣接要素をずらすときは幅 + INSET*2 を使う */
+export const SIDE_PANEL_INSET = 12;
+
 export interface SidePanelChromeProps {
   /** パネルの画面上の位置。境界線・リサイズハンドル・開閉タブの向きが side に応じて鏡映する */
   side: 'left' | 'right';
@@ -64,14 +67,16 @@ export function SidePanelChrome({
   const pointsLeft = open ? isLeft : !isLeft;
   const ToggleIcon = pointsLeft ? ChevronLeft : ChevronRight;
 
+  // 浮島型: ヘッダー（下余白込み）の下から画面下端 INSET まで、画面端から INSET 離して浮かせる。
+  // 折りたたみ時は幅 0 で画面端に寄せ、開閉タブだけを端に出す
   const rootStyle: CSSProperties = {
     position: 'fixed',
-    [isLeft ? 'left' : 'right']: 0,
+    [isLeft ? 'left' : 'right']: open ? SIDE_PANEL_INSET : 0,
     top: `calc(var(--app-header-h, 0px) + ${topOffset}px)`,
-    height: `calc(100% - var(--app-header-h, 0px) - ${topOffset}px)`,
+    height: `calc(100% - var(--app-header-h, 0px) - ${topOffset + SIDE_PANEL_INSET}px)`,
     width: open ? width : 0,
     zIndex,
-    transition: isResizing ? 'none' : 'width 0.2s ease',
+    transition: isResizing ? 'none' : 'width 0.2s ease, left 0.2s ease, right 0.2s ease',
     overflow: 'visible',
     cursor: 'default',
   };
@@ -80,10 +85,7 @@ export function SidePanelChrome({
     <div
       data-pan-disabled="true"
       data-testid={testId}
-      className={cn(
-        'bg-card',
-        open && (isLeft ? 'border-r border-mirai-border shadow-soft' : 'border-l border-mirai-border shadow-soft'),
-      )}
+      className={cn(open && 'rounded-2xl border border-mirai-border bg-card shadow-soft')}
       style={rootStyle}
     >
       {/* 幅リサイズハンドル — 内側の境界線側の端 */}
@@ -119,7 +121,9 @@ export function SidePanelChrome({
         data-pan-disabled="true"
         className={cn(
           'flex flex-col items-center border-y border-mirai-border bg-card shadow-xs',
-          isLeft ? 'rounded-r-md border-r' : 'rounded-l-md border-l',
+          isLeft ? 'rounded-r-xl border-r' : 'rounded-l-xl border-l',
+          // 展開時はカードの縁から生える。折りたたみ時は画面端に吸い付く
+          !open && (isLeft ? 'border-l-0' : 'border-r-0'),
         )}
         style={{
           position: 'absolute',
@@ -136,7 +140,7 @@ export function SidePanelChrome({
           aria-label={open ? collapseLabel : expandLabel}
           className={cn(
             'h-14 w-[25px] p-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text',
-            isLeft ? 'rounded-none rounded-r-md' : 'rounded-none rounded-l-md',
+            isLeft ? 'rounded-none rounded-r-xl' : 'rounded-none rounded-l-xl',
           )}
         >
           <ToggleIcon className="size-5" strokeWidth={2.5} aria-hidden="true" />
@@ -145,7 +149,7 @@ export function SidePanelChrome({
 
       {/* パネル本体（展開時のみ） */}
       {open && (
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="flex h-full flex-col overflow-hidden rounded-2xl">
           {children}
         </div>
       )}

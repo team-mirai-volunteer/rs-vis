@@ -61,7 +61,7 @@ import { FEATURE_PROJECT_COMMENTS } from '@/app/lib/feature-flags';
 import { getAccountBadgeStyle } from '@/app/lib/account-badge';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
-import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { testId } from '@/client/lib/testId';
 import {
   useSidePanel,
@@ -506,6 +506,8 @@ export default function RealDataSankeyPage() {
   const isPanelCollapsed = leftSidePanel.collapsed;
   const isResizingSidePanel = leftSidePanel.isResizing;
   const effectiveSidePanelWidth = leftSidePanel.effectiveWidth;
+  /** 浮島パネルが占める横幅（左右の余白込み）。隣接する検索・ミニマップの退避量に使う */
+  const sidePanelFootprint = effectiveSidePanelWidth + SIDE_PANEL_INSET * 2;
 
   useEffect(() => {
     const updateSize = () => {
@@ -3094,7 +3096,7 @@ export default function RealDataSankeyPage() {
   // AIチャットパネル（右）も同じクランプ規則を使うため、境界値だけここでも算出する。
   const maxPanelWidthForViewport = Math.max(0, svgWidth - SIDE_PANEL_VIEWPORT_RESERVE_PX);
   const minPanelWidthForViewport = Math.min(SIDE_PANEL_WIDTH_MIN, maxPanelWidthForViewport);
-  const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth : 0;
+  const searchLeftOffset = selectedNodeId !== null && !isPanelCollapsed ? sidePanelFootprint : 0;
   // AIチャットパネル（右側）の実効幅: 左パネルと同じ規則でビューポート幅に収める。
   // コンパクト幅では全幅オーバーレイになるため右端コントロールの退避は行わない。
   const effectiveAiPanelWidth = Math.min(
@@ -3105,7 +3107,7 @@ export default function RealDataSankeyPage() {
   // 右上の設定(⋮)ボタン領域(幅32+余白)に重ならないよう右側を確保。
   // これがないと文字拡大時に検索ボックスが設定ボタンを覆い、タップで開けなくなる。
   const searchMaxWidth = `calc(100vw - ${searchLeftOffset}px - 64px)`;
-  const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : effectiveSidePanelWidth + 8) : 8;
+  const minimapLeft = selectedNodeId !== null ? (isPanelCollapsed ? 26 : sidePanelFootprint + 8) : 8;
   // 年度変更（トップ中央セレクトとスマホ幅の設定ダイアログで共用）
   const handleYearChange = (value: '2024' | '2025') => {
     pendingHistoryAction.current = 'replace';
@@ -3333,7 +3335,7 @@ export default function RealDataSankeyPage() {
 
         // 狭幅: 従来どおり画面下部のクイック操作カード（アクティブ対象のページング込み）
         const bottomBar = (
-          <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
+          <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? sidePanelFootprint + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
             <div style={{ background: 'rgb(var(--card-rgb) / 0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid var(--mirai-border)', fontSize: CONTROL_SMALL_FONT_PX }}>
               {renderOffsetRow(true, 60)}
             </div>
@@ -4482,7 +4484,7 @@ export default function RealDataSankeyPage() {
       <div
         ref={searchBoxRef}
         data-pan-disabled="true"
-        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 12 : 12, zIndex: 20, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
+        style={{ position: 'absolute', top: 12, left: selectedNodeId !== null && !isPanelCollapsed ? sidePanelFootprint + 12 : 12, zIndex: 20, width: SEARCH_BOX_WIDTH_PX, maxWidth: searchMaxWidth, transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}
       >
         {/* Row 1: 検索セクション（input+sliders+toggle）とフィルタボタン */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'flex-start' }}>
