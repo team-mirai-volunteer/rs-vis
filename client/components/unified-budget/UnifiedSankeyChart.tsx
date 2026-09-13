@@ -368,8 +368,9 @@ export function UnifiedSankeyChart({
           {layout.nodes.map(node => {
             const details = node.details;
             const color = unifiedNodeColor(details);
-            const labelLeft = node.column === 0;
-            const labelX = labelLeft ? node.x - 6 : node.x + node.width + 6;
+            // 全列ともラベルは箱の右に出す（/sankey-svg と同じ）。先頭列だけ左に出すと 1 列だけ見え方が変わる
+            const labelLeft = false;
+            const labelX = node.x + node.width + 6;
             const centerY = node.y + node.height / 2;
             const offSelection = !focusRelated && related !== null && !related.has(node.id);
             const offHover = hoveredRelated !== null && !hoveredRelated.has(node.id);
