@@ -41,7 +41,7 @@ export function unifiedNodeColor(details: UnifiedViewDetails | undefined): strin
 }
 
 export const UNIFIED_LAYOUT = {
-  margin: { top: 108, right: 320, bottom: 24, left: 24 },
+  margin: { top: 96, right: 320, bottom: 24, left: 24 },
   nodeWidth: 14,
   nodePadding: 4,
   align: 'top',

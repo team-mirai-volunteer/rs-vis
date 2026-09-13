@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 統合ビューの表示範囲パネル。`/sankey-svg` と同じ「列ごとに1行の RangeWindowRow」だけの構成。
+ * 統合ビューの表示範囲パネル。`/sankey-svg` と同じ RangeWindowRow を列ごとに 1 つ、横に並べる。
  * （つまみの長さ＝表示件数、位置＝表示開始。件数は右の数字と上下矢印で変える）
  * プリセットと列の表示切替は UnifiedViewSelect（年度セレクトの隣）と表示設定（⋮）に置き、ここには入れない。
  */
@@ -32,7 +32,8 @@ export function UnifiedControls({
   const rows = UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c) && isRankable(c));
   if (rows.length === 0) return null;
   return (
-    <div data-pan-disabled="true" className="flex flex-col gap-1 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs" style={{ width: 300 }}>
+    // 横並び（1 列 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
+    <div data-pan-disabled="true" className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
@@ -46,8 +47,8 @@ export function UnifiedControls({
           onTopNChange(patch);
         };
         return (
+          <div key={column} className="w-[260px] min-w-0">
           <RangeWindowRow
-            key={column}
             label={UNIFIED_COLUMN_LABELS[column]}
             total={total}
             topN={limit}
@@ -58,6 +59,7 @@ export function UnifiedControls({
             markReplace={() => {}}
             metaFontPx={12}
           />
+          </div>
         );
       })}
     </div>
