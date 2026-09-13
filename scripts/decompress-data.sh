@@ -45,6 +45,10 @@ decompress_if_needed "rs2025-project-outcomes.json" optional
 decompress_if_needed "rs2024-project-outcomes.json" optional
 decompress_if_needed "project-map-2025.json" optional
 decompress_if_needed "project-map-2024.json" optional
+# 統合ビュー（/budget-sankey）がブラウザから直接 fetch する統合グラフ
+decompress_if_needed "unified-budget-2024-graph.json" optional
+decompress_if_needed "unified-budget-2025-graph.json" optional
+decompress_if_needed "unified-budget-2026-graph.json" optional
 
 # --- サーバ関数バンドル用データの同期 ---
 # Vercel の関数には public/data を一切同梱しない（生 .json 込みだと 250MB 上限を
