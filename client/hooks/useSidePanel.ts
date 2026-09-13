@@ -60,7 +60,10 @@ export function useSidePanel(options: UseSidePanelOptions): UseSidePanelResult {
   } = options;
 
   const [width, setWidth] = useState(defaultWidth);
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  // 折りたたみは廃止（初見のユーザーが隠したまま戻せなくなったため）。API 互換のため常に false を返す
+  void initialCollapsed;
+  const collapsed = false;
+  const setCollapsed: Dispatch<SetStateAction<boolean>> = () => {};
   const [isResizing, setIsResizing] = useState(false);
   const resizeRef = useRef<{ startX: number; startW: number } | null>(null);
 
@@ -112,7 +115,7 @@ export function useSidePanel(options: UseSidePanelOptions): UseSidePanelResult {
   }, [isResizing, side, minWidth, maxWidth]);
 
   const resetWidth = useCallback(() => setWidth(defaultWidth), [defaultWidth]);
-  const toggleCollapsed = useCallback(() => setCollapsed(c => !c), []);
+  const toggleCollapsed = useCallback(() => {}, []);
 
   return {
     width, setWidth, effectiveWidth,

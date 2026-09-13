@@ -19,7 +19,6 @@ import { hasActiveUnifiedFilter, UNIFIED_FILTER_DEFAULT, type UnifiedViewDetails
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import type { SankeyLink } from '@/types/sankey';
 import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
-import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { UnifiedSearch } from './UnifiedSearch';
 import { UnifiedFilterFields } from './UnifiedFilterFields';
@@ -28,7 +27,7 @@ import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
-import { Building2, ExternalLink, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
+import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { Button } from '@/components/ui/button';
@@ -266,10 +265,6 @@ export function UnifiedSankeyChart({
     return browseNodes.find(n => n.id === selectedId) ?? null;
   }, [selectedNode, browseNodes, selectedId]);
   const selectedDetails = selectedPanelNode?.details;
-  const selectedRsSvgUrl = useMemo(() => {
-    if (!selectedDetails || selectedDetails.projectId === undefined || !selectedPanelNode?.name) return null;
-    return sankeySvgProjectUrl(selectedDetails.projectId, selectedPanelNode.name, rsSheetYear);
-  }, [selectedDetails, selectedPanelNode, rsSheetYear]);
 
   const descendantColumns = useMemo(() => (selectedId ? descendantsByColumn(browseNodes, browseLinks, selectedId) : new Map<UnifiedColumn, UnifiedViewNode[]>()), [browseNodes, browseLinks, selectedId]);
   const ancestorColumns = useMemo(() => (selectedId ? ancestorsByColumn(browseNodes, browseLinks, selectedId) : new Map<UnifiedColumn, UnifiedViewNode[]>()), [browseNodes, browseLinks, selectedId]);
@@ -595,11 +590,6 @@ export function UnifiedSankeyChart({
                       予算書の出典
                     </a>
                   )}
-                  {selectedRsSvgUrl && (
-                    <a href={selectedRsSvgUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
-                      /sankey-svgで開く
-                    </a>
-                  )}
                   {selectedDetails.column === 'koumoku' && (
                     <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       科目別内訳で開く
@@ -670,18 +660,12 @@ export function UnifiedSankeyChart({
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)
                       .map(item => {
-                        const rsLink = item.details.projectId !== undefined && item.details.column === 'program' ? sankeySvgProjectUrl(item.details.projectId, item.name, rsSheetYear) : null;
                         return (
                           <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
                             <Button variant="ghost" onClick={() => onSelect(item.id)} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
                               <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
                               <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(item.value)}</span>
                             </Button>
-                            {rsLink && (
-                              <a href={rsLink} target="_blank" rel="noopener noreferrer" title="/sankey-svgで開く" onClick={e => e.stopPropagation()} className="shrink-0 px-0.5 text-mirai-text-muted hover:text-primary">
-                                <ExternalLink className="size-3" aria-hidden="true" />
-                              </a>
-                            )}
                           </div>
                         );
                       })}
@@ -800,9 +784,6 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
             <FactRow k="翌年度要求" v={formatBudgetFromYen(b.nextYearRequest)} />
           </dl>
         </div>
-      )}
-      {!b && details.column === 'program' && (!details.kind || details.kind === 'rs') && (
-        <p className="mt-2 text-[11px] text-mirai-text-muted">値はRS 2-2 の{amountLabel}の合計です（この年度は執行・支出先の情報がありません）。</p>
       )}
     </div>
   );

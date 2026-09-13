@@ -20,6 +20,10 @@ import { TONE_CLS, ACTION_CLS } from '@/client/components/quality/score-meta';
 export interface PolicyEvaluationView {
   /** 総合点（0-100） */
   overall: number | null;
+  /** 成果設計・検証可能性・執行透明性。渡すと 5 軸すべてを並べる（幅のあるパネル向け）。省略時は総合・費用対内容・必要性の 3 つ */
+  designClarity?: number | null;
+  evidence?: number | null;
+  transparency?: number | null;
   /** 費用対内容（0-100） */
   proportionality: number | null;
   /** 必要性（0-100） */
@@ -75,11 +79,15 @@ export function PolicyEvaluationBlock({
   }
   if (!view) return null;   // 取得中・スコアなしはブロックごと出さない（パネルのちらつき防止）
 
-  // 5軸のうち、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸を並べる。
-  // 残り3軸（成果設計・検証可能性・執行透明性）は詳細ダイアログ側で確認する。
-  const cells: Array<[string, number | null]> = [
-    ['総合点', view.overall], ['費用対内容', view.proportionality], ['必要性', view.necessity],
-  ];
+  // 既定は、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸（費用対内容・必要性）＋総合点。
+  // 残り3軸（成果設計・検証可能性・執行透明性）は呼び出し側が渡したときだけ並べる（統合ビューの広いパネル）。
+  const full = view.designClarity !== undefined || view.evidence !== undefined || view.transparency !== undefined;
+  const cells: Array<[string, number | null]> = full
+    ? [
+        ['総合点', view.overall], ['成果設計', view.designClarity ?? null], ['検証可能性', view.evidence ?? null],
+        ['執行透明性', view.transparency ?? null], ['費用対内容', view.proportionality], ['必要性', view.necessity],
+      ]
+    : [['総合点', view.overall], ['費用対内容', view.proportionality], ['必要性', view.necessity]];
 
   return (
     <div className="shrink-0 border-b border-border px-3.5 py-2">
@@ -112,7 +120,7 @@ export function PolicyEvaluationBlock({
           style={{ fontSize: metaPx }}
         >一覧で見る →</a>
       </div>
-      <div className="flex items-end gap-3.5">
+      <div className={cn('flex items-end', full ? 'flex-wrap gap-y-2 gap-x-3' : 'gap-3.5')}>
         {cells.map(([label, value]) => (
           <div key={label} className="text-center">
             <div
@@ -124,7 +132,7 @@ export function PolicyEvaluationBlock({
             <div className="mt-[3px] text-mirai-text-muted" style={{ fontSize: metaPx }}>{label}</div>
           </div>
         ))}
-        <div className="ml-auto flex flex-wrap justify-end gap-1">
+        <div className={cn('flex flex-wrap justify-end gap-1', full ? 'basis-full justify-start' : 'ml-auto')}>
           {view.recommendation && (
             <span
               className={cn('whitespace-nowrap rounded-full px-[7px] py-0.5 font-bold', recommendationCls(view.recommendation))}

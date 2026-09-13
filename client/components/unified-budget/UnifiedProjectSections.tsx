@@ -23,7 +23,6 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { TagChip } from '@/client/components/TagChip';
-import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
 
 /** 再委託サマリ（/api/subcontracts の全グラフから件数だけ抜く。/sankey-svg と同じ形） */
 interface SubcontractSummary {
@@ -134,6 +133,9 @@ export function UnifiedProjectSections({
           entry && policy
             ? {
                 overall: entry.o,
+                designClarity: entry.d,
+                evidence: entry.e,
+                transparency: entry.t,
                 proportionality: entry.x,
                 necessity: entry.n,
                 recommendation: entry.r ? policy.recommendations[entry.r] : null,
@@ -155,7 +157,6 @@ export function UnifiedProjectSections({
         projectName={projectName}
         year={year}
         subcontractHref={subcontractHref}
-        sankeyHref={sankeySvgProjectUrl(pid, projectName, rsSheetYear)}
         scaleFont={scaleFont}
         expanded={overviewExpanded}
         onToggle={() => setOverviewExpanded(v => !v)}
