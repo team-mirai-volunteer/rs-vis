@@ -406,10 +406,9 @@ test.describe('sankey-svg interactions', () => {
     await expect(page).toHaveURL(/sel=ministry-%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
 
-    await page.getByTitle('パネルを折りたたむ').click();
+    // サイドパネルの折りたたみ機能は廃止。同じ省庁をもう一度クリックしてもフィルタと選択が維持されることを確認する
     // ラベルの当たり判定は text を覆う透明 rect が担うため、force で最前面要素へ届ける
     await page.locator('svg text').filter({ hasText: ministryName }).first().click({ force: true });
-    await page.getByTitle('パネルを展開').click();
 
     await expect(page).toHaveURL(/fm=%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
     await expect(page).toHaveURL(/sel=ministry-%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E5%BA%81/);
