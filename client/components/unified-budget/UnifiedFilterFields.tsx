@@ -6,6 +6,7 @@
  */
 
 import { UNIFIED_FILTER_DEFAULT, type UnifiedViewFilter } from '@/types/unified-budget-view';
+import { Button } from '@/components/ui/button';
 
 const ACCOUNT_OPTIONS: Array<{ value: 'general' | 'special'; label: string }> = [
   { value: 'general', label: '一般会計' },
@@ -13,7 +14,7 @@ const ACCOUNT_OPTIONS: Array<{ value: 'general' | 'special'; label: string }> = 
 ];
 
 const INPUT_CLASS =
-  'h-7 w-full rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+  'h-7 w-full rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary';
 
 export function UnifiedFilterFields({
   filter,
@@ -31,12 +32,12 @@ export function UnifiedFilterFields({
     set({ ministries: filter.ministries.includes(name) ? filter.ministries.filter(m => m !== name) : [...filter.ministries, name] });
 
   return (
-    <div className="flex flex-col gap-3 p-3 text-xs text-gray-600">
+    <div className="flex flex-col gap-3 p-3 text-xs text-mirai-text-subtle">
       <div>
         <div className="mb-1 font-medium">表示</div>
         <div className="flex flex-col gap-1">
           <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={filter.showNonRs} onChange={() => set({ showNonRs: !filter.showNonRs })} className="h-3.5 w-3.5 cursor-pointer" />
+            <input type="checkbox" checked={filter.showNonRs} onChange={() => set({ showNonRs: !filter.showNonRs })} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
             <span>非事業支出・未突合のノードを出す（繰入・国債費・地方財政移転・予備費・人件費）</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1.5">
@@ -44,7 +45,7 @@ export function UnifiedFilterFields({
               type="checkbox"
               checked={filter.includeCollapsedAccounts}
               onChange={() => set({ includeCollapsedAccounts: !filter.includeCollapsedAccounts })}
-              className="h-3.5 w-3.5 cursor-pointer"
+              className="h-3.5 w-3.5 cursor-pointer accent-primary"
             />
             <span>国債整理基金特会・交付税特会を含める（他が見えなくなるほど大きいため既定で除外）</span>
           </label>
@@ -55,7 +56,7 @@ export function UnifiedFilterFields({
         <div className="flex flex-wrap gap-x-3 gap-y-1">
           {ACCOUNT_OPTIONS.map(({ value, label }) => (
             <label key={value} className="flex cursor-pointer items-center gap-1.5">
-              <input type="checkbox" checked={filter.accountTypes.includes(value)} onChange={() => toggleAccount(value)} className="h-3.5 w-3.5 cursor-pointer" />
+              <input type="checkbox" checked={filter.accountTypes.includes(value)} onChange={() => toggleAccount(value)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
               <span>{label}</span>
             </label>
           ))}
@@ -66,7 +67,7 @@ export function UnifiedFilterFields({
         <div className="flex max-h-40 flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
           {ministryOptions.map(name => (
             <label key={name} className="flex cursor-pointer items-center gap-1.5">
-              <input type="checkbox" checked={filter.ministries.includes(name)} onChange={() => toggleMinistry(name)} className="h-3.5 w-3.5 cursor-pointer" />
+              <input type="checkbox" checked={filter.ministries.includes(name)} onChange={() => toggleMinistry(name)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
               <span>{name}</span>
             </label>
           ))}
@@ -83,9 +84,9 @@ export function UnifiedFilterFields({
           className={INPUT_CLASS}
         />
       </div>
-      <button type="button" onClick={() => onFilterChange(UNIFIED_FILTER_DEFAULT)} className="self-start text-[11px] text-blue-600 underline hover:text-blue-800">
+      <Button variant="link" onClick={() => onFilterChange(UNIFIED_FILTER_DEFAULT)} className="self-start text-[11px] font-medium">
         絞り込みを既定に戻す
-      </button>
+      </Button>
     </div>
   );
 }

@@ -7,6 +7,9 @@
 
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { UNIFIED_PRESET_COLUMNS, UNIFIED_PRESET_LABELS, type UnifiedPreset } from '@/types/unified-budget-view';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 /** 表示列の組からプリセット名を逆引きする（一致しなければ custom） */
 export function presetOf(visible: UnifiedColumn[]): UnifiedPreset {
@@ -37,7 +40,7 @@ export function UnifiedViewSelect({
           if (p === 'custom') return;
           onChange(p, UNIFIED_PRESET_COLUMNS[p].filter(c => availableColumns.includes(c)));
         }}
-        className="h-9 cursor-pointer appearance-none rounded-lg border border-black/10 bg-white/90 pl-2.5 pr-7 text-xs text-neutral-700 shadow-md backdrop-blur focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"
+        className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >
         {(Object.keys(UNIFIED_PRESET_LABELS) as UnifiedPreset[]).map(p => (
           <option key={p} value={p} disabled={p === 'custom'}>
@@ -45,9 +48,7 @@ export function UnifiedViewSelect({
           </option>
         ))}
       </select>
-      <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 fill-neutral-400">
-        <path d="M7 10l5 5 5-5z" />
-      </svg>
+      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted" />
     </div>
   );
 }
@@ -67,26 +68,28 @@ export function UnifiedColumnToggles({
     if (next.length > 0) onChange(next);
   };
   return (
-    <div className="flex flex-col gap-1 border-t border-gray-100 pt-2">
+    <div className="flex flex-col gap-1 border-t border-border pt-2">
       <div className="font-medium">表示する列</div>
       <div className="flex flex-wrap gap-1">
         {UNIFIED_COLUMNS.map(col => {
           const available = availableColumns.includes(col);
           const on = visibleColumns.includes(col);
           return (
-            <button
+            <Button
               key={col}
-              type="button"
+              variant="outline"
+              size="xs"
               disabled={!available}
               aria-pressed={on}
               title={available ? undefined : 'この年度にはありません'}
               onClick={() => toggle(col)}
-              className={`rounded border px-1.5 py-px text-[11px] ${
-                !available ? 'cursor-not-allowed border-gray-100 text-gray-300' : on ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
-              }`}
+              className={cn(
+                'h-6 px-2 text-[11px] font-medium',
+                on ? 'border-primary bg-mirai-surface-teal text-primary-accent' : 'border-mirai-border text-mirai-text-muted'
+              )}
             >
               {UNIFIED_COLUMN_LABELS[col]}
-            </button>
+            </Button>
           );
         })}
       </div>

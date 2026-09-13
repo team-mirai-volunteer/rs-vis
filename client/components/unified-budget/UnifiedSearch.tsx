@@ -8,6 +8,9 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { UNIFIED_COLUMN_LABELS } from '@/types/unified-budget';
 import type { UnifiedViewNode } from '@/types/unified-budget-view';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const MAX_RESULTS = 30;
 const MIN_QUERY_LENGTH = 2;
@@ -48,10 +51,8 @@ export function UnifiedSearch({
 
   return (
     <div className="relative" data-pan-disabled="true">
-      <div className="flex items-center gap-1 rounded-lg border border-black/10 bg-white/90 px-2 shadow-md backdrop-blur">
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#9ca3af" aria-hidden="true">
-          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-        </svg>
+      <div className="flex items-center gap-1 rounded-full border border-mirai-border bg-card px-3 shadow-xs">
+        <Search className="size-3.5 shrink-0 text-mirai-text-muted" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -78,40 +79,41 @@ export function UnifiedSearch({
               setOpen(false);
             }
           }}
-          className="h-8 w-56 bg-transparent text-xs text-gray-700 focus:outline-none"
+          className="h-9 w-56 bg-transparent text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
         />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           title={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-label={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-expanded={filterOpen}
           onClick={onToggleFilter}
-          className={`rounded px-1 text-xs ${filterOpen ? 'bg-emerald-600 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+          className={cn('h-6 px-1.5', filterOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
         >
           絞込
-        </button>
+        </Button>
       </div>
       {open && results.length > 0 && (
-        <div ref={listRef} className="absolute left-0 top-9 z-40 max-h-80 w-80 overflow-y-auto rounded border border-gray-200 bg-white shadow-lg">
+        <div ref={listRef} className="absolute left-0 top-9 z-40 max-h-80 w-80 overflow-y-auto rounded-xl border border-mirai-border bg-card p-1 shadow-soft">
           {results.map((n, i) => (
-            <button
+            <Button
               key={n.id}
-              type="button"
+              variant="ghost"
               onMouseDown={e => e.preventDefault()}
               onClick={() => choose(n.id)}
-              className={`flex w-full items-baseline justify-between gap-2 px-2 py-1 text-left text-xs hover:bg-gray-50 ${i === cursor ? 'bg-gray-100' : ''}`}
+              className={cn('flex h-auto w-full items-baseline justify-between gap-2 rounded-md px-2 py-1 text-left text-xs font-normal hover:bg-mirai-surface', i === cursor && 'bg-mirai-surface-teal')}
             >
-              <span className="min-w-0 truncate text-gray-700">
-                <span className="mr-1 text-[10px] text-gray-400">{UNIFIED_COLUMN_LABELS[n.details.column]}</span>
+              <span className="min-w-0 truncate text-mirai-text-secondary">
+                <span className="mr-1 text-[10px] text-mirai-text-muted">{UNIFIED_COLUMN_LABELS[n.details.column]}</span>
                 {n.name}
               </span>
-              <span className="shrink-0 tabular-nums text-gray-500">{formatBudgetFromYen(n.value)}</span>
-            </button>
+              <span className="shrink-0 tabular-nums text-mirai-text-muted">{formatBudgetFromYen(n.value)}</span>
+            </Button>
           ))}
         </div>
       )}
       {filterOpen && (
-        <div className="absolute left-0 top-9 z-40 w-96 rounded border border-gray-200 bg-white shadow-lg" data-pan-disabled="true">
+        <div className="absolute left-0 top-9 z-40 w-96 rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
           {filterFields}
         </div>
       )}

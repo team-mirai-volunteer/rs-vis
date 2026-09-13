@@ -32,7 +32,7 @@ export function UnifiedControls({
   const rows = UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c) && isRankable(c));
   if (rows.length === 0) return null;
   return (
-    <div data-pan-disabled="true" className="flex flex-col gap-1 rounded-lg border border-black/10 bg-white/90 px-3 py-1.5 shadow-md backdrop-blur" style={{ width: 300 }}>
+    <div data-pan-disabled="true" className="flex flex-col gap-1 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs" style={{ width: 300 }}>
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
