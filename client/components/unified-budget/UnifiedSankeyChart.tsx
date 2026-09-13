@@ -25,7 +25,7 @@ import { UnifiedSearch } from './UnifiedSearch';
 import { UnifiedFilterFields } from './UnifiedFilterFields';
 import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
-import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
 import { ExternalLink, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
@@ -37,8 +37,8 @@ export const LABEL_FONT_PX_DEFAULT = 11;
 const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;
 const ZOOM_MIN = 0.3;
-/** 左上の検索クラスタが占める高さ（top 12px + 検索ボックス ≒ 40px + 余白 12px）。サイドパネルはこの下から始める */
-const SEARCH_ROW_PX = 64;
+/** 左上の検索クラスタが占める高さ（top 12px + 検索ボックス 34px + 余白 8px）。サイドパネルはこの下から始める */
+const SEARCH_ROW_PX = 54;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
@@ -126,7 +126,8 @@ export function UnifiedSankeyChart({
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
   const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
-  const panelOpenWidth = selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
+  const panelOpenWidth =
+    selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0; // 浮島の左右余白ぶんを含む
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);

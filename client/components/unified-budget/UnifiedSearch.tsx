@@ -51,7 +51,7 @@ export function UnifiedSearch({
 
   return (
     <div className="relative" data-pan-disabled="true">
-      <div className="flex items-center gap-1 rounded-full border border-mirai-border bg-card px-3 shadow-xs">
+      <div className="flex items-center gap-1 rounded-full border border-mirai-border bg-card px-2.5 shadow-xs">
         <Search className="size-3.5 shrink-0 text-mirai-text-muted" aria-hidden="true" />
         <input
           type="search"
@@ -79,7 +79,7 @@ export function UnifiedSearch({
               setOpen(false);
             }
           }}
-          className="h-9 w-56 bg-transparent text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
+          className="h-8 w-44 bg-transparent text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
         />
         <Button
           variant="ghost"
@@ -88,7 +88,7 @@ export function UnifiedSearch({
           aria-label={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-expanded={filterOpen}
           onClick={onToggleFilter}
-          className={cn('h-6 px-1.5', filterOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
+          className={cn('h-6 px-1.5 text-[11px]', filterOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
         >
           絞込
         </Button>

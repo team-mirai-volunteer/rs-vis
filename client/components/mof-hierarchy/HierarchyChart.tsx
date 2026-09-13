@@ -40,7 +40,7 @@ import { HierarchySearch } from './HierarchySearch';
 import { HierarchyFilterFields } from './HierarchyFilterFields';
 import { HierarchyFilterClearButton } from './HierarchyFilterClearButton';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
-import { SidePanelChrome } from '@/client/components/SidePanelChrome';
+import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { E2E_TEST_IDS_ENABLED, testId } from '@/client/lib/testId';
 
@@ -150,7 +150,7 @@ export function HierarchyChart({
    */
   const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
   const panelOpenWidth =
-    selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
+    selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0; // 浮島の左右余白ぶんを含む
   /** ズーム率のクリック編集。ボタンの連打だけでは狙った倍率に合わせにくい */
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
