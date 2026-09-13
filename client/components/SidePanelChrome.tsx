@@ -35,6 +35,8 @@ export interface SidePanelChromeProps {
   expandLabel?: string;
   collapseLabel?: string;
   zIndex?: number;
+  /** ヘッダー下からさらに下げる量(px)。検索ボックスなど上部の浮島を押しのけずに、その下から始めたいときに使う */
+  topOffset?: number;
   /** ルート要素に付与する data-testid 等の識別用途 */
   testId?: string;
   children: ReactNode;
@@ -53,6 +55,7 @@ export function SidePanelChrome({
   expandLabel = 'パネルを展開',
   collapseLabel = 'パネルを折りたたむ',
   zIndex = 25,
+  topOffset = 0,
   testId,
   children,
 }: SidePanelChromeProps) {
@@ -64,8 +67,8 @@ export function SidePanelChrome({
   const rootStyle: CSSProperties = {
     position: 'fixed',
     [isLeft ? 'left' : 'right']: 0,
-    top: 'var(--app-header-h, 0px)',
-    height: 'calc(100% - var(--app-header-h, 0px))',
+    top: `calc(var(--app-header-h, 0px) + ${topOffset}px)`,
+    height: `calc(100% - var(--app-header-h, 0px) - ${topOffset}px)`,
     width: open ? width : 0,
     zIndex,
     transition: isResizing ? 'none' : 'width 0.2s ease',
