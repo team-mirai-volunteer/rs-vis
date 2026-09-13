@@ -5,7 +5,7 @@
  * を1本のグラフにする。設計: docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md（3章・4.1）
  *
  * 使用法:
- *   tsx scripts/generate-unified-budget-graph.ts --budget-year 2024 [--sheet 2025] [--basis 当初予算]
+ *   tsx scripts/generate-unified-budget-graph.ts --budget-year 2024 [--sheet 2025] [--basis initial|supplementary|settlement]
  *   --sheet 省略時は 予算年度+1（執行年度として扱う。sankey-svg-{sheet}-graph.json があれば支出先まで繋ぐ）。
  *   予算年度 = シート年度（予算のみ）、予算年度 = シート年度+1（要求→査定）も同じコマンドで生成できる。
  *
@@ -18,7 +18,8 @@
  * 出力: public/data/unified-budget-{予算年度}-graph.json（.gz で Git 管理、prebuild で展開）
  *
  * 金額の基準（types/unified-budget.ts の冒頭コメント参照）:
- *   会計〜目〜事業区分は MOF目の basis 予算種別（既定: 当初予算）。RS事業ノードは歳出予算現額。
+ *   会計〜目〜事業区分は MOF目の basis（既定 initial=当初予算。supplementary=補正予算（第1号）の改予算額、settlement=決算の支出済額）。
+ *   RS事業ノードは basis に応じて 当初予算 / 当初＋補正 / 執行額（執行年度以外は 2-2 の合計）。
  *   差分は擬似ノード outside からの流入で釣り合わせる。
  */
 
@@ -36,7 +37,16 @@ import type {
   UnifiedNode,
   UnifiedProgramKind,
 } from '@/types/unified-budget';
-import { UNIFIED_COLUMNS, UNIFIED_PROGRAM_KIND_LABELS } from '@/types/unified-budget';
+import {
+  UNIFIED_BASES,
+  UNIFIED_BASIS_LABELS,
+  UNIFIED_BASIS_MOF_BUDGET_TYPE,
+  UNIFIED_BASIS_RS_MEASURE,
+  UNIFIED_COLUMNS,
+  UNIFIED_PROGRAM_KIND_LABELS,
+  unifiedGraphFileName,
+  type UnifiedBasis,
+} from '@/types/unified-budget';
 
 // ─── 引数 ──────────────────────────────────────────────
 function argNum(name: string): number | undefined {
@@ -56,18 +66,34 @@ function argStr(name: string): string | undefined {
 
 const BUDGET_YEAR = argNum('--budget-year');
 if (!BUDGET_YEAR) {
-  console.error('使用法: tsx scripts/generate-unified-budget-graph.ts --budget-year <予算年度> [--sheet <RSシート年度>] [--basis <MOF予算種別>]');
+  console.error('使用法: tsx scripts/generate-unified-budget-graph.ts --budget-year <予算年度> [--sheet <RSシート年度>] [--basis initial|supplementary|settlement]');
   process.exit(1);
 }
 const SHEET_YEAR: number = argNum('--sheet') ?? BUDGET_YEAR + 1;
-const BASIS = (argStr('--basis') ?? '当初予算') as MOFBudgetType;
+const BASIS_KEY = (argStr('--basis') ?? 'initial') as UnifiedBasis;
+if (!UNIFIED_BASES.includes(BASIS_KEY)) {
+  console.error(`❌ --basis は ${UNIFIED_BASES.join(' | ')} のいずれか（指定: ${BASIS_KEY}）`);
+  process.exit(1);
+}
+/** MOF 目の予算種別（会計〜目の流量の出典） */
+const BASIS: MOFBudgetType = UNIFIED_BASIS_MOF_BUDGET_TYPE[BASIS_KEY];
+/** 目 1 件の流量。決算は歳出予算額ではなく支出済歳出額を使う */
+const flowAmount = (it: MOFKouMokuItem): number => (BASIS_KEY === 'settlement' ? it.spent ?? 0 : it.amount);
+/** RS事業ノードの値（執行年度・budgetSummary があるとき）。基準に合わせた測定量を選ぶ */
+const rsMeasure = (n: RawNode): number => {
+  const b = n.budgetSummary;
+  if (!b) return n.value;
+  if (BASIS_KEY === 'initial') return b.initialBudget;
+  if (BASIS_KEY === 'supplementary') return b.initialBudget + b.supplementaryBudget;
+  return b.executedAmount;
+};
 
 const DATA_DIR = path.join(__dirname, '../public/data');
 const KOU_MOKU_FILE = path.join(DATA_DIR, `mof-kou-moku-${BUDGET_YEAR}.json`);
 const LINKAGE_FILE = path.join(DATA_DIR, `mof-rs-kou-moku-linkage-${BUDGET_YEAR}.json`);
 const SVG_GRAPH_FILE = path.join(DATA_DIR, `sankey-svg-${SHEET_YEAR}-graph.json`);
 const OVERVIEW_FILE = path.join(DATA_DIR, `mof-budget-overview-${BUDGET_YEAR}.json`);
-const OUTPUT_FILE = path.join(DATA_DIR, `unified-budget-${BUDGET_YEAR}-graph.json`);
+const OUTPUT_FILE = path.join(DATA_DIR, unifiedGraphFileName(BUDGET_YEAR, BASIS_KEY));
 
 /** .json が無ければ .json.gz を読む */
 function readJsonMaybeGz<T>(file: string): T | null {
@@ -107,7 +133,7 @@ function classifyResidual(it: MOFKouMokuItem): UnifiedProgramKind {
 }
 
 function main() {
-  console.log(`=== 統合グラフ生成 (予算年度${BUDGET_YEAR} / RSシート${SHEET_YEAR} / 基準: ${BASIS}) ===\n`);
+  console.log(`=== 統合グラフ生成 (予算年度${BUDGET_YEAR} / RSシート${SHEET_YEAR} / 基準: ${BASIS_KEY}=${BASIS}) ===\n`);
 
   // 1. 入力
   console.log('[1/5] 入力読み込み');
@@ -135,12 +161,12 @@ function main() {
     (it): it is MOFKouMokuItem & { accountType: 'general' | 'special' } =>
       (it.accountType === 'general' || it.accountType === 'special') && it.budgetType === BASIS
   );
-  const agencyTotal = kouMoku.items.filter(it => it.accountType === 'agency' && it.budgetType === BASIS).reduce((s, it) => s + it.amount, 0);
+  const agencyTotal = kouMoku.items.filter(it => it.accountType === 'agency' && it.budgetType === BASIS).reduce((s, it) => s + flowAmount(it), 0);
   if (items.length === 0) {
     console.error(`❌ 予算種別「${BASIS}」の目がありません（収録: ${kouMoku.metadata.budgetTypes.join(', ')}）`);
     process.exit(1);
   }
-  console.log(`  対象目（一般＋特別・${BASIS}）: ${items.length.toLocaleString()} 件 / ${(items.reduce((s, it) => s + it.amount, 0) / 1e12).toFixed(2)} 兆円`);
+  console.log(`  対象目（一般＋特別・${BASIS}${BASIS_KEY === 'settlement' ? '・支出済額' : ''}）: ${items.length.toLocaleString()} 件 / ${(items.reduce((s, it) => s + flowAmount(it), 0) / 1e12).toFixed(2)} 兆円`);
 
   // 2. MOF階層ノード
   console.log('\n[2/5] 会計→所管→組織/勘定→項→目');
@@ -169,7 +195,7 @@ function main() {
   };
 
   for (const it of items) {
-    const v = it.amount;
+    const v = flowAmount(it);
     if (v <= 0) continue; // 負・0の目は流量にならない（減額補正など）
     const isSpecial = it.accountType === 'special';
     ensure({
@@ -240,16 +266,16 @@ function main() {
         id: programId(n.projectId),
         col: 'program',
         name: n.name,
-        value: n.value,
+        value: rsMeasure(n),
         kind: 'rs',
         projectId: n.projectId,
         rsMinistry: n.ministry,
         accountCategory: n.accountCategory,
         ...(n.budgetSummary ? { budgetSummary: n.budgetSummary } : {}),
       });
-      programValue.set(n.projectId, n.value);
+      programValue.set(n.projectId, rsMeasure(n));
     }
-    console.log(`  sankey-svg の事業: ${programNode.size.toLocaleString()} 件（歳出予算現額）`);
+    console.log(`  sankey-svg の事業: ${programNode.size.toLocaleString()} 件（${UNIFIED_BASIS_RS_MEASURE[BASIS_KEY]}）`);
   } else {
     for (const p of linkage.projects ?? []) {
       programNode.set(p.projectId, {
@@ -291,17 +317,47 @@ function main() {
     list.push({ pid: l.projectId, amount: l.rsAmount });
     linksByKouMoku.set(l.kouMokuKey, list);
   }
+  // 補正基準: 補正予算書の目額は「改予算額」（当初＋補正の総額）だが、RS 2-2 の補正行は補正増減分しか
+  // 持たない。同じ目（予算種別を除いた識別子が一致するもの）の当初予算リンクを足して総額に合わせる。
+  // 「…外N目」に束ねられた補正目は当初側に対応が無く、残余は未突合として残る
+  const norm = (t: string) => t.normalize('NFKC').replace(/\s+/g, '');
+  const identityOfLink = (l: (typeof linkage.links)[number]) =>
+    [l.mofAccountType, norm(l.mofMinistry), norm(l.mofOrganization), norm(l.mofSubAccount ?? ''), l.sectionCode, l.subItemCode, norm(l.subItemName)].join('|');
+  const identityOfItem = (it: MOFKouMokuItem) =>
+    [it.accountType, norm(it.ministry), norm(orgOf(it) ?? ''), norm(it.subAccount ?? ''), it.sectionCode, it.subItemCode, norm(it.subItemName)].join('|');
+  let mergedInitialLinks = 0;
+  if (BASIS_KEY === 'supplementary') {
+    const initialByIdentity = new Map<string, { pid: number; amount: number }[]>();
+    for (const l of linkage.links) {
+      if (l.mofBudgetType !== '当初予算' || l.rsAmount <= 0) continue;
+      const id = identityOfLink(l);
+      const list = initialByIdentity.get(id) ?? [];
+      list.push({ pid: l.projectId, amount: l.rsAmount });
+      initialByIdentity.set(id, list);
+    }
+    for (const it of items) {
+      const extra = initialByIdentity.get(identityOfItem(it));
+      if (!extra) continue;
+      const list = linksByKouMoku.get(it.key) ?? [];
+      const byPid = new Map<number, number>(list.map(x => [x.pid, x.amount]));
+      for (const x of extra) byPid.set(x.pid, (byPid.get(x.pid) ?? 0) + x.amount);
+      linksByKouMoku.set(it.key, [...byPid].map(([pid, amount]) => ({ pid, amount })));
+      mergedInitialLinks += extra.length;
+    }
+    console.log(`  補正目へ当初予算リンクを合流: ${mergedInitialLinks.toLocaleString()} 件`);
+  }
   const byKind: Record<UnifiedProgramKind, number> = { rs: 0, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, unmatched: 0, outside: 0 };
   const linkedIn = new Map<number, number>(); // pid → 目からの流入合計
   let scaledDown = 0;
   let scaledEdges = 0;
   for (const it of items) {
-    if (it.amount <= 0) continue;
+    const itAmount = flowAmount(it);
+    if (itAmount <= 0) continue;
     const kmId = koumokuId(it);
     const links = linksByKouMoku.get(it.key) ?? [];
     const rsSum = links.reduce((s, l) => s + l.amount, 0);
-    const factor = rsSum > it.amount ? it.amount / rsSum : 1;
-    if (factor < 1) scaledDown += rsSum - it.amount;
+    const factor = rsSum > itAmount ? itAmount / rsSum : 1;
+    if (factor < 1) scaledDown += rsSum - itAmount;
     let flowed = 0;
     for (const l of links) {
       const v = factor < 1 ? Math.floor(l.amount * factor) : l.amount;
@@ -312,7 +368,7 @@ function main() {
       flowed += v;
       byKind.rs += v;
     }
-    const residual = it.amount - flowed;
+    const residual = itAmount - flowed;
     if (residual > 0) {
       const kind = classifyResidual(it);
       byKind[kind] += residual;
@@ -405,6 +461,9 @@ function main() {
       hasSpending: !!svgGraph,
       rsAmountKind: linkage.metadata.rsAmountKind ?? 'budget',
       basisBudgetType: BASIS,
+      basis: BASIS_KEY,
+      basisLabel: UNIFIED_BASIS_LABELS[BASIS_KEY],
+      rsMeasureLabel: svgGraph ? UNIFIED_BASIS_RS_MEASURE[BASIS_KEY] : isRequest ? undefined : '予算額（2-2 合計）',
       eraLabel: kouMoku.metadata.eraLabel,
       unit: 'yen',
       generatedAt: new Date().toISOString(),
@@ -423,11 +482,11 @@ function main() {
       counts: { ...counts, edges: edgeList.length, scaledEdges },
       collapsedAccounts: nodeList.filter(n => n.collapsedByDefault).map(n => n.id),
       notes: [
-        `会計〜目〜事業区分の流量は MOF ${BUDGET_YEAR}年度「${BASIS}」の目金額。補正予算は改予算額で当初と識別子が一致しない目が多いため合算しない`,
+        `会計〜目〜事業区分の流量は MOF ${BUDGET_YEAR}年度「${BASIS}」の目金額${BASIS_KEY === 'settlement' ? '（支出済歳出額）' : BASIS_KEY === 'supplementary' ? '（改予算額。補正予算書に載る目のみ）' : ''}。予算種別間で目の識別子が一致しないため基準をまたいだ合算はしない`,
         isRequest
           ? `RS事業ノードの値は RSシート${SHEET_YEAR}の翌年度（${BUDGET_YEAR}年度）要求額の合計。目→事業の流量は目単位の要求額で、MOF当初予算との差が査定結果`
           : svgGraph
-            ? `RS事業ノードの値は歳出予算現額（/sankey-svg と同じ）。目からの流入（${BASIS}）との差分は擬似ノード「${UNIFIED_PROGRAM_KIND_LABELS.outside}」からの流入`
+            ? `RS事業ノードの値は RS 2-1 の${UNIFIED_BASIS_RS_MEASURE[BASIS_KEY]}。目からの流入（${BASIS}）との差分は擬似ノード「${UNIFIED_PROGRAM_KIND_LABELS.outside}」からの流入`
             : `RS事業ノードの値は RSシート${SHEET_YEAR}の 2-2（予算年度${BUDGET_YEAR}行）の合計（繰越・予備費等を含む）。目からの流入との差分は擬似ノードからの流入`,
         '目の残余（RS事業に流れなかった分）は 使途別分類6=他会計へ繰入 → 主要経費20=国債費 → 主要経費31/32/33=地方財政移転 → 主要経費98・目的別107〜110=予備費 → 使途別分類1/2=人件費・旅費 → それ以外=未突合 の順で区分する',
         '「他会計へ繰入」は会計間の重複。純計 = 会計列合計 − 繰入',

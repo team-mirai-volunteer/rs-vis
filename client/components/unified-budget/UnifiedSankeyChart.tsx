@@ -74,6 +74,8 @@ export function UnifiedSankeyChart({
   fontPx = LABEL_FONT_PX_DEFAULT,
   labelDensity = 'all',
   budgetYear,
+  basisMeasureLabel,
+  rsMeasureLabel,
   rsSheetYear,
   rsAmountKind,
   bottomLeftExtra,
@@ -94,6 +96,10 @@ export function UnifiedSankeyChart({
   fontPx?: number;
   labelDensity?: LabelDensity;
   budgetYear: number;
+  /** 列見出しに添える基準名（当初予算 / 補正後（改予算額） / 支出済額）。無ければ当初予算 */
+  basisMeasureLabel?: string;
+  /** 列見出しに添える RS事業側の測定量（当初予算 / 当初＋補正 / 執行額）。無ければ年度種別から推定 */
+  rsMeasureLabel?: string;
   rsSheetYear: number;
   rsAmountKind: MofRsAmountKind;
   /** 左下・ミニマップの右隣に置くもの（表示設定の歯車） */
@@ -322,12 +328,12 @@ export function UnifiedSankeyChart({
   const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
     const base = UNIFIED_COLUMN_LABELS[column];
     if (column === 'program') {
-      const measure = rsAmountKind === 'request' ? '翌年度要求額' : isExecutionYear ? '歳出予算現額' : '当初予算';
+      const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
       return { label: `${base}_${budgetYear}`, measure };
     }
     if (column === 'program-spending') return { label: `${base}_${budgetYear}`, measure: '支出額' };
     if (column === 'recipient') return { label: `${base}_${budgetYear}`, measure: '支出額' };
-    return { label: `${base}_${budgetYear}`, measure: '当初予算' };
+    return { label: `${base}_${budgetYear}`, measure: basisMeasureLabel ?? '当初予算' };
   };
 
   return (

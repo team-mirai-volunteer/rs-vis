@@ -138,9 +138,63 @@ export interface UnifiedEdge {
   estimated?: boolean;
 }
 
+/**
+ * 予算の基準（当初・補正・決算）。統合グラフは基準ごとに別ファイルとして生成する
+ * （unified-budget-{年度}-{basis}-graph.json）。
+ * - initial: MOF 当初予算の目額 / RS事業は当初予算
+ * - supplementary: MOF 補正予算（第1号）の目額（改予算額。補正予算書に載る目のみ）/ RS事業は当初+補正
+ * - settlement: MOF 決算の支出済歳出額 / RS事業は執行額
+ * 目の識別子が予算種別間で完全には一致しない（補正は「…外N目」に束ねられる）ため、基準をまたいだ合成はしない
+ */
+export type UnifiedBasis = 'initial' | 'supplementary' | 'settlement';
+
+export const UNIFIED_BASES: readonly UnifiedBasis[] = ['initial', 'supplementary', 'settlement'];
+
+export const UNIFIED_BASIS_LABELS: Record<UnifiedBasis, string> = {
+  initial: '当初予算',
+  supplementary: '補正予算',
+  settlement: '決算',
+};
+
+/** 列見出しに添える MOF 側の測定量 */
+export const UNIFIED_BASIS_MOF_MEASURE: Record<UnifiedBasis, string> = {
+  initial: '当初予算',
+  supplementary: '補正後（改予算額）',
+  settlement: '支出済額',
+};
+
+/** 列見出しに添える RS事業側の測定量（執行年度） */
+export const UNIFIED_BASIS_RS_MEASURE: Record<UnifiedBasis, string> = {
+  initial: '当初予算',
+  supplementary: '当初＋補正',
+  settlement: '執行額',
+};
+
+/** 基準 → MOF 予算種別 */
+export const UNIFIED_BASIS_MOF_BUDGET_TYPE: Record<UnifiedBasis, MOFBudgetType> = {
+  initial: '当初予算',
+  supplementary: '補正予算（第1号）',
+  settlement: '決算',
+};
+
+/** 年度ごとに生成済みの基準。決算は年度終了後、補正は補正予算成立後に増える */
+export const UNIFIED_BASES_BY_YEAR: Record<number, readonly UnifiedBasis[]> = {
+  2024: ['initial', 'supplementary', 'settlement'],
+  2025: ['initial', 'supplementary'],
+  2026: ['initial'],
+};
+
+export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) => `unified-budget-${budgetYear}-${basis}-graph.json`;
+
 export interface UnifiedGraphMetadata {
   /** 予算年度（MOF会計年度） */
   budgetYear: number;
+  /** 予算の基準（当初・補正・決算）。旧ファイルには無い */
+  basis?: UnifiedBasis;
+  /** 基準の表示名（当初予算 / 補正予算 / 決算） */
+  basisLabel?: string;
+  /** RS事業ノードの測定量の表示名（執行年度のみ。当初予算 / 当初＋補正 / 執行額） */
+  rsMeasureLabel?: string;
   /** 正としたRSシート年度 */
   rsSheetYear: number;
   /** 事業(支出)・支出先の列があるか（執行年度 = シート年度-1 のみ） */
