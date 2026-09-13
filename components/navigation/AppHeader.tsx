@@ -40,7 +40,7 @@ export function AppHeader({
     >
       <div className="pointer-events-auto flex h-12 items-center gap-3 rounded-2xl border border-mirai-border bg-card px-4 shadow-xs">
         <Link href="/" className="flex shrink-0 items-center gap-3 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
-          <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} priority />
+          <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} className="h-[17px] w-auto" priority />
           <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text sm:inline">{PRODUCT_NAME}</span>
         </Link>
 

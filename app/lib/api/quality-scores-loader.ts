@@ -3,8 +3,9 @@
  * /api/quality-scores（全件・pids絞り込み）、/api/quality-scores/[pid]、/api/search/projects が共用する。
  * 型・読み込みロジックの正典はこのファイル（route.ts 側に重複定義を置かないこと）。
  */
-import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { readDataJson, tryReadDataJson } from '@/app/lib/api/data-file';
+import { isRequestYear, qualitySourceYear, type QualityYear } from './quality-year';
+import type { GraphData } from '@/types/sankey-svg';
 
 export interface QualityScoreItem {
   pid: string;
@@ -134,9 +135,9 @@ type DetailPeriod = { startYear?: number | null; endYear?: number | null; noEndD
  * 開始年度は事業詳細（rs<year>-project-details.json）にしか無く、品質スコア側には入っていない。
  * 「何年続いているか」は見直しの判断材料になるので、一覧で並べ替えできるようにする。
  */
-function attachDuration(items: QualityScoreItem[], year: SupportedYear): void {
+function attachDuration(items: QualityScoreItem[], year: QualityYear): void {
   // 詳細が無い年度は継続年数を出さないだけで、一覧自体は表示する
-  const details = tryReadDataJson<Record<string, DetailPeriod>>(`rs${year}-project-details.json`);
+  const details = tryReadDataJson<Record<string, DetailPeriod>>(`rs${qualitySourceYear(year)}-project-details.json`);
   if (!details) return;
 
   const target = Number(year);
@@ -150,13 +151,35 @@ function attachDuration(items: QualityScoreItem[], year: SupportedYear): void {
   }
 }
 
-export function loadQualityScores(year: SupportedYear): QualityScoresResponse {
+/**
+ * 翌年度要求額 pid → 円。要求ベースの仮想年度（2026）の予算額に使う。
+ * 出典は sankey-svg-{シート年度}-graph.json の事業ノード budgetSummary.nextYearRequest（RS 2-1）
+ */
+function loadNextYearRequests(sheetYear: string): Map<string, number> {
+  const graph = tryReadDataJson<GraphData>(`sankey-svg-${sheetYear}-graph.json`);
+  const map = new Map<string, number>();
+  if (!graph) return map;
+  for (const n of graph.nodes) {
+    if (n.type !== 'project-budget' || n.projectId === undefined || !n.budgetSummary) continue;
+    map.set(String(n.projectId), n.budgetSummary.nextYearRequest);
+  }
+  return map;
+}
+
+export function loadQualityScores(year: QualityYear): QualityScoresResponse {
   if (cache.has(year)) return cache.get(year)!;
 
-  const items = readDataJson<QualityScoreItem[]>(
-    `project-quality-scores-${year}.json`,
-    `python3 scripts/score-project-quality-ai.py --year ${year} を実行してください。`
+  const sourceYear = qualitySourceYear(year);
+  let items = readDataJson<QualityScoreItem[]>(
+    `project-quality-scores-${sourceYear}.json`,
+    `python3 scripts/score-project-quality-ai.py --year ${sourceYear} を実行してください。`
   );
+  if (isRequestYear(year)) {
+    // 要求ベースの仮想年度: 採点はシート年度のまま、予算額だけ翌年度要求額に置き換える。
+    // 執行額は存在しないので null（執行率・不用の判定は「判定不能」になる）
+    const requests = loadNextYearRequests(sourceYear);
+    items = items.map(i => ({ ...i, budgetAmount: requests.get(i.pid) ?? 0, execAmount: null }));
+  }
   attachDuration(items, year);
 
   const ministries = [...new Set(items.map(i => i.ministry))].sort();
@@ -208,7 +231,7 @@ export function loadQualityScores(year: SupportedYear): QualityScoresResponse {
 }
 
 /** pid → item の O(1) 取得（全件キャッシュと索引を共有。見つからなければ undefined） */
-export function getQualityScore(year: SupportedYear, pid: string): QualityScoreItem | undefined {
+export function getQualityScore(year: QualityYear, pid: string): QualityScoreItem | undefined {
   let index = pidIndexCache.get(year);
   if (!index) {
     index = new Map(loadQualityScores(year).items.map(i => [i.pid, i]));

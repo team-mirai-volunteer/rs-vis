@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import {
-  buildPolicyEvaluations,
   POLICY_CATEGORY_LABELS,
   RECOMMENDATION_ORDER,
   IMPROVEMENT_ACTION_ORDER,
   type PolicyEvaluation,
-  type PolicyQualityInput,
 } from '@/app/lib/policy-evaluation';
-import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
-import { readDataJson, tryReadDataJson } from '@/app/lib/api/data-file';
+import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
+import { parseQualityYear, QUALITY_YEAR_ERROR, type QualityYear } from '@/app/lib/api/quality-year';
 
 /**
  * Sankey 図に重ねるための、事業ごとの政策評価サマリ。
@@ -60,14 +59,6 @@ export interface PolicySummaryResponse {
 
 const cache = new Map<string, PolicySummaryResponse>();
 
-// Vercel の関数バンドルに public/data は同梱されない（data/server の .gz だけ）。
-// パス解決は data-file.ts に一元化する（直に public/data を読むと本番で必ず落ちる）。
-function loadQuality(year: string): PolicyQualityInput[] {
-  return readDataJson<PolicyQualityInput[]>(
-    `project-quality-scores-${year}.json`,
-    `python3 scripts/score-project-quality-ai.py --year ${year} を実行してください。`,
-  );
-}
 
 function invert(order: Record<string, number>): Record<number, string> {
   const out: Record<number, string> = {};
@@ -75,49 +66,15 @@ function invert(order: Record<string, number>): Record<number, string> {
   return out;
 }
 
-/**
- * 前年度の執行率 pid→rate。縮小判定で「単年度の不用」と「2年連続の構造的な計上過大」を
- * 区別するために要る。`/quality` はこれを `/api/execution-history` から取って
- * クライアント側で突き合わせているので、ここでも同じ導出をしないと
- * 同じ事業で Sankey と一覧の推奨判断が食い違う（Sankey 側だけ「縮小」が出なくなる）。
- */
-function loadPriorExecutionRates(year: string): Record<string, number> {
-  const rates: Record<string, number> = {};
-  let prior: PolicyQualityInput[];
-  try {
-    prior = loadQuality(String(Number(year) - 1));
-  } catch {
-    return rates;   // 前年度データが無い年度は「判定不能」のままにする
-  }
-  for (const row of prior) {
-    // 執行実績が無い事業（予備的経費・未着手）は「全額不用」ではなく判定対象外
-    if (!(row.budgetAmount > 0 && row.execAmount > 0)) continue;
-    rates[row.pid] = Math.round((row.execAmount / row.budgetAmount) * 1000) / 1000;
-  }
-  return rates;
-}
 
 /**
  * 全事業の政策評価。母集団のパーセンタイル・分位点から閾値を決めるため、
  * 1事業だけを切り出して計算することはできない（必ず全件を通す）。
  * 年度ごとに1回だけ組み立ててキャッシュし、サマリと pid 単体の両方で使い回す。
  */
-const evalCache = new Map<string, Map<string, PolicyEvaluation>>();
+const buildEvaluations = (year: QualityYear) => loadPolicyEvaluations(year);
 
-function buildEvaluations(year: string): Map<string, PolicyEvaluation> {
-  const cached = evalCache.get(year);
-  if (cached) return cached;
-
-  const rates = loadPriorExecutionRates(year);
-  const rows = buildPolicyEvaluations(
-    loadQuality(year).map((i) => ({ ...i, priorExecutionRate: rates[i.pid] ?? null })),
-  );
-  const index = new Map(rows.map((row) => [row.pid, row]));
-  evalCache.set(year, index);
-  return index;
-}
-
-function build(year: string): PolicySummaryResponse {
+function build(year: QualityYear): PolicySummaryResponse {
   const cached = cache.get(year);
   if (cached) return cached;
 
@@ -151,9 +108,9 @@ function build(year: string): PolicySummaryResponse {
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const year = parseYear(url.searchParams.get('year'));
+    const year = parseQualityYear(url.searchParams.get('year'));
     if (year === null) {
-      return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
+      return NextResponse.json({ error: QUALITY_YEAR_ERROR }, { status: 400 });
     }
     // pid 指定は「サイドパネル等から1事業だけ引きたい」用途。サマリの圧縮形では
     // 判定理由（recommendationReason・findings）まで返せないため、完全な

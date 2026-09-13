@@ -4,7 +4,8 @@ import {
   getQualityScore,
   toQualityScoreProjection,
 } from '@/app/lib/api/quality-scores-loader';
-import { parseYear, buildMetadata, QUALITY_SCORE_NOTES, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { buildMetadata, QUALITY_SCORE_NOTES, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { parseQualityYear, QUALITY_YEAR_ERROR, qualitySourceYear } from '@/app/lib/api/quality-year';
 import { projectLinks } from '@/app/lib/api/links';
 
 // 型の正典は app/lib/api/quality-scores-loader.ts（/quality ページ等はそちらを import する）
@@ -16,9 +17,9 @@ const MAX_PIDS = 300;
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const year = parseYear(url.searchParams.get('year'));
+    const year = parseQualityYear(url.searchParams.get('year'));
     if (year === null) {
-      return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
+      return NextResponse.json({ error: QUALITY_YEAR_ERROR }, { status: 400 });
     }
 
     // pids=1,2,3 指定時: 該当事業のみの軽量プロジェクションを返す（エージェント探索用・数KB）
@@ -36,14 +37,14 @@ export async function GET(req: Request) {
         .filter((i): i is NonNullable<typeof i> => i != null);
       const foundPids = new Set(found.map(i => i.pid));
       const body = {
-        metadata: buildMetadata(year, {
+        metadata: buildMetadata(qualitySourceYear(year), {
           requestedPids: pids.length,
           foundPids: found.length,
           missingPids: pids.filter(p => !foundPids.has(p)),
         }, QUALITY_SCORE_NOTES),
         items: found.map(i => ({
           ...toQualityScoreProjection(i),
-          links: projectLinks(i.pid, year),
+          links: projectLinks(i.pid, qualitySourceYear(year)),
         })),
       };
       return NextResponse.json(body, { headers: { 'Cache-Control': API_CACHE_CONTROL } });

@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
+import type { QualityYear } from '@/app/lib/api/quality-year';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
 import type { ProjectDetail } from '@/types/project-details';
@@ -164,11 +166,27 @@ export default function QualityPage() {
   // ?year= を初期年度に反映する。サンキー図・再委託ビューの「一覧で見る →」や
   // /api/quality-scores/[pid] が返す qualityWeb が year 付きで来るため、
   // 読まないと 2024 を見ていたのに 2025 の一覧が開いてしまう。
-  const [year, setYear] = useState<'2024' | '2025'>(() => {
+  const [year, setYear] = useState<QualityYear>(() => {
     if (typeof window === 'undefined') return '2025';
     const y = new URLSearchParams(window.location.search).get('year');
-    return y === '2024' || y === '2025' ? y : '2025';
+    return y === '2024' || y === '2025' || y === '2026' ? y : '2025';
   });
+  /** 表示単位。'project' = 事業ごと（既定）、'section' = 予算書の項ごと（配下事業の金額加重平均） */
+  const [mode, setMode] = useState<'project' | 'section'>(() => {
+    if (typeof window === 'undefined') return 'project';
+    return new URLSearchParams(window.location.search).get('mode') === 'section' ? 'section' : 'project';
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (mode === 'section') params.set('mode', 'section');
+    else params.delete('mode');
+    params.set('year', year);
+    const next = `?${params.toString()}`;
+    if (next !== window.location.search) window.history.replaceState(null, '', next);
+  }, [mode, year]);
+  /** 2026 は要求ベースの仮想年度（採点はシート 2025、予算額は翌年度要求額）。執行系 API はシート年度で叩く */
+  const sourceYear = year === '2026' ? '2025' : year;
+  const isRequestYear = year === '2026';
   const [data, setData] = useState<QualityScoresResponse | null>(null);
   const [history, setHistory] = useState<ExecutionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -225,11 +243,11 @@ export default function QualityPage() {
   // 前年度の執行率（pid → 執行率 のみ）。縮小判定で単年度の不用と2年連続の不用を区別するために使う
   useEffect(() => {
     setHistory(null);
-    fetch(`/api/execution-history?year=${year}`)
+    fetch(`/api/execution-history?year=${sourceYear}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then((json: ExecutionHistoryResponse) => setHistory(json))
       .catch(() => setHistory(null));
-  }, [year]);
+  }, [sourceYear]);
 
   /**
    * 全事業の政策評価。AI が全事業に付与した4観点と品質スコアの支出先系軸を統合する。
@@ -416,15 +434,44 @@ export default function QualityPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <AppHeader current="/quality">
-        <YearSelect value={year} onChange={y => setYear(y as '2024' | '2025')} years={[2025, 2024]} />
+        {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
+        <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
+          {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (
+            <Button
+              key={m}
+              variant="ghost"
+              size="sm"
+              aria-pressed={mode === m}
+              onClick={() => setMode(m)}
+              className={cn('h-[34px] rounded-none px-3 text-xs', mode === m ? 'bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'text-mirai-text-subtle')}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        <YearSelect value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
       </AppHeader>
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={() => setDialogItem(null)} year={year} />}
+      {mode === 'section' && (
+        <>
+          <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
+            <h1 className="text-lg font-bold text-mirai-text">項別 政策評価（配下 RS事業の金額加重平均）</h1>
+            <p className="mt-1 text-sm text-mirai-text-muted">
+              予算書の「項」ごとに、紐づく RS事業の 6 軸を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名から統合ビューでその項を開けます。
+              {isRequestYear && ' 2026 年度は要求ベース（採点はシート 2025）です。'}
+            </p>
+          </div>
+          <SectionScoreTable year={year} />
+        </>
+      )}
+      {mode === 'project' && (<>
       {/* Header */}
       <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
         <div>
           <div className="mb-1">
             <h1 className="min-w-0 text-lg font-bold text-mirai-text">
               事業別 政策評価・執行透明性スコア
+              {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">2026年度は要求ベース（採点はシート2025・予算額は翌年度要求額・執行額なし）</span>}
             </h1>
           </div>
           <p className="text-sm text-mirai-text-muted mt-1">
@@ -802,7 +849,7 @@ ${a.desc}`}
                   継続年数<SortIcon field="yearsRunning" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.予算額} onClick={() => handleSort('budgetAmount')}>
-                  予算額<SortIcon field="budgetAmount" />
+                  {isRequestYear ? '予算額（要求）' : '予算額'}<SortIcon field="budgetAmount" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.執行額} onClick={() => handleSort('execAmount')}>
                   執行額<SortIcon field="execAmount" />
@@ -1047,6 +1094,7 @@ ${a.desc}`}
         )}
         </div>
       </div>
+      </>)}
     </div>
   );
 }
