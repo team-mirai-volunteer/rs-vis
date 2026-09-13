@@ -2,16 +2,22 @@
 
 import { useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 
 const TOP_MIN = 1;
 const TOP_MAX = 300;
 
-// [delta, SVGパス, ラベル]
-const ARROW_PATHS: [number, string, string][] = [
-  [1, 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '増やす'],
-  [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '減らす'],
+// [delta, アイコン, ラベル]
+const ARROWS: [number, typeof ChevronUp, string][] = [
+  [1, ChevronUp, '増やす'],
+  [-1, ChevronDown, '減らす'],
 ];
+
+/** 上下矢印（長押し対応）の共通クラス。縦2段で並べるため高さは親に合わせる */
+const STEP_BUTTON_CLASS =
+  'h-auto w-4 flex-1 select-none touch-none rounded-none p-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text';
 
 export interface TopNSliderRowProps {
   label: string;
@@ -47,7 +53,7 @@ export function TopNSliderRow({
   const commit = (v: number) => { markReplace(); setValue(clamp(v)); };
   return (
     <label style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-      <span style={{ color: '#555', fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
+      <span className="text-mirai-text-subtle" style={{ fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
       <input
         type="range" min={TOP_MIN} max={max} step={1}
         aria-label={inputLabel}
@@ -59,6 +65,7 @@ export function TopNSliderRow({
         onTouchEnd={e => { commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
         onKeyUp={e => { commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
         onBlur={e => { if (local === null) return; commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
+        className="accent-primary"
         style={{ flex: 1, minWidth: 0, width: 0 }}
       />
       {isEditing ? (
@@ -68,25 +75,28 @@ export function TopNSliderRow({
           onChange={e => setInputValue(e.target.value)}
           onBlur={() => { const v = Number(inputValue); if (!isNaN(v) && v >= 1) commit(v); setIsEditing(false); }}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
-          style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: metaFontPx }}
+          className="rounded-md border border-mirai-border bg-card text-center text-mirai-text focus-visible:border-primary"
+          style={{ width: 36, fontSize: metaFontPx }}
         />
       ) : (
-        <button onClick={() => { setInputValue(String(value)); setIsEditing(true); }} title="クリックして直接入力"
+        <Button variant="ghost" onClick={() => { setInputValue(String(value)); setIsEditing(true); }} title="クリックして直接入力"
           aria-label={inputLabel ? `${inputLabel}を直接入力` : undefined}
-          style={{ color: '#999', fontSize: metaFontPx, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-        >{local ?? value}</button>
+          className="h-auto min-w-5 cursor-text rounded-none p-0 text-right font-normal tabular-nums text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+          style={{ fontSize: metaFontPx }}
+        >{local ?? value}</Button>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-        {ARROW_PATHS.map(([delta, path, title]) => {
+        {ARROWS.map(([delta, Icon, title]) => {
           const step = () => { markReplace(); setValue(prev => clamp(prev + delta)); };
           return (
-            <button key={delta} title={title} aria-label={inputLabel ? `${inputLabel}を${title}` : title}
+            <Button key={delta} variant="ghost" title={title} aria-label={inputLabel ? `${inputLabel}を${title}` : title}
               {...repeat(step)}
               onClick={(e) => { if (e.detail === 0) step(); }}
-              style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+              className={STEP_BUTTON_CLASS}
+              style={{ WebkitTouchCallout: 'none' }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
-            </button>
+              <Icon className="size-3" aria-hidden="true" />
+            </Button>
           );
         })}
       </div>

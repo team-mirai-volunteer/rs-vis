@@ -204,7 +204,7 @@ export function SankeyChart({
       </svg>
 
       {/* 凡例。実際に図に出ている区分だけを並べる */}
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-mirai-text-subtle">
         {legendKeys.map(key => (
           <span key={key} className="inline-flex items-center gap-1.5">
             <span
@@ -218,27 +218,27 @@ export function SankeyChart({
 
       {hovered && pointer && (
         <div
-          className="pointer-events-none fixed z-50 max-w-sm rounded border border-gray-200 bg-white px-3 py-2 shadow-lg"
+          className="pointer-events-none fixed z-50 max-w-sm rounded-xl border border-mirai-border bg-card px-3 py-2 shadow-soft"
           style={{ left: pointer.x + 12, top: pointer.y + 12 }}
         >
-          <div className="font-semibold text-gray-900">{hovered.name}</div>
-          <div className="text-lg font-bold text-gray-800">
+          <div className="font-semibold text-mirai-text">{hovered.name}</div>
+          <div className="text-lg font-bold text-mirai-text">
             {formatBudgetFromYen(hovered.value)}
           </div>
           {hovered.details?.isDeduction && (
-            <div className="mt-1 text-xs font-semibold text-red-600">
+            <div className="mt-1 text-xs font-semibold text-destructive">
               純計では控除する（二重計上になる分）
             </div>
           )}
           {hovered.details?.description && (
-            <div className="mt-1 text-xs text-gray-600">{hovered.details.description}</div>
+            <div className="mt-1 text-xs text-mirai-text-subtle">{hovered.details.description}</div>
           )}
           {hovered.details?.breakdown && hovered.details.breakdown.length > 0 && (
-            <div className="mt-2 border-t border-gray-100 pt-1">
+            <div className="mt-2 border-t border-border pt-1">
               {hovered.details.breakdown.slice(0, 6).map(item => (
                 <div
                   key={item.name}
-                  className="flex justify-between gap-3 text-xs text-gray-700"
+                  className="flex justify-between gap-3 text-xs text-mirai-text-secondary"
                 >
                   <span className="truncate">{item.name}</span>
                   <span className="shrink-0 tabular-nums">
@@ -247,7 +247,7 @@ export function SankeyChart({
                 </div>
               ))}
               {hovered.details.breakdown.length > 6 && (
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-mirai-text-muted">
                   ほか {hovered.details.breakdown.length - 6} 件
                 </div>
               )}

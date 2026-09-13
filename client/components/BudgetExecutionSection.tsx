@@ -1,4 +1,6 @@
 import type { CSSProperties } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { BudgetSummary, BudgetBreakdownItem } from '@/types/sankey-svg';
 import { formatYen } from '@/app/lib/sankey-svg-constants';
 import { getAccountBadgeStyle, classifyAccountCategory } from '@/app/lib/account-badge';
@@ -9,6 +11,10 @@ import { getAccountBadgeStyle, classifyAccountCategory } from '@/app/lib/account
  *
  * ドラッグでの高さ変更はページ側の状態を props で受ける（onResizeStart を渡すと有効）。
  * 渡さない場合は listHeight 固定でスクロールする。
+ *
+ * 色・角丸はチームみらいデザインシステムのトークン（Tailwind クラス）。会計区分バッジの色
+ * （一般=赤 / 特別=青）は可視化のエンコーディングなので account-badge.ts の値をそのまま使う。
+ * フォントサイズはページ側のフォントスケール（scaleFont）に従うため inline style で渡す。
  */
 export function BudgetExecutionSection({
   budgetSummary,
@@ -39,6 +45,7 @@ export function BudgetExecutionSection({
   const PANEL_META_PX = scaleFont(13);
   const PANEL_PRIMARY_VALUE_PX = scaleFont(15);
   const PANEL_LIST_VALUE_PX = scaleFont(12);
+  const Chevron = expanded ? ChevronDown : ChevronRight;
 
   const renderText = (value: string) => value.trim() || '-';
   const summaryAccountItems = (summary?.accountSummaries ?? []).filter(item => item.totalBudget > 0);
@@ -56,8 +63,12 @@ export function BudgetExecutionSection({
   const renderAccountBadge = (value: string) => {
     const badge = getAccountBadgeStyle(classifyAccountCategory(value));
     if (!badge) return null;
+    // 会計区分の色は意味色（可視化エンコーディング）なので account-badge.ts の値を使う
     return (
-      <span style={{ background: badge.background, color: '#fff', padding: '1px 6px', borderRadius: 8, fontSize: Math.max(9, META_PX - 1), fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap' }}>
+      <span
+        className="whitespace-nowrap rounded-lg px-1.5 py-px font-bold leading-[1.4] text-white"
+        style={{ background: badge.background, fontSize: Math.max(9, META_PX - 1) }}
+      >
         {badge.label}
       </span>
     );
@@ -66,75 +77,80 @@ export function BudgetExecutionSection({
     .map(label => ({ label, amount: accountTotals.get(label) ?? 0 }))
     .filter(item => item.amount > 0);
   const totalBreakdownAmount = breakdown.reduce((s, item) => s + item.amount, 0);
-  const cardStyle: CSSProperties = { border: '1px solid #e8edf3', borderRadius: 6, background: '#fff', padding: '8px 9px' };
-  const cardHeaderStyle: CSSProperties = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, marginBottom: 6 };
-  const cardTitleStyle: CSSProperties = { minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', color: '#333', fontSize: PANEL_META_PX, fontWeight: 600 };
-  const miniLabelStyle: CSSProperties = { fontSize: META_PX, color: '#999', marginRight: 3 };
-  const metaGridStyle: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '5px 10px', fontSize: META_PX, lineHeight: 1.45 };
+  const metaGridStyle: CSSProperties = { fontSize: META_PX };
   const renderMeta = (label: string, value: string) => (
-    <div style={{ minWidth: 0 }}>
-      <span style={miniLabelStyle}>{label}</span>
-      <span style={{ color: '#555', wordBreak: 'break-all' }}>{renderText(value)}</span>
+    <div className="min-w-0">
+      <span className="mr-[3px] text-mirai-text-muted" style={{ fontSize: META_PX }}>{label}</span>
+      <span className="break-all text-mirai-text-subtle">{renderText(value)}</span>
     </div>
   );
 
   return (
-    <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '2px 14px 1px', gap: 4 }}>
-        <button type="button" onClick={onToggleExpanded}
-          style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+    <div className="shrink-0 border-b border-border">
+      <div className="flex items-center gap-1 px-3.5 pb-px pt-0.5">
+        <Button
+          variant="ghost"
+          onClick={onToggleExpanded}
+          aria-expanded={expanded}
+          className="h-auto flex-1 justify-start gap-[5px] rounded-md p-0 text-left font-bold text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text"
         >
-          <span style={{ fontSize: META_PX, color: '#888' }}>{expanded ? '▼' : '▶'}</span>
-          <span style={{ fontSize: PANEL_META_PX, fontWeight: 600, color: '#555' }}>予算・執行</span>
+          <Chevron aria-hidden="true" className="shrink-0 text-mirai-text-muted" style={{ width: META_PX, height: META_PX }} />
+          <span style={{ fontSize: PANEL_META_PX }}>予算・執行</span>
           {breakdown.length > 0 && (
-            <span style={{ fontSize: META_PX, color: '#999', fontWeight: 500 }}>{breakdown.length.toLocaleString()}件</span>
+            <span className="font-medium text-mirai-text-muted" style={{ fontSize: META_PX }}>{breakdown.length.toLocaleString()}件</span>
           )}
-        </button>
+        </Button>
       </div>
       {accountBadges.length > 0 && (
-        <div style={{ padding: '0 14px 2px', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 12, rowGap: 4, minWidth: 0 }}>
+        <div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 px-3.5 pb-0.5">
           {accountBadges.map(item => (
-            <div key={item.label} style={{ flex: `1 1 ${scaleFont(112)}px`, minWidth: 0 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 1, minWidth: 0 }}>
+            <div key={item.label} className="min-w-0" style={{ flex: `1 1 ${scaleFont(112)}px` }}>
+              <span className="mb-px flex min-w-0 items-center gap-[5px]">
                 {renderAccountBadge(item.label)}
-                <span style={{ display: 'block', fontSize: PANEL_PRIMARY_VALUE_PX, fontWeight: 600, color: '#222', whiteSpace: 'nowrap' }}>{formatYen(item.amount)}</span>
+                <span className="block whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_PRIMARY_VALUE_PX }}>{formatYen(item.amount)}</span>
               </span>
-              <span style={{ display: 'block', fontSize: META_PX, color: '#999', marginTop: 1, whiteSpace: 'nowrap' }}>{Math.round(item.amount).toLocaleString()}円</span>
+              <span className="mt-px block whitespace-nowrap text-mirai-text-muted" style={{ fontSize: META_PX }}>{Math.round(item.amount).toLocaleString()}円</span>
             </div>
           ))}
         </div>
       )}
       {expanded && (
-        <div style={{ padding: '0 14px 10px', fontSize: PANEL_META_PX, color: '#444' }}>
+        <div className="px-3.5 pb-2.5 text-mirai-text-secondary" style={{ fontSize: PANEL_META_PX }}>
           {breakdown.length > 0 && summary && totalBreakdownAmount !== summary.totalBudget && (
-            <div style={{ color: '#b26a00', background: '#fff8e1', border: '1px solid #ffe0a3', borderRadius: 6, padding: 6, marginBottom: 8, lineHeight: 1.45 }}>
+            <div className="mb-2 rounded-md border border-mirai-border bg-mirai-badge-yellow p-1.5 leading-[1.45] text-mirai-text-secondary">
               2-1合計と2-2内訳合計に差があります: {formatYen((summary?.totalBudget ?? 0) - totalBreakdownAmount)}
             </div>
           )}
           {breakdown.length === 0 ? (
-            <p style={{ color: '#aaa', margin: 0 }}>歳出項目内訳がありません</p>
+            <p className="m-0 text-mirai-text-placeholder">歳出項目内訳がありません</p>
           ) : (
             <>
-              <div style={{ display: 'grid', gap: 7, ...(breakdown.length > 1 ? { maxHeight: listHeight, overflowY: 'auto' as const } : { overflowY: 'visible' as const }), paddingRight: 2 }}>
+              <div
+                className="grid gap-[7px] pr-0.5"
+                style={breakdown.length > 1 ? { maxHeight: listHeight, overflowY: 'auto' } : { overflowY: 'visible' }}
+              >
                 {breakdown.map((item, index) => (
-                  <div key={`${item.accountCategory}-${item.account}-${item.subAccount}-${item.budgetType}-${item.item}-${item.subItem}-${index}`} style={cardStyle}>
-                    <div style={cardHeaderStyle}>
-                      <div style={cardTitleStyle}>
+                  <div
+                    key={`${item.accountCategory}-${item.account}-${item.subAccount}-${item.budgetType}-${item.item}-${item.subItem}-${index}`}
+                    className="rounded-xl border border-border bg-card px-[9px] py-2"
+                  >
+                    <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                      <div className="flex min-w-0 flex-wrap items-baseline gap-1.5 font-bold text-mirai-text-secondary" style={{ fontSize: PANEL_META_PX }}>
                         {renderAccountBadge(item.accountCategory)}
-                        <span style={{ color: '#999', fontWeight: 500 }}>{renderText(item.budgetType)}</span>
+                        <span className="font-medium text-mirai-text-muted">{renderText(item.budgetType)}</span>
                       </div>
-                      <div style={{ color: '#222', fontWeight: 700, whiteSpace: 'nowrap', fontSize: PANEL_LIST_VALUE_PX }}>{formatYen(item.amount)}</div>
+                      <div className="whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_LIST_VALUE_PX }}>{formatYen(item.amount)}</div>
                     </div>
-                    <div style={metaGridStyle}>
+                    <div className="grid grid-cols-2 gap-x-2.5 gap-y-[5px] leading-[1.45]" style={metaGridStyle}>
                       {renderMeta('会計', item.account)}
                       {renderMeta('勘定', item.subAccount)}
                       {renderMeta('項', item.item)}
                       {renderMeta('目', item.subItem)}
                     </div>
                     {item.note.trim() && (
-                      <div style={{ marginTop: 5, fontSize: META_PX, lineHeight: 1.45 }}>
-                        <span style={miniLabelStyle}>補足</span>
-                        <span style={{ color: '#555', wordBreak: 'break-all' }}>{item.note}</span>
+                      <div className="mt-[5px] leading-[1.45]" style={{ fontSize: META_PX }}>
+                        <span className="mr-[3px] text-mirai-text-muted">補足</span>
+                        <span className="break-all text-mirai-text-subtle">{item.note}</span>
                       </div>
                     )}
                   </div>
@@ -148,10 +164,10 @@ export function BudgetExecutionSection({
                   title="ドラッグで高さを変更"
                   onMouseDown={onResizeStart}
                   onDoubleClick={onResizeReset}
-                  style={{ height: 10, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', userSelect: 'none' }}
+                  className="flex h-2.5 cursor-ns-resize select-none items-center justify-center"
                   data-pan-disabled
                 >
-                  <div style={{ width: 32, height: 3, borderRadius: 2, background: '#d0d0d0' }} />
+                  <div className="h-[3px] w-8 rounded-full bg-mirai-border" />
                 </div>
               )}
             </>

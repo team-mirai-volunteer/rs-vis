@@ -135,22 +135,27 @@ export type SortField = 'totalScore' | 'axisIdentify' | 'axisPurpose' | 'axisBud
   | 'yearsRunning' | PolicyMetric | 'recommendation' | 'improvementAction';
 export type SortDir = 'asc' | 'desc';
 
-/** 推奨判断バッジの配色（/quality のライト/ダーク両対応トーンに合わせる） */
+/**
+ * 推奨判断バッジの配色。判断の強さを示す意味色（データのエンコーディング）なので
+ * green / amber / red は Tailwind 標準色のまま。blue トーンだけはデザインシステムの
+ * プライマリ（ティール）に寄せ、UI chrome の青と競合しないようにしている。
+ */
 export const TONE_CLS: Record<PolicyRecommendationTone, string> = {
-  green: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  blue:  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  amber: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-  red:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  green: 'bg-green-100 text-green-800',
+  blue:  'bg-primary/10 text-primary-accent',
+  amber: 'bg-amber-100 text-amber-800',
+  red:   'bg-red-100 text-red-800',
 };
 
-export const ACTION_CLS = 'bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200';
+/** 改善アクションは1系統しかないため色で区別せず、薄ティールの情報バッジで出す */
+export const ACTION_CLS = 'bg-mirai-surface-teal text-primary-accent';
 
 /** 不用の傾向の表示文言。前年度と突き合わせた結果を明示する */
 export const UNUSED_TREND_META: Record<PolicyEvaluation['unusedTrend'], { label: string; cls: string }> = {
-  persistent: { label: '2年連続で不用率が上位帯（構造的な計上過大）', cls: 'text-orange-600 dark:text-orange-400' },
-  single:     { label: '当年度のみ不用が大きい（前年度は正常水準）',   cls: 'text-amber-600 dark:text-amber-400' },
-  unknown:    { label: '当年度の不用は大きいが前年度実績が無く判定不能', cls: 'text-gray-500 dark:text-gray-400' },
-  normal:     { label: '不用率は上位帯に達していない',               cls: 'text-gray-400' },
+  persistent: { label: '2年連続で不用率が上位帯（構造的な計上過大）', cls: 'text-orange-600' },
+  single:     { label: '当年度のみ不用が大きい（前年度は正常水準）',   cls: 'text-amber-600' },
+  unknown:    { label: '当年度の不用は大きいが前年度実績が無く判定不能', cls: 'text-mirai-text-muted' },
+  normal:     { label: '不用率は上位帯に達していない',               cls: 'text-mirai-text-muted' },
 };
 
 /**
@@ -197,10 +202,10 @@ export const IMPROVEMENT_ACTION_LABELS = Object.keys(IMPROVEMENT_ACTION_ORDER);
 
 export function RecommendationBadge({ policy }: { policy: PolicyEvaluation }) {
   if (!policy.recommendation || !policy.recommendationTone) {
-    return <span className="text-gray-300 dark:text-gray-600">—</span>;
+    return <span className="text-mirai-text-placeholder">—</span>;
   }
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${TONE_CLS[policy.recommendationTone]}`}>
+    <span className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap ${TONE_CLS[policy.recommendationTone]}`}>
       {policy.recommendation}
     </span>
   );
@@ -216,7 +221,7 @@ export function PersistentUnusedMark({ policy }: { policy: PolicyEvaluation }) {
   const current = policy.unusedRatio != null ? Math.round(policy.unusedRatio * 100) : '—';
   return (
     <span
-      className="inline-block mt-0.5 px-1 py-0.5 rounded text-[9px] font-semibold whitespace-nowrap bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+      className="inline-block mt-0.5 px-1 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap bg-orange-100 text-orange-800"
       title={`前年度の不用率 ${prior}% → 当年度 ${current}%。2年連続で母集団の上位帯にあります`}
     >
       2年連続の不用
@@ -226,18 +231,18 @@ export function PersistentUnusedMark({ policy }: { policy: PolicyEvaluation }) {
 
 export function ActionBadge({ action }: { action: string }) {
   return (
-    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap ${ACTION_CLS}`}>
+    <span className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold whitespace-nowrap ${ACTION_CLS}`}>
       {action}
     </span>
   );
 }
 
 export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string }> = {
-  valid:   { label: 'OK',      cls: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  gov:     { label: '行政機関', cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' },
-  supp:    { label: '補助辞書', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+  valid:   { label: 'OK',      cls: 'bg-green-100 text-green-800' },
+  gov:     { label: '行政機関', cls: 'bg-emerald-100 text-emerald-800' },
+  supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent' },
   // 番号一致(houjin.db裏取り)も表示上は valid と同格の OK に統合（内部 s='cn' と cnVerifiedCount は集計用に保持）
-  cn:      { label: 'OK',      cls: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  invalid: { label: '不一致',  cls: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
-  unknown: { label: '未登録',  cls: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+  cn:      { label: 'OK',      cls: 'bg-green-100 text-green-800' },
+  invalid: { label: '不一致',  cls: 'bg-red-100 text-red-800' },
+  unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle' },
 };

@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronDown, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { FILTER_INPUT_CLASS } from './FilterTextInput';
 
 interface MultiSelectDropdownProps {
   options: string[];
@@ -8,8 +12,8 @@ interface MultiSelectDropdownProps {
   allLabel: string;
   placeholder?: string;
   minWidth?: number;
-  /** 未選択（すべて）表示の文字色。既定の #aaa は淡いので、濃くしたい画面から指定する */
-  placeholderColor?: string;
+  /** 未選択（すべて）表示を本文色で濃く出したい画面は 'strong' を指定する */
+  placeholderTone?: 'muted' | 'strong';
 }
 
 export function MultiSelectDropdown({
@@ -19,7 +23,7 @@ export function MultiSelectDropdown({
   allLabel,
   placeholder,
   minWidth = 160,
-  placeholderColor = '#aaa',
+  placeholderTone = 'muted',
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -45,10 +49,13 @@ export function MultiSelectDropdown({
       : `選択中 (${selected.length}/${options.length})`;
 
   return (
-    <div style={{ position: 'relative', minWidth, flex: 1 }}>
-      <button
-        type="button"
+    <div className="relative flex-1" style={{ minWidth }}>
+      <Button
+        variant="ghost"
+        size="xs"
         ref={buttonRef}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         onClick={() => {
           if (buttonRef.current) {
             const r = buttonRef.current.getBoundingClientRect();
@@ -61,76 +68,64 @@ export function MultiSelectDropdown({
           }
           setOpen((v) => !v);
         }}
-        style={{
-          width: '100%',
-          fontSize: 12,
-          border: '1px solid #ddd',
-          borderRadius: 4,
-          padding: '3px 22px 3px 6px',
-          background: '#fafafa',
-          color: allSelected ? placeholderColor : '#333',
-          cursor: 'pointer',
-          textAlign: 'left',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          outline: 'none',
-        }}
+        className={cn(
+          FILTER_INPUT_CLASS,
+          'h-auto justify-start rounded-md font-normal overflow-hidden text-ellipsis whitespace-nowrap pr-6 text-left hover:bg-mirai-surface',
+          allSelected && (placeholderTone === 'muted' ? 'text-mirai-text-placeholder' : 'text-mirai-text')
+        )}
       >
-        {label}
-      </button>
-      <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#aaa"
-        style={{ position: 'absolute', right: 6, top: '50%', transform: open ? 'translateY(-50%) rotate(180deg)' : 'translateY(-50%)', transition: 'transform 0.15s', pointerEvents: 'none' }}>
-        <path d="M7 10l5 5 5-5z"/>
-      </svg>
+        <span className="block w-full overflow-hidden text-ellipsis">{label}</span>
+      </Button>
+      <ChevronDown
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-mirai-text-muted transition-transform',
+          open && 'rotate-180'
+        )}
+      />
       {!allSelected && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => onChange([])}
           aria-label="クリア"
-          style={{ position: 'absolute', right: 22, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#bbb', cursor: 'pointer', padding: 2, fontSize: 11 }}
+          className="absolute right-5 top-1/2 size-5 -translate-y-1/2 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
         >
-          ✕
-        </button>
+          <X className="size-3" />
+        </Button>
       )}
       {open && rect && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
-          style={{
-            position: 'fixed',
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            maxHeight: rect.maxHeight,
-            overflowY: 'auto',
-            zIndex: 9999,
-            background: '#fff',
-            border: '1px solid #ddd',
-            borderRadius: 4,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
-          }}
+          role="listbox"
+          aria-multiselectable="true"
+          className="fixed z-[9999] overflow-y-auto rounded-xl border border-mirai-border bg-card shadow-soft"
+          style={{ top: rect.top, left: rect.left, width: rect.width, maxHeight: rect.maxHeight }}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontWeight: 600 }}>
+          <label className="flex cursor-pointer items-center gap-1.5 border-b border-mirai-surface-light px-2 py-1.5 text-xs font-bold text-mirai-text hover:bg-mirai-surface">
             <input
               type="checkbox"
               checked={allSelected}
               onChange={() => onChange([])}
-              style={{ width: 12, height: 12 }}
+              className="size-3 accent-primary"
             />
-            <span style={{ fontSize: 12, color: '#333' }}>すべて解除</span>
+            <span>すべて解除</span>
           </label>
           {options.map((opt) => (
-            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer' }}>
+            <label
+              key={opt}
+              className="flex cursor-pointer items-center gap-1.5 px-2 py-1 text-xs text-mirai-text hover:bg-mirai-surface"
+            >
               <input
                 type="checkbox"
                 checked={selected.includes(opt)}
                 onChange={() =>
                   onChange(selected.includes(opt) ? selected.filter((x) => x !== opt) : [...selected, opt])
                 }
-                style={{ width: 12, height: 12 }}
+                className="size-3 accent-primary"
               />
-              <span style={{ fontSize: 12, color: '#333' }}>{opt}</span>
+              <span>{opt}</span>
             </label>
           ))}
         </div>,

@@ -8,6 +8,7 @@
  */
 
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import type { MOFBudgetType } from '@/types/mof-jikou';
 import { ACCOUNT_LABEL } from '@/client/components/mof-kou-moku/columns';
 import { MultiSelectCombo } from '@/client/components/mof-kou/MultiSelectCombo';
@@ -113,25 +114,26 @@ export function FilterSidebar({
 
   return (
     <div
-      className="flex h-full shrink-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white p-3 text-xs dark:border-neutral-800 dark:bg-neutral-950"
+      className="flex h-full shrink-0 flex-col overflow-y-auto rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-xs"
       style={{ width }}
     >
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-semibold text-neutral-700 dark:text-neutral-300">フィルタ</h2>
+        <h2 className="font-bold text-mirai-text-subtle">フィルタ</h2>
         {activeCount > 0 && (
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="xs"
             onClick={onReset}
-            className="rounded border border-neutral-300 px-1.5 py-0.5 text-[10px] text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            className="h-5 border-mirai-border px-1.5 text-[10px] font-medium text-mirai-text-muted"
           >
             すべて解除（{activeCount}）
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="space-y-3">
         <div className="block space-y-1">
-          <span className="text-neutral-500">予算種別</span>
+          <span className="font-medium text-mirai-text-subtle">予算種別</span>
           <MultiSelectCombo
             label="予算種別"
             options={budgetTypes}
@@ -142,7 +144,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500">会計区分</span>
+          <span className="font-medium text-mirai-text-subtle">会計区分</span>
           <MultiSelectCombo
             label="会計区分"
             options={ACCOUNT_OPTIONS}
@@ -153,7 +155,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500">所管</span>
+          <span className="font-medium text-mirai-text-subtle">所管</span>
           <MultiSelectCombo
             label="所管"
             options={ministries}
@@ -164,7 +166,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500">組織／特会／機関</span>
+          <span className="font-medium text-mirai-text-subtle">組織／特会／機関</span>
           <MultiSelectCombo
             label="組織／特会／機関"
             options={organizations}
@@ -175,7 +177,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500">勘定／業務</span>
+          <span className="font-medium text-mirai-text-subtle">勘定／業務</span>
           <MultiSelectCombo
             label="勘定／業務"
             options={subAccounts}
@@ -187,7 +189,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500">主要経費</span>
+          <span className="font-medium text-mirai-text-subtle">主要経費</span>
           <MultiSelectCombo
             label="主要経費"
             options={majorExpenses}
@@ -199,7 +201,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500" title="目分類コードの目的別分類（3桁）。政府関係機関の帳票には無い">
+          <span className="font-medium text-mirai-text-subtle" title="目分類コードの目的別分類（3桁）。政府関係機関の帳票には無い">
             目的別
           </span>
           <MultiSelectCombo
@@ -213,7 +215,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500" title="目分類コードの財政法公債金対象非対象別分類（1桁）。一般会計にしか無い">
+          <span className="font-medium text-mirai-text-subtle" title="目分類コードの財政法公債金対象非対象別分類（1桁）。一般会計にしか無い">
             財政法公債金対象
           </span>
           <MultiSelectCombo
@@ -227,7 +229,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500" title="目分類コードの経済性質別分類（2桁）。政府関係機関の帳票には無い">
+          <span className="font-medium text-mirai-text-subtle" title="目分類コードの経済性質別分類（2桁）。政府関係機関の帳票には無い">
             経済性質別
           </span>
           <MultiSelectCombo
@@ -241,7 +243,7 @@ export function FilterSidebar({
         </div>
 
         <div className="block space-y-1">
-          <span className="text-neutral-500" title="予定経費要求書の科目別内訳の各目に付したコード番号の読み方に基づく分類">
+          <span className="font-medium text-mirai-text-subtle" title="予定経費要求書の科目別内訳の各目に付したコード番号の読み方に基づく分類">
             使途別
           </span>
           <MultiSelectCombo
@@ -254,7 +256,7 @@ export function FilterSidebar({
           />
         </div>
 
-        <hr className="border-neutral-200 dark:border-neutral-800" />
+        <hr className="border-border" />
 
         <RegexTextFilter
           label="項名"
@@ -272,7 +274,7 @@ export function FilterSidebar({
           onToggleRegex={v => onChange('itemNameRegex', v)}
         />
 
-        <hr className="border-neutral-200 dark:border-neutral-800" />
+        <hr className="border-border" />
 
         <RangeSlider
           label="RS事業数"

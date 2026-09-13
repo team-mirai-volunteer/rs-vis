@@ -7,6 +7,7 @@
  */
 
 import { useId, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 const STEPS = 1000;
 
@@ -50,11 +51,11 @@ const trackClass =
   '[&::-webkit-slider-runnable-track]:h-full [&::-webkit-slider-runnable-track]:bg-transparent ' +
   '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 ' +
   '[&::-webkit-slider-thumb]:mt-0 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full ' +
-  '[&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-neutral-400 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow ' +
-  'dark:[&::-webkit-slider-thumb]:border-neutral-500 dark:[&::-webkit-slider-thumb]:bg-neutral-200 ' +
+  '[&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-mirai-border-light [&::-webkit-slider-thumb]:bg-card [&::-webkit-slider-thumb]:shadow-xs ' +
+  '' +
   '[&::-moz-range-track]:h-full [&::-moz-range-track]:bg-transparent [&::-moz-range-track]:border-0 ' +
   '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full ' +
-  '[&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-neutral-400 [&::-moz-range-thumb]:bg-white';
+  '[&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-mirai-border-light [&::-moz-range-thumb]:bg-card';
 
 /** 項一覧の数値列を絞り込むレンジスライダー（下ハンドル・上ハンドルの2本＋直接入力） */
 export function RangeSlider({ label, note, domainMin, domainMax, value, onChange, formatValue, scale = 'linear' }: RangeSliderProps) {
@@ -81,28 +82,30 @@ export function RangeSlider({ label, note, domainMin, domainMax, value, onChange
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-1">
-        <span className="text-neutral-500" title={note}>
+        <span className="font-medium text-mirai-text-subtle" title={note}>
           {label}
         </span>
         <div className="flex items-center gap-1">
           {isActive && (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => onChange([null, null])}
-              className="text-[10px] text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+              className="h-auto px-1 py-0 text-[10px] font-medium text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
               title="この範囲をリセット"
             >
               リセット
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setEditing(v => !v)}
-            className="text-[10px] text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+            className="h-auto px-1 py-0 text-[10px] font-medium text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
             title="数値を直接入力"
           >
             直接入力
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -114,24 +117,24 @@ export function RangeSlider({ label, note, domainMin, domainMax, value, onChange
             value={min ?? ''}
             placeholder={String(domainMin)}
             onChange={e => onChange([e.target.value === '' ? null : Number(e.target.value), max])}
-            className="w-full min-w-0 rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-full min-w-0 rounded-md border border-mirai-border bg-card px-1.5 py-0.5 text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary"
           />
-          <span className="text-neutral-400">〜</span>
+          <span className="text-mirai-text-muted">〜</span>
           <input
             type="number"
             aria-label={`${label}の上限`}
             value={max ?? ''}
             placeholder={String(domainMax)}
             onChange={e => onChange([min, e.target.value === '' ? null : Number(e.target.value)])}
-            className="w-full min-w-0 rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs dark:border-neutral-700 dark:bg-neutral-900"
+            className="w-full min-w-0 rounded-md border border-mirai-border bg-card px-1.5 py-0.5 text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary"
           />
         </div>
       ) : (
         <>
           <div className="relative h-4">
-            <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-neutral-200 dark:bg-neutral-700" />
+            <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mirai-surface-muted" />
             <div
-              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-blue-500"
+              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-primary"
               style={{ left: `${(posMin / STEPS) * 100}%`, right: `${100 - (posMax / STEPS) * 100}%` }}
             />
             <input
@@ -155,7 +158,7 @@ export function RangeSlider({ label, note, domainMin, domainMax, value, onChange
               className={trackClass}
             />
           </div>
-          <div className="flex justify-between text-[10px] tabular-nums text-neutral-500">
+          <div className="flex justify-between text-[10px] tabular-nums text-mirai-text-muted">
             <span>{formatValue(effMin)}</span>
             <span>{formatValue(effMax)}</span>
           </div>

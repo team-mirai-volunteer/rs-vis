@@ -64,8 +64,8 @@ export default function MOFHierarchyPage() {
 
 function CenterMessage({ text, error }: { text: string; error?: boolean }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-white">
-      <p className={error ? 'text-sm text-red-600' : 'text-sm text-gray-500'}>{text}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-card">
+      <p className={error ? 'text-sm text-destructive' : 'text-sm text-mirai-text-muted'}>{text}</p>
     </div>
   );
 }
@@ -279,7 +279,7 @@ function MOFHierarchyContent() {
   const { metadata } = data;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-white">
+    <div className="fixed inset-0 overflow-hidden bg-card">
       {/* 図。全画面に敷き、その上にコントロールを浮かせる */}
       <HierarchyChart
         nodes={data.sankey.nodes}
@@ -309,13 +309,13 @@ function MOFHierarchyContent() {
           onOffsetChange={setOffset}
         />
 
-        <label className="flex h-8 shrink-0 items-center rounded-lg border border-black/10 bg-white/90 px-2 text-xs text-gray-600 shadow-md backdrop-blur">
+        <label className="flex h-8 shrink-0 items-center rounded-lg border border-mirai-border bg-card px-2 text-xs text-mirai-text-subtle shadow-xs">
           <select
             aria-label="予算種別"
             value={metadata.budgetType}
             disabled={loading}
             onChange={e => setBudgetType(e.target.value as MOFBudgetType)}
-            className="h-6 cursor-pointer rounded border border-gray-300 bg-white px-1 text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-6 cursor-pointer rounded border border-mirai-border bg-card px-1 text-xs text-mirai-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             {metadata.budgetTypes.map(type => (
               <option key={type} value={type}>

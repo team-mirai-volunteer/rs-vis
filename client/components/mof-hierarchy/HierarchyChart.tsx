@@ -9,6 +9,9 @@
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Maximize, Minus, Plus, type LucideIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   computeMOFSankeyLayout,
   mofRibbonPath,
@@ -832,16 +835,16 @@ export function HierarchyChart({
         {selectedPanelNode && (
           <div className="flex h-full flex-col overflow-hidden">
             {/* ヘッダー。/sankey-svg と同じくスクロールしても常に見える */}
-            <div className="flex-shrink-0 border-b border-gray-100 p-4 pb-3">
+            <div className="flex-shrink-0 border-b border-border p-4 pb-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="break-all text-sm font-semibold text-gray-900">
+                  <div className="break-all text-sm font-semibold text-mirai-text">
                     {selectedPanelNode.name}
                   </div>
-                  <div className="mt-0.5 text-lg font-bold text-gray-800">
+                  <div className="mt-0.5 text-lg font-bold text-mirai-text">
                     {formatBudgetFromYen(selectedPanelNode.value ?? 0)}
                   </div>
-                  <div className="text-[11px] text-gray-400">
+                  <div className="text-[11px] text-mirai-text-muted">
                     {Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円
                   </div>
                   {!selectedNode && (
@@ -850,15 +853,16 @@ export function HierarchyChart({
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   title="選択を解除"
                   aria-label="選択を解除"
                   onClick={() => onSelect(null)}
-                  className="shrink-0 rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  className="shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text-subtle"
                 >
                   ×
-                </button>
+                </Button>
               </div>
 
               {/* 種別バッジ。/sankey-svg のノード種別バッジと同じ考え方で、
@@ -878,7 +882,7 @@ export function HierarchyChart({
                   </span>
                 )}
                 {selectedDetails?.aggregated && (
-                  <span className="rounded-full bg-gray-400 px-2 py-0.5 text-[11px] font-medium text-white">
+                  <span className="rounded-full bg-mirai-border-light px-2 py-0.5 text-[11px] font-medium text-white">
                     集約
                   </span>
                 )}
@@ -893,29 +897,29 @@ export function HierarchyChart({
               focusRelated) && (
               <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '40%' }}>
                 {selectedDetails?.aggregated && (
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-mirai-text-subtle">
                     表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件
                   </div>
                 )}
                 {/* 集約の中身。件数だけだと何が隠れているのか分からない */}
                 {selectedDetails?.aggregatedTop && selectedDetails.aggregatedTop.length > 0 && (
-                  <div className="mt-2 border-t border-gray-100 pt-2">
-                    <div className="mb-1 text-[11px] text-gray-400">内訳（金額の大きい順）</div>
+                  <div className="mt-2 border-t border-border pt-2">
+                    <div className="mb-1 text-[11px] text-mirai-text-muted">内訳（金額の大きい順）</div>
                     {/* 事項名は項をまたいで重複するので、名前だけだと鍵が衝突する */}
                     {selectedDetails.aggregatedTop.map((member, index) => (
                       <div
                         key={`${index}-${member.name}`}
-                        className="flex justify-between gap-3 text-xs text-gray-700"
+                        className="flex justify-between gap-3 text-xs text-mirai-text-secondary"
                       >
                         <span className="truncate">{member.name}</span>
-                        <span className="shrink-0 tabular-nums text-gray-500">
+                        <span className="shrink-0 tabular-nums text-mirai-text-muted">
                           {formatBudgetFromYen(member.amount)}
                         </span>
                       </div>
                     ))}
                     {(selectedDetails.aggregatedCount ?? 0) >
                       selectedDetails.aggregatedTop.length && (
-                      <div className="text-[11px] text-gray-400">
+                      <div className="text-[11px] text-mirai-text-muted">
                         ほか{' '}
                         {(
                           (selectedDetails.aggregatedCount ?? 0) -
@@ -927,17 +931,17 @@ export function HierarchyChart({
                   </div>
                 )}
                 {selectedDetails?.majorExpenseName && (
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-mirai-text-muted">
                     {selectedDetails.majorExpenseName}
                   </div>
                 )}
                 {selectedDetails?.description && (
-                  <div className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-gray-600">
+                  <div className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-mirai-text-subtle">
                     {selectedDetails.description}
                   </div>
                 )}
                 {focusRelated && (
-                  <div className="mt-2 text-[11px] text-gray-400">
+                  <div className="mt-2 text-[11px] text-mirai-text-muted">
                     この筋に連なるノードだけを表示しています
                   </div>
                 )}
@@ -949,41 +953,42 @@ export function HierarchyChart({
                 タブは固定し、一覧だけを独立してスクロールさせる
                 （長い一覧をスクロールするたびにタブが流れて見えなくなるのを防ぐ） */}
             {descendantColumnList.length > 0 && (
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-gray-100">
-                <div role="tablist" className="flex flex-shrink-0 border-b border-gray-100 px-2">
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
+                <div role="tablist" className="flex flex-shrink-0 border-b border-border px-2">
                   {descendantColumnList.map(({ column, items }) => (
-                    <button
+                    <Button
                       key={column}
-                      type="button"
+                      variant="ghost"
                       role="tab"
                       aria-selected={activeTab === column}
                       onClick={() => setPanelTab(column)}
-                      className={`flex-1 border-b-2 px-1 py-1.5 text-[11px] font-semibold ${
+                      className={cn(
+                        'h-auto flex-1 rounded-none border-b-2 px-1 py-1.5 text-[11px] font-semibold hover:bg-transparent',
                         activeTab === column
-                          ? 'border-blue-500 text-gray-800'
-                          : 'border-transparent text-gray-400 hover:text-gray-600'
-                      }`}
+                          ? 'border-primary text-mirai-text hover:text-mirai-text'
+                          : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'
+                      )}
                     >
                       {MOF_HIERARCHY_COLUMN_LABELS[column]}
                       <span className="ml-0.5 font-normal">({items.length.toLocaleString()})</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
                 <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
                   {descendantColumnList
                     .find(t => t.column === activeTab)
                     ?.items.map(item => (
-                      <button
+                      <Button
                         key={item.id}
-                        type="button"
+                        variant="ghost"
                         onClick={() => onSelect(item.id)}
-                        className="flex w-full items-baseline justify-between gap-3 border-b border-gray-50 py-1.5 text-left hover:bg-gray-50"
+                        className="flex h-auto w-full items-baseline justify-between gap-3 whitespace-normal rounded-none border-b border-border px-0 py-1.5 text-left font-normal hover:bg-mirai-surface"
                       >
-                        <span className="truncate text-xs text-gray-700">{item.name}</span>
-                        <span className="shrink-0 text-[11px] tabular-nums text-gray-500">
+                        <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+                        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
                           {formatBudgetFromYen(item.value ?? 0)}
                         </span>
-                      </button>
+                      </Button>
                     ))}
                 </div>
               </div>
@@ -1010,17 +1015,17 @@ export function HierarchyChart({
       {/* ズーム操作。/sankey-svg と同じく右下に置く */}
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
         <ZoomButton
-          label="＋"
+          icon={Plus}
           title="拡大"
           onClick={() => zoomFromButton(ZOOM_STEP)}
         />
         <ZoomButton
-          label="－"
+          icon={Minus}
           title="縮小"
           onClick={() => zoomFromButton(1 / ZOOM_STEP)}
         />
         <ZoomButton
-          label="⤢"
+          icon={Maximize}
           title="全体を表示"
           onClick={() => {
             setZoom(1);
@@ -1056,20 +1061,20 @@ export function HierarchyChart({
                 setIsEditingZoom(false);
               }
             }}
-            className="w-full rounded border border-black/10 bg-white px-1 py-0.5 text-center text-[10px] text-gray-700 shadow"
+            className="w-full rounded border border-mirai-border bg-card px-1 py-0.5 text-center text-[10px] text-mirai-text-secondary shadow-xs"
           />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             title="クリックしてズーム率を入力"
             onClick={() => {
               setZoomInputValue(String(Math.round(zoom * 100)));
               setIsEditingZoom(true);
             }}
-            className="w-full cursor-text rounded border border-black/10 bg-white/90 px-1 py-0.5 text-center text-[10px] text-gray-500 shadow"
+            className="h-auto w-full cursor-text rounded border-mirai-border bg-card px-1 py-0.5 text-[10px] font-normal text-mirai-text-muted hover:bg-card"
           >
             {Math.round(zoom * 100)}%
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -1077,25 +1082,26 @@ export function HierarchyChart({
 }
 
 function ZoomButton({
-  label,
+  icon: Icon,
   title,
   onClick,
 }: {
-  label: string;
+  icon: LucideIcon;
   title: string;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="icon-sm"
       title={title}
       aria-label={title}
       onMouseDown={e => e.stopPropagation()}
       onClick={onClick}
-      className="h-7 w-7 rounded border border-black/10 bg-white/90 text-sm text-gray-600 shadow hover:bg-white"
+      className="rounded border-mirai-border bg-card text-mirai-text-subtle hover:bg-card"
     >
-      {label}
-    </button>
+      <Icon className="size-3.5" aria-hidden="true" />
+    </Button>
   );
 }
 
@@ -1111,28 +1117,28 @@ function HierarchyTooltip({
   const details = node.details as MOFHierarchyNode['details'] | undefined;
   return (
     <div
-      className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg"
+      className="pointer-events-none fixed z-50 max-w-md rounded border border-border bg-card px-3 py-2 shadow-soft"
       style={{ left: x + 12, top: y + 12 }}
     >
       {details?.column && (
-        <div className="text-[11px] font-medium text-gray-400">
+        <div className="text-[11px] font-medium text-mirai-text-muted">
           {MOF_HIERARCHY_COLUMN_LABELS[details.column]}
         </div>
       )}
-      <div className="font-semibold text-gray-900">{node.name}</div>
-      <div className="text-lg font-bold text-gray-800">
+      <div className="font-semibold text-mirai-text">{node.name}</div>
+      <div className="text-lg font-bold text-mirai-text">
         {formatBudgetFromYen(node.value)}
       </div>
       {details?.aggregated && (
-        <div className="mt-1 text-xs text-gray-600">
+        <div className="mt-1 text-xs text-mirai-text-subtle">
           TopN から溢れた {details.aggregatedCount} 件をまとめたもの
         </div>
       )}
       {details?.majorExpenseName && (
-        <div className="mt-1 text-xs text-gray-500">{details.majorExpenseName}</div>
+        <div className="mt-1 text-xs text-mirai-text-muted">{details.majorExpenseName}</div>
       )}
       {details?.description && (
-        <div className="mt-1 max-h-32 overflow-hidden text-xs leading-relaxed text-gray-600">
+        <div className="mt-1 max-h-32 overflow-hidden text-xs leading-relaxed text-mirai-text-subtle">
           {details.description}
         </div>
       )}
@@ -1152,13 +1158,13 @@ function HierarchyLinkTooltip({
   return (
     <div
       data-testid={testId('hierarchy-link-tooltip')}
-      className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg"
+      className="pointer-events-none fixed z-50 max-w-md rounded border border-border bg-card px-3 py-2 shadow-soft"
       style={{ left: x + 12, top: y + 12 }}
     >
-      <div className="text-xs text-gray-600">
+      <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
-      <div className="text-lg font-bold text-gray-800">
+      <div className="text-lg font-bold text-mirai-text">
         {formatBudgetFromYen(link.value)}
       </div>
     </div>

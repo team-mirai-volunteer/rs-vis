@@ -6,6 +6,7 @@
  * （このページに事項列が無いため）。
  */
 
+import { Button } from '@/components/ui/button';
 import type { MOFAccountType } from '@/types/mof-jikou';
 import type { MOFSectionRsFilterState } from '@/types/mof-section-rs-sankey';
 
@@ -16,7 +17,7 @@ const ACCOUNT_OPTIONS: Array<{ value: MOFAccountType; label: string }> = [
 ];
 
 const INPUT_CLASS =
-  'h-7 w-full rounded border border-gray-300 bg-white px-2 text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+  'h-7 w-full rounded border border-mirai-border bg-card px-2 text-xs text-mirai-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
 export function FilterFields({
   filter,
@@ -42,7 +43,7 @@ export function FilterFields({
     });
 
   return (
-    <div className="flex flex-col gap-3 p-3 text-xs text-gray-600">
+    <div className="flex flex-col gap-3 p-3 text-xs text-mirai-text-subtle">
       <div>
         <div className="mb-1 font-medium">会計</div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -64,18 +65,18 @@ export function FilterFields({
         <div className="mb-1 flex items-center justify-between">
           <span className="font-medium">所管</span>
           {filter.ministries.length > 0 && (
-            <button
-              type="button"
+            <Button
+              variant="link"
               onClick={() => set({ ministries: [] })}
-              className="text-[11px] text-gray-400 hover:text-gray-600"
+              className="text-[11px] font-normal text-mirai-text-muted no-underline hover:text-mirai-text-subtle hover:underline"
             >
               クリア
-            </button>
+            </Button>
           )}
         </div>
-        <div className="max-h-32 overflow-y-auto rounded border border-gray-200">
+        <div className="max-h-32 overflow-y-auto rounded border border-border">
           {ministryOptions.map(name => (
-            <label key={name} className="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-gray-50">
+            <label key={name} className="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-mirai-surface">
               <input
                 type="checkbox"
                 checked={filter.ministries.includes(name)}
@@ -91,7 +92,7 @@ export function FilterFields({
       <div>
         <div className="mb-1 flex items-center justify-between">
           <span className="font-medium">項名</span>
-          <label className="flex cursor-pointer items-center gap-1 text-[11px] text-gray-400">
+          <label className="flex cursor-pointer items-center gap-1 text-[11px] text-mirai-text-muted">
             <input
               type="checkbox"
               checked={filter.sectionRegex}
@@ -120,7 +121,7 @@ export function FilterFields({
             placeholder="例: 100億"
             className={INPUT_CLASS}
           />
-          <span className="shrink-0 text-gray-400">〜</span>
+          <span className="shrink-0 text-mirai-text-muted">〜</span>
           <input
             type="text"
             value={filter.maxAmountText}

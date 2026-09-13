@@ -9,6 +9,9 @@
  * 同じ URL 復元経路を page 側で使う。
  */
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { History } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { CHAT_MARKDOWN_STYLES } from './chat-markdown-styles';
 
 // Markdown 描画（チャットと同じ遅延ロード。展開表示時にのみ評価される）
@@ -31,6 +34,13 @@ interface ExplorationHistoryProps {
   /** コントロールのフォントサイズ（年度セレクトと合わせる） */
   fontPx: number;
 }
+
+/** 小さなテキストリンク風ボタン（名前変更・URLコピー・削除 等）の共通クラス */
+const TEXT_LINK_CLASS = 'font-normal text-mirai-text-muted hover:text-mirai-text hover:opacity-100';
+
+/** ドロップダウン内の入力欄 */
+const INPUT_CLASS =
+  'min-w-0 flex-1 rounded-md border border-mirai-border bg-card px-2 py-1 text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary';
 
 export function ExplorationHistory({ getSnapshot, onApply, fontPx }: ExplorationHistoryProps) {
   const [open, setOpen] = useState(false);
@@ -86,7 +96,7 @@ export function ExplorationHistory({ getSnapshot, onApply, fontPx }: Exploration
   const autos = entries.filter(e => !e.pinned);
 
   const renderEntry = (e: ExplorationEntry) => (
-    <div key={e.id} style={{ padding: '6px 10px', borderBottom: '1px solid #f4f4f4', display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <div key={e.id} className="flex flex-col gap-0.5 border-b border-border px-2.5 py-1.5">
       {editingId === e.id ? (
         <input
           type="text"
@@ -99,136 +109,160 @@ export function ExplorationHistory({ getSnapshot, onApply, fontPx }: Exploration
           }}
           onBlur={() => commitTitle(e.id)}
           placeholder="タイトル（空にすると自動ラベル表示）"
-          style={{ fontSize: fontPx, padding: '4px 8px', border: '1px solid #1a73e8', borderRadius: 4, outline: 'none', fontFamily: 'inherit', color: '#333', background: '#fff' }}
+          className={cn(INPUT_CLASS, 'border-primary')}
+          style={{ fontSize: fontPx }}
         />
       ) : (
-        <button
+        <Button
+          variant="ghost"
           onClick={() => { onApply(e.qs); setOpen(false); }}
           title="この状態を図に適用"
-          style={{ textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: e.title ? '#333' : '#1a73e8', fontSize: fontPx, lineHeight: 1.5, wordBreak: 'break-word' }}
+          className={cn(
+            'h-auto w-full justify-start whitespace-normal rounded-md p-0 text-left font-normal leading-normal hover:bg-transparent',
+            e.title ? 'text-mirai-text hover:text-primary-accent' : 'text-primary hover:text-primary-accent',
+          )}
+          style={{ fontSize: fontPx, wordBreak: 'break-word' }}
         >
-          {e.title ? <b>{e.title}</b> : e.label}
-          {e.title && <span style={{ display: 'block', fontWeight: 400, fontSize: fontPx - 2, color: '#1a73e8' }}>{e.label}</span>}
-        </button>
+          <span>
+            {e.title ? <b>{e.title}</b> : e.label}
+            {e.title && <span className="block font-normal text-primary" style={{ fontSize: fontPx - 2 }}>{e.label}</span>}
+          </span>
+        </Button>
       )}
       {e.note && (() => {
         const isLong = e.note.length > 160;
         const expanded = expandedIds.has(e.id);
         return (
-          <div style={{ fontSize: fontPx - 1, color: '#555', wordBreak: 'break-word' }}>
+          <div className="text-mirai-text-subtle" style={{ fontSize: fontPx - 1, wordBreak: 'break-word' }}>
             {/* 省略時も Markdown で描画し、高さクランプで抑える（途中で切ると表等が壊れるため全文を描画して隠す） */}
             <div
-              className="ai-chat-md"
-              style={{
-                background: '#fafafa', border: '1px solid #eee', borderRadius: 6, padding: '6px 9px',
-                ...(expanded ? {} : { maxHeight: 76, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)' }),
-              }}
+              className="ai-chat-md rounded-md border border-border bg-mirai-surface px-2 py-1.5"
+              style={expanded ? undefined : { maxHeight: 76, overflow: 'hidden', maskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent 100%)' }}
             >
               <Suspense fallback={<span style={{ whiteSpace: 'pre-wrap' }}>{expanded ? e.note : `${e.note.slice(0, 160)}${isLong ? '…' : ''}`}</span>}>
                 <ChatMarkdown text={e.note} />
               </Suspense>
             </div>
             {isLong && (
-              <button
+              <Button
+                variant="link"
                 onClick={() => setExpandedIds(prev => {
                   const next = new Set(prev);
                   if (expanded) next.delete(e.id); else next.add(e.id);
                   return next;
                 })}
-                style={{ display: 'block', background: 'transparent', border: 'none', padding: 0, marginTop: 2, cursor: 'pointer', color: '#1a73e8', fontSize: fontPx - 2, textDecoration: 'underline' }}
-              >{expanded ? '折りたたむ' : '全文を表示'}</button>
+                className="mt-0.5 block font-normal hover:text-primary-accent hover:opacity-100"
+                style={{ fontSize: fontPx - 2 }}
+              >{expanded ? '折りたたむ' : '全文を表示'}</Button>
             )}
           </div>
         );
       })()}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: fontPx - 2, color: '#999' }}>
+      <div className="flex items-center gap-2 text-mirai-text-muted" style={{ fontSize: fontPx - 2 }}>
         <span>{relativeTime(e.ts)}</span>
-        <button
+        <Button
+          variant="link"
           onClick={() => { setEditingId(e.id); setTitleInput(e.title ?? ''); }}
-          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#888', fontSize: fontPx - 2, textDecoration: 'underline' }}
-        >名前変更</button>
-        <button
+          className={TEXT_LINK_CLASS}
+          style={{ fontSize: fontPx - 2 }}
+        >名前変更</Button>
+        <Button
+          variant="link"
           onClick={() => handleCopy(e)}
-          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#888', fontSize: fontPx - 2, textDecoration: 'underline' }}
-        >{copiedId === e.id ? 'コピーしました' : 'URLコピー'}</button>
-        <button
+          className={TEXT_LINK_CLASS}
+          style={{ fontSize: fontPx - 2 }}
+        >{copiedId === e.id ? 'コピーしました' : 'URLコピー'}</Button>
+        <Button
+          variant="link"
           onClick={() => { deleteEntry(e.id).then(refresh); }}
-          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#c66', fontSize: fontPx - 2, textDecoration: 'underline' }}
-        >削除</button>
+          className="font-normal text-destructive hover:opacity-80"
+          style={{ fontSize: fontPx - 2 }}
+        >削除</Button>
       </div>
     </div>
   );
 
   return (
     <div ref={rootRef} data-pan-disabled="true" style={{ position: 'relative' }}>
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={() => setOpen(v => !v)}
         title="探索履歴・メモ"
         aria-label="探索履歴・メモ"
-        style={{
-          fontSize: fontPx, border: '1px solid #e0e0e0', borderRadius: 8, padding: '6px 10px',
-          background: open ? '#eef3ff' : 'rgba(255,255,255,0.95)', boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-          color: '#333', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-        }}
+        aria-expanded={open}
+        className={cn(
+          'gap-1 border-mirai-border px-2.5',
+          open && 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal',
+        )}
+        style={{ fontSize: fontPx }}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 -960 960 960" fill="#666"><path d="M480-120q-138 0-240.5-91.5T122-440h82q14 104 92.5 172T480-200q117 0 198.5-81.5T760-480q0-117-81.5-198.5T480-760q-69 0-129 32t-101 88h110v80H120v-240h80v94q51-64 124.5-99T480-840q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-480q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-120Zm112-192L440-464v-216h80v184l128 128-56 56Z"/></svg>
+        <History className="size-3.5 text-mirai-text-subtle" aria-hidden="true" />
         履歴
-      </button>
+      </Button>
 
       {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
-          width: 340, maxHeight: '60vh', overflowY: 'auto',
-          background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 30, colorScheme: 'light',
-        }}>
+        <div
+          className="rounded-xl border border-mirai-border bg-card shadow-soft"
+          style={{
+            position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)',
+            width: 340, maxHeight: '60vh', overflowY: 'auto',
+            zIndex: 30, colorScheme: 'light',
+          }}
+        >
           {/* Markdown プレビュー用スタイル（チャットと共用。ドロップダウン内で1回だけ描画） */}
           <style>{CHAT_MARKDOWN_STYLES}</style>
           {/* 現在の図をメモとして保存 */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid #eee', background: '#fafbff' }}>
-            <div style={{ fontSize: fontPx - 1, color: '#777', marginBottom: 4 }}>現在の図をメモとして保存</div>
-            <div style={{ display: 'flex', gap: 6 }}>
+          <div className="rounded-t-xl border-b border-border bg-mirai-surface px-2.5 py-2">
+            <div className="mb-1 text-mirai-text-subtle" style={{ fontSize: fontPx - 1 }}>現在の図をメモとして保存</div>
+            <div className="flex gap-1.5">
               <input
                 type="text"
                 value={noteInput}
                 onChange={e => setNoteInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSaveMemo(); if (e.key === 'Escape') e.stopPropagation(); }}
                 placeholder="タイトル（省略可）"
-                style={{ flex: 1, minWidth: 0, fontSize: fontPx, padding: '5px 8px', border: '1px solid #ddd', borderRadius: 6, outline: 'none', fontFamily: 'inherit', color: '#333', background: '#fff' }}
+                className={INPUT_CLASS}
+                style={{ fontSize: fontPx }}
               />
-              <button
+              <Button
+                variant="outline"
+                size="xs"
                 onClick={handleSaveMemo}
-                style={{ fontSize: fontPx - 1, fontWeight: 600, color: '#fff', background: '#1a73e8', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >保存</button>
+                className="h-auto whitespace-nowrap border-primary px-3 text-primary-accent hover:bg-mirai-surface-teal"
+                style={{ fontSize: fontPx - 1 }}
+              >保存</Button>
             </div>
           </div>
 
           {memos.length > 0 && (
             <div>
-              <div style={{ padding: '6px 10px 2px', fontSize: fontPx - 2, fontWeight: 700, color: '#888' }}>メモ</div>
+              <div className="px-2.5 pb-0.5 pt-1.5 font-bold text-mirai-text-muted" style={{ fontSize: fontPx - 2 }}>メモ</div>
               {memos.map(renderEntry)}
             </div>
           )}
 
           <div>
-            <div style={{ padding: '6px 10px 2px', fontSize: fontPx - 2, fontWeight: 700, color: '#888', display: 'flex', alignItems: 'center' }}>
+            <div className="flex items-center px-2.5 pb-0.5 pt-1.5 font-bold text-mirai-text-muted" style={{ fontSize: fontPx - 2 }}>
               <span style={{ flex: 1 }}>履歴（自動・最新50件）</span>
               {autos.length > 0 && (
-                <button
+                <Button
+                  variant="link"
                   onClick={() => { clearAutoHistory().then(refresh); }}
-                  style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: '#999', fontSize: fontPx - 2, textDecoration: 'underline', fontWeight: 400 }}
-                >全削除</button>
+                  className={TEXT_LINK_CLASS}
+                  style={{ fontSize: fontPx - 2 }}
+                >全削除</Button>
               )}
             </div>
             {autos.length === 0 && (
-              <div style={{ padding: '8px 10px 12px', fontSize: fontPx - 1, color: '#999' }}>
+              <div className="px-2.5 pb-3 pt-2 text-mirai-text-muted" style={{ fontSize: fontPx - 1 }}>
                 まだ履歴がありません。図の状態を変えると自動で記録されます
               </div>
             )}
             {autos.map(renderEntry)}
           </div>
 
-          <div style={{ padding: '6px 10px 8px', fontSize: fontPx - 2, color: '#aaa' }}>
+          <div className="px-2.5 pb-2 pt-1.5 text-mirai-text-placeholder" style={{ fontSize: fontPx - 2 }}>
             履歴・メモはこのブラウザにのみ保存されます
           </div>
         </div>

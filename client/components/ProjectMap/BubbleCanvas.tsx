@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import type { ProjectMapCluster, ProjectMapPoint } from '@/types/project-map';
 
 /**
@@ -54,11 +55,32 @@ export interface BubbleCanvasProps {
   regionPoints: ProjectMapPoint[];
 }
 
-const SURFACE_LIGHT = '#fcfcfb';
+/**
+ * 地色はページ背景（デザインシステムの --background = warm gray）に揃える。
+ * canvas は CSS 変数を直接参照できないので描画時に計算済みスタイルから読み、
+ * 読めない環境（SSR など）だけこの値に落ちる。値は app/globals.css の --background と同じ。
+ */
+const SURFACE_LIGHT_FALLBACK = '#f7f4ee';
 const SURFACE_DARK = '#1a1a19';
-const MUTED = '#898781';
+/** 図中のラベル色（データ描画の一部。UI chrome ではない） */
 const LABEL_LIGHT = '#52514e';
 const LABEL_DARK = '#c3c2b7';
+
+function readSurface(dark: boolean): string {
+  if (dark) return SURFACE_DARK;
+  if (typeof document === 'undefined') return SURFACE_LIGHT_FALLBACK;
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+  return v || SURFACE_LIGHT_FALLBACK;
+}
+
+/** 図中の文字は body と同じフォント（Noto Sans JP）で描く。canvas には継承が無いので読み取る */
+function readUiFont(): string {
+  if (typeof document === 'undefined') return 'sans-serif';
+  return getComputedStyle(document.body).fontFamily || 'sans-serif';
+}
+
+/** 左下のズームボタン。縦に積んで1つの枠に収めるため、ピル形・太字・高さを打ち消す */
+const ZOOM_BTN_CLS = 'h-8 w-8 rounded-none px-0 font-normal leading-none text-mirai-text-subtle hover:bg-mirai-surface focus-visible:ring-offset-0';
 
 const PADDING = 36;
 const GRID_CELL = 36;
@@ -332,7 +354,8 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const surface = dark ? SURFACE_DARK : SURFACE_LIGHT;
+    const surface = readSurface(dark);
+    const uiFont = readUiFont();
     ctx.clearRect(0, 0, size.w, size.h);
     ctx.fillStyle = surface;
     ctx.fillRect(0, 0, size.w, size.h);
@@ -412,7 +435,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
 
     // 勢力圏のラベル（府省庁名）。色面がどの省庁かはこれが無いと分からない
     if (regions) {
-      ctx.font = '700 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.font = `700 11px ${uiFont}`;
       ctx.globalAlpha = highlightKey === null ? 0.85 : 0.4;
       for (const l of regions.labels) {
         const s = toScreen(l.x, l.y);
@@ -431,7 +454,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     // 倍率に応じてフェードインさせ、ズーム操作中に急に湧いた印象を与えない
     if (transform.k >= LABEL_ZOOM_START) {
       const labelAlpha = Math.min(1, (transform.k - LABEL_ZOOM_START) / (LABEL_ZOOM_FULL - LABEL_ZOOM_START));
-      ctx.font = '500 10px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.font = `500 10px ${uiFont}`;
       ctx.globalAlpha = labelAlpha * 0.95;
       const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
       const MAX_LABELS = 150;
@@ -462,7 +485,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     // クラスタ名。塊の真ん中に置く。地の色の太い縁取りで点の上でも読めるようにする。
     // 文字はインク色（データ色を着せない）。強調中は前面の邪魔になるので少し引く
     if (showClusterLabels) {
-      ctx.font = '600 10.5px system-ui, -apple-system, "Segoe UI", sans-serif';
+      ctx.font = `600 10.5px ${uiFont}`;
       ctx.globalAlpha = highlightKey === null ? 1 : 0.55;
       for (const c of clusters) {
         const s = toScreen(c.cx, c.cy);
@@ -639,30 +662,30 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       </div>
 
       {/* ズーム操作。右側は凡例のフロートが使うので左下に置く */}
-      <div className="absolute bottom-3 left-3 flex flex-col overflow-hidden rounded-lg border border-black/10 bg-white/90 shadow-sm backdrop-blur dark:border-white/10 dark:bg-neutral-800/90">
-        <button
-          type="button"
+      <div className="absolute bottom-3 left-3 flex flex-col overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
+        <Button
+          variant="ghost"
           onClick={() => zoomAt(size.w / 2, size.h / 2, 1.4)}
-          className="h-8 w-8 text-[15px] leading-none text-neutral-600 hover:bg-black/5 dark:text-neutral-300 dark:hover:bg-white/10"
+          className={`${ZOOM_BTN_CLS} text-[15px]`}
           aria-label="拡大"
-        >＋</button>
-        <button
-          type="button"
+        >＋</Button>
+        <Button
+          variant="ghost"
           onClick={() => zoomAt(size.w / 2, size.h / 2, 1 / 1.4)}
-          className="h-8 w-8 border-t border-black/5 text-[15px] leading-none text-neutral-600 hover:bg-black/5 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10"
+          className={`${ZOOM_BTN_CLS} border-t border-border text-[15px]`}
           aria-label="縮小"
-        >−</button>
-        <button
-          type="button"
+        >−</Button>
+        <Button
+          variant="ghost"
           onClick={resetView}
-          className="h-8 w-8 border-t border-black/5 text-[9px] leading-none text-neutral-500 hover:bg-black/5 dark:border-white/10 dark:text-neutral-400 dark:hover:bg-white/10"
+          className={`${ZOOM_BTN_CLS} border-t border-border text-[9px] text-mirai-text-muted`}
           aria-label="表示を戻す"
           title="表示を戻す"
-        >全体</button>
+        >全体</Button>
       </div>
 
       {transform.k > 1.05 && (
-        <div className="pointer-events-none absolute bottom-3 left-14 rounded-full border border-black/5 bg-white/80 px-2 py-0.5 text-[10px] tabular-nums backdrop-blur dark:border-white/10 dark:bg-neutral-800/80" style={{ color: MUTED }}>
+        <div className="pointer-events-none absolute bottom-3 left-14 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] tabular-nums text-mirai-text-muted">
           ×{transform.k.toFixed(1)}
         </div>
       )}

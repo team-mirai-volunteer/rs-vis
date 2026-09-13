@@ -22,7 +22,7 @@ export default function TransferDetailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-background flex items-center justify-center">
           <LoadingSpinner />
         </div>
       }
@@ -47,7 +47,7 @@ function TransferDetailContent() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -55,8 +55,8 @@ function TransferDetailContent() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-red-600">読み込みに失敗しました: {error}</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-destructive">読み込みに失敗しました: {error}</div>
       </div>
     );
   }
@@ -64,7 +64,7 @@ function TransferDetailContent() {
   const { metadata, funding, flows } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* 年度とページ切替。全ページ共通で右上に置く */}
       <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
         <ViewSelect value="transfer" options={mofBudgetViewOptions(metadata.fiscalYear)} />
@@ -80,19 +80,19 @@ function TransferDetailContent() {
       <div className="max-w-7xl mx-auto px-8">
         {/* ヘッダー。図と地続きに見えるよう罫線と影は置かない */}
         <div className="pt-3 pb-4">
-          <div className="text-xs font-medium text-gray-500">MOF予算全体・特別会計 財源内訳</div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <div className="text-xs font-medium text-mirai-text-muted">MOF予算全体・特別会計 財源内訳</div>
+          <h1 className="text-xl font-bold text-mirai-text">
             {metadata.fiscalYear}年度（{metadata.eraLabel}）{metadata.budgetType}
           </h1>
-          <div className="mt-0.5 text-sm text-gray-600">
+          <div className="mt-0.5 text-sm text-mirai-text-subtle">
             他会計からの受入{' '}
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-mirai-text">
               {formatBudgetFromYen(metadata.receivedTotal)}
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-card rounded-xl border border-mirai-border shadow-xs p-6 mb-6">
           <div className="overflow-x-auto">
             <div style={{ minWidth: 900 }}>
               <SankeyChart
@@ -105,12 +105,12 @@ function TransferDetailContent() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">会計別の財源</h2>
+        <div className="bg-card rounded-xl border border-mirai-border shadow-xs p-6 mb-6">
+          <h2 className="text-lg font-bold text-mirai-text mb-3">会計別の財源</h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-xs">
-              <thead className="text-gray-500">
-                <tr className="border-b border-gray-200">
+              <thead className="text-mirai-text-muted">
+                <tr className="border-b border-border">
                   <th className="px-2 py-2 text-left font-medium">特別会計</th>
                   <th className="px-2 py-2 text-right font-medium">歳入</th>
                   <th className="px-2 py-2 text-right font-medium">他会計から</th>
@@ -118,9 +118,9 @@ function TransferDetailContent() {
                   <th className="px-2 py-2 text-right font-medium">自前財源比率</th>
                 </tr>
               </thead>
-              <tbody className="text-gray-700">
+              <tbody className="text-mirai-text-secondary">
                 {funding.map(f => (
-                  <tr key={f.account} className="border-b border-gray-100">
+                  <tr key={f.account} className="border-b border-border">
                     <td className="px-2 py-2 whitespace-nowrap">{f.account}</td>
                     <td className="px-2 py-2 text-right tabular-nums">
                       {formatBudgetFromYen(f.revenue)}
@@ -141,15 +141,15 @@ function TransferDetailContent() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-3">
+        <div className="bg-card rounded-xl border border-mirai-border shadow-xs p-6 mb-6">
+          <h2 className="text-lg font-bold text-mirai-text mb-3">
             一般会計からの繰入（宛先別 {flows.length}件）
           </h2>
           <div className="space-y-1">
             {flows.slice(0, 15).map(flow => (
               <div
                 key={flow.label}
-                className="flex justify-between gap-4 text-sm text-gray-700"
+                className="flex justify-between gap-4 text-sm text-mirai-text-secondary"
               >
                 <span className="truncate">{flow.label}</span>
                 <span className="tabular-nums shrink-0">
@@ -158,7 +158,7 @@ function TransferDetailContent() {
               </div>
             ))}
             {flows.length > 15 && (
-              <div className="text-xs text-gray-400">ほか {flows.length - 15} 件</div>
+              <div className="text-xs text-mirai-text-muted">ほか {flows.length - 15} 件</div>
             )}
           </div>
         </div>

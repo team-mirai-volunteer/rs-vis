@@ -9,10 +9,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { MoreVertical } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 
 const SELECT_CLASS =
-  'h-7 cursor-pointer rounded border border-gray-300 bg-white px-1.5 text-xs text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500';
+  'h-7 cursor-pointer rounded border border-mirai-border bg-card px-1.5 text-xs text-mirai-text-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
 /** 文字サイズの選択肢（px）。大きくするとノード間隔も広がり、縦に長くなる */
 const FONT_PX_OPTIONS = [9, 10, 11, 12, 14, 16, 18];
@@ -57,22 +59,20 @@ export function HierarchySettings({
 
   return (
     <div ref={rootRef} className="relative shrink-0">
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="icon"
         aria-label="表示設定"
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/10 bg-white/90 text-gray-500 shadow-md backdrop-blur hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="size-8 border-mirai-border bg-card text-mirai-text-muted hover:bg-card"
       >
-        {/* Material Icons: more_vert */}
-        <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2Zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2Z" />
-        </svg>
-      </button>
+        <MoreVertical className="size-[18px]" aria-hidden="true" />
+      </Button>
 
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-          <div className="flex flex-col gap-2 text-xs text-gray-600">
+        <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border border-border bg-card p-3 shadow-soft">
+          <div className="flex flex-col gap-2 text-xs text-mirai-text-subtle">
             <label className="flex items-center justify-between gap-2">
               <span className="font-medium">文字サイズ</span>
               <select
@@ -113,7 +113,7 @@ export function HierarchySettings({
             </label>
 
             {summary && (
-              <p className="border-t border-gray-100 pt-2 text-[11px] text-gray-500">
+              <p className="border-t border-border pt-2 text-[11px] text-mirai-text-muted">
                 {summary}
               </p>
             )}

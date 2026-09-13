@@ -15,6 +15,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export interface MultiSelectComboProps {
   label: string;
@@ -74,9 +77,10 @@ export function MultiSelectCombo({ label, options, selected, onChange, disabled,
 
   return (
     <div ref={wrapRef} className="relative">
-      <button
+      <Button
         ref={buttonRef}
-        type="button"
+        variant="outline"
+        size="xs"
         disabled={disabled}
         aria-label={label}
         aria-expanded={open}
@@ -88,39 +92,33 @@ export function MultiSelectCombo({ label, options, selected, onChange, disabled,
           }
           onOpenChange(!open);
         }}
-        className={`flex w-full items-center justify-between gap-1 truncate rounded border border-neutral-300 bg-white px-2 py-1 text-xs disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 ${
-          allSelected ? 'text-neutral-400' : 'text-neutral-800 dark:text-neutral-200'
-        }`}
+        className={cn(
+          'h-auto w-full justify-between gap-1 rounded-md border-mirai-border px-2 py-1 font-normal shadow-none disabled:opacity-40',
+          allSelected ? 'text-mirai-text-muted' : 'text-mirai-text'
+        )}
       >
         <span className="truncate">{displayLabel}</span>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 -960 960 960"
-          fill="currentColor"
+        <ChevronDown
           aria-hidden="true"
-          className="shrink-0 text-neutral-400"
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
-        >
-          <path d="M480-360 280-560h400L480-360Z" />
-        </svg>
-      </button>
+          className={cn('size-3 shrink-0 text-mirai-text-muted transition-transform', open && 'rotate-180')}
+        />
+      </Button>
 
       {open &&
         rect &&
         createPortal(
           <div
             style={{ position: 'fixed', top: rect.top, left: rect.left, width: rect.width, maxHeight: rect.maxHeight }}
-            className="z-[9999] overflow-y-auto rounded border border-neutral-300 bg-white text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+            className="z-[9999] overflow-y-auto rounded-xl border border-mirai-border bg-card text-xs shadow-soft"
             onMouseDown={e => e.stopPropagation()}
           >
-            <label className="flex cursor-pointer items-center gap-1.5 border-b border-neutral-200 px-2 py-1.5 font-semibold dark:border-neutral-800">
-              <input type="checkbox" checked={allSelected} onChange={() => onChange([])} className="h-3 w-3" />
+            <label className="flex cursor-pointer items-center gap-1.5 border-b border-border px-2 py-1.5 font-bold text-mirai-text hover:bg-mirai-surface">
+              <input type="checkbox" checked={allSelected} onChange={() => onChange([])} className="size-3 accent-primary" />
               <span>すべて選択/解除</span>
             </label>
             {options.map(o => (
-              <label key={o} className="flex cursor-pointer items-center gap-1.5 px-2 py-1 hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                <input type="checkbox" checked={!allSelected && selected.includes(o)} onChange={() => toggle(o)} className="h-3 w-3 shrink-0" />
+              <label key={o} className="flex cursor-pointer items-center gap-1.5 px-2 py-1 text-mirai-text hover:bg-mirai-surface">
+                <input type="checkbox" checked={!allSelected && selected.includes(o)} onChange={() => toggle(o)} className="size-3 shrink-0 accent-primary" />
                 <span className="truncate">{o}</span>
               </label>
             ))}

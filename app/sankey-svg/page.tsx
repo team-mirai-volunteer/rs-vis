@@ -12,6 +12,12 @@ import {
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import {
+  ArrowUpToLine, Building2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  FilterX, Focus, Maximize, Minus, MoreVertical, Move, Network, Plus, Search, Settings, X,
+} from 'lucide-react';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { RangeWindowRow } from '@/client/components/SankeySvg/RangeWindowRows';
@@ -64,6 +70,28 @@ import {
   SIDE_PANEL_WIDTH_MAX,
   SIDE_PANEL_VIEWPORT_RESERVE_PX,
 } from '@/client/hooks/useSidePanel';
+
+// ── Button 共通クラス（ページ chrome 用） ──
+
+/** 上下・左右の矢印ステッパー（長押し対応）。親のレイアウトに合わせるため高さ・幅は自動 */
+const STEP_BUTTON_CLASS =
+  'h-auto w-auto select-none touch-none rounded-none p-0 text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text';
+/** 側パネルの一覧行ボタン。集約ノード（disabled）は文字色側で薄くするため opacity は落とさない */
+const LIST_BUTTON_CLASS =
+  'h-auto rounded-none font-normal text-mirai-text whitespace-normal hover:bg-mirai-surface-teal/60 disabled:opacity-100';
+/** フィルタ行の × クリアボタン */
+const CLEAR_BUTTON_CLASS =
+  'h-auto w-auto shrink-0 px-0.5 py-0 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text';
+/** 会計・省庁のドロップダウントリガー（入力欄風） */
+const DROPDOWN_TRIGGER_CLASS =
+  'block h-auto w-full truncate rounded border border-mirai-border bg-mirai-surface py-[3px] pl-[5px] pr-5 text-left font-normal hover:bg-mirai-surface-light';
+/** 検索結果ドロップダウンのページ送り */
+const PAGER_BUTTON_CLASS = 'h-auto rounded border-mirai-border px-2 py-0.5 font-normal text-mirai-text-subtle shadow-none';
+/** 右下ズーム列のボタン。角丸は列コンテナ側で切るため rounded-none */
+const ZOOM_COLUMN_BUTTON_CLASS = 'h-auto w-full rounded-none py-[5px]';
+/** 正規表現トグル（.*）。入力欄の右端に absolute 配置する */
+const REGEX_TOGGLE_CLASS =
+  'absolute top-1/2 h-auto -translate-y-1/2 rounded font-mono font-bold leading-none hover:bg-transparent';
 
 // ── URL state serialization ──
 
@@ -3107,50 +3135,52 @@ export default function RealDataSankeyPage() {
     <>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={showLabels} onChange={e => { pendingHistoryAction.current = 'replace'; setShowLabels(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>すべてのノードラベルを表示</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>すべてのノードラベルを表示</span>
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={showAggProject} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggProject(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>事業の集約ノードを表示</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>事業の集約ノードを表示</span>
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={showAggRecipient} onChange={e => { pendingHistoryAction.current = 'replace'; setShowAggRecipient(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>支出先の集約ノードを表示</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>支出先の集約ノードを表示</span>
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ color: '#555' }}>事業ノードの並び順:</span>
-        <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }} data-pan-disabled>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>事業ノードの並び順:</span>
+        <select value={projectSortBy} onChange={e => { pendingHistoryAction.current = 'replace'; setProjectSortBy(e.target.value as 'budget' | 'spending'); }} style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid var(--mirai-border)', cursor: 'pointer' }} data-pan-disabled>
           <option value="budget">予算額</option>
           <option value="spending">支出額</option>
         </select>
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={scaleBudgetToVisible} onChange={e => { pendingHistoryAction.current = 'replace'; setScaleBudgetToVisible(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>事業の予算額を支出額に合わせて調整</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>事業の予算額を支出額に合わせて調整</span>
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={autoFocusRelated} onChange={e => { pendingHistoryAction.current = 'replace'; setAutoFocusRelated(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>選択時に関連ノードのみ表示</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>選択時に関連ノードのみ表示</span>
       </label>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
         <input type="checkbox" checked={filterOnMinistryClick} onChange={e => { pendingHistoryAction.current = 'replace'; setFilterOnMinistryClick(e.target.checked); }} style={{ width: 14, height: 14, cursor: 'pointer' }} />
-        <span style={{ color: '#555' }}>省庁ノード選択でフィルタ</span>
+        <span style={{ color: 'var(--mirai-text-subtle)' }}>省庁ノード選択でフィルタ</span>
       </label>
     </>
   );
 
-  // 右上クラスタ共通のボタン外観。YearSelect / PageNavMenu（h-9・rounded-lg・border-black/10・shadow-md）に揃える
+  // 右上クラスタ共通のカード外観。YearSelect / PageNavMenu（h-9・bg-card・border-mirai-border・shadow-xs）に揃える
   const clusterButtonStyle = {
     height: 36,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    border: '1px solid rgba(0,0,0,0.1)',
-    background: 'rgba(255,255,255,0.9)',
-    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+    borderRadius: 12,
+    border: '1px solid var(--mirai-border)',
+    background: 'var(--card)',
+    boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
     cursor: 'pointer',
   } as const;
+  /** Button 内の lucide アイコンを動的 px で描くための style（Button の svg 既定サイズを上書きする） */
+  const iconPx = (n: number) => ({ width: n, height: n });
 
   /**
    * 表示範囲・設定まわりのUI一式。
@@ -3191,9 +3221,9 @@ export default function RealDataSankeyPage() {
           else setRecipientOffset(prev => Math.max(0, Math.min(activeMax, prev + delta)));
         };
         const PAGING_DEFS = [
-          [-1, 'M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z', '前へ'],
-          [1,  'M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z', '次へ'],
-        ] as [number, string, string][];
+          [-1, ChevronLeft, '前へ'],
+          [1,  ChevronRight, '次へ'],
+        ] as [number, typeof ChevronLeft, string][];
         // オフセット操作の1行（対象コンボ・開始位置・スライダー・件数・リセット）。
         // 狭幅カードとデスクトップのパネルで共有する。ページングは狭幅のみ行内に含める
         // （デスクトップはパネル外の常駐ボタンが担う。testId の重複を避ける意図もある）
@@ -3204,14 +3234,14 @@ export default function RealDataSankeyPage() {
                 data-testid={testId('offset-target-select')}
                 value={offsetTarget}
                 onChange={e => { pendingHistoryAction.current = 'replace'; setOffsetTarget(e.target.value as 'recipient' | 'project'); }}
-                style={{ fontSize: META_FONT_PX, border: '1px solid #ccc', borderRadius: 3, padding: '1px 2px', background: '#fff', color: '#555', cursor: 'pointer' }}
+                style={{ fontSize: META_FONT_PX, border: '1px solid var(--mirai-border)', borderRadius: 3, padding: '1px 2px', background: 'var(--card)', color: 'var(--mirai-text-subtle)', cursor: 'pointer' }}
               >
                 <option value="project">事業</option>
                 <option value="recipient">支出先</option>
               </select>
               <label style={{ flex: isCompactWidth ? '0 0 auto' : 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {/* スマホ幅では「Top」ラベルを省き数値だけ表示 */}
-                {!isCompactWidth && <span style={{ color: '#555', fontSize: META_FONT_PX }}>Top</span>}
+                {!isCompactWidth && <span style={{ color: 'var(--mirai-text-subtle)', fontSize: META_FONT_PX }}>Top</span>}
                 {isEditingOffset ? (
                   <input
                     type="number"
@@ -3221,23 +3251,25 @@ export default function RealDataSankeyPage() {
                     onChange={e => { setOffsetInputValue(e.target.value); const v = Number(e.target.value); if (!isNaN(v) && v >= 1) setActiveOffset(Math.max(0, Math.min(activeMax, v - 1))); }}
                     onBlur={() => setIsEditingOffset(false)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setIsEditingOffset(false); }}
-                    style={{ width: `${Math.max(40, String(activeMaxStartRank).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
+                    style={{ width: `${Math.max(40, String(activeMaxStartRank).length * 8 + 20)}px`, textAlign: 'center', border: '1px solid var(--mirai-border)', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
                   />
                 ) : (
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => { setOffsetInputValue(String(activeRangeStart)); setIsEditingOffset(true); }}
                     title="クリックして開始位置を入力"
-                    style={{ color: '#999', fontSize: META_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0 }}
-                  >{activeRangeStart}</button>
+                    className="h-auto cursor-text rounded-none p-0 font-normal tabular-nums text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+                    style={{ fontSize: META_FONT_PX }}
+                  >{activeRangeStart}</Button>
                 )}
-                <span style={{ color: '#999', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
+                <span style={{ color: 'var(--mirai-text-muted)', fontSize: META_FONT_PX }}>〜{activeRangeEnd}</span>
                 <input type="range" min={0} max={activeMax} value={activeOffset} onChange={e => { pendingFocusId.current = null; setActiveOffset(Number(e.target.value)); }} style={{ width: sliderWidth }} />
                 {/* 総件数表示は幅を取るためスマホ幅では非表示 */}
-                {!isCompactWidth && <span style={{ color: '#999', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
+                {!isCompactWidth && <span style={{ color: 'var(--mirai-text-muted)', fontSize: META_FONT_PX }}>/{activeTotalCount}件</span>}
                 {withPaging && (
                 <div style={{ display: 'flex', flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                  {PAGING_DEFS.map(([delta, path, title]) => (
-                    <button key={delta} title={title} aria-label={title}
+                  {PAGING_DEFS.map(([delta, Icon, title]) => (
+                    <Button key={delta} variant="ghost" size="icon-sm" title={title} aria-label={title}
                       data-testid={testId(delta > 0 ? 'recipient-offset-next' : 'recipient-offset-prev')}
                       {...offsetRepeat(() => stepOffset(delta), { stopPropagation: true })}
                       onClick={(e) => {
@@ -3245,20 +3277,22 @@ export default function RealDataSankeyPage() {
                           setActiveOffset(Math.max(0, Math.min(activeMax, activeOffset + delta)));
                         }
                       }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                      className={STEP_BUTTON_CLASS}
+                      style={{ WebkitTouchCallout: 'none' }}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555"><path d={path}/></svg>
-                    </button>
+                      <Icon style={iconPx(scaleSize(14))} aria-hidden="true" />
+                    </Button>
                   ))}
                 </div>
                 )}
                 {/* Material Icons: vertical_align_top — オフセットリセット */}
-                <button onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
+                <Button variant="ghost" size="icon-sm" onClick={e => { e.preventDefault(); setActiveOffset(0); }} title="先頭へリセット" aria-label="先頭へリセット"
                   onContextMenu={(e) => e.preventDefault()}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                  className={STEP_BUTTON_CLASS}
+                  style={{ WebkitTouchCallout: 'none' }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" height={scaleSize(14)} width={scaleSize(14)} viewBox="0 0 24 24" fill="#555" style={{ transform: 'rotate(-90deg)' }}><path d="M8 11h3v10h2V11h3l-4-4-4 4zM4 3v2h16V3H4z"/></svg>
-                </button>
+                  <ArrowUpToLine className="-rotate-90" style={iconPx(scaleSize(14))} aria-hidden="true" />
+                </Button>
               </label>
             </div>
         );
@@ -3300,7 +3334,7 @@ export default function RealDataSankeyPage() {
         // 狭幅: 従来どおり画面下部のクイック操作カード（アクティブ対象のページング込み）
         const bottomBar = (
           <div ref={offsetControlRef} style={{ position: 'absolute', bottom: 12, left: isLandscapeCompact && selectedNodeId !== null && !isPanelCollapsed ? effectiveSidePanelWidth + 8 : 8, zIndex: 30, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: 'calc(100vw - 16px)', transition: isResizingSidePanel ? 'none' : 'left 0.2s ease' }}>
-            <div style={{ background: 'rgba(255,255,255,0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid #e0e0e0', fontSize: CONTROL_SMALL_FONT_PX }}>
+            <div style={{ background: 'rgb(var(--card-rgb) / 0.92)', padding: '5px 10px', borderRadius: 6, border: '1px solid var(--mirai-border)', fontSize: CONTROL_SMALL_FONT_PX }}>
               {renderOffsetRow(true, 60)}
             </div>
           </div>
@@ -3327,7 +3361,9 @@ export default function RealDataSankeyPage() {
       data-pan-disabled="true"
       style={{ position: 'absolute', left: minimapLeft + (showMinimap ? MINIMAP_W + 22 : 48), bottom: showMinimap ? 8 : 16, zIndex: 30, display: 'flex', alignItems: 'flex-end', transition: 'left 0.2s ease' }}
     >
-      <button
+      <Button
+        variant="outline"
+        size="icon"
         data-testid={testId('range-panel-toggle')}
         onClick={() => setShowSettings(s => !s)}
         aria-label="表示設定を開く"
@@ -3335,17 +3371,16 @@ export default function RealDataSankeyPage() {
         aria-haspopup="dialog"
         aria-controls="sankey-topn-settings"
         title="表示設定（文字サイズ・表示オプション）"
-        style={{ ...clusterButtonStyle, width: 36, padding: 0, background: showSettings ? '#fff' : 'rgba(255,255,255,0.9)' }}
+        className={cn('border-mirai-border', showSettings ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
       >
-        {/* Material Icons: settings */}
-        <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={showSettings ? '#333' : '#666'}><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm112-260q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Z"/></svg>
-      </button>
+        <Settings className="size-[18px]" aria-hidden="true" />
+      </Button>
       {showSettings && (
         <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1}
           onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }}
-          style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX, minWidth: 300, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-            <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+          style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, zIndex: 19, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 6, padding: '12px 16px', boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', fontSize: CONTROL_SMALL_FONT_PX, minWidth: 300, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: 'var(--mirai-text)', outline: 'none' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid var(--mirai-surface-light)' }}>
+            <span style={{ color: 'var(--mirai-text-subtle)', fontWeight: 600 }}>文字サイズ</span>
             {fontSizeControlsFragment}
           </div>
           {displayOptionsFragment}
@@ -3358,7 +3393,7 @@ export default function RealDataSankeyPage() {
     <div
       ref={containerRef}
       data-testid={testId('sankey-svg-root')}
-      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: '#fff', fontFamily: 'system-ui, sans-serif', cursor: isPanning ? 'grabbing' : 'grab' }}
+      style={{ position: 'fixed', inset: 0, overflow: 'hidden', background: 'var(--background)', cursor: isPanning ? 'grabbing' : 'grab' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -3368,7 +3403,7 @@ export default function RealDataSankeyPage() {
 
       {loading && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, pointerEvents: 'none' }}>
-          <p style={{ color: '#666', fontSize: 14 }}>Loading sankey-svg-{year}-graph.json...</p>
+          <p style={{ color: 'var(--mirai-text-subtle)', fontSize: 14 }}>Loading sankey-svg-{year}-graph.json...</p>
         </div>
       )}
       {error && (
@@ -3715,10 +3750,10 @@ export default function RealDataSankeyPage() {
                     style={{
                       position: 'absolute', left: screenX, top,
                       transform: 'translateX(-50%)',
-                      textAlign: 'center', fontSize: COLUMN_LABEL_FONT_PX, color: '#999',
+                      textAlign: 'center', fontSize: COLUMN_LABEL_FONT_PX, color: 'var(--mirai-text-muted)',
                       whiteSpace: 'nowrap', userSelect: 'none', cursor: 'default',
                       zIndex: 8, lineHeight: 1.2,
-                      background: 'rgba(255,255,255,0.82)', padding: '1px 6px', borderRadius: 4,
+                      background: 'rgb(var(--card-rgb) / 0.82)', padding: '1px 6px', borderRadius: 4,
                     }}
                     onMouseEnter={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); setHoveredColIndex(i); }}
                     onMouseMove={(e) => { const r = containerRef.current?.getBoundingClientRect(); if (r) setMousePos({ x: e.clientX - r.left, y: e.clientY - r.top }); }}
@@ -3758,16 +3793,16 @@ export default function RealDataSankeyPage() {
             return (
               <div style={{
                 position: 'absolute', left: lx, top: ly, width: tipW, boxSizing: 'border-box',
-                background: 'rgba(255,255,255,0.97)', borderRadius: 6, padding: '6px 10px',
-                color: '#222', lineHeight: 1.3, textAlign: 'center', wordBreak: 'break-word',
-                border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                background: 'rgb(var(--card-rgb) / 0.97)', borderRadius: 6, padding: '6px 10px',
+                color: 'var(--mirai-text)', lineHeight: 1.3, textAlign: 'center', wordBreak: 'break-word',
+                border: '1px solid var(--mirai-border)', boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)',
                 pointerEvents: 'none', zIndex: 20,
               }}>
                 <div style={{ fontWeight: 600, fontSize: TOOLTIP_TITLE_FONT_PX, marginBottom: 5, textAlign: 'left' }}>{hoveredLink.source.name} → {hoveredLink.target.name}</div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: TOOLTIP_VALUE_FONT_PX, fontWeight: 500, color: '#222' }}>{formatYen(hoveredLink.value)}</div>
-                    <div style={{ fontSize: TOOLTIP_META_FONT_PX, color: '#555' }}>{Math.round(hoveredLink.value).toLocaleString()}円</div>
+                    <div style={{ fontSize: TOOLTIP_VALUE_FONT_PX, fontWeight: 500, color: 'var(--mirai-text)' }}>{formatYen(hoveredLink.value)}</div>
+                    <div style={{ fontSize: TOOLTIP_META_FONT_PX, color: 'var(--mirai-text-subtle)' }}>{Math.round(hoveredLink.value).toLocaleString()}円</div>
                   </div>
                 </div>
               </div>
@@ -3837,25 +3872,25 @@ export default function RealDataSankeyPage() {
             const amtCol = (label: string, val: number) => (
               <div>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 3 }}>
-                  <span style={{ fontSize: TOOLTIP_META_FONT_PX, color: '#888', flexShrink: 0, paddingTop: 1 }}>{label}</span>
-                  <span style={{ fontSize: TOOLTIP_VALUE_FONT_PX, fontWeight: 500, color: '#222' }}>{formatYen(val)}</span>
+                  <span style={{ fontSize: TOOLTIP_META_FONT_PX, color: 'var(--mirai-text-muted)', flexShrink: 0, paddingTop: 1 }}>{label}</span>
+                  <span style={{ fontSize: TOOLTIP_VALUE_FONT_PX, fontWeight: 500, color: 'var(--mirai-text)' }}>{formatYen(val)}</span>
                 </div>
-                <div style={{ fontSize: TOOLTIP_META_FONT_PX, color: '#555', wordBreak: 'break-all' }}>{Math.round(val).toLocaleString()}円</div>
+                <div style={{ fontSize: TOOLTIP_META_FONT_PX, color: 'var(--mirai-text-subtle)', wordBreak: 'break-all' }}>{Math.round(val).toLocaleString()}円</div>
               </div>
             );
             return (
               <div style={{
                 position: 'absolute', left: lx, top: ly, width: tipW, boxSizing: 'border-box',
                 transform,
-                background: 'rgba(255,255,255,0.97)', borderRadius: 6, padding: '6px 10px',
-                color: '#222', lineHeight: 1.3, textAlign: 'center', wordBreak: 'break-word',
-                border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                background: 'rgb(var(--card-rgb) / 0.97)', borderRadius: 6, padding: '6px 10px',
+                color: 'var(--mirai-text)', lineHeight: 1.3, textAlign: 'center', wordBreak: 'break-word',
+                border: '1px solid var(--mirai-border)', boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)',
                 pointerEvents: 'none', zIndex: 20,
               }}>
-                <div style={{ fontWeight: 600, fontSize: TOOLTIP_TITLE_FONT_PX, marginBottom: 5, color: '#111', textAlign: 'left' }}>
+                <div style={{ fontWeight: 600, fontSize: TOOLTIP_TITLE_FONT_PX, marginBottom: 5, color: 'var(--mirai-text)', textAlign: 'left' }}>
                   {hoveredNode.name}
                   {hoveredAccountBadge && (
-                    <span style={{ display: 'inline-block', verticalAlign: '0.08em', marginLeft: 5, fontSize: Math.max(9, META_FONT_PX - 1), padding: '1px 5px', borderRadius: 8, fontWeight: 600, lineHeight: 1.35, background: hoveredAccountBadge.background, color: '#fff', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-block', verticalAlign: '0.08em', marginLeft: 5, fontSize: Math.max(9, META_FONT_PX - 1), padding: '1px 5px', borderRadius: 8, fontWeight: 600, lineHeight: 1.35, background: hoveredAccountBadge.background, color: 'var(--card)', whiteSpace: 'nowrap' }}>
                       {hoveredAccountBadge.label}
                     </span>
                   )}
@@ -3892,15 +3927,15 @@ export default function RealDataSankeyPage() {
               .reduce((s, n) => s + amt(n), 0);
             const valueLine = (label: string, value: number) => (
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ color: '#888', fontSize: TOOLTIP_META_FONT_PX }}>{label}</span>
-                <span style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: '#222' }}>{formatYen(value)}</span>
+                <span style={{ color: 'var(--mirai-text-muted)', fontSize: TOOLTIP_META_FONT_PX }}>{label}</span>
+                <span style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: 'var(--mirai-text)' }}>{formatYen(value)}</span>
               </div>
             );
             const rawYenLine = (value: number) => (
-              <div style={{ color: '#555', fontSize: TOOLTIP_META_FONT_PX, textAlign: 'right' }}>{Math.round(value).toLocaleString()}円</div>
+              <div style={{ color: 'var(--mirai-text-subtle)', fontSize: TOOLTIP_META_FONT_PX, textAlign: 'right' }}>{Math.round(value).toLocaleString()}円</div>
             );
             return (
-              <div style={{ position: 'absolute', left: mousePos.x + 12, top: mousePos.y + 16, background: 'rgba(255,255,255,0.97)', color: '#222', padding: '6px 10px', borderRadius: 6, fontSize: TOOLTIP_TITLE_FONT_PX, lineHeight: 1.5, pointerEvents: 'none', zIndex: 20, whiteSpace: 'nowrap', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+              <div style={{ position: 'absolute', left: mousePos.x + 12, top: mousePos.y + 16, background: 'rgb(var(--card-rgb) / 0.97)', color: 'var(--mirai-text)', padding: '6px 10px', borderRadius: 6, fontSize: TOOLTIP_TITLE_FONT_PX, lineHeight: 1.5, pointerEvents: 'none', zIndex: 20, whiteSpace: 'nowrap', border: '1px solid var(--mirai-border)', boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)' }}>
                 <div style={{ fontWeight: 600, fontSize: TOOLTIP_TITLE_FONT_PX, marginBottom: 2 }}>{COL_LABELS[hoveredColIndex]}</div>
                 {hoveredColIndex === 2 ? (
                   <div style={{ display: 'grid', gap: 2 }}>
@@ -3911,8 +3946,8 @@ export default function RealDataSankeyPage() {
                   </div>
                 ) : (
                   <>
-                    <div style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: '#222' }}>{formatYen(total)}</div>
-                    <div style={{ color: '#555', fontSize: TOOLTIP_META_FONT_PX }}>{Math.round(total).toLocaleString()}円</div>
+                    <div style={{ fontWeight: 500, fontSize: TOOLTIP_VALUE_FONT_PX, color: 'var(--mirai-text)' }}>{formatYen(total)}</div>
+                    <div style={{ color: 'var(--mirai-text-subtle)', fontSize: TOOLTIP_META_FONT_PX }}>{Math.round(total).toLocaleString()}円</div>
                   </>
                 )}
               </div>
@@ -3938,14 +3973,14 @@ export default function RealDataSankeyPage() {
           {selectedNode && (
             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Header — fixed, never scrolls */}
-              <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid #f0f0f0', flexShrink: 0, background: '#fff' }}>
+              <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--mirai-surface-light)', flexShrink: 0, background: 'var(--card)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: PANEL_TITLE_FONT_PX, color: '#111', wordBreak: 'break-all', lineHeight: 1.4 }}>
+                    <div style={{ fontWeight: 700, fontSize: PANEL_TITLE_FONT_PX, color: 'var(--mirai-text)', wordBreak: 'break-all', lineHeight: 1.4 }}>
                       {selectedNode.name}
                     </div>
                     {selectedNode.type === 'recipient' && selectedNode.representativeCorporateNumber && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: META_FONT_PX, color: '#666' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: META_FONT_PX, color: 'var(--mirai-text-subtle)' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', lineHeight: 1 }} title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
                           <span style={{ lineHeight: 1 }}>法人番号 {selectedNode.representativeCorporateNumber}</span>
                           {(() => {
@@ -3958,19 +3993,17 @@ export default function RealDataSankeyPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 title={`gBizINFO で法人番号を確認: ${selectedNode.representativeCorporateNumber}`}
-                                style={{ display: 'inline-flex', color: '#2563eb', flexShrink: 0 }}
+                                style={{ display: 'inline-flex', color: 'var(--primary-accent)', flexShrink: 0 }}
                                 onClick={e => e.stopPropagation()}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" height="13" width="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
-                                  <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
-                                </svg>
+                                <Building2 size={13} className="block" aria-hidden="true" />
                               </a>
                             );
                           })()}
                         </span>
                         {(selectedNode.corporateNumberCount ?? 0) >= 2 && (
                           <span
-                            style={{ background: '#fef3c7', color: '#92400e', padding: '0 6px', borderRadius: 8, fontWeight: 600, whiteSpace: 'nowrap' }}
+                            style={{ background: 'var(--stance-neutral-badge-bg)', color: 'var(--stance-neutral)', padding: '0 6px', borderRadius: 8, fontWeight: 600, whiteSpace: 'nowrap' }}
                             title={`この支出先名には${selectedNode.corporateNumberCount}件の法人番号が紐づいています（表記揺れ・誤記載・複数実体の可能性）`}
                           >
                             他{(selectedNode.corporateNumberCount ?? 1) - 1}件
@@ -4042,7 +4075,7 @@ export default function RealDataSankeyPage() {
                       const amountLabelStyle: React.CSSProperties = {
                         display: 'block',
                         fontSize: META_FONT_PX,
-                        color: '#aaa',
+                        color: 'var(--mirai-text-muted)',
                         fontWeight: 400,
                         marginBottom: 1,
                       };
@@ -4050,13 +4083,13 @@ export default function RealDataSankeyPage() {
                         display: 'block',
                         fontSize: PANEL_PRIMARY_VALUE_FONT_PX,
                         fontWeight: 600,
-                        color: '#222',
+                        color: 'var(--mirai-text)',
                         whiteSpace: 'nowrap',
                       };
                       const exactValueStyle: React.CSSProperties = {
                         display: 'block',
                         fontSize: META_FONT_PX,
-                        color: '#999',
+                        color: 'var(--mirai-text-muted)',
                         marginTop: 1,
                         whiteSpace: 'nowrap',
                       };
@@ -4074,55 +4107,59 @@ export default function RealDataSankeyPage() {
                             {renderHeaderAmount('支出額', spendingValue)}
                           </div>
                           {rawMain !== null && (
-                            <div style={{ fontSize: META_FONT_PX, color: '#bbb', marginTop: 3 }}>
-                              <span style={{ fontSize: META_FONT_PX, color: '#ccc', marginRight: 4 }}>{rawMainLabel}</span>
+                            <div style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', marginTop: 3 }}>
+                              <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-placeholder)', marginRight: 4 }}>{rawMainLabel}</span>
                               {formatYen(rawMain)}
-                              <span style={{ fontSize: META_FONT_PX, color: '#ccc', marginLeft: 4 }}>{Math.round(rawMain).toLocaleString()}円</span>
+                              <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-placeholder)', marginLeft: 4 }}>{Math.round(rawMain).toLocaleString()}円</span>
                             </div>
                           )}
                         </>);
                       }
                       return (<>
-                        <div style={{ fontSize: PANEL_PRIMARY_VALUE_FONT_PX, fontWeight: 600, color: '#222', marginTop: 3 }}>
-                          {mainLabel && <span style={{ fontSize: META_FONT_PX, color: '#aaa', fontWeight: 400, marginRight: 4 }}>{mainLabel}</span>}
+                        <div style={{ fontSize: PANEL_PRIMARY_VALUE_FONT_PX, fontWeight: 600, color: 'var(--mirai-text)', marginTop: 3 }}>
+                          {mainLabel && <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', fontWeight: 400, marginRight: 4 }}>{mainLabel}</span>}
                           {formatYen(mainValue)}
                         </div>
-                        <div style={{ fontSize: META_FONT_PX, color: '#999', marginTop: 1 }}>{Math.round(mainValue).toLocaleString()}円</div>
+                        <div style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', marginTop: 1 }}>{Math.round(mainValue).toLocaleString()}円</div>
                         {rawMain !== null && (
-                          <div style={{ fontSize: META_FONT_PX, color: '#bbb', marginTop: 1 }}>
-                            <span style={{ fontSize: META_FONT_PX, color: '#ccc', marginRight: 4 }}>{rawMainLabel}</span>
+                          <div style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', marginTop: 1 }}>
+                            <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-placeholder)', marginRight: 4 }}>{rawMainLabel}</span>
                             {formatYen(rawMain)}
-                            <span style={{ fontSize: META_FONT_PX, color: '#ccc', marginLeft: 4 }}>{Math.round(rawMain).toLocaleString()}円</span>
+                            <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-placeholder)', marginLeft: 4 }}>{Math.round(rawMain).toLocaleString()}円</span>
                           </div>
                         )}
                         {subValue !== null && (
-                          <div style={{ fontSize: PANEL_META_FONT_PX, color: '#777', marginTop: 4 }}>
-                            <span style={{ fontSize: META_FONT_PX, color: '#aaa', marginRight: 4 }}>{subLabel}</span>
+                          <div style={{ fontSize: PANEL_META_FONT_PX, color: 'var(--mirai-text-subtle)', marginTop: 4 }}>
+                            <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', marginRight: 4 }}>{subLabel}</span>
                             {formatYen(subValue)}
-                            <span style={{ fontSize: META_FONT_PX, color: '#bbb', marginLeft: 4 }}>{Math.round(subValue).toLocaleString()}円</span>
+                            <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', marginLeft: 4 }}>{Math.round(subValue).toLocaleString()}円</span>
                           </div>
                         )}
                       </>);
                     })()}
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => selectNode(null)}
                     title="閉じる（選択解除）"
-                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: 16, lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}
-                  >✕</button>
+                    className="shrink-0 text-mirai-text-muted hover:text-mirai-text"
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </Button>
                 </div>
                 <div style={{ display: 'flex', gap: 5, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ background: getNodeColor(selectedNode), color: '#fff', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 500 }}>
+                  <span style={{ background: getNodeColor(selectedNode), color: 'var(--card)', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 500 }}>
                     {TYPE_LABELS[selectedNode.type] ?? selectedNode.type}
                   </span>
                   {selectedNode.aggregated && (
-                    <span style={{ background: '#999', color: '#fff', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 500 }}>集約</span>
+                    <span style={{ background: 'var(--mirai-text-muted)', color: 'var(--card)', padding: '2px 7px', borderRadius: 10, fontSize: META_FONT_PX, fontWeight: 500 }}>集約</span>
                   )}
                   {selectedNode.projectId != null && (
-                    <span style={{ fontSize: META_FONT_PX, color: '#aaa' }}>PID:{selectedNode.projectId}</span>
+                    <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)' }}>PID:{selectedNode.projectId}</span>
                   )}
                   {selectedNode.ministry && selectedNode.type !== 'ministry' && (
-                    <span style={{ fontSize: META_FONT_PX, color: '#666' }}>{selectedNode.ministry}</span>
+                    <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-subtle)' }}>{selectedNode.ministry}</span>
                   )}
                 </div>
               </div>
@@ -4188,16 +4225,16 @@ export default function RealDataSankeyPage() {
                 if (sub === null || sub.totalBlockCount === 0) return null; // 再委託データなし
                 const subPid = selectedNode.projectId;
                 const statChip: React.CSSProperties = {
-                  border: '1px solid #e0e0e0', borderRadius: 4, padding: '1px 7px',
-                  fontSize: META_FONT_PX, color: '#555', whiteSpace: 'nowrap',
+                  border: '1px solid var(--mirai-border)', borderRadius: 4, padding: '1px 7px',
+                  fontSize: META_FONT_PX, color: 'var(--mirai-text-subtle)', whiteSpace: 'nowrap',
                 };
                 return (
-                  <div style={{ borderBottom: '1px solid #f0f0f0', padding: '7px 14px 9px', flexShrink: 0 }}>
+                  <div style={{ borderBottom: '1px solid var(--mirai-surface-light)', padding: '7px 14px 9px', flexShrink: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: '#555' }}>再委託</span>
+                      <span style={{ fontSize: PANEL_META_FONT_PX, fontWeight: 600, color: 'var(--mirai-text-subtle)' }}>再委託</span>
                       <a href={`/subcontracts/${subPid}?year=${year}`}
                         title="再委託フローを見る（同じタブで開きます）"
-                        style={{ fontSize: META_FONT_PX, color: '#4a90d9', textDecoration: 'none', marginLeft: 'auto', flexShrink: 0 }}
+                        style={{ fontSize: META_FONT_PX, color: 'var(--primary)', textDecoration: 'none', marginLeft: 'auto', flexShrink: 0 }}
                       >フロー ↗</a>
                     </div>
                     <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
@@ -4230,8 +4267,10 @@ export default function RealDataSankeyPage() {
 
               {/* 省庁 / 事業 / 支出先 3タブ */}
               {panelSections && (() => {
-                const tabBtnBase: React.CSSProperties = { flex: 1, padding: '6px 4px', fontSize: PANEL_META_FONT_PX, fontWeight: 600, background: 'transparent', border: 'none', borderBottom: '2px solid transparent', cursor: 'pointer', color: '#999' };
-                const tabBtnActive: React.CSSProperties = { ...tabBtnBase, color: '#333', borderBottom: '2px solid #4a90d9' };
+                const tabBtnClass = (active: boolean) => cn(
+                  'h-auto flex-1 gap-0 rounded-none px-1 py-1.5 font-semibold text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text',
+                  active && 'bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal hover:text-primary-accent',
+                );
                 type PanelItem = { id: string; name: string; value: number; projectId?: number; accountCategory?: string; aggregated?: boolean; budgetValue?: number; spendingValue?: number; recipientFlowValue?: number; recipientCount?: number; };
                 const listButtonStyle = (item: PanelItem): React.CSSProperties => ({
                   display: 'flex',
@@ -4239,7 +4278,7 @@ export default function RealDataSankeyPage() {
                   justifyContent: 'space-between',
                   alignItems: 'baseline',
                   padding: '5px 0',
-                  borderBottom: '1px solid #f5f5f5',
+                  borderBottom: '1px solid var(--mirai-surface)',
                   width: '100%',
                   background: 'transparent',
                   border: 'none',
@@ -4252,7 +4291,7 @@ export default function RealDataSankeyPage() {
                   flex: '1 1 150px',
                   minWidth: 0,
                   fontSize: PANEL_LIST_NAME_FONT_PX,
-                  color: item.aggregated ? '#999' : '#333',
+                  color: item.aggregated ? 'var(--mirai-text-muted)' : 'var(--mirai-text)',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -4273,7 +4312,7 @@ export default function RealDataSankeyPage() {
                   flex: '0 0 100%',
                   minWidth: 0,
                   fontSize: PANEL_LIST_VALUE_FONT_PX,
-                  color: '#777',
+                  color: 'var(--mirai-text-subtle)',
                   whiteSpace: 'normal',
                   overflowWrap: 'anywhere',
                   textAlign: 'right',
@@ -4296,7 +4335,7 @@ export default function RealDataSankeyPage() {
                   minWidth: 0,
                 };
                 const amountPairLabelStyle: React.CSSProperties = {
-                  color: '#aaa',
+                  color: 'var(--mirai-text-muted)',
                   marginRight: 2,
                   whiteSpace: 'nowrap',
                 };
@@ -4307,7 +4346,7 @@ export default function RealDataSankeyPage() {
                   const badge = getAccountBadgeStyle(cat);
                   if (!badge) return null;
                   return (
-                    <span style={{ background: badge.background, color: '#fff', padding: '1px 5px', borderRadius: 8, fontSize: Math.max(9, META_FONT_PX - 1), fontWeight: 600, lineHeight: 1.35, whiteSpace: 'nowrap' }}>
+                    <span style={{ background: badge.background, color: 'var(--card)', padding: '1px 5px', borderRadius: 8, fontSize: Math.max(9, META_FONT_PX - 1), fontWeight: 600, lineHeight: 1.35, whiteSpace: 'nowrap' }}>
                       {badge.label}
                     </span>
                   );
@@ -4321,7 +4360,7 @@ export default function RealDataSankeyPage() {
                 const renderListMeta = (item: PanelItem, value: React.ReactNode) => (
                   <span style={listValueStyle}>
                     <span style={listMetaRightStyle}>
-                      {item.projectId != null && <span style={{ fontSize: META_FONT_PX, color: '#aaa', whiteSpace: 'nowrap' }}>PID:{item.projectId}</span>}
+                      {item.projectId != null && <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', whiteSpace: 'nowrap' }}>PID:{item.projectId}</span>}
                       <span>{value}</span>
                     </span>
                   </span>
@@ -4349,29 +4388,29 @@ export default function RealDataSankeyPage() {
                 );
                 const renderFlatList = (items: PanelItem[], getValue?: (item: PanelItem) => number) => {
                   const getVal = getValue ?? ((item: PanelItem) => item.value);
-                  if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: '#aaa', margin: 0, padding: '6px 0' }}>なし</p>;
+                  if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: 'var(--mirai-text-muted)', margin: 0, padding: '6px 0' }}>なし</p>;
                   return items.map((item) => (
-                    <button key={item.id} type="button" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
-                      style={listButtonStyle(item)}
+                    <Button key={item.id} variant="ghost" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
+                      className={LIST_BUTTON_CLASS} style={listButtonStyle(item)}
                     >
                       {renderListTitle(item)}
                       {renderListMeta(item, formatYen(getVal(item)))}
-                    </button>
+                    </Button>
                   ));
                 };
                 return (
-                  <div style={{ borderTop: '1px solid #f0f0f0', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ borderTop: '1px solid var(--mirai-surface-light)', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {/* Tab bar */}
-                    <div style={{ display: 'flex', borderBottom: '1px solid #eee', flexShrink: 0, background: '#fff' }}>
-                      <button type="button" style={panelTab === 'ministry' ? tabBtnActive : tabBtnBase} onClick={() => setPanelTab('ministry')}>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--mirai-surface-light)', flexShrink: 0, background: 'var(--card)' }}>
+                      <Button variant="ghost" size="xs" className={tabBtnClass(panelTab === 'ministry')} style={{ fontSize: PANEL_META_FONT_PX }} onClick={() => setPanelTab('ministry')}>
                         省庁<span style={{ fontWeight: 400, fontSize: META_FONT_PX }}>({panelSections.ministries.length})</span>
-                      </button>
-                      <button type="button" style={panelTab === 'project' ? tabBtnActive : tabBtnBase} onClick={() => setPanelTab('project')}>
+                      </Button>
+                      <Button variant="ghost" size="xs" className={tabBtnClass(panelTab === 'project')} style={{ fontSize: PANEL_META_FONT_PX }} onClick={() => setPanelTab('project')}>
                         事業<span style={{ fontWeight: 400, fontSize: META_FONT_PX }}>({panelSections.projects.length})</span>
-                      </button>
-                      <button type="button" style={panelTab === 'recipient' ? tabBtnActive : tabBtnBase} onClick={() => setPanelTab('recipient')}>
+                      </Button>
+                      <Button variant="ghost" size="xs" className={tabBtnClass(panelTab === 'recipient')} style={{ fontSize: PANEL_META_FONT_PX }} onClick={() => setPanelTab('recipient')}>
                         支出先<span style={{ fontWeight: 400, fontSize: META_FONT_PX }}>({panelSections.recipients.length})</span>
-                      </button>
+                      </Button>
                     </div>
                     {/* Tab content */}
                     {/* スマホ縦では下端のオフセットコントロールに最終行が隠れるため、その実高ぶん下に余白を確保 */}
@@ -4379,33 +4418,33 @@ export default function RealDataSankeyPage() {
                       {/* 省庁タブ */}
                       {panelTab === 'ministry' && (() => {
                         const items = panelSections.ministries;
-                        if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: '#aaa', margin: 0, padding: '6px 0' }}>なし</p>;
+                        if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: 'var(--mirai-text-muted)', margin: 0, padding: '6px 0' }}>なし</p>;
                         return items.map((item) => (
-                          <button key={item.id} type="button" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
-                            style={listButtonStyle(item)}
+                          <Button key={item.id} variant="ghost" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
+                            className={LIST_BUTTON_CLASS} style={listButtonStyle(item)}
                           >
                             {renderListTitle(item)}
                             {item.budgetValue != null
                               ? renderBudgetSpendingMeta(item)
                               : renderListMeta(item, formatYen(item.value))
                             }
-                          </button>
+                          </Button>
                         ));
                       })()}
                       {/* 事業タブ */}
                       {panelTab === 'project' && (() => {
                         const items = panelSections.projects;
-                        if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: '#aaa', margin: 0, padding: '6px 0' }}>なし</p>;
+                        if (items.length === 0) return <p style={{ fontSize: PANEL_META_FONT_PX, color: 'var(--mirai-text-muted)', margin: 0, padding: '6px 0' }}>なし</p>;
                         return items.map((item) => (
-                          <button key={item.id} type="button" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
-                            style={listButtonStyle(item)}
+                          <Button key={item.id} variant="ghost" disabled={item.aggregated} onClick={() => handleConnectionClick(item.id)}
+                            className={LIST_BUTTON_CLASS} style={listButtonStyle(item)}
                           >
                             {renderListTitle(item, true)}
                             {item.budgetValue != null
                               ? renderBudgetSpendingMeta(item)
                               : renderListMeta(item, formatYen(item.value))
                             }
-                          </button>
+                          </Button>
                         ));
                       })()}
                       {/* 支出先タブ */}
@@ -4436,7 +4475,7 @@ export default function RealDataSankeyPage() {
         {/* 検索セクション: input card（内部にsliders）+ toggle（TopNと同じ構造） */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {/* Card: input + optional sliders（TopNのパネルdivに相当） */}
-          <div style={{ background: 'rgba(255,255,255,0.95)', border: `1px solid ${searchRegexError ? '#e53935' : '#e0e0e0'}`, borderRadius: '6px 6px 0 6px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+          <div style={{ background: 'rgb(var(--card-rgb) / 0.95)', border: `1px solid ${searchRegexError ? 'var(--destructive)' : 'var(--mirai-border)'}`, borderRadius: '6px 6px 0 6px', boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden' }}>
             {/* Input row */}
             <div style={{ position: 'relative' }}>
               {/* Search icon */}
@@ -4444,9 +4483,7 @@ export default function RealDataSankeyPage() {
                 aria-hidden="true"
                 style={{ position: 'absolute', left: SEARCH_INLINE_BUTTON_OFFSET_PX, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: SEARCH_ICON_BOX_PX, height: SEARCH_ICON_BOX_PX, pointerEvents: 'none' }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" height={SEARCH_ICON_PX} width={SEARCH_ICON_PX} viewBox="0 0 24 24" fill="#999">
-                  <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                </svg>
+                <Search size={SEARCH_ICON_PX} className="text-mirai-text-muted" aria-hidden="true" />
               </span>
               <input
                 ref={searchInputRef}
@@ -4485,31 +4522,34 @@ export default function RealDataSankeyPage() {
                   width: '100%', boxSizing: 'border-box',
                   paddingLeft: SEARCH_INPUT_PAD_LEFT_PX, paddingRight: SEARCH_INPUT_PAD_RIGHT_PX, paddingTop: SEARCH_INPUT_PAD_Y_PX, paddingBottom: SEARCH_INPUT_PAD_Y_PX,
                   fontSize: SEARCH_FONT_PX, border: 'none', borderRadius: 8,
-                  background: 'transparent', outline: 'none', color: '#333',
+                  background: 'transparent', outline: 'none', color: 'var(--mirai-text)',
                 }}
               />
               {/* .* regex toggle */}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 title={searchUseRegex ? '正規表現検索をオフ' : '正規表現で検索'}
                 aria-label={searchUseRegex ? '正規表現検索をオフ' : '正規表現で検索'}
                 aria-pressed={searchUseRegex}
                 onClick={() => setSearchUseRegex(v => !v)}
+                className={cn(REGEX_TOGGLE_CLASS, searchUseRegex ? 'bg-primary text-white hover:bg-primary hover:text-white' : 'text-mirai-text-muted hover:text-mirai-text')}
                 style={{
-                  position: 'absolute', right: searchQuery ? SEARCH_INLINE_BUTTON_OFFSET_PX + SEARCH_INLINE_BUTTON_GAP_PX : SEARCH_INLINE_BUTTON_OFFSET_PX, top: '50%', transform: 'translateY(-50%)',
-                  background: searchUseRegex ? '#1a73e8' : 'transparent',
-                  border: 'none', borderRadius: 4, cursor: 'pointer',
-                  color: searchUseRegex ? '#fff' : '#888',
-                  fontSize: META_FONT_PX, fontFamily: 'monospace', fontWeight: 'bold',
-                  lineHeight: 1, padding: `2px ${SEARCH_INLINE_BUTTON_PAD_X_PX}px`,
+                  right: searchQuery ? SEARCH_INLINE_BUTTON_OFFSET_PX + SEARCH_INLINE_BUTTON_GAP_PX : SEARCH_INLINE_BUTTON_OFFSET_PX,
+                  fontSize: META_FONT_PX,
+                  padding: `2px ${SEARCH_INLINE_BUTTON_PAD_X_PX}px`,
                 }}
-              >.*</button>
+              >.*</Button>
               {searchQuery && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="検索語をクリア"
                   onClick={() => { setSearchQuery(''); setDebouncedQuery(''); setShowSearchResults(false); searchInputRef.current?.focus(); }}
-                  style={{ position: 'absolute', right: SEARCH_INLINE_BUTTON_OFFSET_PX, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#aaa', fontSize: SEARCH_CLEAR_BUTTON_FONT_PX, lineHeight: 1, padding: `2px ${SEARCH_INLINE_BUTTON_PAD_X_PX}px` }}
-                >✕</button>
+                  className="absolute top-1/2 h-auto w-auto -translate-y-1/2 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+                  style={{ right: SEARCH_INLINE_BUTTON_OFFSET_PX, padding: `2px ${SEARCH_INLINE_BUTTON_PAD_X_PX}px` }}
+                >
+                  <X style={iconPx(SEARCH_CLEAR_BUTTON_FONT_PX)} aria-hidden="true" />
+                </Button>
               )}
             </div>{/* end input row */}
 
@@ -4528,16 +4568,13 @@ export default function RealDataSankeyPage() {
                   const selectedLabels = acOptions.filter(o => o.value).map(o => o.label);
                   const acLabel = acAllSelected ? 'すべて' : selectedLabels.length === 1 ? selectedLabels[0] : `選択中 (${selectedLabels.length}/4)`;
                   const chevron = (
-                    <svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="#aaa"
-                      style={{ transform: showAccountDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', display: 'block' }}>
-                      <path d="M480-360 280-560h400L480-360Z"/>
-                    </svg>
+                    <ChevronDown size={14} className={cn('block text-mirai-text-muted transition-transform duration-150', showAccountDropdown && 'rotate-180')} aria-hidden="true" />
                   );
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} ref={accountDropdownRef}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>会計</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>会計</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-                        <button type="button" ref={accountButtonRef}
+                        <Button variant="ghost" ref={accountButtonRef}
                           onClick={() => {
                             if (accountButtonRef.current) {
                               const r = accountButtonRef.current.getBoundingClientRect();
@@ -4545,24 +4582,25 @@ export default function RealDataSankeyPage() {
                             }
                             setShowAccountDropdown(v => !v);
                           }}
-                          style={{ width: '100%', fontSize: CONTROL_SMALL_FONT_PX, border: '1px solid #ddd', borderRadius: 4, padding: '3px 20px 3px 5px', background: '#fafafa', color: acAllSelected ? '#aaa' : '#333', outline: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >{acLabel}</button>
+                          className={cn(DROPDOWN_TRIGGER_CLASS, acAllSelected ? 'text-mirai-text-muted' : 'text-mirai-text')}
+                          style={{ fontSize: CONTROL_SMALL_FONT_PX }}
+                        >{acLabel}</Button>
                         <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>{chevron}</span>
                         {showAccountDropdown && accountDropdownRect && createPortal(
-                          <div style={{ position: 'fixed', top: accountDropdownRect.top, left: accountDropdownRect.left, width: accountDropdownRect.width, zIndex: 9999, background: '#fff', border: '1px solid #ddd', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', maxHeight: accountDropdownRect.maxHeight, overflowY: 'auto' }}
+                          <div style={{ position: 'fixed', top: accountDropdownRect.top, left: accountDropdownRect.left, width: accountDropdownRect.width, zIndex: 9999, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 4, boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', maxHeight: accountDropdownRect.maxHeight, overflowY: 'auto' }}
                             onMouseDown={e => e.stopPropagation()}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontWeight: 600 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid var(--mirai-surface-light)', fontWeight: 600 }}>
                               <input type="checkbox" checked={acAllSelected}
                                 onChange={() => { pendingHistoryAction.current = 'replace'; const v = !acAllSelected; setAcGeneral(v); setAcSpecial(v); setAcBoth(v); setAcNone(v); }}
                                 style={{ width: 12, height: 12 }} />
-                              <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#333' }}>すべて選択/解除</span>
+                              <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text)' }}>すべて選択/解除</span>
                             </label>
                             {acOptions.map(({ label, value, setter }) => (
                               <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer' }}>
                                 <input type="checkbox" checked={value}
                                   onChange={() => { pendingHistoryAction.current = 'replace'; setter(v => !v); }}
                                   style={{ width: 12, height: 12 }} />
-                                <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#333' }}>{label}</span>
+                                <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text)' }}>{label}</span>
                               </label>
                             ))}
                           </div>,
@@ -4571,8 +4609,8 @@ export default function RealDataSankeyPage() {
                         )}
                       </div>
                       {!acAllSelected && (
-                        <button type="button" onClick={() => { pendingHistoryAction.current = 'replace'; setAcGeneral(true); setAcSpecial(true); setAcBoth(true); setAcNone(true); }}
-                          style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                        <Button variant="ghost" size="icon-sm" aria-label="会計区分フィルタを解除" onClick={() => { pendingHistoryAction.current = 'replace'; setAcGeneral(true); setAcSpecial(true); setAcBoth(true); setAcNone(true); }}
+                          className={CLEAR_BUTTON_CLASS}><X style={iconPx(META_FONT_PX)} aria-hidden="true" /></Button>
                       )}
                     </div>
                   );
@@ -4583,16 +4621,13 @@ export default function RealDataSankeyPage() {
                   const allSelected = filterMinistryNames.length === 0;
                   const label = allSelected ? '全省庁' : filterMinistryNames.length === 1 ? filterMinistryNames[0] : `選択中 (${filterMinistryNames.length}/${ministryNodes.length})`;
                   const chevron = (
-                    <svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="#aaa"
-                      style={{ transform: showMinistryDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s', display: 'block' }}>
-                      <path d="M480-360 280-560h400L480-360Z"/>
-                    </svg>
+                    <ChevronDown size={14} className={cn('block text-mirai-text-muted transition-transform duration-150', showMinistryDropdown && 'rotate-180')} aria-hidden="true" />
                   );
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} ref={ministryDropdownRef}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>省庁</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>省庁</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
-                        <button type="button" ref={ministryButtonRef}
+                        <Button variant="ghost" ref={ministryButtonRef}
                           onClick={() => {
                             if (ministryButtonRef.current) {
                               const r = ministryButtonRef.current.getBoundingClientRect();
@@ -4600,15 +4635,16 @@ export default function RealDataSankeyPage() {
                             }
                             setShowMinistryDropdown(v => !v);
                           }}
-                          style={{ width: '100%', fontSize: CONTROL_SMALL_FONT_PX, border: '1px solid #ddd', borderRadius: 4, padding: '3px 20px 3px 5px', background: '#fafafa', color: allSelected ? '#aaa' : '#333', outline: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        >{label}</button>
+                          className={cn(DROPDOWN_TRIGGER_CLASS, allSelected ? 'text-mirai-text-muted' : 'text-mirai-text')}
+                          style={{ fontSize: CONTROL_SMALL_FONT_PX }}
+                        >{label}</Button>
                         <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'flex', alignItems: 'center' }}>{chevron}</span>
                         {showMinistryDropdown && ministryDropdownRect && createPortal(
-                          <div style={{ position: 'fixed', top: ministryDropdownRect.top, left: ministryDropdownRect.left, width: ministryDropdownRect.width, zIndex: 9999, background: '#fff', border: '1px solid #ddd', borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', maxHeight: ministryDropdownRect.maxHeight, overflowY: 'auto' }}
+                          <div style={{ position: 'fixed', top: ministryDropdownRect.top, left: ministryDropdownRect.left, width: ministryDropdownRect.width, zIndex: 9999, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 4, boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', maxHeight: ministryDropdownRect.maxHeight, overflowY: 'auto' }}
                             onMouseDown={e => e.stopPropagation()}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontWeight: 600 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', cursor: 'pointer', borderBottom: '1px solid var(--mirai-surface-light)', fontWeight: 600 }}>
                               <input type="checkbox" checked={allSelected} onChange={() => { pendingHistoryAction.current = 'replace'; setFilterMinistryNames([]); }} style={{ width: 12, height: 12 }} />
-                              <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#333' }}>すべて選択/解除</span>
+                              <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text)' }}>すべて選択/解除</span>
                             </label>
                             {ministryNodes.map(n => (
                               <label key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', cursor: 'pointer' }}>
@@ -4616,7 +4652,7 @@ export default function RealDataSankeyPage() {
                                   checked={!allSelected && filterMinistryNames.includes(n.name)}
                                   onChange={() => { pendingHistoryAction.current = 'replace'; setFilterMinistryNames(prev => prev.includes(n.name) ? prev.filter(m => m !== n.name) : [...prev, n.name]); }}
                                   style={{ width: 12, height: 12 }} />
-                                <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#333' }}>{n.name}</span>
+                                <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text)' }}>{n.name}</span>
                               </label>
                             ))}
                           </div>,
@@ -4625,8 +4661,8 @@ export default function RealDataSankeyPage() {
                         )}
                       </div>
                       {!allSelected && (
-                        <button type="button" onClick={() => { pendingHistoryAction.current = 'replace'; setFilterMinistryNames([]); }}
-                          style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                        <Button variant="ghost" size="icon-sm" aria-label="省庁フィルタを解除" onClick={() => { pendingHistoryAction.current = 'replace'; setFilterMinistryNames([]); }}
+                          className={CLEAR_BUTTON_CLASS}><X style={iconPx(META_FONT_PX)} aria-hidden="true" /></Button>
                       )}
                     </div>
                   );
@@ -4644,7 +4680,7 @@ export default function RealDataSankeyPage() {
                   }
                   return (
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
                       <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex' }}>
                         <input
                           data-testid={testId(`filter-${key}-name`)}
@@ -4652,20 +4688,21 @@ export default function RealDataSankeyPage() {
                           value={value}
                           onChange={e => setValue(e.target.value)}
                           placeholder={useRegex ? '正規表現' : '部分一致'}
-                          style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${regexError ? '#e53935' : '#ddd'}`, borderRadius: 4, padding: '3px 28px 3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                          style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${regexError ? 'var(--destructive)' : 'var(--mirai-border)'}`, borderRadius: 4, padding: '3px 28px 3px 5px', background: 'var(--mirai-surface)', color: 'var(--mirai-text)', outline: 'none' }}
                         />
-                        <button
-                          type="button"
+                        <Button
+                          variant="ghost"
                           title={useRegex ? '正規表現をオフ' : '正規表現で絞り込み'}
                           aria-label={useRegex ? '正規表現をオフ' : '正規表現で絞り込み'}
                           aria-pressed={useRegex}
                           onClick={() => setUseRegex(v => !v)}
-                          style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', background: useRegex ? '#1a73e8' : 'transparent', border: 'none', borderRadius: 3, cursor: 'pointer', color: useRegex ? '#fff' : '#888', fontSize: META_FONT_PX, fontFamily: 'monospace', fontWeight: 'bold', lineHeight: 1, padding: '2px 4px' }}
-                        >.*</button>
+                          className={cn(REGEX_TOGGLE_CLASS, 'right-0.5 px-1 py-0.5', useRegex ? 'bg-primary text-white hover:bg-primary hover:text-white' : 'text-mirai-text-muted hover:text-mirai-text')}
+                          style={{ fontSize: META_FONT_PX }}
+                        >.*</Button>
                       </div>
                       {value && (
-                        <button type="button" onClick={() => setValue('')}
-                          style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                        <Button variant="ghost" size="icon-sm" aria-label={`${label}フィルタを解除`} onClick={() => setValue('')}
+                          className={CLEAR_BUTTON_CLASS}><X style={iconPx(META_FONT_PX)} aria-hidden="true" /></Button>
                       )}
                     </div>
                   );
@@ -4688,9 +4725,9 @@ export default function RealDataSankeyPage() {
                           onChange={e => { pendingHistoryAction.current = 'replace'; setFilterRecipientIncludeSub(e.target.checked); }}
                           style={{ width: 12, height: 12, flexShrink: 0 }}
                         />
-                        <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap' }}>再委託先</span>
+                        <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', whiteSpace: 'nowrap' }}>再委託先</span>
                       </label>
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', whiteSpace: 'nowrap', flexShrink: 0 }}>階層</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', whiteSpace: 'nowrap', flexShrink: 0 }}>階層</span>
                       <input
                         type="range" min={1} max={maxSubcontractDepth} step={1}
                         value={cur}
@@ -4704,25 +4741,27 @@ export default function RealDataSankeyPage() {
                           onChange={e => setSubDepthInput(e.target.value)}
                           onBlur={() => { const v = Number(subDepthInput); if (!isNaN(v) && v >= 1) commitDepth(v); setSubDepthEditing(false); }}
                           onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur(); }}
-                          style={{ width: 36, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
+                          style={{ width: 36, textAlign: 'center', border: '1px solid var(--mirai-border)', borderRadius: 3, fontSize: CONTROL_SMALL_FONT_PX }}
                         />
                       ) : (
-                        <button type="button" onClick={() => { setSubDepthInput(String(cur)); setSubDepthEditing(true); }}
+                        <Button variant="ghost" onClick={() => { setSubDepthInput(String(cur)); setSubDepthEditing(true); }}
                           title="クリックして直接入力"
-                          style={{ color: cur > 1 ? '#333' : '#999', fontSize: CONTROL_SMALL_FONT_PX, background: 'transparent', border: 'none', cursor: 'text', padding: 0, minWidth: 20, textAlign: 'right', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}
-                        >{cur}</button>
+                          className={cn('h-auto min-w-5 shrink-0 cursor-text justify-end rounded-none p-0 font-normal tabular-nums hover:bg-transparent hover:text-mirai-text', cur > 1 ? 'text-mirai-text' : 'text-mirai-text-muted')}
+                          style={{ fontSize: CONTROL_SMALL_FONT_PX }}
+                        >{cur}</Button>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
-                        {([[1, 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z', '深くする'], [-1, 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z', '浅くする']] as const).map(([delta, path, title]) => {
+                        {([[1, ChevronUp, '深くする'], [-1, ChevronDown, '浅くする']] as [number, typeof ChevronUp, string][]).map(([delta, Icon, title]) => {
                           const step = () => commitDepth((filterSubcontract ? parseInt(filterSubcontract, 10) : 1) + delta);
                           return (
-                            <button key={delta} type="button" title={title} aria-label={title}
+                            <Button key={delta} variant="ghost" title={title} aria-label={title}
                               {...subDepthRepeat(step)}
                               onClick={(e) => { if (e.detail === 0) step(); }}
-                              style={{ flex: 1, width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' }}
+                              className={cn(STEP_BUTTON_CLASS, 'w-4 flex-1')}
+                              style={{ WebkitTouchCallout: 'none' }}
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" height="12" width="12" viewBox="0 0 24 24" fill="#555"><path d={path} /></svg>
-                            </button>
+                              <Icon className="size-3" aria-hidden="true" />
+                            </Button>
                           );
                         })}
                       </div>
@@ -4735,19 +4774,19 @@ export default function RealDataSankeyPage() {
                   { label: '支出', minText: filterMinSpendingText, maxText: filterMaxSpendingText, setMin: setFilterMinSpendingText, setMax: setFilterMaxSpendingText },
                 ] as const).map(({ label, minText, maxText, setMin, setMax }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
+                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
                     <input type="text" value={minText} onChange={e => setMin(e.target.value)}
                       placeholder="例: 100億、50万"
-                      style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(minText) !== null || !minText ? '#ddd' : '#e53935'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                      style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(minText) !== null || !minText ? 'var(--mirai-border)' : 'var(--destructive)'}`, borderRadius: 4, padding: '3px 5px', background: 'var(--mirai-surface)', color: 'var(--mirai-text)', outline: 'none' }}
                     />
-                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#aaa', flexShrink: 0 }}>~</span>
+                    <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-muted)', flexShrink: 0 }}>~</span>
                     <input type="text" value={maxText} onChange={e => setMax(e.target.value)}
                       placeholder="例: 1兆、500億"
-                      style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(maxText) !== null || !maxText ? '#ddd' : '#e53935'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                      style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${parseAmountToYen(maxText) !== null || !maxText ? 'var(--mirai-border)' : 'var(--destructive)'}`, borderRadius: 4, padding: '3px 5px', background: 'var(--mirai-surface)', color: 'var(--mirai-text)', outline: 'none' }}
                     />
                     {(minText || maxText) && (
-                      <button type="button" onClick={() => { setMin(''); setMax(''); }}
-                        style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                      <Button variant="ghost" size="icon-sm" aria-label={`${label}フィルタを解除`} onClick={() => { setMin(''); setMax(''); }}
+                        className={CLEAR_BUTTON_CLASS}><X style={iconPx(META_FONT_PX)} aria-hidden="true" /></Button>
                     )}
                   </div>
                 ))}
@@ -4766,21 +4805,21 @@ export default function RealDataSankeyPage() {
                   };
                   return (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span title={title} style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#555', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'help' }}>{label}</span>
+                      <span title={title} style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-subtle)', width: '3.5em', whiteSpace: 'nowrap', flexShrink: 0, cursor: 'help' }}>{label}</span>
                       <input type="text" inputMode="numeric" value={range.min}
                         onChange={e => { pendingHistoryAction.current = 'replace'; set({ ...range, min: e.target.value }); }}
                         placeholder="下限 0"
-                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.min) ? '#e53935' : '#ddd'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.min) ? 'var(--destructive)' : 'var(--mirai-border)'}`, borderRadius: 4, padding: '3px 5px', background: 'var(--mirai-surface)', color: 'var(--mirai-text)', outline: 'none' }}
                       />
-                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: '#aaa', flexShrink: 0 }}>~</span>
+                      <span style={{ fontSize: CONTROL_SMALL_FONT_PX, color: 'var(--mirai-text-muted)', flexShrink: 0 }}>~</span>
                       <input type="text" inputMode="numeric" value={range.max}
                         onChange={e => { pendingHistoryAction.current = 'replace'; set({ ...range, max: e.target.value }); }}
                         placeholder="上限 100"
-                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.max) ? '#e53935' : '#ddd'}`, borderRadius: 4, padding: '3px 5px', background: '#fafafa', color: '#333', outline: 'none' }}
+                        style={{ flex: 1, minWidth: 0, fontSize: CONTROL_SMALL_FONT_PX, border: `1px solid ${bad(range.max) ? 'var(--destructive)' : 'var(--mirai-border)'}`, borderRadius: 4, padding: '3px 5px', background: 'var(--mirai-surface)', color: 'var(--mirai-text)', outline: 'none' }}
                       />
                       {(range.min || range.max) && (
-                        <button type="button" onClick={() => { pendingHistoryAction.current = 'replace'; set(EMPTY_SCORE_RANGE); }}
-                          style={{ fontSize: META_FONT_PX, color: '#aaa', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', flexShrink: 0 }}>×</button>
+                        <Button variant="ghost" size="icon-sm" aria-label={`${label}フィルタを解除`} onClick={() => { pendingHistoryAction.current = 'replace'; set(EMPTY_SCORE_RANGE); }}
+                          className={CLEAR_BUTTON_CLASS}><X style={iconPx(META_FONT_PX)} aria-hidden="true" /></Button>
                       )}
                     </div>
                   );
@@ -4792,24 +4831,26 @@ export default function RealDataSankeyPage() {
           {/* トグルボタン（card外・下部 — TopNの構造と同一） */}
           {(() => {
             return (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 title={showFilterPanel ? 'フィルタ を隠す' : 'フィルタ を表示'}
                 aria-pressed={showFilterPanel}
                 onClick={() => setShowFilterPanel(s => !s)}
-                style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', borderTop: 'none', borderLeft: '1px solid #e0e0e0', borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', borderRadius: '0 0 4px 4px', cursor: 'pointer', padding: '0 2px', marginTop: -1, userSelect: 'none' }}
+                className="-mt-px h-auto w-auto self-end select-none rounded-none rounded-b border border-t-0 border-mirai-border bg-card/90 px-0.5 py-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="#bbb">
-                  <path d={showFilterPanel ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z' : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'} />
-                </svg>
-              </button>
+                {showFilterPanel
+                  ? <ChevronUp className="size-3.5" aria-hidden="true" />
+                  : <ChevronDown className="size-3.5" aria-hidden="true" />}
+              </Button>
             );
           })()}
         </div>{/* end 検索セクション */}
 
         {/* フィルタ解除ボタン（常に同じ幅を占有し、非フィルタ時は非表示） */}
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon-sm"
           onClick={clearAllFilters}
           title="フィルタを解除"
           aria-label="フィルタを解除"
@@ -4817,71 +4858,66 @@ export default function RealDataSankeyPage() {
           tabIndex={hasActiveFilters ? 0 : -1}
           data-testid={testId('clear-filters')}
           data-pan-disabled
+          className="shrink-0 rounded-md border-mirai-border bg-card/95 p-0 text-mirai-text-subtle"
           style={{
-            flexShrink: 0, width: FILTER_CLEAR_BUTTON_PX, height: FILTER_CLEAR_BUTTON_PX,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,0.95)', border: '1px solid #e0e0e0',
-            borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            cursor: 'pointer', color: '#666', padding: 0,
+            width: FILTER_CLEAR_BUTTON_PX, height: FILTER_CLEAR_BUTTON_PX,
             visibility: hasActiveFilters ? 'visible' : 'hidden',
             pointerEvents: hasActiveFilters ? 'auto' : 'none',
           }}
         >
-            {/* Material Icons: filter_list_off */}
-            <svg xmlns="http://www.w3.org/2000/svg" height={FILTER_CLEAR_ICON_PX} width={FILTER_CLEAR_ICON_PX} viewBox="0 -960 960 960" fill="currentColor">
-              <path d="M791-55 55-791l57-57 736 736-57 57ZM633-440l-80-80h167v80h-87ZM433-640l-80-80h487v80H433Zm-33 400v-80h160v80H400ZM240-440v-80h166v80H240ZM120-640v-80h86v80h-86Z"/>
-            </svg>
-          </button>
+            <FilterX style={iconPx(FILTER_CLEAR_ICON_PX)} aria-hidden="true" />
+          </Button>
 
         </div>{/* end Row 1 flex */}
 
         {/* Dropdown */}
         {showSearchResults && searchResults.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, minWidth: 0, maxWidth: searchMaxWidth, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 20 }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, minWidth: 0, maxWidth: searchMaxWidth, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 8, boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', zIndex: 20 }}>
             {/* Count header */}
-            <div style={{ padding: '5px 10px', fontSize: META_FONT_PX, color: '#999', borderBottom: '1px solid #f0f0f0' }}>
+            <div style={{ padding: '5px 10px', fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', borderBottom: '1px solid var(--mirai-surface-light)' }}>
               {searchResults.length}件{searchTotalPages > 1 ? `（${searchPage + 1} / ${searchTotalPages} ページ）` : ''}
             </div>
             {/* Scrollable list */}
             <div ref={searchDropdownRef} style={{ maxHeight: searchDropdownMaxH, overflowY: 'auto' }}>
               {searchPagedResults.map((node, i) => (
-                <button
+                <Button
                   key={node.id}
+                  variant="ghost"
                   data-testid={testId('search-result')}
-                  type="button"
                   onClick={() => { handleSearchSelect(node.id); setSearchCursorIndex(-1); }}
-                  style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: SEARCH_RESULT_GAP_PX, padding: `${SEARCH_RESULT_PAD_Y_PX}px ${SEARCH_RESULT_PAD_X_PX}px`, background: i === searchCursorIndex ? '#e8f0fe' : 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                  onMouseEnter={e => { if (i !== searchCursorIndex) e.currentTarget.style.background = '#f5f5f5'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = i === searchCursorIndex ? '#e8f0fe' : 'transparent'; }}
+                  className="h-auto w-full items-start justify-start whitespace-normal rounded-none font-normal text-left text-mirai-text"
+                  style={{ gap: SEARCH_RESULT_GAP_PX, padding: `${SEARCH_RESULT_PAD_Y_PX}px ${SEARCH_RESULT_PAD_X_PX}px`, background: i === searchCursorIndex ? 'var(--mirai-surface-teal)' : 'transparent' }}
+                  onMouseEnter={e => { if (i !== searchCursorIndex) e.currentTarget.style.background = 'var(--mirai-surface)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = i === searchCursorIndex ? 'var(--mirai-surface-teal)' : 'transparent'; }}
                 >
                   <span style={{ width: SEARCH_RESULT_SWATCH_PX, height: SEARCH_RESULT_SWATCH_PX, marginTop: Math.max(2, Math.round(PANEL_LIST_NAME_FONT_PX * 0.35)), borderRadius: 2, flexShrink: 0, background: node.budgetValue !== undefined ? `linear-gradient(to right, ${TYPE_COLORS['project-budget']} 44%, ${TYPE_COLORS['project-spending']} 56%)` : getNodeColor(node) }} />
                   <span style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: SEARCH_RESULT_GAP_PX, rowGap: 2 }}>
-                    <span title={node.name} style={{ flex: '1 1 160px', minWidth: 0, fontSize: PANEL_LIST_NAME_FONT_PX, color: '#333', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
-                    <span style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: SEARCH_RESULT_GAP_PX, fontSize: PANEL_LIST_VALUE_FONT_PX, color: '#999', whiteSpace: 'normal', overflowWrap: 'anywhere', flex: '0 0 100%', minWidth: 0, textAlign: 'right' }}>
-                      {node.projectId != null && <span style={{ fontSize: META_FONT_PX, color: '#bbb', whiteSpace: 'nowrap' }}>PID:{node.projectId}</span>}
+                    <span title={node.name} style={{ flex: '1 1 160px', minWidth: 0, fontSize: PANEL_LIST_NAME_FONT_PX, color: 'var(--mirai-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</span>
+                    <span style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'baseline', gap: SEARCH_RESULT_GAP_PX, fontSize: PANEL_LIST_VALUE_FONT_PX, color: 'var(--mirai-text-muted)', whiteSpace: 'normal', overflowWrap: 'anywhere', flex: '0 0 100%', minWidth: 0, textAlign: 'right' }}>
+                      {node.projectId != null && <span style={{ fontSize: META_FONT_PX, color: 'var(--mirai-text-muted)', whiteSpace: 'nowrap' }}>PID:{node.projectId}</span>}
                       <span>{node.budgetValue !== undefined
                         ? <>予{formatYen(node.budgetValue)} / 支{formatYen(node.value)}</>
                         : formatYen(node.value)
                       }</span>
                     </span>
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
             {/* Pagination footer */}
             {searchTotalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderTop: '1px solid #f0f0f0' }}>
-                <button type="button" onClick={() => { setSearchPage(p => Math.max(p - 1, 0)); setSearchCursorIndex(-1); }} disabled={searchPage === 0}
-                  style={{ fontSize: META_FONT_PX, padding: '2px 8px', border: '1px solid #e0e0e0', borderRadius: 4, background: 'transparent', cursor: searchPage === 0 ? 'default' : 'pointer', color: searchPage === 0 ? '#ccc' : '#555' }}>‹ 前へ</button>
-                <button type="button" onClick={() => { setSearchPage(p => Math.min(p + 1, searchTotalPages - 1)); setSearchCursorIndex(-1); }} disabled={searchPage === searchTotalPages - 1}
-                  style={{ fontSize: META_FONT_PX, padding: '2px 8px', border: '1px solid #e0e0e0', borderRadius: 4, background: 'transparent', cursor: searchPage === searchTotalPages - 1 ? 'default' : 'pointer', color: searchPage === searchTotalPages - 1 ? '#ccc' : '#555' }}>次へ ›</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 8px', borderTop: '1px solid var(--mirai-surface-light)' }}>
+                <Button variant="outline" size="xs" onClick={() => { setSearchPage(p => Math.max(p - 1, 0)); setSearchCursorIndex(-1); }} disabled={searchPage === 0}
+                  className={PAGER_BUTTON_CLASS} style={{ fontSize: META_FONT_PX }}>‹ 前へ</Button>
+                <Button variant="outline" size="xs" onClick={() => { setSearchPage(p => Math.min(p + 1, searchTotalPages - 1)); setSearchCursorIndex(-1); }} disabled={searchPage === searchTotalPages - 1}
+                  className={PAGER_BUTTON_CLASS} style={{ fontSize: META_FONT_PX }}>次へ ›</Button>
               </div>
             )}
           </div>
         )}
         {/* No results */}
         {showSearchResults && meetsSearchMinLength(debouncedQuery.trim()) && searchResults.length === 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, minWidth: 0, maxWidth: searchMaxWidth, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', padding: `${scaleSize(10)}px ${scaleSize(12)}px`, fontSize: PANEL_META_FONT_PX, color: '#999', zIndex: 20 }}>
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, minWidth: 0, maxWidth: searchMaxWidth, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 8, boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', padding: `${scaleSize(10)}px ${scaleSize(12)}px`, fontSize: PANEL_META_FONT_PX, color: 'var(--mirai-text-muted)', zIndex: 20 }}>
             該当なし
           </div>
         )}
@@ -4918,32 +4954,31 @@ export default function RealDataSankeyPage() {
         {/* 表示設定(⋮)。狭幅のみ（通常幅は表示範囲ブロックの統合パネルに集約） */}
         {isCompactWidth && (
         <div style={{ position: 'relative', flexShrink: 0 }}>
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => setShowSettings(s => !s)}
           aria-label="表示設定を開く"
           aria-expanded={showSettings}
           aria-controls="sankey-topn-settings"
           aria-haspopup="dialog"
-          style={{ ...clusterButtonStyle, width: 36, padding: 0, background: showSettings ? '#fff' : 'rgba(255,255,255,0.9)' }}
+          className={cn('border-mirai-border', showSettings ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
         >
-          {/* Material Icons: more_vert */}
-          <svg xmlns="http://www.w3.org/2000/svg" height="20" width="20" viewBox="0 0 24 24" fill={showSettings ? '#333' : '#666'}>
-            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-          </svg>
-        </button>
+          <MoreVertical className="size-5" aria-hidden="true" />
+        </Button>
         {showSettings && (
           <>
             <div style={{ position: 'fixed', inset: 0, zIndex: 18 }} onMouseDown={() => setShowSettings(false)} />
-            <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: '#fff', border: '1px solid #ddd', borderRadius: 6, padding: '12px 16px', boxShadow: '0 4px 12px rgba(0,0,0,0.12)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: '#333', outline: 'none' }}>
+            <div id="sankey-topn-settings" ref={settingsPanelRef} role="dialog" aria-label="表示設定" tabIndex={-1} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setShowSettings(false); } }} style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 19, background: 'var(--card)', border: '1px solid var(--mirai-border)', borderRadius: 6, padding: '12px 16px', boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.06)', fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, minWidth: 240, maxWidth: 'calc(100vw - 24px)', display: 'flex', flexDirection: 'column', gap: 10, colorScheme: 'light', color: 'var(--mirai-text)', outline: 'none' }}>
               {/* スマホ幅: 検索ボックスに隠れるため移動した年度選択 */}
               {isCompactWidth && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>年度</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--mirai-surface-light)' }}>
+                  <span style={{ color: 'var(--mirai-text-subtle)', fontWeight: 600 }}>年度</span>
                   <select
                     data-testid={testId('year-select-settings')}
                     value={year}
                     onChange={e => handleYearChange(e.target.value as '2024' | '2025')}
-                    style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer' }}
+                    style={{ fontSize: CONTROL_SMALL_FONT_PX_DEFAULT, padding: '2px 4px', borderRadius: 4, border: '1px solid var(--mirai-border)', cursor: 'pointer' }}
                     data-pan-disabled
                   >
                     <option value="2025">2025年度</option>
@@ -4953,15 +4988,15 @@ export default function RealDataSankeyPage() {
               )}
               {/* スマホ幅: 表示範囲（窓の位置スライダー＋件数の上下矢印） */}
               {isCompactWidth && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>表示範囲（スライダー＝位置、矢印＝件数）</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid var(--mirai-surface-light)' }}>
+                  <span style={{ color: 'var(--mirai-text-subtle)', fontWeight: 600 }}>表示範囲（スライダー＝位置、矢印＝件数）</span>
                   {rangeUI?.rangeRows}
                 </div>
               )}
               {/* スマホ幅: 左下から移動した基準フォントサイズ調整 */}
               {isCompactWidth && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #eee' }}>
-                  <span style={{ color: '#555', fontWeight: 600 }}>文字サイズ</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid var(--mirai-surface-light)' }}>
+                  <span style={{ color: 'var(--mirai-text-subtle)', fontWeight: 600 }}>文字サイズ</span>
                   {fontSizeControlsFragment}
                 </div>
               )}
@@ -4993,25 +5028,26 @@ export default function RealDataSankeyPage() {
       <div style={{ position: 'absolute', bottom: 12, right: 12 + rightControlsOffset, zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4, transition: isResizingAiPanel ? 'none' : 'right 0.2s ease' }}>
         {/* スクロールモード切替ボタン（狭幅では2本指パンで代替できるため非表示） */}
         {!isCompactWidth && (
-        <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
-          <button
+        <div style={{ background: 'rgb(var(--card-rgb) / 0.9)', borderRadius: 8, boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden', width: 44 }}>
+          <Button
+            variant="ghost"
             aria-label={scrollMode === 'pan' ? 'スクロール移動モード（クリックでズームモードへ）' : 'スクロール移動モードに切替'}
             title={scrollMode === 'pan' ? 'スクロール: 移動モード\nCtrl/Cmd+スクロール = ズーム\nクリックでズームモードへ' : 'スクロール: ズームモード\nクリックで移動モードへ'}
             onClick={() => setScrollMode(m => m === 'zoom' ? 'pan' : 'zoom')}
-            style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', border: 'none', background: scrollMode === 'pan' ? '#e8f0fe' : 'transparent', cursor: 'pointer' }}
+            className={cn(ZOOM_COLUMN_BUTTON_CLASS, scrollMode === 'pan' ? 'bg-mirai-surface-teal text-primary hover:bg-mirai-surface-teal' : 'text-mirai-text-muted')}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={scrollMode === 'pan' ? '#1a73e8' : '#bbb'}><path d="M480-80 310-250l57-57 73 73v-166H274l73 74-57 57L120-440l170-170 57 57-74 73h166v-166l-73 73-57-57 170-170 170 170-57 57-73-73v166h166l-74-73 57-57 170 170-170 170-57-57 74-74H520v166l73-73 57 57L480-80Z"/></svg>
-          </button>
+            <Move className="size-[18px]" aria-hidden="true" />
+          </Button>
         </div>
         )}
         {/* + / vertical slider / -（狭幅ではピンチズームで代替できるため非表示） */}
         {!isCompactWidth && (
-        <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ background: 'rgb(var(--card-rgb) / 0.9)', borderRadius: 8, boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden', width: 44, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {/* Material Icons: add */}
-          <button data-testid={testId('zoom-in')} aria-label="ズームイン" onClick={() => applyZoom(1.5)} title="ズームイン" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', background: 'transparent', border: 'none', borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="#555"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-          </button>
-          <div style={{ padding: '4px 0', display: 'flex', justifyContent: 'center', borderBottom: '1px solid #e5e7eb' }}>
+          <Button variant="ghost" data-testid={testId('zoom-in')} aria-label="ズームイン" onClick={() => applyZoom(1.5)} title="ズームイン" className={cn(ZOOM_COLUMN_BUTTON_CLASS, 'border-b border-mirai-border text-mirai-text-subtle')}>
+            <Plus className="size-[18px]" aria-hidden="true" />
+          </Button>
+          <div style={{ padding: '4px 0', display: 'flex', justifyContent: 'center', borderBottom: '1px solid var(--mirai-border)' }}>
             <input
               type="range"
               aria-label="ズーム倍率"
@@ -5025,13 +5061,13 @@ export default function RealDataSankeyPage() {
             />
           </div>
           {/* Material Icons: remove */}
-          <button data-testid={testId('zoom-out')} aria-label="ズームアウト" onClick={() => applyZoom(1 / 1.5)} title="ズームアウト" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', background: 'transparent', border: 'none', cursor: 'pointer' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 0 24 24" fill="#555"><path d="M19 13H5v-2h14v2z"/></svg>
-          </button>
+          <Button variant="ghost" data-testid={testId('zoom-out')} aria-label="ズームアウト" onClick={() => applyZoom(1 / 1.5)} title="ズームアウト" className={cn(ZOOM_COLUMN_BUTTON_CLASS, 'text-mirai-text-subtle')}>
+            <Minus className="size-[18px]" aria-hidden="true" />
+          </Button>
         </div>
         )}
         {/* Zoom% — 非編集時は "N%" 表示、クリックで数値入力 */}
-        <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
+        <div style={{ background: 'rgb(var(--card-rgb) / 0.9)', borderRadius: 8, boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden', width: 44 }}>
           {isEditingZoom ? (
             <input
               type="number"
@@ -5041,28 +5077,30 @@ export default function RealDataSankeyPage() {
               onChange={e => { setZoomInputValue(e.target.value); const v = Number(e.target.value); if (!isNaN(v) && v > 0) applyZoom((v / 100 * baseZoom) / zoom); }}
               onBlur={() => setIsEditingZoom(false)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') setIsEditingZoom(false); }}
-              style={{ width: '100%', fontSize: 10, textAlign: 'center', padding: '3px 0', border: 'none', outline: 'none', background: 'transparent', color: '#555', boxSizing: 'border-box' }}
+              style={{ width: '100%', fontSize: 10, textAlign: 'center', padding: '3px 0', border: 'none', outline: 'none', background: 'transparent', color: 'var(--mirai-text-subtle)', boxSizing: 'border-box' }}
             />
           ) : (
-            <button
+            <Button
+              variant="ghost"
               onClick={() => { setZoomInputValue(String(Math.round(zoom / baseZoom * 100))); setIsEditingZoom(true); }}
               title="クリックしてZoom率を入力"
-              style={{ width: '100%', fontSize: 10, textAlign: 'center', padding: '4px 0', border: 'none', background: 'transparent', color: '#888', cursor: 'text' }}
-            >{Math.round(zoom / baseZoom * 100)}%</button>
+              className="h-auto w-full cursor-text rounded-none px-0 py-1 text-[10px] font-normal tabular-nums text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
+            >{Math.round(zoom / baseZoom * 100)}%</Button>
           )}
         </div>
         {/* 全体表示ボタン */}
-        <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
+        <div style={{ background: 'rgb(var(--card-rgb) / 0.9)', borderRadius: 8, boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden', width: 44 }}>
           {/* fit screen */}
-          <button data-testid={testId('reset-viewport')} aria-label="全体表示" onClick={resetViewport} title="全体表示" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="#666"><path d="M792-576v-120H672v-72h120q30 0 51 21.15T864-696v120h-72Zm-696 0v-120q0-30 21.15-51T168-768h120v72H168v120H96Zm576 384v-72h120v-120h72v120q0 30-21.15 51T792-192H672Zm-504 0q-30 0-51-21.15T96-264v-120h72v120h120v72H168Zm72-144v-288h480v288H240Zm72-72h336v-144H312v144Zm0 0v-144 144Z"/></svg>
-          </button>
+          <Button variant="ghost" data-testid={testId('reset-viewport')} aria-label="全体表示" onClick={resetViewport} title="全体表示" className={cn(ZOOM_COLUMN_BUTTON_CLASS, 'text-mirai-text-subtle')}>
+            <Maximize className="size-[18px]" aria-hidden="true" />
+          </Button>
         </div>
         {/* 関連ノードのみ表示トグル — Pin状態のときのみ表示 */}
         {selectedNode && (
-          <div style={{ background: 'rgba(255,255,255,0.9)', borderRadius: 8, boxShadow: '0 1px 4px rgba(0,0,0,0.12)', overflow: 'hidden', width: 44 }}>
+          <div style={{ background: 'rgb(var(--card-rgb) / 0.9)', borderRadius: 8, boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)', overflow: 'hidden', width: 44 }}>
             {/* Material Icons: account_tree — 関連ノードのみ表示トグル */}
-            <button
+            <Button
+              variant="ghost"
               data-testid={testId('focus-related-toggle')}
               aria-label={focusRelated ? '関連ノードのみ表示 ON（クリックでOFF）' : '関連ノードのみ表示 OFF（クリックでON）'}
               title={focusRelated ? '関連ノードのみ表示: ON\nクリックでOFF' : '関連ノードのみ表示: OFF\nクリックでON'}
@@ -5085,14 +5123,14 @@ export default function RealDataSankeyPage() {
                 }
                 setFocusRelated(next);
               }}
-              style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', border: 'none', background: focusRelated ? '#e8f0fe' : 'transparent', cursor: 'pointer' }}
+              className={cn(ZOOM_COLUMN_BUTTON_CLASS, focusRelated ? 'bg-mirai-surface-teal text-primary hover:bg-mirai-surface-teal' : 'text-mirai-text-muted')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill={focusRelated ? '#1a73e8' : '#888'}><path transform="scale(-1, 1) translate(-960, 0)" d="M576-168v-84H444v-192h-60v84H96v-240h288v84h60v-192h132v-84h288v240H576v-84h-60v312h60v-84h288v240H576Zm72-72h144v-96H648v96ZM168-432h144v-96H168v96Zm480-192h144v-96H648v96Zm0 384v-96 96ZM312-432v-96 96Zm336-192v-96 96Z"/></svg>
-            </button>
+              <Network className="size-[18px]" aria-hidden="true" />
+            </Button>
             {/* 選択ノードにフォーカス */}
-            <button aria-label="選択ノードにフォーカス" onClick={focusOnSelectedNode} title="選択ノードにフォーカス" style={{ width: '100%', padding: '5px 0', display: 'flex', justifyContent: 'center', borderTop: '1px solid #eee', borderLeft: 'none', borderRight: 'none', borderBottom: 'none', background: 'transparent', cursor: 'pointer' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="18" width="18" viewBox="0 -960 960 960" fill="#666"><path transform="rotate(180 480 -480)" d="M168-360h240v-240H168v240Zm312 72H96v-384h384v156h384v72H480v156ZM288-480Z"/></svg>
-            </button>
+            <Button variant="ghost" aria-label="選択ノードにフォーカス" onClick={focusOnSelectedNode} title="選択ノードにフォーカス" className={cn(ZOOM_COLUMN_BUTTON_CLASS, 'border-t border-mirai-surface-light text-mirai-text-subtle')}>
+              <Focus className="size-[18px]" aria-hidden="true" />
+            </Button>
           </div>
         )}
       </div>

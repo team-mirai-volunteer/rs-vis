@@ -5,6 +5,9 @@
  */
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import type { MOFSectionRsNode } from '@/types/mof-section-rs-sankey';
 import { MOF_SECTION_RS_COLUMN_LABELS } from '@/types/mof-section-rs-sankey';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -61,7 +64,7 @@ export function SankeyChartSearch({
     >
       <div className="flex flex-col">
         <div
-          className="rounded-t-lg rounded-bl-lg border border-black/10 bg-white/90 shadow backdrop-blur"
+          className="rounded-t-lg rounded-bl-lg border border-mirai-border bg-card shadow-xs"
           onMouseDown={e => e.stopPropagation()}
         >
           <input
@@ -93,44 +96,39 @@ export function SankeyChartSearch({
                 setOpen(false);
               }
             }}
-            className="h-9 w-full rounded-t-lg bg-transparent px-3 text-xs text-neutral-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="h-9 w-full rounded-t-lg bg-transparent px-3 text-xs text-mirai-text-secondary outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           />
-          {filterOpen && <div className="border-t border-gray-100">{filterFields}</div>}
+          {filterOpen && <div className="border-t border-border">{filterFields}</div>}
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           title={filterOpen ? 'フィルタ を隠す' : 'フィルタ を表示'}
           aria-label={filterOpen ? 'フィルタ を隠す' : 'フィルタ を表示'}
           aria-expanded={filterOpen}
           onMouseDown={e => e.stopPropagation()}
           onClick={onToggleFilter}
-          className="-mt-px flex h-4 w-6 self-end items-center justify-center rounded-b border border-t-0 border-black/10 bg-white/90 text-gray-400 backdrop-blur hover:bg-white"
+          className="-mt-px h-4 w-6 self-end rounded-none rounded-b border border-t-0 border-mirai-border bg-card p-0 text-mirai-text-muted hover:bg-card hover:text-mirai-text-subtle"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="currentColor">
-            <path
-              d={
-                filterOpen
-                  ? 'M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z'
-                  : 'M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z'
-              }
-            />
-          </svg>
-        </button>
+          <ChevronDown
+            className={cn('size-3.5 transition-transform', filterOpen && 'rotate-180')}
+            aria-hidden="true"
+          />
+        </Button>
       </div>
 
       {open && results.length > 0 && (
         <div
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg"
+          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-y-auto rounded-lg border border-border bg-card shadow-soft"
         >
-          <div className="border-b border-gray-100 px-3 py-1 text-[11px] text-gray-400">
+          <div className="border-b border-border px-3 py-1 text-[11px] text-mirai-text-muted">
             {results.length}件{results.length === MAX_RESULTS ? '（上位のみ）' : ''}
           </div>
           {results.map((node, i) => (
-            <button
+            <Button
               key={node.id}
-              type="button"
+              variant="ghost"
               data-testid={testId('section-rs-search-result')}
               onMouseEnter={() => setCursor(i)}
               onMouseDown={e => {
@@ -138,16 +136,19 @@ export function SankeyChartSearch({
                 choose(node.id);
               }}
               onClick={() => choose(node.id)}
-              className={`block w-full px-3 py-1.5 text-left ${i === cursor ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+              className={cn(
+                'block h-auto w-full whitespace-normal rounded-none px-3 py-1.5 text-left font-normal',
+                i === cursor ? 'bg-primary/10 hover:bg-primary/10' : 'hover:bg-mirai-surface'
+              )}
             >
-              <div className="text-[10px] text-gray-400">{MOF_SECTION_RS_COLUMN_LABELS[node.details.column]}</div>
+              <div className="text-[10px] text-mirai-text-muted">{MOF_SECTION_RS_COLUMN_LABELS[node.details.column]}</div>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="truncate text-xs text-gray-800">{node.name}</span>
-                <span className="shrink-0 text-[11px] tabular-nums text-gray-500">
+                <span className="truncate text-xs text-mirai-text">{node.name}</span>
+                <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
                   {formatBudgetFromYen(node.value ?? 0)}
                 </span>
               </div>
-            </button>
+            </Button>
           ))}
         </div>
       )}

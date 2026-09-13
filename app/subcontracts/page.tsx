@@ -23,6 +23,9 @@
 import { useState, useEffect, useMemo, useRef, Suspense, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Search, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { FilterRow } from '@/components/filters/FilterRow';
 import { FilterTextInput } from '@/components/filters/FilterTextInput';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
@@ -465,8 +468,9 @@ function SubcontractsPageInner() {
   }
 
   function SortIndicator({ k }: { k: SortKey }) {
-    if (sortKey !== k) return <span aria-hidden="true" style={{ color: '#bbb', marginLeft: 4 }}>↕</span>;
-    return <span aria-hidden="true" style={{ color: '#4a90d9', marginLeft: 4 }}>{sortDir === 'asc' ? '↑' : '↓'}</span>;
+    if (sortKey !== k) return <ArrowUpDown aria-hidden="true" className="ml-1 size-3 shrink-0 text-mirai-text-placeholder" />;
+    const Icon = sortDir === 'asc' ? ArrowUp : ArrowDown;
+    return <Icon aria-hidden="true" className="ml-1 size-3 shrink-0 text-primary" />;
   }
 
   function SortHeader({
@@ -483,30 +487,25 @@ function SubcontractsPageInner() {
     title?: string;
   }) {
     return (
-      <th style={{ ...thStyle, textAlign: align }} title={title} aria-sort={sortAria(sort)}>
-        <button
-          type="button"
+      <th
+        style={{ ...thStyle, textAlign: align }}
+        className="sticky top-0 z-[2] overflow-hidden whitespace-nowrap border-b border-border bg-mirai-surface px-2 py-2 text-xs font-bold text-mirai-text-subtle"
+        title={title}
+        aria-sort={sortAria(sort)}
+      >
+        <Button
+          variant="ghost"
           onClick={() => toggleSort(sort)}
-          style={{
-            width: '100%',
-            display: 'inline-flex',
-            justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start',
-            alignItems: 'center',
-            gap: 2,
-            border: 0,
-            background: 'transparent',
-            padding: '0 8px 0 0',
-            color: 'inherit',
-            font: 'inherit',
-            fontWeight: 'inherit',
-            cursor: 'pointer',
-          }}
+          className={cn(
+            'h-auto w-full gap-0.5 rounded-md p-0 pr-2 text-xs font-bold text-inherit hover:bg-transparent hover:text-primary-accent',
+            align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start',
+          )}
         >
           <span>{children}</span>
           <SortIndicator k={sort} />
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
           aria-label={`${children}列の幅を変更`}
           title="列幅を変更"
           onClick={(e) => e.stopPropagation()}
@@ -531,153 +530,97 @@ function SubcontractsPageInner() {
               return next;
             });
           }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            width: 10,
-            height: '100%',
-            border: 0,
-            borderRight: '1px solid transparent',
-            background: 'transparent',
-            cursor: 'col-resize',
-            padding: 0,
-          }}
+          className="absolute right-0 top-0 h-full w-2.5 cursor-col-resize rounded-none p-0 hover:bg-primary/10"
         />
       </th>
     );
   }
 
+  // 位置・寸法のみ（色・フォントは className のトークンで指定する）
   const thStyle: CSSProperties = {
-    padding: '8px 8px',
     textAlign: 'left',
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#6b7280',
-    borderBottom: '1px solid #e5e7eb',
-    whiteSpace: 'nowrap',
     userSelect: 'none',
-    background: '#f9fafb',
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-    overflow: 'hidden',
   };
   const tdNumStyle: CSSProperties = {
     padding: '8px 8px',
     textAlign: 'right',
-    color: '#374151',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   };
   const tdTextStyle: CSSProperties = {
     padding: '8px 8px',
-    color: '#374151',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   };
+  const TD_CLASS = 'text-mirai-text-secondary';
+  const dash = <span className="text-mirai-text-placeholder">—</span>;
 
   const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0);
 
   return (
-    <div style={{ height: '100vh', background: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
       {/* ── 上部: フィルタ群 ── */}
-      <div style={{ flexShrink: 0, padding: '12px', width: '100%', boxSizing: 'border-box' }}>
+      <div className="w-full shrink-0 p-3">
         {/* コントロール（/sankey-svg と同じトーン）。
             年度・ページ切替は折り返し対象から外し、狭幅でも常に1行目右端に固定する */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flex: 1, minWidth: 0 }}>
+        <div className="mb-3 flex items-start gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
 
           {/* 検索 */}
-          <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-            <span aria-hidden="true" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="#999">
-                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-              </svg>
-            </span>
+          <div className="relative min-w-[180px] flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-mirai-text-muted" />
             <input
               type="text"
               placeholder="PID・事業名・省庁・ブロック・支出先で検索..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '6px 28px 6px 30px',
-                borderRadius: 8,
-                border: '1px solid #e0e0e0',
-                fontSize: 13,
-                background: 'rgba(255,255,255,0.95)',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-                color: '#333',
-                outline: 'none',
-              }}
+              className="h-9 w-full rounded-full border border-mirai-border bg-card pl-9 pr-8 text-[13px] text-mirai-text shadow-xs transition-colors placeholder:text-mirai-text-placeholder focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
             />
             {query && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setQuery('')}
                 aria-label="検索クリア"
-                style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 4, fontSize: 12 }}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
               >
-                ✕
-              </button>
+                <X className="size-3.5" />
+              </Button>
             )}
           </div>
 
           {/* フィルタ展開トグル */}
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowFilterPanel((v) => !v)}
             title={showFilterPanel ? 'フィルタを閉じる' : 'フィルタを開く'}
             aria-pressed={showFilterPanel}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 12, fontWeight: 600,
-              border: '1px solid #e0e0e0',
-              borderRadius: 8,
-              padding: '6px 10px',
-              background: showFilterPanel ? '#f1f5f9' : 'rgba(255,255,255,0.95)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-              color: '#334155',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            className={cn('shrink-0 text-xs', showFilterPanel ? 'border-primary bg-primary/10 text-primary-accent' : 'border-mirai-border')}
           >
             フィルタ
-            <svg xmlns="http://www.w3.org/2000/svg" height="14" width="14" viewBox="0 0 24 24" fill="currentColor"
-              style={{ transform: showFilterPanel ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-              <path d="M7 10l5 5 5-5z"/>
-            </svg>
-          </button>
+            <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', showFilterPanel && 'rotate-180')} />
+          </Button>
 
-          <span style={{ fontSize: 12, color: '#6b7280', flexShrink: 0 }}>
+          <span className="shrink-0 text-xs text-mirai-text-subtle">
             {filtered.length.toLocaleString()}件表示
           </span>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setColumnWidths(DEFAULT_COL_WIDTHS)}
             title="列幅を初期値に戻す"
-            style={{
-              fontSize: 12,
-              border: '1px solid #e0e0e0',
-              borderRadius: 8,
-              padding: '6px 10px',
-              background: 'rgba(255,255,255,0.95)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-              color: '#334155',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            className="shrink-0 border-mirai-border text-xs"
           >
             列幅リセット
-          </button>
+          </Button>
 
         </div>
 
         {/* 年度とページ切替。全ページ共通で右上に置く（折り返し行の外なので2行目に落ちない） */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} theme="light" />
           <PageNavMenu current="/subcontracts" theme="light" />
         </div>
@@ -685,18 +628,10 @@ function SubcontractsPageInner() {
 
         {/* 折りたたみフィルタパネル（/sankey-svg ライク） */}
         {showFilterPanel && (
-          <div style={{
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            padding: '10px 12px',
-            background: 'rgba(255,255,255,0.95)',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-            marginBottom: 12,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            columnGap: 16,
-            rowGap: 8,
-          }}>
+          <div
+            className="mb-3 grid gap-x-4 gap-y-2 rounded-xl border border-mirai-border bg-card px-3 py-2.5 shadow-xs"
+            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
+          >
             {/* 会計区分 */}
             <FilterRow label="会計">
               <MultiSelectDropdown
@@ -755,28 +690,19 @@ function SubcontractsPageInner() {
       </div>
 
       {/* ── 中部: スクロールテーブル ── */}
-      <div style={{ flex: 1, minHeight: 0, padding: '0 12px', width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-        {loading && <p style={{ color: '#6b7280', fontSize: 14 }}>読み込み中...</p>}
-        {error && <p style={{ color: '#ef4444', fontSize: 14 }}>エラー: {error}</p>}
+      <div className="flex min-h-0 w-full flex-1 flex-col px-3">
+        {loading && <p className="text-sm text-mirai-text-muted">読み込み中...</p>}
+        {error && <p className="text-sm text-destructive">エラー: {error}</p>}
         {!loading && !error && (
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflow: 'auto',
-              background: '#fff',
-              borderRadius: 8,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            }}
-          >
-            <table style={{ width: tableWidth, minWidth: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
+          <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-xs">
+            <table className="border-collapse text-xs" style={{ width: tableWidth, minWidth: '100%', tableLayout: 'fixed' }}>
               <colgroup>
                 {columnWidths.map((width, i) => (
                   <col key={i} style={{ width }} />
                 ))}
               </colgroup>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
+                <tr className="bg-mirai-surface">
                   <SortHeader sort="projectId" columnIndex={0}>PID</SortHeader>
                   <SortHeader sort="projectName" columnIndex={1}>事業名</SortHeader>
                   <SortHeader sort="ministry" columnIndex={2}>省庁</SortHeader>
@@ -806,106 +732,96 @@ function SubcontractsPageInner() {
                 {pageItems.map((g, i) => (
                   <tr
                     key={g.projectId}
-                    style={{
-                      background: i % 2 === 0 ? '#fff' : '#f9fafb',
-                      borderBottom: '1px solid #f3f4f6',
-                    }}
+                    className={cn(
+                      'border-b border-border transition-colors hover:bg-mirai-surface-teal/60',
+                      i % 2 === 0 ? 'bg-card' : 'bg-mirai-surface-gray',
+                    )}
                   >
-                    <td style={{ ...tdTextStyle, color: '#6b7280' }}>{g.projectId}</td>
-                    <td style={tdTextStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                    <td style={tdTextStyle} className="text-mirai-text-muted">{g.projectId}</td>
+                    <td style={tdTextStyle} className={TD_CLASS}>
+                      <div className="flex min-w-0 items-center gap-1">
                         <Link
                           href={`/subcontracts/${g.projectId}?year=${year}`}
                           title={g.projectName}
-                          style={{
-                            color: '#4a90d9',
-                            textDecoration: 'none',
-                            fontWeight: 500,
-                            flex: 1,
-                            minWidth: 0,
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
+                          className="block min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:text-primary-accent hover:underline"
                         >
                           {g.projectName}
                         </Link>
                         <ProjectReferenceLinks projectId={g.projectId} projectName={g.projectName} year={year} compact />
                       </div>
                     </td>
-                    <td style={tdTextStyle} title={g.ministry}>{g.ministry}</td>
-                    <td style={tdTextStyle} title={g.bureau || undefined}>
-                      {bureauLeaf(g.bureau) || <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdTextStyle} className={TD_CLASS} title={g.ministry}>{g.ministry}</td>
+                    <td style={tdTextStyle} className={TD_CLASS} title={g.bureau || undefined}>
+                      {bureauLeaf(g.bureau) || dash}
                     </td>
-                    <td style={tdTextStyle}>
-                      {g.accountCategory ? accountCategoryLabel(g.accountCategory) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdTextStyle} className={TD_CLASS}>
+                      {g.accountCategory ? accountCategoryLabel(g.accountCategory) : dash}
                     </td>
-                    <td style={tdNumStyle}>
+                    <td style={tdNumStyle} className={TD_CLASS}>
                       {g.budget > 0 ? formatYen(g.budget) : '—'}
                     </td>
-                    <td style={tdNumStyle}>
+                    <td style={tdNumStyle} className={TD_CLASS}>
                       {g.execution > 0 ? formatYen(g.execution) : '—'}
                     </td>
-                    <td style={tdNumStyle}>
+                    <td style={tdNumStyle} className={TD_CLASS}>
                       {g.directExpenseTotal > 0 ? formatYen(g.directExpenseTotal) : '—'}
                     </td>
-                    <td style={tdNumStyle}>
+                    <td style={tdNumStyle} className={TD_CLASS}>
                       {g.totalExpense > 0 ? formatYen(g.totalExpense) : '—'}
                     </td>
                     {(() => {
                       const totalMinusDirect = g.totalExpense - g.directExpenseTotal;
                       const executionMinusDirect = g.execution - g.directExpenseTotal;
                       const fmtDiff = (v: number, hasBase: boolean) => {
-                        if (!hasBase) return <span style={{ color: '#cbd5e1' }}>—</span>;
-                        if (v === 0) return <span style={{ color: '#cbd5e1' }}>0</span>;
+                        if (!hasBase) return dash;
+                        if (v === 0) return <span className="text-mirai-text-placeholder">0</span>;
                         return formatYen(v);
                       };
                       return (
                         <>
-                          <td style={tdNumStyle}>
+                          <td style={tdNumStyle} className={TD_CLASS}>
                             {fmtDiff(totalMinusDirect, g.totalExpense > 0 || g.directExpenseTotal > 0)}
                           </td>
-                          <td style={tdNumStyle}>
+                          <td style={tdNumStyle} className={TD_CLASS}>
                             {fmtDiff(executionMinusDirect, g.execution > 0 || g.directExpenseTotal > 0)}
                           </td>
                         </>
                       );
                     })()}
-                    <td style={tdNumStyle}>{g.totalBlockCount}</td>
-                    <td style={tdNumStyle}>
-                      {g.directBlockCount > 0 ? g.directBlockCount : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>{g.totalBlockCount}</td>
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.directBlockCount > 0 ? g.directBlockCount : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {subcontractBlockCount(g) > 0 ? subcontractBlockCount(g) : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {subcontractBlockCount(g) > 0 ? subcontractBlockCount(g) : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {g.indirectCosts.length > 0 ? g.indirectCosts.length.toLocaleString() : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.indirectCosts.length > 0 ? g.indirectCosts.length.toLocaleString() : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {g.separateOriginCount > 0 ? g.separateOriginCount : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.separateOriginCount > 0 ? g.separateOriginCount : dash}
                     </td>
-                    <td style={tdNumStyle}>{g.totalRecipientCount.toLocaleString()}</td>
-                    <td style={tdNumStyle}>{g.maxDepth}</td>
-                    <td style={tdNumStyle}>
-                      {g.branchingBlockCount > 0 ? g.branchingBlockCount : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>{g.totalRecipientCount.toLocaleString()}</td>
+                    <td style={tdNumStyle} className={TD_CLASS}>{g.maxDepth}</td>
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.branchingBlockCount > 0 ? g.branchingBlockCount : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {g.maxBranchWidth >= 2 ? g.maxBranchWidth : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.maxBranchWidth >= 2 ? g.maxBranchWidth : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {g.mergeTargetCount > 0 ? g.mergeTargetCount : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.mergeTargetCount > 0 ? g.mergeTargetCount : dash}
                     </td>
-                    <td style={tdNumStyle}>
-                      {g.maxMergeWidth >= 2 ? g.maxMergeWidth : <span style={{ color: '#cbd5e1' }}>—</span>}
+                    <td style={tdNumStyle} className={TD_CLASS}>
+                      {g.maxMergeWidth >= 2 ? g.maxMergeWidth : dash}
                     </td>
-                    <td style={{ ...tdTextStyle, textAlign: 'center' }}>
+                    <td style={{ ...tdTextStyle, textAlign: 'center' }} className={TD_CLASS}>
                       {g.isInstitutionalFlowOnly ? (
-                        <span style={{ display: 'inline-block', padding: '2px 4px', borderRadius: 999, fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#991b1b' }}>
+                        <span className="inline-block rounded-full bg-stance-against-bg px-1 py-0.5 text-[10px] font-bold text-stance-against">
                           制度
                         </span>
                       ) : (
-                        <span style={{ color: '#cbd5e1' }}>—</span>
+                        dash
                       )}
                     </td>
                   </tr>
@@ -918,43 +834,29 @@ function SubcontractsPageInner() {
 
       {/* ── 下部: ページネーション ── */}
       {!loading && !error && totalPages > 1 && (
-        <div style={{ flexShrink: 0, background: '#fff', borderTop: '1px solid #e5e7eb', padding: '8px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button
+        <div className="shrink-0 border-t border-mirai-border bg-card px-4 py-2">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              style={{
-                padding: '4px 12px',
-                fontSize: 13,
-                borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
-                color: '#374151',
-                cursor: page === 1 ? 'not-allowed' : 'pointer',
-                opacity: page === 1 ? 0.3 : 1,
-              }}
+              className="border-mirai-border text-[13px] font-medium"
             >
               ← 前へ
-            </button>
-            <span style={{ fontSize: 13, color: '#6b7280' }}>
+            </Button>
+            <span className="text-[13px] text-mirai-text-subtle">
               {page} / {totalPages}
             </span>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              style={{
-                padding: '4px 12px',
-                fontSize: 13,
-                borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
-                color: '#374151',
-                cursor: page === totalPages ? 'not-allowed' : 'pointer',
-                opacity: page === totalPages ? 0.3 : 1,
-              }}
+              className="border-mirai-border text-[13px] font-medium"
             >
               次へ →
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -964,7 +866,7 @@ function SubcontractsPageInner() {
 
 export default function SubcontractsPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24, color: '#6b7280', fontSize: 14 }}>読み込み中...</div>}>
+    <Suspense fallback={<div className="p-6 text-sm text-mirai-text-muted">読み込み中...</div>}>
       <SubcontractsPageInner />
     </Suspense>
   );

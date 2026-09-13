@@ -3,6 +3,9 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { YearSelect } from '@/components/navigation/YearSelect';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
@@ -26,6 +29,9 @@ import {
 } from '@/app/lib/policy-evaluation';
 
 const PAGE_SIZE = 50;
+
+/** 範囲フィルタ横の「✕」。値が無いときは場所だけ残して透明にする（並びが動かないように） */
+const CLEAR_BTN_CLS = 'ml-0.5 size-4 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-subtle disabled:opacity-0';
 
 
 
@@ -106,8 +112,9 @@ function RangeStepInput({ value, onChange, onStep, placeholder, title, width }: 
   title: string;
   width: number;
 }) {
-  const btn = 'block h-[9px] leading-[8px] w-3 text-[7px] text-gray-400 '
-    + 'hover:text-gray-800 dark:hover:text-gray-100';
+  // 入力ボックス内に重ねる極小のステッパ。Button の高さ・角丸・太字を打ち消して 9px に収める
+  const btn = 'block h-[9px] w-3 rounded-none px-0 py-0 text-[7px] font-normal leading-[8px] text-mirai-text-muted '
+    + 'hover:bg-transparent hover:text-mirai-text focus-visible:ring-0 focus-visible:ring-offset-0';
   return (
     <span className="relative inline-block shrink-0" style={{ width }}>
       <input
@@ -122,14 +129,13 @@ function RangeStepInput({ value, onChange, onStep, placeholder, title, width }: 
           e.preventDefault();
           onChange(onStep(value, e.key === 'ArrowUp' ? 1 : -1));
         }}
-        className="w-full pl-1 pr-3 py-0.5 border border-gray-300 dark:border-gray-600 rounded
-          bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+        className="w-full rounded-md border border-mirai-border bg-card py-0.5 pl-1 pr-3 text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary"
       />
       <span className="absolute right-px top-1/2 -translate-y-1/2 flex flex-col select-none">
-        <button type="button" tabIndex={-1} className={btn} title="1段上げる"
-          onClick={() => onChange(onStep(value, 1))}>▲</button>
-        <button type="button" tabIndex={-1} className={btn} title="1段下げる"
-          onClick={() => onChange(onStep(value, -1))}>▼</button>
+        <Button variant="ghost" tabIndex={-1} className={btn} title="1段上げる"
+          onClick={() => onChange(onStep(value, 1))}>▲</Button>
+        <Button variant="ghost" tabIndex={-1} className={btn} title="1段下げる"
+          onClick={() => onChange(onStep(value, -1))}>▼</Button>
       </span>
     </span>
   );
@@ -381,22 +387,18 @@ export default function QualityPage() {
   }
 
   function SortIcon({ field }: { field: SortField }) {
-    if (sortField !== field) return <span className="text-gray-300 ml-0.5">↕</span>;
-    return <span className="text-blue-500 ml-0.5">{sortDir === 'desc' ? '↓' : '↑'}</span>;
+    if (sortField !== field) return <span className="text-mirai-text-placeholder ml-0.5">↕</span>;
+    return <span className="text-primary ml-0.5">{sortDir === 'desc' ? '↓' : '↑'}</span>;
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-    </div>
-  );
+  if (loading) return <LoadingSpinner />;
 
   if (error || !data) return (
-    <div className="p-8 text-red-600 dark:text-red-400">
-      <p className="font-semibold">データを読み込めません</p>
+    <div className="p-8 text-destructive">
+      <p className="font-bold">データを読み込めません</p>
       <p className="text-sm mt-1">{error}</p>
-      <p className="text-sm mt-2 text-gray-600 dark:text-gray-400">
-        <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">
+      <p className="text-sm mt-2 text-mirai-text-subtle">
+        <code className="bg-mirai-surface px-1 rounded-md">
           python3 scripts/score-project-quality.py
         </code> を実行してください
       </p>
@@ -408,17 +410,17 @@ export default function QualityPage() {
   const policyRows = policyByPid ? [...policyByPid.values()] : [];
   // 幅は固定。<select> は選択中の文言で幅が変わるため、放っておくと類型を選ぶたびに
   // 隣のUIが横に動く。truncate と併せて、選んでもレイアウトが動かないようにする。
-  const selCls = 'shrink-0 truncate px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 '
-    + 'rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer';
+  const selCls = 'shrink-0 truncate px-2 py-1 text-xs border border-mirai-border '
+    + 'rounded-md bg-card text-mirai-text-secondary cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-background">
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={() => setDialogItem(null)} year={year} />}
       {/* Header */}
-      <div className="shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 py-3">
+      <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
         <div>
           <div className="flex items-start gap-2 mb-1">
-            <h1 className="min-w-0 text-lg font-bold text-gray-900 dark:text-white">
+            <h1 className="min-w-0 text-lg font-bold text-mirai-text">
               事業別 政策評価・執行透明性スコア
             </h1>
             {/* 年度とページ切替。全ページ共通で右上に置く。
@@ -428,7 +430,7 @@ export default function QualityPage() {
               <PageNavMenu current="/quality" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-mirai-text-muted mt-1">
             {(() => {
               const all = policyByPid ? [...policyByPid.values()] : [];
               if (all.length === 0) return `${summary.total.toLocaleString()}事業`;
@@ -453,15 +455,15 @@ export default function QualityPage() {
                   {metrics.map(({ label, s }) => s && (
                     <span key={label} className="whitespace-nowrap" title={`${label}
 平均 ${s.avg.toFixed(1)} / 中央 ${s.med} / 最小 ${s.lo} / 最大 ${s.hi}`}>
-                      <span className="text-gray-600 dark:text-gray-300 font-medium">{label}</span>
+                      <span className="text-mirai-text-subtle font-medium">{label}</span>
                       <span className="ml-1 font-mono text-xs">
-                        <span className="text-gray-400">平均</span>{s.avg.toFixed(0)}
-                        <span className="text-gray-400 ml-1">中央</span>{s.med}
+                        <span className="text-mirai-text-muted">平均</span>{s.avg.toFixed(0)}
+                        <span className="text-mirai-text-muted ml-1">中央</span>{s.med}
                       </span>
                     </span>
                   ))}
                   <span className="whitespace-nowrap">
-                    <span className="text-gray-600 dark:text-gray-300 font-medium">終了・廃止候補</span>
+                    <span className="text-mirai-text-subtle font-medium">終了・廃止候補</span>
                     <span className="ml-1 font-mono text-xs">{abolition.toLocaleString()}件</span>
                   </span>
                 </span>
@@ -492,10 +494,10 @@ export default function QualityPage() {
           );
           const maxCount = Math.max(...counts, 1);
           const binColor = (lo: number) => {
-            if (lo >= 90) return { bg: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', bar: 'bg-green-400' };
-            if (lo >= 70) return { bg: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', bar: 'bg-blue-400' };
-            if (lo >= 50) return { bg: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', bar: 'bg-yellow-400' };
-            return { bg: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', bar: 'bg-red-400' };
+            if (lo >= 90) return { bg: 'bg-green-100 text-green-800', bar: 'bg-green-400' };
+            if (lo >= 70) return { bg: 'bg-primary/10 text-primary-accent', bar: 'bg-primary/60' };
+            if (lo >= 50) return { bg: 'bg-yellow-100 text-yellow-800', bar: 'bg-yellow-400' };
+            return { bg: 'bg-red-100 text-red-800', bar: 'bg-red-400' };
           };
           return (
             <div className="flex items-end gap-4 flex-wrap">
@@ -506,50 +508,57 @@ export default function QualityPage() {
                   const { bar } = binColor(lo);
                   const isActive = scoreRange === range;
                   return (
-                    <button
+                    <Button
                       key={range}
+                      variant="ghost"
                       onClick={() => setScoreRange(isActive ? 'all' : range)}
-                      className={`flex flex-col items-center transition-all ${isActive ? 'ring-1 ring-blue-500 rounded' : ''}`}
+                      className={cn(
+                        'h-auto flex-col items-center gap-0 rounded-md px-0 py-0 font-normal hover:bg-transparent',
+                        isActive && 'ring-1 ring-primary',
+                      )}
                       title={`${label}点: ${count}件`}
                     >
-                      <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400 mb-0.5">{count || ''}</span>
+                      <span className="text-[10px] font-mono text-mirai-text-muted mb-0.5">{count || ''}</span>
                       <div className={`w-7 rounded-sm ${bar}`} style={{ height: `${h}px` }} />
-                      <span className="text-[9px] font-mono text-gray-400 mt-1">{label}</span>
-                    </button>
+                      <span className="text-[9px] font-mono text-mirai-text-muted mt-1">{label}</span>
+                    </Button>
                   );
                 })}
               </div>
               <div className="flex flex-col gap-1 self-end">
                 <label className="flex flex-col gap-0.5">
-                  <span className="text-[9px] text-gray-500 dark:text-gray-400 leading-none">分布の軸</span>
+                  <span className="text-[9px] text-mirai-text-muted leading-none">分布の軸</span>
                   <select
                     value={distMetric}
                     onChange={e => { setDistMetric(e.target.value as DistMetric); setScoreRange('all'); }}
-                    className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer focus:ring-1 focus:ring-blue-500 outline-none"
+                    className="text-xs border border-mirai-border rounded-md px-2 py-1 bg-card text-mirai-text-secondary cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
                   >
                     {DIST_METRICS.map(m => (
                       <option key={m.key} value={m.key}>{m.label}</option>
                     ))}
                   </select>
                 </label>
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setScoreRange('all')}
                   disabled={scoreRange === 'all'}
                   title={scoreRange === 'all' ? undefined : 'スコア帯の絞り込みを解除'}
-                  className={`rounded-lg px-3 py-1.5 text-center transition-all bg-gray-100 dark:bg-gray-700 ${
+                  className={cn(
+                    'h-auto flex-col gap-0 rounded-xl px-3 py-1.5 text-center font-normal shadow-none',
+                    // 無効＝絞り込み無しの平常状態なので、淡くせずそのまま見せる
                     scoreRange === 'all'
-                      ? 'text-gray-600 dark:text-gray-300 cursor-default'
-                      : 'ring-2 ring-blue-500 text-gray-900 dark:text-white hover:opacity-90'
-                  }`}
+                      ? 'border-mirai-border bg-mirai-surface text-mirai-text-subtle disabled:opacity-100'
+                      : 'border-primary bg-primary/10 text-mirai-text hover:bg-primary/20',
+                  )}
                 >
-                  <div className="text-[10px] font-medium text-gray-500 dark:text-gray-400">表示 / 全件</div>
+                  <div className="text-[10px] font-medium text-mirai-text-muted">表示 / 全件</div>
                   <div className="text-sm font-bold font-mono whitespace-nowrap">
-                    <span className={filtered.length !== summary.total ? 'text-blue-600 dark:text-blue-400' : ''}>
+                    <span className={filtered.length !== summary.total ? 'text-primary-accent' : ''}>
                       {filtered.length.toLocaleString()}
                     </span>
-                    <span className="text-gray-400 font-normal"> / {summary.total.toLocaleString()}</span>
+                    <span className="text-mirai-text-muted font-normal"> / {summary.total.toLocaleString()}</span>
                   </div>
-                </button>
+                </Button>
               </div>
               <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
                 <div className="flex flex-wrap gap-2">
@@ -558,12 +567,12 @@ export default function QualityPage() {
                     placeholder="事業名・PID・組織名で検索..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 min-w-[120px] px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="flex-1 min-w-[120px] px-3 py-1.5 text-sm border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                   />
                   <select
                     value={selectedMinistry}
                     onChange={e => setSelectedMinistry(e.target.value)}
-                    className="w-[162px] shrink-0 truncate px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer"
+                    className={`w-[162px] ${selCls}`}
                   >
                     <option value="">全府省庁</option>
                     {summary.ministries.map(m => (
@@ -605,14 +614,16 @@ export default function QualityPage() {
                           出現・消滅させると検索欄(flex-1)が伸縮してセレクト群が横に動くため、常に描画する。
                           透明にすると「使っていない余白」に見えてしまうので、無効時は淡色で残す。
                         */}
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="xs"
                           onClick={() => { setSelectedRecommendation(''); setSelectedAction(''); setSelectedCategory(''); }}
                           disabled={!(selectedRecommendation || selectedAction || selectedCategory)}
                           title="推奨・改善・類型の絞り込みを解除"
-                          className="shrink-0 text-[11px] text-gray-400 enabled:hover:text-gray-700 dark:enabled:hover:text-gray-100 disabled:opacity-30 disabled:cursor-default"
+                          className="h-auto shrink-0 px-1 text-[11px] font-normal text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-secondary disabled:opacity-30"
                         >
                           ✕ 解除
-                        </button>
+                        </Button>
                   </>}
                 </div>
                 {/* 金額の範囲フィルタ */}
@@ -624,56 +635,63 @@ export default function QualityPage() {
                     { key: 'spendNetTotal', label: '実質', desc: COL_DESC.実質支出額 },
                   ] as const).map(({ key, label, desc }) => (
                     <div key={key} className="flex items-center shrink-0" title={desc}>
-                      <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-gray-300 underline-offset-2">{label}</span>
+                      <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
                       <RangeStepInput
                         value={amountFilters[key].min} width={50} placeholder="下限" title="下限 (例: 100億, 1兆)"
                         onStep={stepAmount}
                         onChange={v => setAmountFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
                       />
-                      <span className="text-gray-400 mx-px">~</span>
+                      <span className="text-mirai-text-muted mx-px">~</span>
                       <RangeStepInput
                         value={amountFilters[key].max} width={50} placeholder="上限" title="上限 (例: 1兆, 5000億)"
                         onStep={stepAmount}
                         onChange={v => setAmountFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
                       />
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => setAmountFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
                         disabled={!(amountFilters[key].min || amountFilters[key].max)}
-                        className="ml-0.5 text-gray-400 enabled:hover:text-gray-600 dark:enabled:hover:text-gray-200 disabled:opacity-0"
+                        aria-label={`${label}の範囲を解除`}
+                        className={CLEAR_BTN_CLS}
                       >
                         ✕
-                      </button>
+                      </Button>
                     </div>
                   ))}
                       <div className="flex items-center shrink-0" title={COL_DESC.継続年数}>
-                        <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-gray-300 underline-offset-2">年数</span>
+                        <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">年数</span>
                         <RangeStepInput
                           value={yearsFilter.min} width={50} placeholder="下限" title="下限（年）"
                           onStep={(c, d) => stepScore(c, d, 110, 5)}
                           onChange={v => setYearsFilter(prev => ({ ...prev, min: v }))}
                         />
-                        <span className="text-gray-400 mx-px">~</span>
+                        <span className="text-mirai-text-muted mx-px">~</span>
                         <RangeStepInput
                           value={yearsFilter.max} width={50} placeholder="上限" title="上限（年）"
                           onStep={(c, d) => stepScore(c, d, 110, 5)}
                           onChange={v => setYearsFilter(prev => ({ ...prev, max: v }))}
                         />
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => setYearsFilter({ min: '', max: '' })}
                           disabled={!(yearsFilter.min || yearsFilter.max)}
-                          className="ml-0.5 text-gray-400 enabled:hover:text-gray-600 dark:enabled:hover:text-gray-200 disabled:opacity-0"
+                          aria-label="年数の範囲を解除"
+                          className={CLEAR_BTN_CLS}
                         >
                           ✕
-                        </button>
+                        </Button>
                       </div>
                       {/* 指標の説明。足きり行は6組で最も詰まるので、余裕のある金額行の末尾に置く */}
                       {/* 指標の説明なので、指標そのものが並ぶこの行の末尾に置く */}
-                      <button
-                      onClick={() => setShowGuide(v => !v)}
-                      className="ml-auto shrink-0 text-[11px] text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+                      <Button
+                        variant="link"
+                        onClick={() => setShowGuide(v => !v)}
+                        className="ml-auto shrink-0 whitespace-nowrap text-[11px] font-normal no-underline hover:underline hover:text-primary-accent"
                       >
-                      {showGuide ? '▲ 読み方を閉じる' : '▼ 指標の読み方'}
-                      </button>
+                        {showGuide ? '▲ 読み方を閉じる' : '▼ 指標の読み方'}
+                      </Button>
                 </div>
                 {/* 足きり。1600px幅で列Cは1040pxあり7組が収まる。狭い画面では折り返す */}
                 {policyByPid && (
@@ -686,25 +704,28 @@ export default function QualityPage() {
 ${a.desc}` })),
                         ]).map(({ key, label, desc }) => (
                           <div key={key} className="flex items-center shrink-0" title={desc}>
-                            <span className="text-gray-500 dark:text-gray-400 whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-gray-300 underline-offset-2">{label}</span>
+                            <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
                             <RangeStepInput
                               value={scoreFilters[key].min} width={50} placeholder="下限" title="下限 (0-100)"
                               onStep={(c, d) => stepScore(c, d)}
                               onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
                             />
-                            <span className="text-gray-400 mx-px">~</span>
+                            <span className="text-mirai-text-muted mx-px">~</span>
                             <RangeStepInput
                               value={scoreFilters[key].max} width={50} placeholder="上限" title="上限 (0-100)"
                               onStep={(c, d) => stepScore(c, d)}
                               onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
                             />
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
                               onClick={() => setScoreFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
                               disabled={!(scoreFilters[key].min || scoreFilters[key].max)}
-                              className="ml-0.5 text-gray-400 enabled:hover:text-gray-600 dark:enabled:hover:text-gray-200 disabled:opacity-0"
+                              aria-label={`${label}の範囲を解除`}
+                              className={CLEAR_BTN_CLS}
                             >
                               ✕
-                            </button>
+                            </Button>
                           </div>
                         ))}
                   </div>
@@ -715,16 +736,16 @@ ${a.desc}` })),
         })()}
         {/* 指標の説明。フローに置くと展開したぶん表が押し下げられるので、絶対配置で表の上に重ねる */}
         {policyByPid && showGuide && (
-        <p className="absolute left-4 right-4 top-full z-20 -mt-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 shadow-lg text-[11px] leading-5 text-gray-600 dark:text-gray-300">
-        <span className="font-semibold">政策評価</span>は「誰のどんな課題を、どの活動で、どう改善するか」がどれだけ明確に説明され、
+        <p className="absolute left-4 right-4 top-full z-20 -mt-1 rounded-xl border border-mirai-border bg-card px-4 py-3 shadow-soft text-[11px] leading-5 text-mirai-text-subtle">
+        <span className="font-bold">政策評価</span>は「誰のどんな課題を、どの活動で、どう改善するか」がどれだけ明確に説明され、
         その成果を検証できる状態かどうか。
-        <span className="font-semibold">執行透明性</span>は支出先が特定できるか・使途を説明できるか（支出先の明確さ55＋使途の説明45）。
+        <span className="font-bold">執行透明性</span>は支出先が特定できるか・使途を説明できるか（支出先の明確さ55＋使途の説明45）。
         「収支の一致」は9割の事業が満点でほぼ定数だったため加重平均から外し、不一致（60点未満）だけをフラグとして拾っています。
-        <span className="font-semibold">総合点</span>は政策評価と執行透明性を統合した値です。
-        推奨は絶対点ではなく<span className="font-semibold">母集団内の順位帯</span>で切っています（総合点は中央に強く偏るため、絶対値では下位帯が空になる）。
-        「<span className="font-semibold">縮小</span>」は事業の優劣ではなく<span className="font-semibold">不用額</span>（予算と執行の乖離）に基づく計上額の見直しで、総合点には影響しません
+        <span className="font-bold">総合点</span>は政策評価と執行透明性を統合した値です。
+        推奨は絶対点ではなく<span className="font-bold">母集団内の順位帯</span>で切っています（総合点は中央に強く偏るため、絶対値では下位帯が空になる）。
+        「<span className="font-bold">縮小</span>」は事業の優劣ではなく<span className="font-bold">不用額</span>（予算と執行の乖離）に基づく計上額の見直しで、総合点には影響しません
         — 不用額の返納は適切な行動であり、減点すると使い切りを誘発するためです。
-        単年度の不用は入札差金でも生じるため、縮小は<span className="font-semibold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
+        単年度の不用は入札差金でも生じるため、縮小は<span className="font-bold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
         単年度のみ・前年度実績が無い事業は要改善（差異理由の説明）にとどめています。
         逆に予算をほぼ消化していても支出先が不透明な事業は「継続」とせず要改善として拾います。
         「終了・廃止候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
@@ -741,14 +762,14 @@ ${a.desc}` })),
           内箱を縦にもスクロールさせるのは thead の sticky を効かせるため。overflow-x だけだと
           overflow-y が auto に計算され、高さ制限の無い箱が縦のスクロールコンテナになってしまう。
         */}
-        <div className="flex-1 min-h-0 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 rounded-xl border border-mirai-border bg-card shadow-xs overflow-hidden flex flex-col">
         <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-auto">
           {/* table-fixed + colgroup: ソートで中身が変わっても列幅が動かないようにする */}
           <table className="w-full text-xs table-fixed min-w-[1754px]">
             <colgroup>
               {COL_WIDTHS.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>
-            <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+            <thead className="bg-mirai-surface text-mirai-text-subtle sticky top-0 z-10">
               <tr>
                 <th className="px-2 py-2 text-left cursor-pointer whitespace-nowrap" title={COL_DESC.PID} onClick={() => handleSort('pid')}>
                   PID<SortIcon field="pid" />
@@ -759,13 +780,13 @@ ${a.desc}` })),
                 <th className="px-2 py-2 text-left whitespace-nowrap" title={COL_DESC.府省庁}>府省庁</th>
                 <th className="px-2 py-2 text-left whitespace-nowrap" title={COL_DESC.組織}>局・庁</th>
                 <th className="px-2 py-2 text-center whitespace-nowrap" title={COL_DESC.支出先列}>支出先</th>
-                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap bg-violet-50 dark:bg-violet-950/60" title={COL_DESC.総合点} onClick={() => handleSort('overallScore')}>
+                <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap bg-mirai-surface-teal" title={COL_DESC.総合点} onClick={() => handleSort('overallScore')}>
                   総合点<SortIcon field="overallScore" />
                 </th>
                 {AXIS_META.map(a => (
                   <th
                     key={a.key}
-                    className="px-2 py-2 text-right cursor-pointer whitespace-nowrap bg-violet-50 dark:bg-violet-950/60"
+                    className="px-2 py-2 text-right cursor-pointer whitespace-nowrap bg-mirai-surface-teal"
                     title={`${a.label}（総合点への重み ${a.weight}）
 
 ${a.desc}`}
@@ -774,10 +795,10 @@ ${a.desc}`}
                     {a.label}<SortIcon field={a.key} />
                   </th>
                 ))}
-                <th className="px-2 py-2 text-left cursor-pointer whitespace-nowrap bg-violet-50 dark:bg-violet-950/60" title={COL_DESC.推奨} onClick={() => handleSort('recommendation')}>
+                <th className="px-2 py-2 text-left cursor-pointer whitespace-nowrap bg-mirai-surface-teal" title={COL_DESC.推奨} onClick={() => handleSort('recommendation')}>
                   推奨<SortIcon field="recommendation" />
                 </th>
-                <th className="px-2 py-2 text-left cursor-pointer whitespace-nowrap bg-violet-50 dark:bg-violet-950/60" title={COL_DESC.改善アクション} onClick={() => handleSort('improvementAction')}>
+                <th className="px-2 py-2 text-left cursor-pointer whitespace-nowrap bg-mirai-surface-teal" title={COL_DESC.改善アクション} onClick={() => handleSort('improvementAction')}>
                   改善アクション<SortIcon field="improvementAction" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.継続年数} onClick={() => handleSort('yearsRunning')}>
@@ -803,94 +824,96 @@ ${a.desc}`}
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-border">
               {pageItems.map(item => {
                 const policy = policyByPid?.get(item.pid);
                 return (
                 <React.Fragment key={item.pid}>
                   <tr
-                    className="hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                    className="hover:bg-mirai-surface-teal/60 cursor-pointer transition-colors"
                     onClick={() => setExpandedRow(expandedRow === item.pid ? null : item.pid)}
                   >
-                    <td className="px-2 py-1.5 font-mono text-gray-500">{item.pid}</td>
-                    <td className="px-2 py-1.5 text-gray-900 dark:text-white truncate" title={item.name}>
+                    <td className="px-2 py-1.5 font-mono text-mirai-text-muted">{item.pid}</td>
+                    <td className="px-2 py-1.5 text-mirai-text truncate" title={item.name}>
                       {item.name}
                     </td>
-                    <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400 truncate" title={item.ministry}>{item.ministry}</td>
-                    <td className="px-2 py-1.5 text-gray-600 dark:text-gray-400 truncate" title={item.bureau || undefined}>{item.bureau || '-'}</td>
+                    <td className="px-2 py-1.5 text-mirai-text-subtle truncate" title={item.ministry}>{item.ministry}</td>
+                    <td className="px-2 py-1.5 text-mirai-text-subtle truncate" title={item.bureau || undefined}>{item.bureau || '-'}</td>
                     <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                      <button
+                      <Button
+                        variant="outline"
+                        size="xs"
                         onClick={e => { e.stopPropagation(); setDialogItem(item); }}
-                        className="px-2 py-1 text-[11px] font-medium rounded-md border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors"
+                        className="h-6 border-primary px-2 text-[11px] font-medium text-primary-accent shadow-none hover:bg-mirai-surface-teal/60"
                         title="支出先一覧・スコア計算根拠を表示"
                       >
                         詳細
-                      </button>
+                      </Button>
                     </td>
-                    <td className="px-2 py-1.5 text-right bg-violet-50/50 dark:bg-violet-950/40">
+                    <td className="px-2 py-1.5 text-right bg-mirai-surface-teal/40">
                       {policy?.overallScore != null
                         ? <span className={`font-bold font-mono ${scoreColor(policy.overallScore)}`}>{policy.overallScore}</span>
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
                     {AXIS_META.map(a => {
                       const v = policy?.[a.key];
                       return (
-                        <td key={a.key} className="px-2 py-1.5 text-right whitespace-nowrap bg-violet-50/50 dark:bg-violet-950/40">
+                        <td key={a.key} className="px-2 py-1.5 text-right whitespace-nowrap bg-mirai-surface-teal/40">
                           {v != null
                             ? <span className={`font-mono ${scoreColor(v)}`}>{v}</span>
-                            : <span className="text-gray-300 dark:text-gray-600" title="未評価（総合点では重みごと除外）">—</span>}
+                            : <span className="text-mirai-text-placeholder" title="未評価（総合点では重みごと除外）">—</span>}
                         </td>
                       );
                     })}
-                    <td className="px-2 py-1.5 bg-violet-50/50 dark:bg-violet-950/40">
+                    <td className="px-2 py-1.5 bg-mirai-surface-teal/40">
                       {policy
                         ? <><RecommendationBadge policy={policy} /><PersistentUnusedMark policy={policy} /></>
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
-                    <td className="px-2 py-1.5 bg-violet-50/50 dark:bg-violet-950/40">
+                    <td className="px-2 py-1.5 bg-mirai-surface-teal/40">
                       {policy?.improvementAction
                         ? <ActionBadge action={policy.improvementAction} />
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
                     <td
-                      className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                      className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap"
                       title={item.startYear ? `${item.startYear}年度開始 / ${item.noEndDate ? '終了予定なし' : (item.endYear ? `${item.endYear}年度終了予定` : '終了年度未設定')}` : '開始年度の登録なし'}
                     >
                       {item.yearsRunning != null
-                        ? <><span className={item.yearsRunning >= 20 ? 'text-orange-600 dark:text-orange-400 font-semibold' : ''}>{item.yearsRunning}</span>
-                            {item.noEndDate && <span className="text-gray-400 ml-0.5">★</span>}</>
-                        : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                        ? <><span className={item.yearsRunning >= 20 ? 'text-orange-600 font-bold' : ''}>{item.yearsRunning}</span>
+                            {item.noEndDate && <span className="text-mirai-text-muted ml-0.5">★</span>}</>
+                        : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
                       {item.budgetAmount ? formatAmount(item.budgetAmount) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
                       {item.execAmount ? formatAmount(item.execAmount ?? 0) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
                       {item.spendTotal ? formatAmount(item.spendTotal) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
                       {item.spendNetTotal ? formatAmount(item.spendNetTotal) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
                       {item.redelegationDepth || '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-gray-500">{item.recipientCount ?? item.rowCount}</td>
+                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-muted">{item.recipientCount ?? item.rowCount}</td>
                   </tr>
                   {expandedRow === item.pid && (
-                    <tr className="bg-gray-50 dark:bg-gray-800/50">
+                    <tr className="bg-mirai-surface-gray">
                       <td colSpan={19} className="px-4 py-3">
-                        <div className="mb-2 text-gray-800 dark:text-gray-100">{item.name}</div>
+                        <div className="mb-2 text-mirai-text">{item.name}</div>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 text-xs">
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                            <h4 className="font-bold text-mirai-text-secondary mb-1">
                               政策評価
                               {policy?.policyCategoryLabel && (
-                                <span className="ml-1 font-normal text-gray-400">{policy.policyCategoryLabel}</span>
+                                <span className="ml-1 font-normal text-mirai-text-muted">{policy.policyCategoryLabel}</span>
                               )}
                             </h4>
-                            <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                            <div className="space-y-0.5 text-mirai-text-subtle">
                               <div className="font-mono">総合点 {policy?.overallScore ?? '—'}点</div>
                               {AXIS_META.filter(a => a.key !== 'executionTransparency').map(a => (
                                 <div key={a.key}>{a.label}: {policy?.[a.key] ?? '未評価'}</div>
@@ -901,21 +924,21 @@ ${a.desc}`}
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">執行透明性</h4>
-                            <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                            <h4 className="font-bold text-mirai-text-secondary mb-1">執行透明性</h4>
+                            <div className="space-y-0.5 text-mirai-text-subtle">
                               <div className="font-mono">{policy?.executionTransparency ?? '—'}点</div>
                               <div>支出先の明確さ: {item.axisIdentify != null ? item.axisIdentify.toFixed(0) : '—'}</div>
                               <div>使途の説明: {item.axisPurpose != null ? item.axisPurpose.toFixed(0) : '—'}</div>
-                              <div className="text-gray-400">収支の一致: {item.axisBudget != null ? item.axisBudget.toFixed(0) : '—'}（不算入・不一致フラグ）</div>
+                              <div className="text-mirai-text-muted">収支の一致: {item.axisBudget != null ? item.axisBudget.toFixed(0) : '—'}（不算入・不一致フラグ）</div>
                               <div>法人番号記入: {item.cnFilled} / 未記入: {item.cnEmpty}</div>
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                            <h4 className="font-bold text-mirai-text-secondary mb-1">
                               予算と執行
-                              <span className="ml-1 font-normal text-gray-400">（総合点に不算入）</span>
+                              <span className="ml-1 font-normal text-mirai-text-muted">（総合点に不算入）</span>
                             </h4>
-                            <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                            <div className="space-y-0.5 text-mirai-text-subtle">
                               <div>予算額: {formatAmount(item.budgetAmount)}</div>
                               <div>執行額: {formatAmount(item.execAmount ?? 0)}</div>
                               {policy?.executionRate != null ? (
@@ -925,12 +948,12 @@ ${a.desc}`}
                                     {policy.unusedRatio != null && `（${Math.round(policy.unusedRatio * 100)}%）`}</div>
                                 </>
                               ) : (
-                                <div className="text-gray-400">執行実績なし（評価対象外）</div>
+                                <div className="text-mirai-text-muted">執行実績なし（評価対象外）</div>
                               )}
                               <div>
                                 前年度: {policy?.priorExecutionRate != null
                                   ? `執行率 ${Math.round(policy.priorExecutionRate * 100)}%・不用率 ${Math.round((policy.priorUnusedRatio ?? 0) * 100)}%`
-                                  : <span className="text-gray-400">実績なし（判定不能）</span>}
+                                  : <span className="text-mirai-text-muted">実績なし（判定不能）</span>}
                               </div>
                               {policy && (
                                 <div className={UNUSED_TREND_META[policy.unusedTrend].cls}>
@@ -941,8 +964,8 @@ ${a.desc}`}
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">推奨と改善</h4>
-                            <div className="space-y-1 text-gray-600 dark:text-gray-400">
+                            <h4 className="font-bold text-mirai-text-secondary mb-1">推奨と改善</h4>
+                            <div className="space-y-1 text-mirai-text-subtle">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {policy && <RecommendationBadge policy={policy} />}
                                 {policy?.improvementAction && <ActionBadge action={policy.improvementAction} />}
@@ -953,8 +976,8 @@ ${a.desc}`}
                             </div>
                           </div>
                           <div>
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">組織・支出構造</h4>
-                            <div className="space-y-0.5 text-gray-600 dark:text-gray-400">
+                            <h4 className="font-bold text-mirai-text-secondary mb-1">組織・支出構造</h4>
+                            <div className="space-y-0.5 text-mirai-text-subtle">
                               <div>{[item.ministry, item.bureau, item.division, item.section, item.office].filter(Boolean).join(' › ')}</div>
                               <div>支出先数: {item.recipientCount ?? item.rowCount}／ブロック: {item.blockCount}{item.orphanBlockCount > 0 && <span className="text-orange-500">（孤立 {item.orphanBlockCount}）</span>}</div>
                               <div>再委託: {item.hasRedelegation ? `あり（階層${item.redelegationDepth}）` : 'なし'}</div>
@@ -972,9 +995,11 @@ ${a.desc}`}
           </table>
           {pageItems.length === 0 && (
             <div className="px-4 py-16 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">条件に合う事業がありません</div>
-              <div className="mt-1 text-xs text-gray-400">絞り込みを緩めるか、解除してください</div>
-              <button
+              <div className="text-sm text-mirai-text-muted">条件に合う事業がありません</div>
+              <div className="mt-1 text-xs text-mirai-text-muted">絞り込みを緩めるか、解除してください</div>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
                   setSelectedRecommendation(''); setSelectedAction(''); setSelectedCategory('');
@@ -985,38 +1010,42 @@ ${a.desc}`}
                     spendTotal: { min: '', max: '' }, spendNetTotal: { min: '', max: '' },
                   });
                 }}
-                className="mt-3 px-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="mt-3 border-mirai-border text-xs text-mirai-text-subtle"
               >
                 すべての絞り込みを解除
-              </button>
+              </Button>
             </div>
           )}
         </div>
 
         {/* ページャは表の枠内フッタ。表とページ番号が離れて見えないようにする */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-2 px-3 py-1.5 shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-            <button
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 shrink-0 border-t border-mirai-border bg-mirai-surface-gray">
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => goToPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="border-mirai-border font-medium"
             >
               前へ
-            </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+            </Button>
+            <span className="text-xs text-mirai-text-muted font-mono">
               {page} / {totalPages}
-              <span className="ml-2 text-gray-400">
+              <span className="ml-2 text-mirai-text-muted">
                 {((page - 1) * PAGE_SIZE + 1).toLocaleString()}–
                 {Math.min(page * PAGE_SIZE, filtered.length).toLocaleString()} 件目
               </span>
             </span>
-            <button
+            <Button
+              variant="outline"
+              size="xs"
               onClick={() => goToPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-2.5 py-1 text-xs rounded border border-gray-300 dark:border-gray-600 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="border-mirai-border font-medium"
             >
               次へ
-            </button>
+            </Button>
           </div>
         )}
         </div>

@@ -31,27 +31,27 @@ export function KouMokuTab({ onCount, ...params }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onCount は親のsetStateで安定しているため対象外
   }, [rows]);
 
-  if (error) return <div className="p-4 text-xs text-red-600">目の取得に失敗しました</div>;
-  if (!rows) return <div className="p-4 text-xs text-gray-400">読み込み中…</div>;
-  if (rows.length === 0) return <div className="p-4 text-xs text-gray-400">該当する目がありません</div>;
+  if (error) return <div className="p-4 text-xs text-destructive">目の取得に失敗しました</div>;
+  if (!rows) return <div className="p-4 text-xs text-mirai-text-muted">読み込み中…</div>;
+  if (rows.length === 0) return <div className="p-4 text-xs text-mirai-text-muted">該当する目がありません</div>;
 
   return (
     <div className="p-4 pt-1">
       {rows.map((r, i) => (
-        <div key={`${i}-${r.subItemName}`} className="flex items-baseline justify-between gap-3 border-b border-gray-50 py-1.5">
+        <div key={`${i}-${r.subItemName}`} className="flex items-baseline justify-between gap-3 border-b border-border py-1.5">
           <div className="min-w-0">
-            {r.sectionName && <div className="truncate text-[10px] text-gray-400">{r.sectionName}</div>}
+            {r.sectionName && <div className="truncate text-[10px] text-mirai-text-muted">{r.sectionName}</div>}
             {r.sourceUrl ? (
               <a
                 href={r.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block truncate text-xs text-gray-700 underline hover:text-gray-900"
+                className="block truncate text-xs text-mirai-text-secondary underline hover:text-mirai-text"
               >
                 {r.subItemName}
               </a>
             ) : (
-              <div className="truncate text-xs text-gray-700" title={r.page === undefined ? undefined : '出典ページ不明'}>
+              <div className="truncate text-xs text-mirai-text-secondary" title={r.page === undefined ? undefined : '出典ページ不明'}>
                 {r.subItemName}
               </div>
             )}
@@ -59,7 +59,7 @@ export function KouMokuTab({ onCount, ...params }: Props) {
               <div className="truncate text-[10px] text-emerald-600">→ {r.rsProjectNames.join('、')}</div>
             )}
           </div>
-          <span className="shrink-0 text-[11px] tabular-nums text-gray-500">{formatBudgetFromYen(r.amount)}</span>
+          <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(r.amount)}</span>
         </div>
       ))}
     </div>

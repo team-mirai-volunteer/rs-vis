@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
@@ -21,13 +24,19 @@ const YEARS: Year[] = ['2025', '2024'];
 /** 大きさの上限（画面px）。衝突回避で重なりを解くぶん、以前より大きくできる */
 const MAX_RADIUS = 12;
 
+/**
+ * 配色は常にライト。デザインシステム適用で html { color-scheme: light } に固定したため、
+ * 以前あった prefers-color-scheme 連動のダーク地色は使わない（BubbleCanvas / buildLegend の
+ * 引数は互換のため残している）。
+ */
+const DARK = false;
+
 export default function ProjectMapPage() {
   const [year, setYear] = useState<Year>('2025');
   const [data, setData] = useState<ProjectMapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [notGenerated, setNotGenerated] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dark, setDark] = useState(false);
 
   // 表示の切り替え
   const [colorMode, setColorMode] = useState<ColorMode>('ministry');
@@ -130,15 +139,6 @@ export default function ProjectMapPage() {
     if (hl) setLegendLock(hl);
   }, [data]);
 
-  // canvas は CSS の dark: を使えないので、配色の切り替えを JS 側でも知る必要がある
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => setDark(mq.matches);
-    apply();
-    mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
-  }, []);
-
   useEffect(() => {
     setData(null);
     setLoading(true);
@@ -163,8 +163,8 @@ export default function ProjectMapPage() {
 
   // 凡例は常に全件から作る。絞り込んでも色が入れ替わらないようにするため
   const legend = useMemo(
-    () => buildLegend(allPoints, colorMode, dark),
-    [allPoints, colorMode, dark],
+    () => buildLegend(allPoints, colorMode, DARK),
+    [allPoints, colorMode],
   );
   const colorLookup = useMemo(() => buildColorLookup(legend), [legend]);
   const colorOf = useCallback(
@@ -179,8 +179,8 @@ export default function ProjectMapPage() {
   // 勢力圏は点の塗り分けとは独立に、常に府省庁で塗る。
   // 「色=推奨判断」のときに背景の色面が省庁を教える、というのがこのレイヤの役目
   const ministryLegend = useMemo(
-    () => buildLegend(allPoints, 'ministry', dark),
-    [allPoints, dark],
+    () => buildLegend(allPoints, 'ministry', DARK),
+    [allPoints],
   );
   const regionEntries = useMemo(
     () => ministryLegend.filter(e => !e.isOther).map(e => ({ key: e.key, label: e.label, color: e.color })),
@@ -278,7 +278,7 @@ export default function ProjectMapPage() {
 
   return (
     // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる
-    <div className="relative h-dvh w-full overflow-hidden bg-[#fcfcfb] text-neutral-900 dark:bg-[#1a1a19] dark:text-neutral-100">
+    <div className="relative h-dvh w-full overflow-hidden bg-background text-mirai-text">
       {/* 視覚上のタイトルは廃止した（フロートUIの面積を図に譲る）。ページ名はメニューと文書タイトルが担う */}
       <h1 className="sr-only">事業バブルチャート</h1>
 
@@ -299,7 +299,7 @@ export default function ProjectMapPage() {
               selectedPid={selected?.pid ?? null}
               onHover={(p, s) => setHover(p && s ? { p, x: s.x, y: s.y } : null)}
               onSelect={setSelected}
-              dark={dark}
+              dark={DARK}
               showRegions={showRegions}
               regionEntries={regionEntries}
               regionKeyOf={regionKeyOf}
@@ -318,26 +318,26 @@ export default function ProjectMapPage() {
         )}
 
         {loading && (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-500">
+          <div className="flex h-full items-center justify-center text-sm text-mirai-text-muted">
             読み込み中…
           </div>
         )}
 
         {notGenerated && (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-neutral-600 dark:text-neutral-400">
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-mirai-text-subtle">
             <p className="font-medium">{year}年度の事業バブルチャートはまだ生成されていません</p>
-            <p className="max-w-md text-xs leading-relaxed text-neutral-400 dark:text-neutral-500">
+            <p className="max-w-md text-xs leading-relaxed text-mirai-text-muted">
               このビューは事業説明文の埋め込みを使うため、年度ごとに座標を生成する必要があります。
               現在は2025年度のみ生成済みです。
             </p>
-            <code className="mt-1 rounded-md bg-black/5 px-2.5 py-1.5 text-[11px] dark:bg-white/10">
+            <code className="mt-1 rounded-md bg-mirai-surface px-2.5 py-1.5 text-[11px]">
               python3 scripts/generate-project-map.py --year {year}
             </code>
           </div>
         )}
 
         {error && (
-          <div className="flex h-full items-center justify-center text-sm text-red-600 dark:text-red-400">
+          <div className="flex h-full items-center justify-center text-sm text-destructive">
             読み込みに失敗しました: {error}
           </div>
         )}
@@ -348,14 +348,14 @@ export default function ProjectMapPage() {
 
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className="rounded-xl border border-black/10 bg-white/90 p-3 text-xs shadow-md backdrop-blur dark:border-white/10 dark:bg-neutral-900/90">
+          <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="事業名・事業IDで検索"
-                className="h-7 w-full rounded-md border border-black/20 bg-white px-2 text-xs text-neutral-800 placeholder:text-neutral-500 focus:border-blue-400 focus:bg-white focus:outline-none dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100"
+                className="h-7 w-full rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
               />
               <MultiSelectDropdown
                 options={ministryOptions}
@@ -363,7 +363,7 @@ export default function ProjectMapPage() {
                 onChange={setMinistries}
                 allLabel="府省庁"
                 placeholder="府省庁：すべて"
-                placeholderColor="#555"
+                placeholderTone="strong"
                 minWidth={240}
               />
               <MultiSelectDropdown
@@ -372,7 +372,7 @@ export default function ProjectMapPage() {
                 onChange={setRecommendations}
                 allLabel="推奨判断"
                 placeholder="推奨判断：すべて"
-                placeholderColor="#555"
+                placeholderTone="strong"
                 minWidth={240}
               />
               <RangeInput label="総合点" value={scoreFilter} onChange={setScoreFilter} width={58} />
@@ -380,16 +380,17 @@ export default function ProjectMapPage() {
               <RangeInput label="予算(億円)" value={budgetFilter} onChange={setBudgetFilter} width={58} />
               <div className="flex items-center justify-between">
                 {hasFilter ? (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     onClick={clearFilters}
-                    className="rounded-md px-1.5 py-1 text-neutral-500 hover:bg-black/5 hover:text-neutral-800 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+                    className="h-auto rounded-md px-1.5 py-1 font-normal text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
                   >
                     ✕ 条件をクリア
-                  </button>
+                  </Button>
                 ) : <span />}
-                <span className="tabular-nums text-[11px] text-neutral-400 dark:text-neutral-500">
-                  <strong className="font-semibold text-neutral-700 dark:text-neutral-200">{filtered.length.toLocaleString('ja-JP')}</strong>
+                <span className="tabular-nums text-[11px] text-mirai-text-muted">
+                  <strong className="font-bold text-mirai-text-secondary">{filtered.length.toLocaleString('ja-JP')}</strong>
                   {` / ${allPoints.length.toLocaleString('ja-JP')} 事業`}
                 </span>
               </div>
@@ -397,24 +398,24 @@ export default function ProjectMapPage() {
           </div>
       )}
 
-      <div className="rounded-xl border border-black/10 bg-white/90 shadow-md backdrop-blur dark:border-white/10 dark:bg-neutral-900/90">
+      <div className="rounded-xl border border-mirai-border bg-card shadow-soft">
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2 text-xs">
-          <span className="text-neutral-600 dark:text-neutral-300">色</span>
+          <span className="text-mirai-text-subtle">色</span>
           <select
             value={colorMode}
             onChange={e => { setColorMode(e.target.value as ColorMode); setLegendLock(null); }}
-            className="h-7 w-full rounded-md border border-black/20 bg-white px-1.5 text-neutral-800 focus:outline-none dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100"
+            className="h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
             aria-label="色の塗り分け"
           >
             {(Object.keys(COLOR_MODE_LABELS) as ColorMode[]).map(m => (
               <option key={m} value={m}>{COLOR_MODE_LABELS[m]}</option>
             ))}
           </select>
-          <span className="text-neutral-600 dark:text-neutral-300">大きさ</span>
+          <span className="text-mirai-text-subtle">大きさ</span>
           <select
             value={sizeMetric}
             onChange={e => setSizeMetric(e.target.value as SizeMetric)}
-            className="h-7 w-full rounded-md border border-black/20 bg-white px-1.5 text-neutral-800 focus:outline-none dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100"
+            className="h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
             aria-label="バブルの大きさ"
           >
             {(Object.keys(SIZE_METRIC_LABELS) as SizeMetric[]).map(m => (
@@ -423,40 +424,40 @@ export default function ProjectMapPage() {
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-black/5 px-3 py-2 text-xs dark:border-white/5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-xs">
           <label className="flex cursor-pointer items-center gap-1" title="事業説明文から見た、府省庁が優勢な領域を背景に淡く塗ります">
             <input
               type="checkbox"
               checked={showRegions}
               onChange={e => setShowRegions(e.target.checked)}
-              className="accent-neutral-700 dark:accent-neutral-300"
+              className="accent-primary"
             />
-            <span className="text-neutral-500 dark:text-neutral-400">勢力圏</span>
+            <span className="text-mirai-text-muted">勢力圏</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1">
             <input
               type="checkbox"
               checked={showClusterLabels}
               onChange={e => setShowClusterLabels(e.target.checked)}
-              className="accent-neutral-700 dark:accent-neutral-300"
+              className="accent-primary"
             />
-            <span className="text-neutral-500 dark:text-neutral-400">クラスタ名</span>
+            <span className="text-mirai-text-muted">クラスタ名</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1">
             <input
               type="checkbox"
               checked={showTable}
               onChange={e => setShowTable(e.target.checked)}
-              className="accent-neutral-700 dark:accent-neutral-300"
+              className="accent-primary"
             />
-            <span className="text-neutral-500 dark:text-neutral-400">表で見る</span>
+            <span className="text-mirai-text-muted">表で見る</span>
           </label>
         </div>
 
         {/* 大きさの目盛り。選択と同じカードに置き、必ず1行に収める
             （SVGは円の実寸ぶんだけ確保し、余白を作らない） */}
         {sizeScale.ticks.length > 0 && (
-          <div className="flex flex-nowrap items-center justify-between overflow-hidden border-t border-black/5 px-3 py-1.5 text-neutral-500 dark:border-white/5 dark:text-neutral-400">
+          <div className="flex flex-nowrap items-center justify-between overflow-hidden border-t border-border px-3 py-1.5 text-mirai-text-muted">
             {sizeScale.ticks.map(t => (
               <span key={t.label} className="flex items-center gap-0.5 whitespace-nowrap">
                 <svg
@@ -482,36 +483,37 @@ export default function ProjectMapPage() {
       {/* ── 右上: ヘルプ・年度・ページ切替メニュー ── */}
       <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
         <div className="relative">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setHelpOpen(v => !v)}
             aria-expanded={helpOpen}
-            className="flex h-9 items-center justify-center rounded-lg border border-black/10 bg-white/90 px-2.5 text-xs text-neutral-600 shadow-md backdrop-blur hover:bg-white hover:text-neutral-800 dark:border-white/10 dark:bg-neutral-900/90 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
-          >説明</button>
+            className="border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
+          >説明</Button>
           {helpOpen && (
             <>
               <div className="fixed inset-0" onClick={() => setHelpOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 top-10 w-80 rounded-xl border border-black/10 bg-white/95 p-3.5 text-xs leading-relaxed shadow-lg backdrop-blur dark:border-white/10 dark:bg-neutral-900/95">
+              <div className="absolute right-0 top-10 w-80 rounded-xl border border-mirai-border bg-card p-3.5 text-xs leading-relaxed shadow-soft">
                 <h2 className="mb-2 text-[13px] font-bold">このチャートの読み方</h2>
-                <dl className="space-y-2 text-neutral-600 dark:text-neutral-300">
+                <dl className="space-y-2 text-mirai-text-subtle">
                   <div>
-                    <dt className="font-semibold text-neutral-800 dark:text-neutral-100">配置</dt>
+                    <dt className="font-bold text-mirai-text">配置</dt>
                     <dd>丸1つが国の事業1つ。事業の説明文（目的・概要・課題）が似ているものほど近くに置かれます。上下左右の向きに意味はありません。</dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-neutral-800 dark:text-neutral-100">大きさ</dt>
+                    <dt className="font-bold text-mirai-text">大きさ</dt>
                     <dd>はじめは「AI評価の総合点が低い事業ほど大きく」表示しています。気になる事業ほど目に入るようにするためです。左のメニューで予算額などに切り替えられます。</dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-neutral-800 dark:text-neutral-100">色と背景</dt>
+                    <dt className="font-bold text-mirai-text">色と背景</dt>
                     <dd>色は所管の府省庁（切替可）。背景の淡い色面は、その府省庁の事業が集まっている領域です。色を「推奨判断」に切り替えると、どの領域に見直し候補が固まっているかが見えます。</dd>
                   </div>
                   <div>
-                    <dt className="font-semibold text-neutral-800 dark:text-neutral-100">操作</dt>
+                    <dt className="font-bold text-mirai-text">操作</dt>
                     <dd>丸にカーソルで概要、クリックで詳細。右の凡例をクリックするとその区分だけ強調。ドラッグで移動、ホイール/ピンチで拡大縮小。</dd>
                   </div>
                 </dl>
-                <p className="mt-2.5 border-t border-black/5 pt-2 text-[10px] text-neutral-400 dark:border-white/10 dark:text-neutral-500">
+                <p className="mt-2.5 border-t border-border pt-2 text-[10px] text-mirai-text-muted">
                   評価はAIによるスクリーニングであり、結論ではありません。位置と評価の詳しい算出方法は開発ドキュメントを参照してください。
                 </p>
               </div>
@@ -573,28 +575,29 @@ function RangeInput({
   width: number;
 }) {
   // type=number のスピナーはこの幅では場所を食うだけなので消す
-  const cls = 'h-7 rounded-md border border-black/20 bg-white px-1.5 text-xs tabular-nums text-neutral-800 placeholder:text-neutral-500 focus:border-blue-400 focus:bg-white focus:outline-none dark:border-white/20 dark:bg-neutral-800 dark:text-neutral-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+  const cls = 'h-7 rounded-md border border-mirai-border bg-card px-1.5 text-xs tabular-nums text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
   return (
     <span className="flex items-center gap-1">
-      <span className="w-14 shrink-0 text-neutral-600 dark:text-neutral-300">{label}</span>
+      <span className="w-14 shrink-0 text-mirai-text-subtle">{label}</span>
       <input
         type="number" inputMode="numeric" value={value.min} placeholder="下限"
         aria-label={`${label} 下限`} style={{ width }} className={cls}
         onChange={e => onChange({ ...value, min: e.target.value })}
       />
-      <span className="text-neutral-300 dark:text-neutral-600">–</span>
+      <span className="text-mirai-text-placeholder">–</span>
       <input
         type="number" inputMode="numeric" value={value.max} placeholder="上限"
         aria-label={`${label} 上限`} style={{ width }} className={cls}
         onChange={e => onChange({ ...value, max: e.target.value })}
       />
       {(value.min || value.max) && (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={() => onChange({ min: '', max: '' })}
           aria-label={`${label}の条件をクリア`}
-          className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-        >✕</button>
+          className="size-5 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-secondary"
+        >✕</Button>
       )}
     </span>
   );
@@ -614,7 +617,7 @@ function Tooltip({
   const flip = x > 380;
   return (
     <div
-      className="pointer-events-none absolute z-20 w-72 rounded-lg border border-black/10 bg-white/95 p-2.5 text-xs shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-neutral-900/95"
+      className="pointer-events-none absolute z-20 w-72 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{
         left: flip ? undefined : x + 14,
         right: flip ? `calc(100% - ${x - 14}px)` : undefined,
@@ -627,34 +630,34 @@ function Tooltip({
           style={{ background: color }}
           aria-hidden="true"
         />
-        <span className="font-semibold leading-snug">{point.name}</span>
+        <span className="font-bold leading-snug">{point.name}</span>
       </div>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-neutral-400 dark:text-neutral-500">
-        <dt>府省庁</dt><dd className="text-neutral-900 dark:text-neutral-100">{point.ministry}</dd>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-mirai-text-muted">
+        <dt>府省庁</dt><dd className="text-mirai-text">{point.ministry}</dd>
         <dt>総合点</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">
+        <dd className="tabular-nums text-mirai-text">
           {point.score === null ? '未評価' : point.score}
-          {point.rec && <span className="ml-1 text-neutral-500">{point.rec}</span>}
+          {point.rec && <span className="ml-1 text-mirai-text-muted">{point.rec}</span>}
         </dd>
         <dt>費用対/必要</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">
+        <dd className="tabular-nums text-mirai-text">
           {point.prop ?? '—'} / {point.nec ?? '—'}
         </dd>
         <dt>予算額</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{formatYenShort(point.budget)}</dd>
+        <dd className="tabular-nums text-mirai-text">{formatYenShort(point.budget)}</dd>
         <dt>継続年数</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">
+        <dd className="tabular-nums text-mirai-text">
           {point.years === null ? '不明' : `${point.years}年`}
         </dd>
-        <dt>分野</dt><dd className="text-neutral-900 dark:text-neutral-100">{categoryLabel(point.cat)}</dd>
+        <dt>分野</dt><dd className="text-mirai-text">{categoryLabel(point.cat)}</dd>
         {cluster && (
           <>
             <dt>近傍</dt>
-            <dd className="text-neutral-900 dark:text-neutral-100">{cluster.terms.slice(0, 3).join('・')}</dd>
+            <dd className="text-mirai-text">{cluster.terms.slice(0, 3).join('・')}</dd>
           </>
         )}
       </dl>
-      <p className="mt-1 text-[10px] text-neutral-400">クリックで詳細</p>
+      <p className="mt-1 text-[10px] text-mirai-text-muted">クリックで詳細</p>
     </div>
   );
 }
@@ -671,19 +674,20 @@ function Legend({
   onToggle: (key: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-black/10 bg-white/90 p-3 shadow-md backdrop-blur dark:border-white/10 dark:bg-neutral-900/90">
+    <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold tracking-wide text-neutral-400 dark:text-neutral-500">
+        <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">
           {COLOR_MODE_LABELS[mode]}
         </h2>
         {lockedKey && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onToggle(lockedKey)}
-            className="rounded px-1 text-[10px] text-neutral-500 hover:bg-black/5 hover:text-neutral-800 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+            className="h-auto rounded-md px-1 py-0.5 text-[10px] font-normal text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
           >
             ✕ 強調を解除
-          </button>
+          </Button>
         )}
       </div>
       <ul className="max-h-[45dvh] space-y-px overflow-y-auto text-xs" onMouseLeave={() => onHover(null)}>
@@ -691,36 +695,37 @@ function Legend({
           const active = activeKey === e.key;
           return (
             <li key={e.key}>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onMouseEnter={() => onHover(e.key)}
                 onFocus={() => onHover(e.key)}
                 onBlur={() => onHover(null)}
                 onClick={() => onToggle(e.key)}
                 aria-pressed={lockedKey === e.key}
-                className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-opacity ${
+                className={cn(
+                  'h-auto w-full justify-start gap-2 rounded-md px-1.5 py-1 text-left text-xs font-normal transition-opacity hover:bg-mirai-surface',
                   active
-                    ? 'bg-black/5 dark:bg-white/10'
-                    : activeKey !== null ? 'opacity-40' : ''
-                } hover:bg-black/5 dark:hover:bg-white/10`}
+                    ? 'bg-primary/10 text-primary-accent hover:bg-primary/10'
+                    : activeKey !== null && 'opacity-40',
+                )}
               >
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ background: e.color }}
                   aria-hidden="true"
                 />
-                <span className={`flex-1 truncate ${e.isOther ? 'text-neutral-500 dark:text-neutral-400' : 'text-neutral-700 dark:text-neutral-200'}`}>
+                <span className={`flex-1 truncate ${e.isOther ? 'text-mirai-text-muted' : 'text-mirai-text-secondary'}`}>
                   {e.label}
                 </span>
-                <span className="tabular-nums text-[11px] text-neutral-400 dark:text-neutral-500">
+                <span className="tabular-nums text-[11px] text-mirai-text-muted">
                   {e.count.toLocaleString('ja-JP')}
                 </span>
-              </button>
+              </Button>
             </li>
           );
         })}
       </ul>
-      <p className="mt-2 border-t border-black/5 pt-2 text-[10px] leading-relaxed text-neutral-400 dark:border-white/5 dark:text-neutral-500">
+      <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-mirai-text-muted">
         クリックでその区分だけを前面に。もう一度押すと戻ります。
       </p>
     </div>
@@ -737,51 +742,52 @@ function SelectedPanel({
 }) {
   if (!point) {
     return (
-      <div className="rounded-xl border border-dashed border-black/15 p-4 text-center text-xs leading-relaxed text-neutral-400 dark:border-white/15 dark:text-neutral-500">
+      <div className="rounded-xl border border-dashed border-mirai-border p-4 text-center text-xs leading-relaxed text-mirai-text-muted">
         バブルをクリックすると、<br />その事業の詳細がここに出ます。
       </div>
     );
   }
   return (
-    <div className="rounded-xl border border-black/10 bg-white p-3 text-xs shadow-sm dark:border-white/10 dark:bg-neutral-900">
+    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-xs">
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-[13px] font-semibold leading-snug">{point.name}</h2>
-        <button
-          type="button"
+        <h2 className="text-[13px] font-bold leading-snug">{point.name}</h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           onClick={onClose}
-          className="-mr-1 -mt-1 h-6 w-6 shrink-0 rounded-md text-neutral-400 hover:bg-black/5 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+          className="-mr-1 -mt-1 size-6 shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
           aria-label="閉じる"
-        >×</button>
+        ><X className="size-3.5" /></Button>
       </div>
-      <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-neutral-500 dark:text-neutral-400">
-        <dt>事業ID</dt><dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{point.pid}</dd>
-        <dt>府省庁</dt><dd className="text-neutral-900 dark:text-neutral-100">{point.ministry}</dd>
-        <dt>分野</dt><dd className="text-neutral-900 dark:text-neutral-100">{categoryLabel(point.cat)}</dd>
+      <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-mirai-text-muted">
+        <dt>事業ID</dt><dd className="tabular-nums text-mirai-text">{point.pid}</dd>
+        <dt>府省庁</dt><dd className="text-mirai-text">{point.ministry}</dd>
+        <dt>分野</dt><dd className="text-mirai-text">{categoryLabel(point.cat)}</dd>
         <dt>総合点</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">
+        <dd className="tabular-nums text-mirai-text">
           {point.score === null ? '未評価' : point.score}
         </dd>
         <dt>費用対内容</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{point.prop ?? '未評価'}</dd>
+        <dd className="tabular-nums text-mirai-text">{point.prop ?? '未評価'}</dd>
         <dt>必要性</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{point.nec ?? '未評価'}</dd>
-        <dt>推奨</dt><dd className="text-neutral-900 dark:text-neutral-100">{point.rec ?? '未判定'}</dd>
+        <dd className="tabular-nums text-mirai-text">{point.nec ?? '未評価'}</dd>
+        <dt>推奨</dt><dd className="text-mirai-text">{point.rec ?? '未判定'}</dd>
         <dt>予算額</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{formatYenShort(point.budget)}</dd>
+        <dd className="tabular-nums text-mirai-text">{formatYenShort(point.budget)}</dd>
         <dt>執行額</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">{formatYenShort(point.exec)}</dd>
+        <dd className="tabular-nums text-mirai-text">{formatYenShort(point.exec)}</dd>
         <dt>継続年数</dt>
-        <dd className="tabular-nums text-neutral-900 dark:text-neutral-100">
+        <dd className="tabular-nums text-mirai-text">
           {point.years === null ? '不明' : `${point.years}年`}
         </dd>
       </dl>
       {cluster && (
-        <p className="mt-2.5 border-t border-black/5 pt-2 text-[11px] leading-relaxed text-neutral-400 dark:border-white/10 dark:text-neutral-500">
+        <p className="mt-2.5 border-t border-border pt-2 text-[11px] leading-relaxed text-mirai-text-muted">
           近傍{cluster.count}事業の特徴語: {cluster.terms.join('・')}
         </p>
       )}
       {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-      <div className="mt-2.5 border-t border-black/5 pt-2 empty:hidden dark:border-white/10">
+      <div className="mt-2.5 border-t border-border pt-2 empty:hidden">
         <ProjectComments
           bare
           context={{
@@ -796,18 +802,16 @@ function SelectedPanel({
         />
       </div>
       <div className="mt-2.5 flex gap-1.5">
-        <Link
-          href={`/subcontracts/${point.pid}?year=${year}`}
-          className="rounded-md border border-black/10 px-2 py-1 text-[11px] text-neutral-600 hover:bg-black/5 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10"
-        >
-          支出先を見る
-        </Link>
-        <Link
-          href={`/sankey-svg?fnp=${encodeURIComponent(point.name)}&fp=1&yr=${year}`}
-          className="rounded-md border border-black/10 px-2 py-1 text-[11px] text-neutral-600 hover:bg-black/5 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-white/10"
-        >
-          サンキー図で見る
-        </Link>
+        <Button asChild variant="outline" size="xs" className="border-mirai-border text-[11px] font-medium text-mirai-text-subtle">
+          <Link href={`/subcontracts/${point.pid}?year=${year}`}>
+            支出先を見る
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="xs" className="border-mirai-border text-[11px] font-medium text-mirai-text-subtle">
+          <Link href={`/sankey-svg?fnp=${encodeURIComponent(point.name)}&fp=1&yr=${year}`}>
+            サンキー図で見る
+          </Link>
+        </Button>
       </div>
     </div>
   );
@@ -830,53 +834,54 @@ function TableView({
   );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-black/10 bg-white/95 shadow-lg backdrop-blur dark:border-white/10 dark:bg-neutral-900/95">
-      <div className="flex items-center justify-between border-b border-black/5 px-3 py-1.5 dark:border-white/10">
-        <h2 className="text-[11px] font-semibold tracking-wide text-neutral-400 dark:text-neutral-500">表で見る</h2>
+    <div className="overflow-hidden rounded-xl border border-mirai-border bg-card shadow-soft">
+      <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
+        <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">表で見る</h2>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500">
+          <span className="text-[11px] text-mirai-text-muted">
             総合点の低い順・上位{Math.min(LIMIT, rows.length)}件
             {points.length > LIMIT && `（該当 ${points.length.toLocaleString('ja-JP')}件）`}
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={onClose}
-            className="h-6 w-6 rounded-md text-neutral-400 hover:bg-black/5 hover:text-neutral-700 dark:hover:bg-white/10 dark:hover:text-neutral-200"
+            className="size-6 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
             aria-label="表を閉じる"
-          >×</button>
+          ><X className="size-3.5" /></Button>
         </div>
       </div>
       <div className="max-h-[38dvh] overflow-auto">
         <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-white text-left text-neutral-500 dark:bg-neutral-900">
-            <tr className="border-b border-black/5 dark:border-white/10">
-              <th className="px-2 py-1.5 font-medium">事業名</th>
-              <th className="px-2 py-1.5 font-medium">府省庁</th>
-              <th className="px-2 py-1.5 text-right font-medium">総合点</th>
-              <th className="px-2 py-1.5 font-medium">推奨</th>
-              <th className="px-2 py-1.5 text-right font-medium">予算額</th>
-              <th className="px-2 py-1.5 text-right font-medium">継続</th>
-              <th className="px-2 py-1.5 font-medium">近傍の特徴語</th>
+          <thead className="sticky top-0 bg-mirai-surface text-left text-mirai-text-subtle">
+            <tr className="border-b border-border">
+              <th className="px-2 py-1.5 font-bold">事業名</th>
+              <th className="px-2 py-1.5 font-bold">府省庁</th>
+              <th className="px-2 py-1.5 text-right font-bold">総合点</th>
+              <th className="px-2 py-1.5 font-bold">推奨</th>
+              <th className="px-2 py-1.5 text-right font-bold">予算額</th>
+              <th className="px-2 py-1.5 text-right font-bold">継続</th>
+              <th className="px-2 py-1.5 font-bold">近傍の特徴語</th>
             </tr>
           </thead>
           <tbody>
             {rows.map(p => (
-              <tr key={p.pid} className="border-b border-black/5 last:border-0 hover:bg-black/[0.02] dark:border-white/5 dark:hover:bg-white/5">
+              <tr key={p.pid} className="border-b border-border last:border-0 hover:bg-mirai-surface-teal/60">
                 <td className="max-w-[22rem] truncate px-2 py-1">
                   <Link
                     href={`/subcontracts/${p.pid}?year=${year}`}
-                    className="hover:underline"
+                    className="underline-offset-4 hover:text-primary-accent hover:underline"
                     title={p.name}
                   >
                     {p.name}
                   </Link>
                 </td>
-                <td className="whitespace-nowrap px-2 py-1 text-neutral-600 dark:text-neutral-400">{p.ministry}</td>
+                <td className="whitespace-nowrap px-2 py-1 text-mirai-text-subtle">{p.ministry}</td>
                 <td className="px-2 py-1 text-right tabular-nums">{p.score ?? '—'}</td>
-                <td className="whitespace-nowrap px-2 py-1 text-neutral-600 dark:text-neutral-400">{p.rec ?? '—'}</td>
+                <td className="whitespace-nowrap px-2 py-1 text-mirai-text-subtle">{p.rec ?? '—'}</td>
                 <td className="whitespace-nowrap px-2 py-1 text-right tabular-nums">{formatYenShort(p.budget)}</td>
                 <td className="px-2 py-1 text-right tabular-nums">{p.years ?? '—'}</td>
-                <td className="max-w-[16rem] truncate px-2 py-1 text-neutral-500">
+                <td className="max-w-[16rem] truncate px-2 py-1 text-mirai-text-muted">
                   {clusterById.get(p.c)?.terms.slice(0, 3).join('・') ?? ''}
                 </td>
               </tr>

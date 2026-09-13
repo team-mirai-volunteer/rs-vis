@@ -5,6 +5,10 @@
  * `/sankey-svg` の事業名・支出先名フィルタ（入力欄内に`.*`トグルを埋め込む配色）を踏襲する。
  */
 
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+
 export interface RegexTextFilterProps {
   label: string;
   note?: string;
@@ -18,7 +22,7 @@ export function RegexTextFilter({ label, note, value, onChange, useRegex, onTogg
   const invalid = useRegex && value !== '' && !isValidRegex(value);
   return (
     <div className="space-y-1">
-      <span className="text-neutral-500" title={note}>
+      <span className="font-medium text-mirai-text-subtle" title={note}>
         {label}
       </span>
       <div className="flex items-center gap-1">
@@ -30,33 +34,40 @@ export function RegexTextFilter({ label, note, value, onChange, useRegex, onTogg
             placeholder={useRegex ? '正規表現' : '部分一致'}
             aria-label={label}
             aria-invalid={invalid}
-            className={`w-full rounded border bg-white py-1 pl-2 pr-7 text-xs outline-none dark:bg-neutral-900 ${
-              invalid ? 'border-red-400' : 'border-neutral-300 dark:border-neutral-700'
-            }`}
+            className={cn(
+              'w-full rounded-md border bg-card py-1 pl-2 pr-7 text-xs text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary',
+              invalid ? 'border-destructive focus-visible:border-destructive' : 'border-mirai-border'
+            )}
           />
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => onToggleRegex(!useRegex)}
             aria-pressed={useRegex}
             title={useRegex ? '正規表現をオフ' : '正規表現で絞り込み'}
-            className={`absolute right-1 top-1/2 -translate-y-1/2 rounded px-1 py-0.5 font-mono text-[10px] font-bold leading-none ${
-              useRegex ? 'bg-blue-600 text-white' : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
-            }`}
+            className={cn(
+              'absolute right-1 top-1/2 h-auto -translate-y-1/2 rounded-md px-1 py-0.5 font-mono text-[10px] font-bold leading-none',
+              useRegex
+                ? 'bg-primary text-white hover:bg-primary hover:text-white'
+                : 'text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-subtle'
+            )}
           >
             .*
-          </button>
+          </Button>
         </div>
         {value && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onChange('')}
-            className="shrink-0 px-0.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+            aria-label="クリア"
+            className="size-5 shrink-0 text-mirai-text-muted hover:bg-transparent hover:text-mirai-text"
           >
-            ×
-          </button>
+            <X className="size-3" />
+          </Button>
         )}
       </div>
-      {invalid && <p className="text-[10px] text-red-500">正規表現が不正です</p>}
+      {invalid && <p className="text-[10px] text-destructive">正規表現が不正です</p>}
     </div>
   );
 }
