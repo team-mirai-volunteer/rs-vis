@@ -26,7 +26,7 @@ import {
   type UnifiedViewFilter,
 } from '@/types/unified-budget-view';
 import type { LabelDensity } from '@/types/mof-hierarchy';
-import { applyFilter, applyTopN, collapseColumns, countByColumn, toViewGraph } from '@/app/lib/unified-budget/transform';
+import { applyFilter, applyTopN, collapseColumns, countByColumn, sortForDisplay, toViewGraph } from '@/app/lib/unified-budget/transform';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -154,7 +154,7 @@ function UnifiedBudgetSankeyContent() {
   const filtered = useMemo(() => (base ? applyFilter(base, filter) : null), [base, filter]);
   const collapsed = useMemo(() => (filtered ? collapseColumns(filtered, effectiveColumns) : null), [filtered, effectiveColumns]);
   const columnCounts = useMemo(() => (collapsed ? countByColumn(collapsed) : {}), [collapsed]);
-  const display = useMemo(() => (collapsed ? applyTopN(collapsed, topN, offset) : null), [collapsed, topN, offset]);
+  const display = useMemo(() => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset)) : null), [collapsed, topN, offset]);
   const ministries = useMemo(() => (base ? [...new Set(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name))] : []), [base]);
 
   // URL 同期
