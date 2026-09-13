@@ -4,7 +4,7 @@
  * ノード検索とフィルタの入り口。`/mof-sankey` の SankeyChartSearch を統合ビューの型に合わせたもの。
  */
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UNIFIED_COLUMN_LABELS } from '@/types/unified-budget';
 import type { UnifiedViewNode } from '@/types/unified-budget-view';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -32,6 +32,20 @@ export function UnifiedSearch({
   const [open, setOpen] = useState(false);
   const [cursor, setCursor] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // 絞り込みパネルは、外（図のノードや他のコントロール）を押したら閉じる。
+  // 開いたまま残ると図の左上を塞ぎ続けて邪魔になるため。中の入力操作では閉じない
+  useEffect(() => {
+    if (!filterOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      onToggleFilter();
+    };
+    // capture 段階で拾う。図のノードは mousedown の伝播を止めるので、バブリングでは document に届かない
+    document.addEventListener('mousedown', onPointerDown, true);
+    return () => document.removeEventListener('mousedown', onPointerDown, true);
+  }, [filterOpen, onToggleFilter]);
 
   const results = useMemo(() => {
     const q = query.trim();
@@ -50,7 +64,7 @@ export function UnifiedSearch({
   };
 
   return (
-    <div className="relative" data-pan-disabled="true">
+    <div ref={rootRef} className="relative" data-pan-disabled="true">
       <div className="flex items-center gap-1 rounded-full border border-mirai-border bg-card px-2.5 shadow-xs">
         <Search className="size-3.5 shrink-0 text-mirai-text-muted" aria-hidden="true" />
         <input
