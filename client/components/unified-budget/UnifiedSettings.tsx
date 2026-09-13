@@ -44,12 +44,24 @@ export function UnifiedSettings({
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open) panelRef.current?.focus();
   }, [open]);
+  // 外（図のノードや他のコントロール）を押したら閉じる。開いたまま残ると左下を塞ぎ続けるため
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (rootRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    // capture 段階で拾う。図のノードは mousedown の伝播を止めるので、バブリングでは document に届かない
+    document.addEventListener('mousedown', onPointerDown, true);
+    return () => document.removeEventListener('mousedown', onPointerDown, true);
+  }, [open]);
 
   return (
-    <div data-pan-disabled="true" className="relative flex items-end">
+    <div ref={rootRef} data-pan-disabled="true" className="relative flex items-end">
       <Button
         variant="outline"
         size="icon"
