@@ -37,6 +37,8 @@ export const LABEL_FONT_PX_DEFAULT = 11;
 const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;
 const ZOOM_MIN = 0.3;
+/** 左上の検索クラスタが占める高さ（top 12px + 検索ボックス ≒ 40px + 余白 12px）。サイドパネルはこの下から始める */
+const SEARCH_ROW_PX = 64;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
@@ -502,7 +504,8 @@ export function UnifiedSankeyChart({
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} />}
 
-      <div data-pan-disabled="true" className="absolute top-3 z-30 flex items-start gap-1.5 transition-[left] duration-200" style={{ left: panelOpenWidth + 12 }}>
+      {/* 検索クラスタは左上に固定。サイドパネルはこの下（SEARCH_ROW_PX）から始まるので押しのけない */}
+      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5">
         <UnifiedSearch
           nodes={browseNodes}
           onSelect={onSelect}
@@ -516,6 +519,7 @@ export function UnifiedSankeyChart({
       {selectedId !== null && (
         <SidePanelChrome
           side="left"
+          topOffset={SEARCH_ROW_PX}
           open={!sidePanel.collapsed}
           onToggle={sidePanel.toggleCollapsed}
           width={sidePanel.effectiveWidth}
