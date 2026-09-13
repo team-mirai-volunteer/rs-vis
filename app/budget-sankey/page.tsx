@@ -33,6 +33,7 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { HierarchySettings } from '@/client/components/mof-hierarchy/HierarchySettings';
 import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
+import { UnifiedColumnToggles, UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024] as const;
@@ -244,16 +245,15 @@ function UnifiedBudgetSankeyContent() {
       />
 
       <div className="absolute right-3 top-3 z-30 flex items-start gap-2">
-        <UnifiedControls
+        <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
+
+        <UnifiedViewSelect
           visibleColumns={effectiveColumns}
-          onVisibleColumnsChange={setVisibleColumns}
-          onPresetChange={preset => setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }))}
           availableColumns={availableColumns}
-          topN={topN}
-          offset={offset}
-          columnCounts={columnCounts}
-          onTopNChange={setTopN}
-          onOffsetChange={setOffset}
+          onChange={(preset, columns) => {
+            setVisibleColumns(columns);
+            setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }));
+          }}
         />
 
         <HierarchySettings
@@ -264,6 +264,7 @@ function UnifiedBudgetSankeyContent() {
           focusRelated={focusRelated}
           onFocusRelatedChange={setFocusRelated}
           summary={summary}
+          extra={<UnifiedColumnToggles visibleColumns={effectiveColumns} availableColumns={availableColumns} onChange={setVisibleColumns} />}
         />
 
         <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} theme="light" />

@@ -8,7 +8,7 @@
  * 常時見えるパネル（HierarchyControls）に置く。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { LabelDensity } from '@/types/mof-hierarchy';
@@ -27,6 +27,7 @@ export function HierarchySettings({
   focusRelated,
   onFocusRelatedChange,
   summary,
+  extra,
 }: {
   fontPx: number;
   onFontPxChange: (value: number) => void;
@@ -36,6 +37,8 @@ export function HierarchySettings({
   onFocusRelatedChange: (value: boolean) => void;
   /** 事項数・会計区分の内訳 */
   summary?: string;
+  /** ページ固有の設定（統合ビューの列トグルなど）。関連表示チェックの下に出す */
+  extra?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -111,6 +114,7 @@ export function HierarchySettings({
               />
               <span>選択時に関連のみ表示</span>
             </label>
+            {extra}
 
             {summary && (
               <p className="border-t border-border pt-2 text-[11px] text-mirai-text-muted">
