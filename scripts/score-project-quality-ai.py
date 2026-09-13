@@ -568,7 +568,7 @@ def _anchor_block(title, anchors, detail_by_pid, mode='text'):
         d = detail_by_pid.get(str(pid), {})
         rows = [head, f"    事業名: {d.get('projectName', '')}"]
         if mode == 'recipients':
-            rows.append(f"    予算: {_fmt_oku(d.get('budgetAmount'))}")
+            rows.append(f"    予算: {_fmt_oku(d.get('budgetAmount'))} / 執行: {_fmt_oku(d.get('execAmount'))}")
             rows.append(f"    {_fmt_recipients(d)}")
         elif mode == 'logic':
             rows.append(f"    目的: {normalize(d.get('purpose') or '')[:160]}")
@@ -673,7 +673,14 @@ def build_unified_system(anchors, tax, detail_by_pid):
         '金額の見合いと支出先の妥当性を一体で見ます。予算見積りの精度（不用率）は機械計算で別途扱うため対象外です。\n\n'
         '判定手順:\n'
         '1. 本文から活動の規模を表す数量を拾う（対象人数・箇所数・延長・件数・法人数など）。\n'
-        '2. 予算額をその数量で割り、単価に換算する。\n'
+        '2. 金額をその数量で割り、単価に換算する。金額は次の順で選ぶ:\n'
+        '   - budgetOku（当初予算）があればそれを使う。\n'
+        '   - budgetOku が 0 または「—」でも execOku（執行額）があれば execOku を使う。\n'
+        '     一括計上・他事業からの移替・予備費などで、予算が別事業に立っていても執行だけこの事業に出ることがある。\n'
+        '     執行額と支出先が実在する以上、費用対内容は判定できる。null にしてはならない。\n'
+        '     finding には「執行ベース」と明記する（例「執行57.4億円÷…」）。\n'
+        '   - execOku が budgetOku を大きく上回る（1.5倍以上）場合も、実際に払われた execOku を単価計算に使い、\n'
+        '     予算超過の事実を finding に一言添える。\n'
         '3. 支出先の一覧を見て、その金が名目上の受益者に届いているかを確認する。\n'
         '4. 単価の妥当性と支出先の妥当性を併せて判断する。どちらか一方でも崩れていれば低くなります。\n\n'
         '支出先の妥当性で見る点:\n'
@@ -696,8 +703,10 @@ def build_unified_system(anchors, tax, detail_by_pid):
         '- 記述が明瞭なだけで高評価にしない。よく書けていても単価や支出先が説明できなければ低い。\n'
         '- 事業の必要性の弱さ。それは段階4で採点する。ここでは支出の中身だけを見る。\n'
         '- finding には必ず単価換算を書くこと（例「2.4億円÷1万人＝約2.4万円/人」）。\n'
-        '- 金額は提示された budgetOku（億円）をそのまま使う。桁を読み替えないこと。\n'
-        '- 予算額が0または未提示の事業は score を null にする。0円で単価を計算しない。\n'
+        '- 金額は提示された budgetOku / execOku（億円）をそのまま使う。桁を読み替えないこと。\n'
+        '- budgetOku と execOku の両方が 0 または未提示の事業のみ score を null にする。\n'
+        '  どちらか一方でも金額があれば必ず採点する。0円で単価を計算しない。\n'
+        '- 執行額はあるが予算が無いこと自体は、費用対内容の減点理由にしない（予算計上の適否は別の観点）。\n'
         + _anchor_block('費用対内容', anchors['proportionalityAnchors'], detail_by_pid, 'recipients') + '\n\n'
 
         '━━━ 段階4: 必要性（necessity）━━━\n'
@@ -779,7 +788,7 @@ def build_unified_system(anchors, tax, detail_by_pid):
 
 
 def unified_key(d):
-    """段階採点のキャッシュキー。'U8:' = unified v14（全段階に国民便益の原則を追加。'U7:' は v13）。"""
+    """段階採点のキャッシュキー。'U8:' = unified v14（全段階に国民便益の原則を追加、費用対内容を執行額でも採点。'U7:' は v13）。"""
     tops = '|'.join(f"{r['name']}:{r.get('amount') or 0}:{r.get('depth') or 0}"
                     for r in (d.get('topRecipients') or []))
     c = d.get('indicatorCounts') or {}
@@ -812,6 +821,7 @@ def _build_unified_prompt(items):
             f"  現状課題: {(d.get('currentIssues') or '(空)')[:400]}\n"
             f"  概要: {(d.get('overview') or '(空)')[:400]}\n"
             f"  budgetOku: {'—' if d.get('budgetAmount') is None else round(d['budgetAmount'] / 1e8, 1)}"
+            f" / execOku: {'—' if d.get('execAmount') is None else round(d['execAmount'] / 1e8, 1)}"
             f" / 執行率{_fmt_pct(d.get('executionRate'))} / 前年度{_fmt_pct(d.get('priorExecutionRate'))}\n"
             f"  {_fmt_recipients(d)}\n"
             f"  {_fmt_indicators(d)}\n"
