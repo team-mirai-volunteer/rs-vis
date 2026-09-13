@@ -11,13 +11,18 @@ import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-/** 表示列の組からプリセット名を逆引きする（一致しなければ custom） */
-export function presetOf(visible: UnifiedColumn[]): UnifiedPreset {
+/**
+ * 表示列の組からプリセット名を逆引きする。
+ * プリセットの列は「その年度で表示できる列」に絞って比べる（2026 は支出先が無い等）。
+ * どれにも一致しない列の組（表示設定で個別に切った状態）は「統合」を表示する。
+ * 「カスタム」という第 5 の状態は置かない: 実際にはどの組も「その年度で出せる範囲の統合」なので
+ */
+export function presetOf(visible: UnifiedColumn[], available: UnifiedColumn[] = UNIFIED_COLUMNS as unknown as UnifiedColumn[]): UnifiedPreset {
   const key = UNIFIED_COLUMNS.filter(c => visible.includes(c)).join(',');
-  for (const [preset, cols] of Object.entries(UNIFIED_PRESET_COLUMNS) as Array<[Exclude<UnifiedPreset, 'custom'>, UnifiedColumn[]]>) {
-    if (cols.join(',') === key) return preset;
+  for (const [preset, cols] of Object.entries(UNIFIED_PRESET_COLUMNS) as Array<[UnifiedPreset, UnifiedColumn[]]>) {
+    if (cols.filter(c => available.includes(c)).join(',') === key) return preset;
   }
-  return 'custom';
+  return 'full';
 }
 
 export function UnifiedViewSelect({
@@ -27,9 +32,9 @@ export function UnifiedViewSelect({
 }: {
   visibleColumns: UnifiedColumn[];
   availableColumns: UnifiedColumn[];
-  onChange: (preset: Exclude<UnifiedPreset, 'custom'>, columns: UnifiedColumn[]) => void;
+  onChange: (preset: UnifiedPreset, columns: UnifiedColumn[]) => void;
 }) {
-  const preset = presetOf(visibleColumns);
+  const preset = presetOf(visibleColumns, availableColumns);
   return (
     <div className="relative shrink-0" data-pan-disabled="true">
       <select
@@ -37,13 +42,12 @@ export function UnifiedViewSelect({
         aria-label="表示プリセット"
         onChange={e => {
           const p = e.target.value as UnifiedPreset;
-          if (p === 'custom') return;
           onChange(p, UNIFIED_PRESET_COLUMNS[p].filter(c => availableColumns.includes(c)));
         }}
         className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >
         {(Object.keys(UNIFIED_PRESET_LABELS) as UnifiedPreset[]).map(p => (
-          <option key={p} value={p} disabled={p === 'custom'}>
+          <option key={p} value={p}>
             {UNIFIED_PRESET_LABELS[p]}
           </option>
         ))}

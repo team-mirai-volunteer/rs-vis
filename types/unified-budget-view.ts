@@ -69,17 +69,16 @@ export function hasActiveUnifiedFilter(f: UnifiedViewFilter): boolean {
 }
 
 /** プリセット（表示する列の組み合わせ）。設計 3.1 */
-export type UnifiedPreset = 'full' | 'rs' | 'mof' | 'section' | 'custom';
+export type UnifiedPreset = 'full' | 'rs' | 'mof' | 'section';
 
 export const UNIFIED_PRESET_LABELS: Record<UnifiedPreset, string> = {
-  full: '完全統合',
+  full: '統合',
   rs: 'RSのみ',
   mof: '予算書のみ',
   section: '項→目→事業',
-  custom: 'カスタム',
 };
 
-export const UNIFIED_PRESET_COLUMNS: Record<Exclude<UnifiedPreset, 'custom'>, UnifiedColumn[]> = {
+export const UNIFIED_PRESET_COLUMNS: Record<UnifiedPreset, UnifiedColumn[]> = {
   full: ['account', 'ministry', 'section', 'program', 'program-spending', 'recipient'],
   rs: ['ministry', 'program', 'program-spending', 'recipient'],
   mof: ['account', 'ministry', 'organization', 'section', 'program'],
