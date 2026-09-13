@@ -124,7 +124,7 @@ export function UnifiedProjectSections({
   const chip: CSSProperties = { fontSize: scaleFont(10) };
 
   return (
-    <div className="-mx-4 border-t border-border">
+    <div className="-mx-4 mt-3 border-t border-border">
       <PolicyEvaluationBlock
         pid={pid}
         year={year}
