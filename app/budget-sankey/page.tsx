@@ -27,7 +27,7 @@ import {
 } from '@/types/unified-budget-view';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import { applyFilter, applyTopN, collapseColumns, countByColumn, toViewGraph } from '@/app/lib/unified-budget/transform';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
@@ -222,7 +222,19 @@ function UnifiedBudgetSankeyContent() {
   } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-background">
+    <>
+    <AppHeader position="fixed" current="/budget-sankey">
+      <UnifiedViewSelect
+        visibleColumns={effectiveColumns}
+        availableColumns={availableColumns}
+        onChange={(preset, columns) => {
+          setVisibleColumns(columns);
+          setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }));
+        }}
+      />
+      <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} />
+    </AppHeader>
+    <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-background">
       <UnifiedSankeyChart
         nodes={display.nodes}
         links={display.links}
@@ -261,18 +273,6 @@ function UnifiedBudgetSankeyContent() {
 
       <div className="absolute right-3 top-3 z-30 flex items-start gap-2">
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
-
-        <UnifiedViewSelect
-          visibleColumns={effectiveColumns}
-          availableColumns={availableColumns}
-          onChange={(preset, columns) => {
-            setVisibleColumns(columns);
-            setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }));
-          }}
-        />
-
-        <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} theme="light" />
-        <PageNavMenu current="/budget-sankey" theme="light" />
       </div>
 
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}
@@ -282,5 +282,6 @@ function UnifiedBudgetSankeyContent() {
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -24,7 +24,7 @@ import {
 } from '@/types/mof-hierarchy';
 import type { MOFAccountType, MOFBudgetType } from '@/types/mof-jikou';
 import { parseAmountToYen } from '@/app/lib/format/yen';
-import { PageNavMenu } from '@/components/navigation/PageNavMenu';
+import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { HierarchyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/mof-hierarchy/HierarchyChart';
@@ -279,7 +279,15 @@ function MOFHierarchyContent() {
   const { metadata } = data;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-card">
+    <>
+    <AppHeader position="fixed" current="/mof-hierarchy">
+      <YearSelect
+        value={String(year ?? metadata.fiscalYear)}
+        onChange={y => fetchData(Number(y))}
+        years={metadata.availableYears}
+      />
+    </AppHeader>
+    <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-card">
       {/* 図。全画面に敷き、その上にコントロールを浮かせる */}
       <HierarchyChart
         nodes={data.sankey.nodes}
@@ -334,15 +342,8 @@ function MOFHierarchyContent() {
           onFocusRelatedChange={setFocusRelated}
           summary={`${metadata.itemCount.toLocaleString()}事項 / ${accountsLabel}`}
         />
-
-        <YearSelect
-          value={String(year ?? metadata.fiscalYear)}
-          onChange={y => fetchData(Number(y))}
-          years={metadata.availableYears}
-          theme="light"
-        />
-        <PageNavMenu current="/mof-hierarchy" theme="light" />
       </div>
     </div>
+    </>
   );
 }
