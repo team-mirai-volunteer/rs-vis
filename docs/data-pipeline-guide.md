@@ -269,6 +269,24 @@ N-1シートから引き継がれたN-1行だけ。予算年度N行には N+1 �
 
 ---
 
+### 2-9. 統合ビュー `/budget-sankey`（統合グラフ）
+
+```
+public/data/mof-kou-moku-{予算年度}.json（.gz 可）
+public/data/mof-rs-kou-moku-linkage-{予算年度}.json（2-8 の生成物）
+public/data/sankey-svg-{シート年度}-graph.json（執行年度のみ。事業(支出)・支出先を引き継ぐ）
+  ↓ npm run generate-unified-budget-graph   （2024/2025/2026 をまとめて）
+public/data/unified-budget-{予算年度}-graph.json（.gz を Git 管理、prebuild で展開。ブラウザが直接 fetch）
+  ↓ npm run validate-unified-budget-graph   （流入=流出・会計合計=MOF目合計・未突合比率）
+```
+
+会計 → 所管 → 組織/勘定 → 項 → 目 → 事業区分（RS事業／繰入／国債費／地方財政移転／予備費／人件費／未突合）→ 事業(支出) → 支出先 の
+1本のグラフ。会計〜目の流量は MOF 当初予算の目金額、RS事業ノードは歳出予算現額で、差分は擬似ノード `np-outside` からの流入で釣り合う。
+列の畳み込み・絞り込み・TopN はブラウザ側（`app/lib/unified-budget/transform.ts`）で行うので、生成物は全列・全件を持つ。
+新しい予算年度を足すときは、生成後に `app/budget-sankey/page.tsx` の `AVAILABLE_YEARS` と `scripts/decompress-data.sh` にも追加する。
+
+---
+
 ## 3. 圧縮（compress-data）
 
 **コマンド**: `npm run compress-data`
