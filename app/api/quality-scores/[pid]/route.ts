@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getQualityScore, toQualityScoreProjection } from '@/app/lib/api/quality-scores-loader';
-import { parseYear, buildMetadata, QUALITY_SCORE_NOTES, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { buildMetadata, QUALITY_SCORE_NOTES, API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
+import { parseQualityYear, QUALITY_YEAR_ERROR, qualitySourceYear } from '@/app/lib/api/quality-year';
 import { projectLinks } from '@/app/lib/api/links';
 
 export async function GET(
@@ -9,9 +10,9 @@ export async function GET(
 ) {
   try {
     const { pid } = await params;
-    const year = parseYear(request.nextUrl.searchParams.get('year'));
+    const year = parseQualityYear(request.nextUrl.searchParams.get('year'));
     if (year === null) {
-      return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
+      return NextResponse.json({ error: QUALITY_YEAR_ERROR }, { status: 400 });
     }
 
     const item = getQualityScore(year, pid);
@@ -26,10 +27,10 @@ export async function GET(
     const full = request.nextUrl.searchParams.get('full') === '1';
 
     const body = {
-      metadata: buildMetadata(year, { pid }, QUALITY_SCORE_NOTES),
+      metadata: buildMetadata(qualitySourceYear(year), { pid }, QUALITY_SCORE_NOTES),
       score: full ? item : toQualityScoreProjection(item),
       links: {
-        ...projectLinks(pid, year),
+        ...projectLinks(pid, qualitySourceYear(year)),
         qualityWeb: `/quality?year=${year}`,
       },
     };
