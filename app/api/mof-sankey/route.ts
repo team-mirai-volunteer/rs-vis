@@ -16,7 +16,7 @@
 import { NextResponse } from 'next/server';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { availableYears as mofBudgetAvailableYears, listSections } from '@/app/lib/api/mof-kou-loader';
-import { linkageAvailable, resolveLinks, linkageRsYear, linkageScope } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
+import { linkageAvailable, resolveLinks, linkageRsYear, linkageScope, linkageAmountKind } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
 import { buildMOFSectionRsSankey, DEFAULT_TOP_N } from '@/app/lib/mof-section-rs-sankey';
 import { filterMOFSectionRsRows } from '@/app/lib/mof-section-rs-filter';
 import type { MOFSectionRsColumn, MOFSectionRsOffset, MOFSectionRsTopN } from '@/types/mof-section-rs-sankey';
@@ -141,6 +141,7 @@ export async function GET(request: Request) {
       availableYears: years,
       rsYear,
       linkageScope: scope,
+      rsAmountKind: linkageAmountKind(year),
       rsLinks: linkage.links,
       topN,
       offset,

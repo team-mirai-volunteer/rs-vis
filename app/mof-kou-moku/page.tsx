@@ -31,7 +31,7 @@ import {
 } from '@/app/lib/mof-classification-order';
 import { pruneInvalidSelections } from '@/app/lib/filter-selection';
 import type { MOFKouMokuData, MOFKouMokuHistory, MOFKouMokuItem } from '@/types/mof-kou-moku';
-import type { MofRsKouMokuLinkageRecord, MofRsKouMokuLinkageResponse } from '@/types/mof-rs-kou-moku-linkage';
+import type { MofRsAmountKind, MofRsKouMokuLinkageRecord, MofRsKouMokuLinkageResponse } from '@/types/mof-rs-kou-moku-linkage';
 import { changeRate, formatYen } from '@/client/components/mof-jikou/format';
 import { KouMokuTable } from '@/client/components/mof-kou-moku/KouMokuTable';
 import {
@@ -126,6 +126,7 @@ export default function MOFKouMokuPage() {
   const [linkageLinks, setLinkageLinks] = useState<MofRsKouMokuLinkageRecord[] | null>(null);
   const [linkageAvailable, setLinkageAvailable] = useState(false);
   const [linkageRsYear, setLinkageRsYear] = useState<number | null>(null);
+  const [linkageAmountKind, setLinkageAmountKind] = useState<MofRsAmountKind | null>(null);
   const [linkageLoading, setLinkageLoading] = useState(false);
   const [linkageError, setLinkageError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -218,6 +219,7 @@ export default function MOFKouMokuPage() {
           if (cancelled) return;
           setLinkageAvailable(json.available);
           setLinkageRsYear(json.rsYear);
+          setLinkageAmountKind(json.rsAmountKind ?? 'budget');
           setLinkageLinks(json.links);
         }
       )
@@ -663,6 +665,7 @@ export default function MOFKouMokuPage() {
               rsLinks={rsLinksForSelected}
               linkageAvailable={linkageAvailable}
               linkageRsYear={linkageRsYear}
+              linkageAmountKind={linkageAmountKind}
               linkageLoading={linkageLoading}
               linkageError={linkageError}
               width={panelWidth}

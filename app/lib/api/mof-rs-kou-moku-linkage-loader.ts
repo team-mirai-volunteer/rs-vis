@@ -7,7 +7,7 @@
  * 未生成の年度は「対象外」として扱い、呼び出し側でエラーにしない。
  */
 
-import type { MofRsKouMokuLinkageData, MofRsKouMokuLinkageRecord } from '@/types/mof-rs-kou-moku-linkage';
+import type { MofRsAmountKind, MofRsKouMokuLinkageData, MofRsKouMokuLinkageRecord } from '@/types/mof-rs-kou-moku-linkage';
 import { dataFileExists, readDataJson } from './data-file';
 
 const fileName = (budgetYear: number) => `mof-rs-kou-moku-linkage-${budgetYear}.json`;
@@ -40,6 +40,15 @@ export function allLinks(budgetYear: number): MofRsKouMokuLinkageRecord[] {
 export function linkageRsYear(budgetYear: number): number | null {
   if (!linkageAvailable(budgetYear)) return null;
   return loadYear(budgetYear).metadata.rsYear;
+}
+
+/**
+ * その年度の rsAmount の意味。旧形式（rsAmountKind 無し）のファイルは予算額として扱う。
+ * 'request' の年度（予算年度 = シート年度+1）は要求額なので、UI は「RS計上額」ではなく「RS要求額」と表示する
+ */
+export function linkageAmountKind(budgetYear: number): MofRsAmountKind | null {
+  if (!linkageAvailable(budgetYear)) return null;
+  return loadYear(budgetYear).metadata.rsAmountKind ?? 'budget';
 }
 
 /** その年度の紐づけデータの突合範囲の説明 */

@@ -9,7 +9,7 @@
 import { NextResponse } from 'next/server';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { availableYears, listSections } from '@/app/lib/api/mof-kou-loader';
-import { linkageRsYear } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
+import { linkageRsYear, linkageAmountKind } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
 
 /**
  * GET /api/mof-kou
@@ -38,11 +38,12 @@ export async function GET(request: Request) {
 
     const data = listSections(year);
     const rsYear = data.metadata.linkage.available ? linkageRsYear(year) : null;
+    const rsAmountKind = data.metadata.linkage.available ? linkageAmountKind(year) : null;
 
     return NextResponse.json(
       {
         ...data,
-        metadata: { ...data.metadata, availableYears: years, linkage: { ...data.metadata.linkage, rsYear } },
+        metadata: { ...data.metadata, availableYears: years, linkage: { ...data.metadata.linkage, rsYear, rsAmountKind } },
       },
       { headers: { 'Cache-Control': API_CACHE_CONTROL } }
     );

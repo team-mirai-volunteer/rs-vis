@@ -9,6 +9,7 @@
  */
 
 import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
+import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import type { MOFKouMokuHistory, MOFKouMokuItem } from '@/types/mof-kou-moku';
 import type { MofRsKouMokuLinkageRecord } from '@/types/mof-rs-kou-moku-linkage';
 import { changeRate, executionRate, formatChangeRate, formatRate, formatYen } from '@/client/components/mof-jikou/format';
@@ -40,6 +41,7 @@ interface Props {
   rsLinks: MofRsKouMokuLinkageRecord[];
   linkageAvailable: boolean;
   linkageRsYear: number | null;
+  linkageAmountKind: MofRsAmountKind | null;
   linkageLoading: boolean;
   linkageError: string | null;
   width: number;
@@ -71,6 +73,7 @@ export function KouMokuSidePanel({
   rsLinks,
   linkageAvailable,
   linkageRsYear,
+  linkageAmountKind,
   linkageLoading,
   linkageError,
   width,
@@ -164,6 +167,7 @@ export function KouMokuSidePanel({
             links={rsLinks}
             linkageAvailable={linkageAvailable}
             linkageRsYear={linkageRsYear}
+            linkageAmountKind={linkageAmountKind}
             loading={linkageLoading}
             error={linkageError}
             gridState={gridStates.rs}
@@ -323,6 +327,7 @@ function RsTab({
   links,
   linkageAvailable,
   linkageRsYear,
+  linkageAmountKind,
   loading,
   error,
   gridState,
@@ -331,6 +336,7 @@ function RsTab({
   links: MofRsKouMokuLinkageRecord[];
   linkageAvailable: boolean;
   linkageRsYear: number | null;
+  linkageAmountKind: MofRsAmountKind | null;
   loading: boolean;
   error: string | null;
   gridState: GridViewState;
@@ -363,7 +369,7 @@ function RsTab({
     { key: 'projectMinistry', label: '府省庁', width: 110, sortValue: l => l.projectMinistry, render: l => l.projectMinistry },
     {
       key: 'rsAmount',
-      label: 'RS計上額',
+      label: linkageAmountKind === 'request' ? 'RS要求額' : 'RS計上額',
       width: 100,
       numeric: true,
       sortValue: l => l.rsAmount,

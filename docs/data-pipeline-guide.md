@@ -20,16 +20,24 @@ RS System CSV → 各種JSON → 各ページ表示 までのデータパイプ�
 
 ---
 
-## 1. 共通前処理: CSV正規化
+## 1. 共通前処理: RS CSV の取得と展開
 
 すべてのパイプラインで **最初に実行が必要**。
 
 ```
-data/download/RS_{YEAR}/*.zip   （手動ダウンロード）
-  ↓ npm run normalize（2024年度）
-  ↓ npm run normalize-2025（2025年度）
-data/year_{YEAR}/*.csv           （UTF-8正規化済み、.gitignore）
+https://rssystem.go.jp/download-csv/{YEAR}   （JS描画・ZIPはクリック要素）
+  ↓ node scripts/download-rs-csv.mjs {YEAR} [接頭辞...]   … Playwright(Chromium)でZIPを取得
+data/download/RS_{YEAR}/*.zip                 （.gitignore）
+  ↓ python scripts/extract-rs-csv.py {YEAR}                … 文字コード判定してUTF-8で展開
+data/year_{YEAR}/*.csv                        （.gitignore）
 ```
+
+2025年度は `npm run download-rs-csv-2025` で上の2段を一括実行する（1-1/1-2/2-1/2-2/5-1/5-2/5-3）。
+ダウンロードページはJS描画で `<a>` リンクが無いため、curl等では取得できない。
+
+CSVヘッダの括弧は取得時期により全角・半角が揺れる（同一ファイル内で混在することもある）。
+読み取り側 `scripts/csv-reader.ts` がヘッダだけ NFKC 正規化するので、各スクリプトは半角表記
+（例: `予算額(歳出予算項目ごと)`）で列名を参照する。データ本体は生値のまま。
 
 ### 1-1. 入力 CSV ファイル（全パイプライン共通）
 
@@ -219,9 +227,45 @@ public/data/mof-funding-2024.json（Git管理、~56KB）
 取得元: 財務省「財政統計」CSVダウンロードページ（[bb.mof.go.jp/archive](https://www.bb.mof.go.jp/archive/)）  
 ファイル命名規則: `DL{YYYY}{会計区分}{連番}a/b.csv`（`11`=一般会計歳出、`12`=特別会計歳入）
 
-> **重要**: `generate-mof-budget-overview-data.ts` は CSV から完全自動生成ではなく、年金特別会計・地方交付税・国債整理基金等の金額詳細はスクリプト内にハードコードされている。データ年度を変更する場合は手動でのコード編集が必要。
+> **注記**: この節の記述は初期実装（2023年度・ハードコード）時点のもので古い。現行の `generate-mof-budget-overview-data.ts` は
+> 2017〜2026年度を予算書ZIP同梱CSVから全自動生成し、ハードコードは無い（詳細はスクリプト先頭コメント）。
+> MOF系の他パイプライン（`generate-mof-jikou` / `generate-mof-kou-moku` / `generate-mof-section-pages` / `generate-mof-budget`）も同様に
+> スクリプト先頭コメントを参照。
 
-> **通常は再生成不要**: `mof-budget-overview-2023.json` と `mof-funding-2024.json` はどちらも Git 管理済みで小サイズ。財務省の年度が変わらない限り更新不要。
+---
+
+### 2-8. MOF目 ↔ RS事業 紐づけ（`/mof-sankey`・`/mof-kou`・`/mof-kou-moku`、統合ビューの基盤）
+
+```
+public/data/mof-kou-moku-{予算年度}.json（.gz を展開）
+data/year_{シート年度}/1-1, 2-2
+  ↓ tsx scripts/generate-mof-rs-kou-moku-linkage.ts --sheet {シート年度} --budget-year {予算年度}
+public/data/mof-rs-kou-moku-linkage-{予算年度}.json      （.gz を Git 管理）
+public/data/mof-rs-linkage-unmatched-{予算年度}.json      （未一致全件・ローカル診断用・Git 管理外）
+```
+
+**RSシート年度と予算年度の関係**（設計: `docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md` 1.5・3.6）
+
+RSシートNの 2-2 は予算年度 N-4〜N の行を持つが、項・目が充足しているのは予算年度N（99%）と、
+N-1シートから引き継がれたN-1行だけ。予算年度N行には N+1 年度の**要求額が目単位**で入っている。
+1枚のシートから3つの予算年度を生成する:
+
+| 予算年度 | 2-2 の行 | rsAmount | MOF側 | 用途 |
+|---|---|---|---|---|
+| N-1（例: 2024） | 予算年度N-1行 | 予算額（当初・補正） | 当初・補正・決算（引き継ぎ） | 執行・支出先まで揃う完全統合 |
+| N（例: 2025） | 予算年度N行 | 予算額（当初・補正） | 当初・補正 | 予算のみ |
+| N+1（例: 2026） | 予算年度N行 | **翌年度要求額** | 当初予算 | 要求→査定対比（`metadata.rsAmountKind = 'request'`） |
+
+`npm run generate-mof-rs-kou-moku-linkage` は 2025シートから 2024/2025/2026 の3表をまとめて生成する。
+予算年度2023以前はシートが旧様式で項・目が半分以上空欄のため、カバレッジは構造的に低い（2023: 金額47.7%）。
+
+**出力の要点**
+- `links[]`: 事業×目の紐づけ。同名キーで項・目コードが異なる目が複数ある場合は目額比で按分し `ambiguous=true`
+- `projects[]`: 事業ごとの合計（紐づいた額・未一致額・繰越/予備費等の項目無し額 `rsAmountNoSubject`）
+- `metadata.unmatched`: RS側（項・目空欄 / MOFに同名キー無し）とMOF側（RS事業が付かない目）の要約と上位50件
+- `metadata.coverage.kouMokuAmountByBudgetType`: MOF目の総額と紐づいた額を予算種別ごとに（補正は改予算額なので当初と足さない）
+
+**実測（2025シート）**: RS金額カバレッジ 2024: 97.7% / 2025: 97.8% / 2026要求: 95.9%。未一致のほぼ全てはRS側の項・目空欄行。
 
 ---
 

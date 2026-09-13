@@ -15,7 +15,7 @@ import type { MOFBudgetType } from './mof-jikou';
 import type { MOFKouMokuAccountType, MOFKouMokuGroupSummary } from './mof-kou-moku';
 import type { MOFJikouItem } from './mof-jikou';
 import type { MOFKouMokuItem } from './mof-kou-moku';
-import type { MofRsKouMokuLinkageRecord } from './mof-rs-kou-moku-linkage';
+import type { MofRsAmountKind, MofRsKouMokuLinkageRecord } from './mof-rs-kou-moku-linkage';
 
 /** 項1件ぶんの集計行（一覧表示用。詳細な内訳は含まない） */
 export interface MOFKouSectionSummary {
@@ -94,6 +94,8 @@ export interface MOFKouData {
     linkage: {
       available: boolean;
       rsYear: number | null;
+      /** rsLinks[].rsAmount の意味（'request' は翌年度要求額）。未生成は null */
+      rsAmountKind: MofRsAmountKind | null;
     };
     notes: string[];
   };

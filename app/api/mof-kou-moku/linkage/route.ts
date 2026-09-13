@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
-import { linkageRsYear, resolveLinks } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
+import { linkageRsYear, linkageAmountKind, resolveLinks } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
 import { availableYears as kouMokuAvailableYears } from '@/app/lib/api/mof-kou-moku-loader';
 import type { MofRsKouMokuLinkageResponse } from '@/types/mof-rs-kou-moku-linkage';
 
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     const body: MofRsKouMokuLinkageResponse = {
       available: resolution.available,
       rsYear,
+      rsAmountKind: resolution.available ? linkageAmountKind(year) : null,
       links: resolution.links,
     };
     return NextResponse.json(

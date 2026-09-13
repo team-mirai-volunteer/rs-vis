@@ -265,7 +265,7 @@ function MOFSectionRsSankeyContent() {
           focusRelated={focusRelated}
           onFocusRelatedChange={setFocusRelated}
           summary={`${metadata.sectionCount.toLocaleString()}項 / ${accountsLabel}${
-            metadata.rsYear ? ` / RS${metadata.rsYear}年度データ` : ''
+            metadata.rsYear ? ` / RS${metadata.rsYear}年度データ${metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''}` : ''
           }`}
         />
 

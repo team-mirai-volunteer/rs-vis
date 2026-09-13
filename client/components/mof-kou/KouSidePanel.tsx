@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import Link from 'next/link';
 import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
 import type { MOFKouSectionDetail, MOFKouSectionHistory, MOFKouSectionSummary } from '@/types/mof-kou';
@@ -53,6 +54,7 @@ interface Props {
   historyLoading: boolean;
   historyError: string | null;
   linkageRsYear: number | null;
+  linkageAmountKind: MofRsAmountKind | null;
   width: number;
   tab: Tab;
   onTabChange: (tab: Tab) => void;
@@ -86,6 +88,7 @@ export function KouSidePanel({
   historyLoading,
   historyError,
   linkageRsYear,
+  linkageAmountKind,
   width,
   tab,
   onTabChange,
@@ -203,6 +206,7 @@ export function KouSidePanel({
             loading={detailLoading}
             error={detailError}
             linkageRsYear={linkageRsYear}
+            linkageAmountKind={linkageAmountKind}
             gridState={gridStates.rs}
             onGridStateChange={updater => onGridStateChange('rs', updater)}
           />
@@ -616,6 +620,7 @@ function RsTab({
   loading,
   error,
   linkageRsYear,
+  linkageAmountKind,
   gridState,
   onGridStateChange,
 }: {
@@ -623,6 +628,7 @@ function RsTab({
   loading: boolean;
   error: string | null;
   linkageRsYear: number | null;
+  linkageAmountKind: MofRsAmountKind | null;
   gridState: GridViewState;
   onGridStateChange: (updater: (prev: GridViewState) => GridViewState) => void;
 }) {
@@ -653,7 +659,7 @@ function RsTab({
     { key: 'subItemName', label: '目名', width: 150, sortValue: l => l.subItemName, render: l => l.subItemName },
     {
       key: 'rsAmount',
-      label: 'RS計上額',
+      label: linkageAmountKind === 'request' ? 'RS要求額' : 'RS計上額',
       width: 100,
       numeric: true,
       sortValue: l => l.rsAmount,

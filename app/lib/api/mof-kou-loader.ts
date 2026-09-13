@@ -84,6 +84,7 @@ function buildYear(fiscalYear: number): BuiltYear {
     linkage: {
       available: linkage.available,
       rsYear: null, // ルート層で linkageRsYear() を使って埋める
+      rsAmountKind: null, // 同上（linkageAmountKind()）
     },
     sections,
   };

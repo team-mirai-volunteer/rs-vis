@@ -14,6 +14,7 @@
  */
 
 import type { MOFAccountType, MOFBudgetType } from './mof-jikou';
+import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import type { SankeyLink, SankeyNode } from './sankey';
 
 /** 列。左から右へ並ぶ順に番号を振る */
@@ -124,6 +125,8 @@ export interface MOFSectionRsData {
     rsYear: number | null;
     /** 紐づけデータの突合範囲の説明（例: 「一般会計・特別会計・当初予算＋補正予算」） */
     linkageScope: string | null;
+    /** RS事業ノードの金額の意味。'request' は翌年度要求額（要求→査定ビュー）。紐づけ未生成は null */
+    rsAmountKind: MofRsAmountKind | null;
     topN: MOFSectionRsTopN;
     offset: MOFSectionRsOffset;
     columnCounts: Partial<Record<MOFSectionRsColumn, number>>;

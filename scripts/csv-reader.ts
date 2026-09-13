@@ -27,8 +27,12 @@ function parseCSV(content: string): CSVRow[] {
     return [];
   }
 
-  // ヘッダー行を取得
-  const headers = parseLine(lines[0]);
+  // ヘッダー行を取得。
+  // RSシステムのCSVはダウンロード時期によってヘッダの括弧が全角「予算額（歳出予算項目ごと）」と
+  // 半角「予算額(歳出予算項目ごと)」で揺れ、同一ファイル内で混在することもある
+  // （例: 2-1 の「翌年度への繰越し(合計）」）。各スクリプトは半角表記で列名を参照しているので、
+  // ヘッダだけ NFKC 正規化して揃える（データ本体は生値のまま）。先頭のBOMも除く。
+  const headers = parseLine(lines[0].replace(/^﻿/, '')).map(h => h.normalize('NFKC').trim());
 
   // データ行をパース
   const rows: CSVRow[] = [];

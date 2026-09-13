@@ -521,6 +521,7 @@ export default function MOFKouPage() {
               historyLoading={historyLoading}
               historyError={historyError}
               linkageRsYear={data.metadata.linkage.rsYear}
+              linkageAmountKind={data.metadata.linkage.rsAmountKind}
               width={panelWidth}
               tab={panelTab}
               onTabChange={setPanelTab}
