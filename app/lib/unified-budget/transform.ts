@@ -1,7 +1,7 @@
 /**
  * 統合グラフ → 表示グラフ の変換（純関数。React・DOM に依存しない）。
  *
- * パイプライン: toViewGraph → applyFilter → collapseColumns → applyTopN
+ * パイプライン: toViewGraph → applyFilter → collapseColumns → applyTopN → sortForDisplay
  *   1. toViewGraph: 生成物のノードを表示ノード（details 付き）に写す
  *   2. applyFilter: 会計・所管・非事業ノードの除外。除外後に値を辺から再計算する
  *   3. collapseColumns: 非表示の列を畳む。中間ノードは流入×流出の比例配分で辺を繋ぎ直す
@@ -325,3 +325,49 @@ export function countByColumn(view: UnifiedViewGraph): Partial<Record<UnifiedCol
 }
 
 export const isAggregateId = (id: string) => id.startsWith(AGGREGATE_ID_PREFIX);
+
+/**
+ * 5. sortForDisplay: 列内の並び順を決める（レイアウトは入力順に上から積む）。
+ *
+ * - 基本は金額の大きい順
+ * - 事業列は RS事業を上、事業区分ノード（np-*: 国債費・繰入・人件費・未突合 など）と擬似ノード（outside）を下に置く
+ *   （読者が見たいのは個々の事業で、区分ノードは「残り」の説明だから）
+ * - 集約ノード（「N項」など）は各列の最下段
+ * - 事業(支出) は事業と同じ事業IDの並びに揃え、事業→事業(支出) の帯が平行に流れるようにする
+ */
+export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
+  const rank = (n: UnifiedViewNode): number => {
+    if (n.details.aggregated) return 2;
+    if (n.details.standalone) return 1;
+    if (n.details.kind && n.details.kind !== 'rs') return 1;
+    return 0;
+  };
+  const byValue = (a: UnifiedViewNode, b: UnifiedViewNode) => rank(a) - rank(b) || b.value - a.value || a.id.localeCompare(b.id);
+
+  const programOrder = new Map<number, number>();
+  view.nodes
+    .filter(n => n.details.column === 'program')
+    .sort(byValue)
+    .forEach((n, i) => {
+      if (n.details.projectId !== undefined) programOrder.set(n.details.projectId, i);
+    });
+  const bySpending = (a: UnifiedViewNode, b: UnifiedViewNode) => {
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    const pa = a.details.projectId !== undefined ? programOrder.get(a.details.projectId) : undefined;
+    const pb = b.details.projectId !== undefined ? programOrder.get(b.details.projectId) : undefined;
+    if (pa !== undefined && pb !== undefined) return pa - pb;
+    if (pa !== undefined) return -1;
+    if (pb !== undefined) return 1;
+    return b.value - a.value || a.id.localeCompare(b.id);
+  };
+
+  const nodes = UNIFIED_COLUMNS.flatMap(col =>
+    view.nodes.filter(n => n.details.column === col).sort(col === 'program-spending' ? bySpending : byValue)
+  );
+  // 列に属さないノードは無いはずだが、落とさないよう末尾に付ける
+  const placed = new Set(nodes.map(n => n.id));
+  for (const n of view.nodes) if (!placed.has(n.id)) nodes.push(n);
+  return { nodes, links: view.links };
+}
