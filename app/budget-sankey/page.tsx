@@ -91,8 +91,8 @@ export default function UnifiedBudgetSankeyPage() {
 
 function CenterMessage({ text, error }: { text: string; error?: boolean }) {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-white">
-      <p className={error ? 'text-sm text-red-600' : 'text-sm text-gray-500'}>{text}</p>
+    <div className="fixed inset-0 flex items-center justify-center bg-background">
+      <p className={error ? 'text-sm text-destructive' : 'text-sm text-mirai-text-muted'}>{text}</p>
     </div>
   );
 }
@@ -222,7 +222,7 @@ function UnifiedBudgetSankeyContent() {
   } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-white">
+    <div className="fixed inset-0 overflow-hidden bg-background">
       <UnifiedSankeyChart
         nodes={display.nodes}
         links={display.links}
@@ -275,9 +275,9 @@ function UnifiedBudgetSankeyContent() {
         <PageNavMenu current="/budget-sankey" theme="light" />
       </div>
 
-      {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-white/90 px-3 py-1 text-xs text-gray-500 shadow">読み込み中…</div>}
+      {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}
       {metadata.rsAmountKind === 'request' && (
-        <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded bg-amber-50 px-3 py-1 text-[11px] text-amber-800 shadow">
+        <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded bg-stance-neutral-badge-bg px-3 py-1 text-[11px] text-stance-neutral shadow-xs">
           {metadata.budgetYear}年度は「要求→査定」ビュー: RS事業の値は前年度シートの翌年度要求額、目の値はMOF当初予算（査定後）です
         </div>
       )}

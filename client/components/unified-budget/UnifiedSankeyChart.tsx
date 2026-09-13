@@ -28,6 +28,9 @@ import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome } from '@/client/components/SidePanelChrome';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
+import { ExternalLink, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 export const LABEL_FONT_PX_DEFAULT = 11;
 
@@ -321,12 +324,12 @@ export function UnifiedSankeyChart({
             if (!columnX.has(index)) return null;
             return (
               <g key={column}>
-                <text x={columnX.get(index) ?? 0} y={headerY - 16} fontSize={12} fontWeight={600} fill="#374151">
+                <text x={columnX.get(index) ?? 0} y={headerY - 16} fontSize={12} fontWeight={700} style={{ fill: 'var(--mirai-text-secondary)' }}>
                   {UNIFIED_COLUMN_LABELS[column]}
                 </text>
-                <text x={columnX.get(index) ?? 0} y={headerY} fontSize={11} fill="#9ca3af">
+                <text x={columnX.get(index) ?? 0} y={headerY} fontSize={11} style={{ fill: 'var(--mirai-text-muted)' }}>
                   {formatBudgetFromYen(columnTotal.get(index) ?? 0)}
-                  {column === 'program' && <tspan fill="#0d9488"> (RS事業 {formatBudgetFromYen(rsTotal)})</tspan>}
+                  {column === 'program' && <tspan style={{ fill: 'var(--primary-accent)' }}> (RS事業 {formatBudgetFromYen(rsTotal)})</tspan>}
                 </text>
               </g>
             );
@@ -402,7 +405,7 @@ export function UnifiedSankeyChart({
                   rx={2}
                   fill={color}
                   opacity={dim ? 0.25 : 1}
-                  stroke={isSelected ? '#1f2937' : details?.kind === 'transfer' ? '#64748b' : undefined}
+                  stroke={isSelected ? 'var(--mirai-text)' : details?.kind === 'transfer' ? '#64748b' : undefined}
                   strokeWidth={isSelected ? 1.5 : details?.kind === 'transfer' ? 1 : undefined}
                   strokeDasharray={!isSelected && details?.kind === 'transfer' ? '3 2' : undefined}
                 />
@@ -415,8 +418,8 @@ export function UnifiedSankeyChart({
                     dominantBaseline="middle"
                     fontSize={fontPx}
                     fontWeight={isSelected ? 700 : details?.aggregated || isCategory ? 400 : 500}
-                    fill={details?.aggregated ? '#6b7280' : isCategory ? '#4b5563' : '#1f2937'}
-                    stroke="#ffffff"
+                    fill={details?.aggregated ? 'var(--mirai-text-muted)' : isCategory ? 'var(--mirai-text-secondary)' : 'var(--mirai-text)'}
+                    stroke="var(--card)"
                     strokeWidth={3}
                     paintOrder="stroke"
                     opacity={dim ? 0.35 : 1}
@@ -459,17 +462,17 @@ export function UnifiedSankeyChart({
         >
           {selectedPanelNode && selectedDetails && (
             <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-shrink-0 border-b border-gray-100 p-4 pb-3">
+              <div className="flex-shrink-0 border-b border-border p-4 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="break-all text-sm font-semibold text-gray-900">{selectedPanelNode.name}</div>
-                    <div className="mt-0.5 text-lg font-bold text-gray-800">{formatBudgetFromYen(selectedPanelNode.value)}</div>
-                    <div className="text-[11px] text-gray-400">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
-                    {!selectedNode && <div className="mt-1 text-[11px] text-amber-600">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
+                    <div className="break-all text-sm font-semibold text-mirai-text">{selectedPanelNode.name}</div>
+                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value)}</div>
+                    <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
+                    {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
                   </div>
-                  <button type="button" title="選択を解除" aria-label="選択を解除" onClick={() => onSelect(null)} className="shrink-0 rounded px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                    ×
-                  </button>
+                  <Button variant="ghost" size="icon-sm" title="選択を解除" aria-label="選択を解除" onClick={() => onSelect(null)} className="shrink-0 text-mirai-text-muted hover:text-mirai-text">
+                    <X />
+                  </Button>
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -477,24 +480,24 @@ export function UnifiedSankeyChart({
                     {UNIFIED_COLUMN_LABELS[selectedDetails.column]}
                   </span>
                   {selectedDetails.kind && selectedDetails.kind !== 'rs' && (
-                    <span className="rounded-full bg-gray-500 px-2 py-0.5 text-[11px] font-medium text-white">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
+                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
                   )}
-                  {selectedDetails.aggregated && <span className="rounded-full bg-gray-400 px-2 py-0.5 text-[11px] font-medium text-white">集約</span>}
+                  {selectedDetails.aggregated && <span className="rounded-full border border-mirai-border bg-card px-2 py-0.5 text-[11px] font-medium text-mirai-text-subtle">集約</span>}
                   {selectedDetails.accountType && (
-                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-700">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
+                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
                   )}
                   {selectedDetails.sourceUrl && (
-                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 underline hover:text-blue-800">
+                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       予算書の出典
                     </a>
                   )}
                   {selectedRsSvgUrl && (
-                    <a href={selectedRsSvgUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 underline hover:text-blue-800">
+                    <a href={selectedRsSvgUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       /sankey-svgで開く
                     </a>
                   )}
                   {selectedDetails.column === 'koumoku' && (
-                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-600 underline hover:text-blue-800">
+                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       科目別内訳で開く
                     </a>
                   )}
@@ -504,41 +507,44 @@ export function UnifiedSankeyChart({
               <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '45%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
                 {selectedDetails.aggregated && (
-                  <div className="text-xs text-gray-600">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
+                  <div className="text-xs text-mirai-text-subtle">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
                 )}
                 {selectedDetails.aggregatedTop && selectedDetails.aggregatedTop.length > 0 && (
-                  <div className="mt-2 border-t border-gray-100 pt-2">
-                    <div className="mb-1 text-[11px] text-gray-400">内訳（金額の大きい順）</div>
+                  <div className="mt-2 border-t border-border pt-2">
+                    <div className="mb-1 text-[11px] text-mirai-text-muted">内訳（金額の大きい順）</div>
                     {selectedDetails.aggregatedTop.map(member => (
-                      <button key={member.id} type="button" onClick={() => onSelect(member.id)} className="flex w-full justify-between gap-3 text-left text-xs text-gray-700 hover:bg-gray-50">
+                      <Button key={member.id} variant="ghost" onClick={() => onSelect(member.id)} className="flex h-auto w-full justify-between gap-3 rounded-md px-1 py-0.5 text-left text-xs font-normal text-mirai-text-secondary hover:bg-mirai-surface">
                         <span className="truncate">{member.name}</span>
-                        <span className="shrink-0 tabular-nums text-gray-500">{formatBudgetFromYen(member.amount)}</span>
-                      </button>
+                        <span className="shrink-0 tabular-nums text-mirai-text-muted">{formatBudgetFromYen(member.amount)}</span>
+                      </Button>
                     ))}
                     {(selectedDetails.aggregatedCount ?? 0) > selectedDetails.aggregatedTop.length && (
-                      <div className="text-[11px] text-gray-400">ほか {((selectedDetails.aggregatedCount ?? 0) - selectedDetails.aggregatedTop.length).toLocaleString()} 件</div>
+                      <div className="text-[11px] text-mirai-text-muted">ほか {((selectedDetails.aggregatedCount ?? 0) - selectedDetails.aggregatedTop.length).toLocaleString()} 件</div>
                     )}
                   </div>
                 )}
-                {focusRelated && <div className="mt-2 text-[11px] text-gray-400">この筋に連なるノードだけを表示しています</div>}
+                {focusRelated && <div className="mt-2 text-[11px] text-mirai-text-muted">この筋に連なるノードだけを表示しています</div>}
                 <div className="h-3" />
               </div>
 
               {tabs.length > 0 && (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-gray-100">
-                  <div role="tablist" className="flex flex-shrink-0 overflow-x-auto border-b border-gray-100 px-2">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
+                  <div role="tablist" className="flex flex-shrink-0 overflow-x-auto border-b border-border px-2">
                     {tabs.map(({ id, label, count }) => (
-                      <button
+                      <Button
                         key={id}
-                        type="button"
+                        variant="ghost"
                         role="tab"
                         aria-selected={activeTab === id}
                         onClick={() => setPanelTab(id)}
-                        className={`flex-1 whitespace-nowrap border-b-2 px-1 py-1.5 text-[11px] font-semibold ${activeTab === id ? 'border-blue-500 text-gray-800' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                        className={cn(
+                          'h-auto flex-1 whitespace-nowrap rounded-none border-b-2 px-1 py-1.5 text-[11px] font-bold hover:bg-transparent',
+                          activeTab === id ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'
+                        )}
                       >
                         {label}
                         <span className="ml-0.5 font-normal">({count.toLocaleString()})</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
@@ -548,14 +554,14 @@ export function UnifiedSankeyChart({
                       .map(item => {
                         const rsLink = item.details.projectId !== undefined && item.details.column === 'program' ? sankeySvgProjectUrl(item.details.projectId, item.name, rsSheetYear) : null;
                         return (
-                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-gray-50 py-1.5">
-                            <button type="button" onClick={() => onSelect(item.id)} className="flex min-w-0 flex-1 items-baseline justify-between gap-3 text-left hover:bg-gray-50">
-                              <span className="truncate text-xs text-gray-700">{item.name}</span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-gray-500">{formatBudgetFromYen(item.value)}</span>
-                            </button>
+                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
+                            <Button variant="ghost" onClick={() => onSelect(item.id)} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
+                              <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(item.value)}</span>
+                            </Button>
                             {rsLink && (
-                              <a href={rsLink} target="_blank" rel="noopener noreferrer" title="/sankey-svgで開く" onClick={e => e.stopPropagation()} className="shrink-0 px-0.5 text-gray-400 hover:text-blue-600">
-                                ↗
+                              <a href={rsLink} target="_blank" rel="noopener noreferrer" title="/sankey-svgで開く" onClick={e => e.stopPropagation()} className="shrink-0 px-0.5 text-mirai-text-muted hover:text-primary">
+                                <ExternalLink className="size-3" aria-hidden="true" />
                               </a>
                             )}
                           </div>
@@ -578,10 +584,10 @@ export function UnifiedSankeyChart({
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
-        <ZoomButton label="＋" title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
-        <ZoomButton label="－" title="縮小" onClick={() => zoomFromButton(1 / ZOOM_STEP)} />
+        <ZoomButton icon={Plus} title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
+        <ZoomButton icon={Minus} title="縮小" onClick={() => zoomFromButton(1 / ZOOM_STEP)} />
         <ZoomButton
-          label="⤢"
+          icon={Maximize}
           title="全体を表示"
           onClick={() => {
             setZoom(1);
@@ -613,20 +619,20 @@ export function UnifiedSankeyChart({
                 setIsEditingZoom(false);
               }
             }}
-            className="w-full rounded border border-black/10 bg-white px-1 py-0.5 text-center text-[10px] text-gray-700 shadow"
+            className="w-full rounded border border-mirai-border bg-card px-1 py-0.5 text-center text-[10px] text-mirai-text-secondary shadow-xs"
           />
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="outline"
             title="クリックしてズーム率を入力"
             onClick={() => {
               setZoomInputValue(String(Math.round(zoom * 100)));
               setIsEditingZoom(true);
             }}
-            className="w-full cursor-text rounded border border-black/10 bg-white/90 px-1 py-0.5 text-center text-[10px] text-gray-500 shadow"
+            className="h-auto w-full cursor-text rounded-md border-mirai-border px-1 py-0.5 text-center text-[10px] font-normal text-mirai-text-muted"
           >
             {Math.round(zoom * 100)}%
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -647,7 +653,7 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
   if (details.projectId !== undefined) rows.push(['予算事業ID', String(details.projectId)]);
   const b = details.budgetSummary;
   return (
-    <div className="text-xs text-gray-700">
+    <div className="text-xs text-mirai-text-secondary">
       {rows.length > 0 && (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
           {rows.map(([k, v]) => (
@@ -656,16 +662,16 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
         </dl>
       )}
       {details.kind === 'outside' && (
-        <p className="mt-2 text-[11px] text-gray-500">
+        <p className="mt-2 text-[11px] text-mirai-text-muted">
           事業の歳出予算現額のうち、予算書（当初予算）の目からの流入で説明できない分。補正・前年度繰越・予備費使用・RS側の項目未記載が含まれます。
         </p>
       )}
       {details.kind === 'unmatched' && (
-        <p className="mt-2 text-[11px] text-amber-700">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
+        <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
       )}
       {b && (
-        <div className="mt-2 border-t border-gray-100 pt-2">
-          <div className="mb-1 text-[11px] text-gray-400">RS 予算・執行（{b.fiscalYear}年度）</div>
+        <div className="mt-2 border-t border-border pt-2">
+          <div className="mb-1 text-[11px] text-mirai-text-muted">RS 予算・執行（{b.fiscalYear}年度）</div>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             <FactRow k="当初予算" v={formatBudgetFromYen(b.initialBudget)} />
             <FactRow k="補正予算" v={formatBudgetFromYen(b.supplementaryBudget)} />
@@ -678,7 +684,7 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
         </div>
       )}
       {!b && details.column === 'program' && (!details.kind || details.kind === 'rs') && (
-        <p className="mt-2 text-[11px] text-gray-500">値はRS 2-2 の{amountLabel}の合計です（この年度は執行・支出先の情報がありません）。</p>
+        <p className="mt-2 text-[11px] text-mirai-text-muted">値はRS 2-2 の{amountLabel}の合計です（この年度は執行・支出先の情報がありません）。</p>
       )}
     </div>
   );
@@ -687,46 +693,46 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
 function FactRow({ k, v }: { k: string; v: string }) {
   return (
     <>
-      <dt className="text-gray-400">{k}</dt>
+      <dt className="text-mirai-text-muted">{k}</dt>
       <dd className="break-all">{v}</dd>
     </>
   );
 }
 
-function ZoomButton({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: string; onClick: () => void }) {
   return (
-    <button type="button" title={title} aria-label={title} onMouseDown={e => e.stopPropagation()} onClick={onClick} className="h-7 w-7 rounded border border-black/10 bg-white/90 text-sm text-gray-600 shadow hover:bg-white">
-      {label}
-    </button>
+    <Button variant="outline" size="icon-sm" title={title} aria-label={title} onMouseDown={e => e.stopPropagation()} onClick={onClick} className="rounded-md border-mirai-border text-mirai-text-subtle">
+      <Icon />
+    </Button>
   );
 }
 
 function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<UnifiedViewDetails>; x: number; y: number; amountLabel: string }) {
   const d = node.details;
   return (
-    <div className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg" style={{ left: x + 12, top: y + 12 }}>
+    <div className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       {d?.column && (
-        <div className="text-[11px] font-medium text-gray-400">
+        <div className="text-[11px] font-medium text-mirai-text-muted">
           {UNIFIED_COLUMN_LABELS[d.column]}
           {d.kind && d.kind !== 'rs' ? ` / ${UNIFIED_PROGRAM_KIND_LABELS[d.kind]}` : ''}
         </div>
       )}
-      <div className="font-semibold text-gray-900">{node.name}</div>
-      <div className="text-lg font-bold text-gray-800">{formatBudgetFromYen(node.value)}</div>
-      {d?.aggregated && <div className="mt-1 text-xs text-gray-600">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
-      {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-gray-600">{d.rsMinistry}（{amountLabel}）</div>}
-      {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-gray-600">項: {d.sectionName}</div>}
+      <div className="font-semibold text-mirai-text">{node.name}</div>
+      <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
+      {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
+      {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}
+      {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-mirai-text-subtle">項: {d.sectionName}</div>}
     </div>
   );
 }
 
 function UnifiedLinkTooltip({ link, x, y }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number }) {
   return (
-    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-gray-200 bg-white px-3 py-2 shadow-lg" style={{ left: x + 12, top: y + 12 }}>
-      <div className="text-xs text-gray-600">
+    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+      <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
-      <div className="text-lg font-bold text-gray-800">{formatBudgetFromYen(link.value)}</div>
+      <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
     </div>
   );
 }

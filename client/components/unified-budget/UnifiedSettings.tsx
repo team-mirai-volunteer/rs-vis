@@ -76,7 +76,7 @@ export function UnifiedSettings({
               setOpen(false);
             }
           }}
-          className="absolute bottom-full left-0 z-20 mb-1 flex w-80 flex-col gap-2.5 rounded-md border border-mirai-border bg-card px-4 py-3 text-xs text-mirai-text shadow-soft outline-none"
+          className="absolute bottom-full left-0 z-20 mb-1 flex w-80 flex-col gap-2.5 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs text-mirai-text shadow-soft outline-none"
           style={{ colorScheme: 'light', maxWidth: 'calc(100vw - 24px)' }}
         >
           <div>
@@ -94,15 +94,15 @@ export function UnifiedSettings({
             />
           </div>
           <label className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" checked={labelDensity === 'all'} onChange={e => onLabelDensityChange(e.target.checked ? 'all' : 'major')} className="h-3.5 w-3.5 cursor-pointer" />
+            <input type="checkbox" checked={labelDensity === 'all'} onChange={e => onLabelDensityChange(e.target.checked ? 'all' : 'major')} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
             <span>すべてのノードラベルを表示</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" checked={focusRelated} onChange={e => onFocusRelatedChange(e.target.checked)} className="h-3.5 w-3.5 cursor-pointer" />
+            <input type="checkbox" checked={focusRelated} onChange={e => onFocusRelatedChange(e.target.checked)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
             <span>選択時に関連ノードのみ表示</span>
           </label>
           <UnifiedColumnToggles visibleColumns={visibleColumns} availableColumns={availableColumns} onChange={onVisibleColumnsChange} />
-          {summary && <div className="border-t border-gray-100 pt-2 text-[11px] leading-relaxed text-mirai-text-subtle">{summary}</div>}
+          {summary && <div className="border-t border-border pt-2 text-[11px] leading-relaxed text-mirai-text-subtle">{summary}</div>}
         </div>
       )}
     </div>
