@@ -1,7 +1,7 @@
 /**
- * 統合グラフ（unified-budget-{予算年度}-graph.json）の整合性検証。
+ * 統合グラフ（unified-budget-{予算年度}-{basis}-graph.json）の整合性検証。
  *
- * 使用法: tsx scripts/validate-unified-budget-graph.ts --budget-year 2024 [--max-unmatched-ratio 0.03]
+ * 使用法: tsx scripts/validate-unified-budget-graph.ts --budget-year 2024 [--basis initial|supplementary|settlement] [--max-unmatched-ratio 0.03]
  *
  * 検査:
  *   1. 全エッジの source/target がノードに存在し、列が左→右に並ぶ
@@ -18,7 +18,7 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import type { MOFKouMokuData } from '@/types/mof-kou-moku';
 import type { UnifiedGraph, UnifiedNode } from '@/types/unified-budget';
-import { UNIFIED_COLUMNS } from '@/types/unified-budget';
+import { UNIFIED_COLUMNS, unifiedGraphFileName, type UnifiedBasis } from '@/types/unified-budget';
 
 function argNum(name: string, def?: number): number | undefined {
   const i = process.argv.indexOf(name);
@@ -45,7 +45,9 @@ function readJsonMaybeGz<T>(file: string): T {
   throw new Error(`${file}(.gz) がありません`);
 }
 
-const graph = readJsonMaybeGz<UnifiedGraph>(path.join(DATA_DIR, `unified-budget-${BUDGET_YEAR}-graph.json`));
+const basisArgIndex = process.argv.indexOf('--basis');
+const BASIS_KEY = (basisArgIndex >= 0 ? process.argv[basisArgIndex + 1] : 'initial') as UnifiedBasis;
+const graph = readJsonMaybeGz<UnifiedGraph>(path.join(DATA_DIR, unifiedGraphFileName(BUDGET_YEAR, BASIS_KEY)));
 const kouMoku = readJsonMaybeGz<MOFKouMokuData>(path.join(DATA_DIR, `mof-kou-moku-${BUDGET_YEAR}.json`));
 
 let failures = 0;
@@ -122,8 +124,10 @@ console.log('\n[5] 会計列合計 = MOF目合計');
 {
   const basis = graph.metadata.basisBudgetType;
   const mofTotal = kouMoku.items
-    .filter(it => (it.accountType === 'general' || it.accountType === 'special') && it.budgetType === basis && it.amount > 0)
-    .reduce((s, it) => s + it.amount, 0);
+    // 生成側と同じ流量（決算は支出済歳出額、それ以外は目金額）で合計する
+    .map(it => ({ ...it, flow: graph.metadata.basis === 'settlement' ? it.spent ?? 0 : it.amount }))
+    .filter(it => (it.accountType === 'general' || it.accountType === 'special') && it.budgetType === basis && it.flow > 0)
+    .reduce((s, it) => s + it.flow, 0);
   const gross = graph.nodes.filter(n => n.col === 'account').reduce((s, n) => s + n.value, 0);
   gross === mofTotal
     ? ok(`会計列合計 ${(gross / 1e12).toFixed(2)} 兆円 = MOF目（${basis}・正の金額）合計`)
@@ -135,7 +139,9 @@ console.log('\n[5] 会計列合計 = MOF目合計');
 console.log('\n[6] 未突合比率');
 {
   const { unmatched } = graph.metadata.totals.byKind;
-  const MAX_UNMATCHED_RATIO = MAX_UNMATCHED_RATIO_ARG ?? (graph.metadata.rsAmountKind === 'request' ? 0.06 : 0.03);
+  // 決算は執行額ベース（RS側の目別リンクは予算額）、補正は「…外N目」に束ねられた目に RS 対応が無いため、当初予算より緩い閾値にする
+  const defaultRatio = graph.metadata.rsAmountKind === 'request' || graph.metadata.basis === 'settlement' ? 0.06 : graph.metadata.basis === 'supplementary' ? 0.3 : 0.03;
+  const MAX_UNMATCHED_RATIO = MAX_UNMATCHED_RATIO_ARG ?? defaultRatio;
   const ratio = unmatched / Math.max(1, graph.metadata.totals.net);
   const msg = `未突合 ${(unmatched / 1e12).toFixed(2)} 兆円 / 純計 ${(graph.metadata.totals.net / 1e12).toFixed(2)} 兆円 = ${(ratio * 100).toFixed(2)}%（閾値 ${(MAX_UNMATCHED_RATIO * 100).toFixed(0)}%）`;
   ratio <= MAX_UNMATCHED_RATIO ? ok(msg) : fail(msg);

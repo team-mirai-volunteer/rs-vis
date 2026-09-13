@@ -17,7 +17,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { UnifiedColumn, UnifiedGraph } from '@/types/unified-budget';
+import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
   UNIFIED_PRESET_COLUMNS,
@@ -33,11 +33,18 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
 import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
+import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024] as const;
 const DEFAULT_YEAR = 2024;
+const DEFAULT_BASIS: UnifiedBasis = 'initial';
+const basesOf = (year: number): readonly UnifiedBasis[] => UNIFIED_BASES_BY_YEAR[year] ?? ['initial'];
+/** その年度で使える基準に丸める（無ければ当初予算） */
+const coerceBasis = (year: number, basis: UnifiedBasis | null | undefined): UnifiedBasis =>
+  basis && basesOf(year).includes(basis) ? basis : DEFAULT_BASIS;
+const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${basis}`;
 
 /** 列 → URL パラメータ名の短縮（t=TopN, o=表示位置） */
 const COL_KEY: Record<UnifiedColumn, string> = {
@@ -103,6 +110,11 @@ function UnifiedBudgetSankeyContent() {
     const y = Number(searchParams.get('year'));
     return (AVAILABLE_YEARS as readonly number[]).includes(y) ? y : DEFAULT_YEAR;
   });
+  const [basis, setBasis] = useState<UnifiedBasis>(() => {
+    const y = Number(searchParams.get('year'));
+    const year0 = (AVAILABLE_YEARS as readonly number[]).includes(y) ? y : DEFAULT_YEAR;
+    return coerceBasis(year0, searchParams.get('b') as UnifiedBasis | null);
+  });
   const [visibleColumns, setVisibleColumns] = useState<UnifiedColumn[]>(() => parseColumns(searchParams.get('cols')) ?? UNIFIED_PRESET_COLUMNS.full);
   const [topN, setTopN] = useState<UnifiedTopN>(() => parsePerColumn(searchParams, 't'));
   const [offset, setOffset] = useState<UnifiedOffset>(() => parsePerColumn(searchParams, 'o'));
@@ -118,19 +130,25 @@ function UnifiedBudgetSankeyContent() {
     return f;
   });
 
-  const [graphs, setGraphs] = useState<Map<number, UnifiedGraph>>(new Map());
+  const [graphs, setGraphs] = useState<Map<string, UnifiedGraph>>(new Map());
+  // 年度を変えたとき、その年度に無い基準（2026 の決算など）は当初予算へ戻す
+  const effectiveBasis = coerceBasis(year, basis);
+  useEffect(() => {
+    if (effectiveBasis !== basis) setBasis(effectiveBasis);
+  }, [effectiveBasis, basis]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (graphs.has(year)) return;
+    const key = graphKey(year, effectiveBasis);
+    if (graphs.has(key)) return;
     let cancelled = false;
     setLoading(true);
-    fetch(`/data/unified-budget-${year}-graph.json`)
-      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`統合グラフ（${year}年度）を取得できませんでした: ${res.status}`))))
+    fetch(`/data/${unifiedGraphFileName(year, effectiveBasis)}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`統合グラフ（${year}年度・${UNIFIED_BASIS_LABELS[effectiveBasis]}）を取得できませんでした: ${res.status}`))))
       .then((g: UnifiedGraph) => {
         if (cancelled) return;
-        setGraphs(prev => new Map(prev).set(year, g));
+        setGraphs(prev => new Map(prev).set(key, g));
         setError(null);
       })
       .catch((e: Error) => !cancelled && setError(e.message))
@@ -138,9 +156,9 @@ function UnifiedBudgetSankeyContent() {
     return () => {
       cancelled = true;
     };
-  }, [year, graphs]);
+  }, [year, effectiveBasis, graphs]);
 
-  const graph = graphs.get(year) ?? null;
+  const graph = graphs.get(graphKey(year, effectiveBasis)) ?? null;
 
   /** この年度に存在する列（支出の無い年度は事業(支出)・支出先が無い） */
   const availableColumns = useMemo<UnifiedColumn[]>(() => (graph ? UNIFIED_COLUMNS.filter(c => (graph.metadata.counts[c] ?? 0) > 0) : [...UNIFIED_COLUMNS]), [graph]);
@@ -162,6 +180,7 @@ function UnifiedBudgetSankeyContent() {
     if (!graph) return;
     const params = new URLSearchParams();
     params.set('year', String(year));
+    if (effectiveBasis !== DEFAULT_BASIS) params.set('b', effectiveBasis);
     params.set('cols', serializeColumns(effectiveColumns));
     for (const c of UNIFIED_COLUMNS) {
       if (topN[c] !== undefined) params.set(`t${COL_KEY[c]}`, String(topN[c]));
@@ -224,6 +243,7 @@ function UnifiedBudgetSankeyContent() {
   return (
     <>
     <AppHeader position="fixed" current="/budget-sankey">
+      <UnifiedBasisSelect value={effectiveBasis} available={basesOf(year)} onChange={setBasis} />
       <UnifiedViewSelect
         visibleColumns={effectiveColumns}
         availableColumns={availableColumns}
@@ -252,6 +272,8 @@ function UnifiedBudgetSankeyContent() {
         fontPx={fontPx}
         labelDensity={labelDensity}
         budgetYear={metadata.budgetYear}
+        basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
+        rsMeasureLabel={metadata.rsMeasureLabel}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
         bottomLeftExtra={
