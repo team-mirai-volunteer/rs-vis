@@ -11,7 +11,7 @@
 :root {
   --radius: 0.625rem;
   /* 共通ヘッダー（AppHeader）の高さ。固定キャンバス型ページはこの下から始める */
-  --app-header-h: 60px;
+  --app-header-h: 72px;
 
   /* shadcn 意味タグ */
   --background: #f7f4ee;          /* warm gray（ページ背景） */
