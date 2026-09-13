@@ -10,10 +10,9 @@
  * 取得結果はモジュール内キャッシュに持ち、ノードを行き来しても再取得しない。
  */
 
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { ExternalLink } from 'lucide-react';
-import type { PolicySummaryResponse } from '@/app/api/policy-summary/route';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import type { ProjectDetail } from '@/types/project-details';
 import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
@@ -23,6 +22,7 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { TagChip } from '@/client/components/TagChip';
+import { useCached, usePolicySummary } from './policy-summary-cache';
 
 /** 再委託サマリ（/api/subcontracts の全グラフから件数だけ抜く。/sankey-svg と同じ形） */
 interface SubcontractSummary {
@@ -34,33 +34,9 @@ interface SubcontractSummary {
   subcontractBlockCount: number;
 }
 
-const policyCache = new Map<string, PolicySummaryResponse | null>();
 const detailCache = new Map<string, ProjectDetail | null>();
 const subcontractCache = new Map<string, SubcontractSummary | null>();
 
-/** キー付きの遅延取得。取得失敗・404 は null をキャッシュし再試行しない */
-function useCached<T>(cache: Map<string, T | null>, key: string, url: string, extract: (data: unknown) => T | null): T | null | undefined {
-  const [, force] = useState(0);
-  useEffect(() => {
-    if (cache.has(key)) return;
-    let cancelled = false;
-    fetch(url)
-      .then(r => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        cache.set(key, data == null ? null : extract(data));
-      })
-      .catch(() => cache.set(key, null))
-      .finally(() => {
-        if (!cancelled) force(v => v + 1);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [cache, key, url, extract]);
-  return cache.get(key);
-}
-
-const extractPolicy = (d: unknown) => d as PolicySummaryResponse;
 const extractDetail = (d: unknown) => d as ProjectDetail;
 const extractSubcontract = (data: unknown): SubcontractSummary | null => {
   const g = data as { maxDepth?: number; totalBlockCount?: number; totalRecipientCount?: number; directBlockCount?: number; separateOriginCount?: number };
@@ -104,7 +80,7 @@ export function UnifiedProjectSections({
   const [scoreItem, setScoreItem] = useState<QualityScoreItem | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
 
-  const policy = useCached(policyCache, year, `/api/policy-summary?year=${year}`, extractPolicy);
+  const policy = usePolicySummary(year);
   const detail = useCached(detailCache, `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
   const subcontract = useCached(subcontractCache, `${year}-${pid}`, `/api/subcontracts/${pid}?year=${year}`, extractSubcontract);
 
