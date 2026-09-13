@@ -60,6 +60,7 @@ export function UnifiedSankeyChart({
   budgetYear,
   rsSheetYear,
   rsAmountKind,
+  bottomLeftExtra,
 }: {
   nodes: UnifiedViewNode[];
   links: SankeyLink[];
@@ -79,6 +80,8 @@ export function UnifiedSankeyChart({
   budgetYear: number;
   rsSheetYear: number;
   rsAmountKind: MofRsAmountKind;
+  /** 左下・ミニマップの右隣に置くもの（表示設定の歯車） */
+  bottomLeftExtra?: React.ReactNode;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 1900, height: 900 });
@@ -564,6 +567,12 @@ export function UnifiedSankeyChart({
             </div>
           )}
         </SidePanelChrome>
+      )}
+
+      {bottomLeftExtra && (
+        <div data-pan-disabled="true" className="absolute z-30 flex items-end transition-[left] duration-200" style={{ left: panelOpenWidth + 12 + (showMinimap ? MINIMAP_W + 22 : 48), bottom: showMinimap ? 8 : 16 }}>
+          {bottomLeftExtra}
+        </div>
       )}
 
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />

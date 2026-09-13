@@ -30,10 +30,10 @@ import { applyFilter, applyTopN, collapseColumns, countByColumn, toViewGraph } f
 import { PageNavMenu } from '@/components/navigation/PageNavMenu';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
-import { HierarchySettings } from '@/client/components/mof-hierarchy/HierarchySettings';
 import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
-import { UnifiedColumnToggles, UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
+import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
+import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024] as const;
@@ -242,6 +242,21 @@ function UnifiedBudgetSankeyContent() {
         budgetYear={metadata.budgetYear}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
+        bottomLeftExtra={
+          <UnifiedSettings
+            fontPx={fontPx}
+            onFontPxChange={setFontPx}
+            defaultFontPx={LABEL_FONT_PX_DEFAULT}
+            labelDensity={labelDensity}
+            onLabelDensityChange={setLabelDensity}
+            focusRelated={focusRelated}
+            onFocusRelatedChange={setFocusRelated}
+            visibleColumns={effectiveColumns}
+            availableColumns={availableColumns}
+            onVisibleColumnsChange={setVisibleColumns}
+            summary={summary}
+          />
+        }
       />
 
       <div className="absolute right-3 top-3 z-30 flex items-start gap-2">
@@ -254,17 +269,6 @@ function UnifiedBudgetSankeyContent() {
             setVisibleColumns(columns);
             setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }));
           }}
-        />
-
-        <HierarchySettings
-          fontPx={fontPx}
-          onFontPxChange={setFontPx}
-          labelDensity={labelDensity}
-          onLabelDensityChange={setLabelDensity}
-          focusRelated={focusRelated}
-          onFocusRelatedChange={setFocusRelated}
-          summary={summary}
-          extra={<UnifiedColumnToggles visibleColumns={effectiveColumns} availableColumns={availableColumns} onChange={setVisibleColumns} />}
         />
 
         <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} theme="light" />
