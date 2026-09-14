@@ -34,7 +34,7 @@ export function UnifiedControls({
   if (rows.length === 0) return null;
   return (
     // 列ごとに独立したカードを横に並べる（1 枚 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
-    <div data-pan-disabled="true" className="flex flex-wrap items-center gap-2">
+    <div data-pan-disabled="true" className="flex flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-center">
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];

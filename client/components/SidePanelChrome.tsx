@@ -11,10 +11,14 @@
  * 配色はデザインシステムのトークン（bg-card / border-mirai-border / shadow-soft）を使い、
  * 位置・幅などレイアウトだけをインライン style で持つ。
  *
+ * スマホ幅（640px 未満）ではボトムシートになる: 左右下 INSET、高さ 52vh、幅リサイズ無し。
+ * 図のフィット計算はパネル幅を 0 として扱うこと（useIsNarrow で分岐）。
+ *
  * 対象外: AiChatPanel（右・既に同等機能を自前実装済み。閉状態の見た目が異なるため統合しない）。
  */
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useIsNarrow } from '@/client/hooks/useMediaQuery';
 
 /** 浮島パネルの画面端・下端からの余白(px)。ページ側が隣接要素をずらすときは幅 + INSET*2 を使う */
 export const SIDE_PANEL_INSET = 12;
@@ -57,20 +61,32 @@ export function SidePanelChrome({
   children,
 }: SidePanelChromeProps) {
   const isLeft = side === 'left';
+  const narrow = useIsNarrow();
 
   // 浮島型: ヘッダー（下余白込み）の下から画面下端 INSET まで、画面端から INSET 離して浮かせる。
   // 折りたたみ機能は無い（閉じる＝選択解除はページ側の × ボタンが担う）
-  const rootStyle: CSSProperties = {
-    position: 'fixed',
-    [isLeft ? 'left' : 'right']: SIDE_PANEL_INSET,
-    top: `calc(var(--app-header-h, 0px) + ${topOffset}px)`,
-    height: `calc(100% - var(--app-header-h, 0px) - ${topOffset + SIDE_PANEL_INSET}px)`,
-    width,
-    zIndex,
-    transition: isResizing ? 'none' : 'width 0.2s ease, left 0.2s ease, right 0.2s ease',
-    overflow: 'visible',
-    cursor: 'default',
-  };
+  const rootStyle: CSSProperties = narrow
+    ? {
+        position: 'fixed',
+        left: SIDE_PANEL_INSET,
+        right: SIDE_PANEL_INSET,
+        bottom: SIDE_PANEL_INSET,
+        height: '52vh',
+        zIndex,
+        overflow: 'visible',
+        cursor: 'default',
+      }
+    : {
+        position: 'fixed',
+        [isLeft ? 'left' : 'right']: SIDE_PANEL_INSET,
+        top: `calc(var(--app-header-h, 0px) + ${topOffset}px)`,
+        height: `calc(100% - var(--app-header-h, 0px) - ${topOffset + SIDE_PANEL_INSET}px)`,
+        width,
+        zIndex,
+        transition: isResizing ? 'none' : 'width 0.2s ease, left 0.2s ease, right 0.2s ease',
+        overflow: 'visible',
+        cursor: 'default',
+      };
 
   return (
     <div
@@ -79,7 +95,8 @@ export function SidePanelChrome({
       className="rounded-2xl border border-mirai-border bg-card shadow-soft"
       style={rootStyle}
     >
-      {/* 幅リサイズハンドル — 内側の境界線側の端 */}
+      {/* 幅リサイズハンドル — 内側の境界線側の端（ボトムシートでは無し） */}
+      {!narrow && (
         <div
           data-pan-disabled="true"
           role="separator"
@@ -104,6 +121,7 @@ export function SidePanelChrome({
             className={cn('h-8 w-[3px] rounded-sm', isResizing ? 'bg-mirai-border-light' : 'bg-transparent')}
           />
         </div>
+      )}
 
 
       {/* パネル本体 */}

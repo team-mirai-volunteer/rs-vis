@@ -41,6 +41,9 @@ import { UnifiedControls } from '@/client/components/unified-budget/UnifiedContr
 import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
 import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
+import { Button } from '@/components/ui/button';
+import { SlidersHorizontal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
@@ -192,6 +195,8 @@ function UnifiedBudgetSankeyContent() {
   const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
+  /** sm 未満で表示数・設定を開いているか */
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [filter, setFilter] = useState<UnifiedViewFilter>(() => {
     const f = parseFilter(searchParams);
     // URL に絞り込みの指定が無く「RSのみ」の列構成で開いたときは、非事業ノードを出さない（/sankey-svg と同じ見え方）
@@ -379,8 +384,21 @@ function UnifiedBudgetSankeyContent() {
         scoreStatus={!scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
       />
 
-      {/* 右上: 表示数のコントロールパネルと、その右に表示設定（歯車） */}
-      <div className="absolute right-3 top-3 z-30 flex items-start gap-2">
+      {/* 右上: 表示数のコントロールパネルと、その右に表示設定（歯車）。
+          sm 未満では 1 ボタンに畳み、押すと下に縦に開く（カードが検索ボックスを覆わないように） */}
+      <div className="absolute right-3 top-3 z-30 sm:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="表示数と表示設定"
+          aria-expanded={mobileControlsOpen}
+          onClick={() => setMobileControlsOpen(v => !v)}
+          className={cn('border-mirai-border', mobileControlsOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
+        >
+          <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+        </Button>
+      </div>
+      <div className={cn('absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         <UnifiedSettings
           fontPx={fontPx}
