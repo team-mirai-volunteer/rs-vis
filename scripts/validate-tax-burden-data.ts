@@ -34,7 +34,7 @@ for (const household of HOUSEHOLDS) {
         assert(Number.isSafeInteger(result[key]) && result[key] >= 0, `${household.id}/${income}/${key}`);
       }
       assert.equal(result.netBurden, result.grossBurden - result.benefits);
-      assert.equal(result.outOfScope, result.salaries.some(s => s < p.minimumAnnualWage));
+      assert.equal(result.outOfScope, result.salaries.some(s => s < p.employeeInsuranceThreshold));
       assert(income === 0 ? result.netRate === null : Number.isFinite(result.netRate));
       count++;
     }

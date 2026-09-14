@@ -35,7 +35,7 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item
         })}
       </tr>)}</tbody>
     </table></div>
-    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。分母はすべての年齢で行の現役期年収。65歳以降の公的年金は負担のマイナス（受け取り）として扱い、年金額は現役期年収から算出。薄いセルは就労者の給与がフルタイム下限未満。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
+    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。分母はすべての年齢で行の現役期年収。65歳以降の公的年金は負担のマイナス（受け取り）として扱い、年金額は現役期年収から算出。薄いセルは就労者の給与が被用者保険の賃金要件（年105.6万円）に届かず、国民年金・国保の扱いが前提次第で変わる帯。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
   </div>;
 }
 

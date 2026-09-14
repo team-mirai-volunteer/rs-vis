@@ -25,13 +25,17 @@ test('zero-income rate stays undefined while cash amounts remain available', () 
   assert.equal(result.childBenefit, 240000);
   assert.equal(result.outOfScope, true);
 });
-test('coverage follows each worker, not household income; non-working spouse excluded', () => {
-  const base = { ...initialTaxState(), income: 5000000 };
+test('coverage follows each worker: solid once every earner reaches the employee-insurance wage', () => {
+  const base = { ...initialTaxState(), income: 3000000 };
+  // 300万を67:33で割ると第2就労者は99万円で賃金要件に届かない。400万なら132万円で届く。
   assert.equal(simulate({ ...base, household: 'two-earners-children', share: 67 }, p).outOfScope, true);
-  assert.equal(simulate({ ...base, household: 'two-earners-children', share: 50 }, p).outOfScope, false);
-  assert.equal(simulate({ ...base, household: 'one-earner-children' }, p).outOfScope, false);
-  assert.equal(simulate({ ...base, income: p.minimumAnnualWage }, p).outOfScope, false);
-  assert.equal(simulate({ ...base, income: p.minimumAnnualWage - 1 }, p).outOfScope, true);
+  assert.equal(simulate({ ...base, household: 'two-earners-children', income: 4000000, share: 67 }, p).outOfScope, false);
+  assert.equal(simulate({ ...base, household: 'one-earner-children' }, p).outOfScope, false, '非就労の配偶者は判定に入らない');
+  assert.equal(simulate({ ...base, income: p.employeeInsuranceThreshold }, p).outOfScope, false);
+  assert.equal(simulate({ ...base, income: p.employeeInsuranceThreshold - 1 }, p).outOfScope, true);
+  // フルタイム最低賃金（219万円）は下回っても、被用者保険に入っていれば計算は確定する。
+  assert(p.minimumAnnualWage > p.employeeInsuranceThreshold);
+  assert.equal(simulate({ ...base, income: p.minimumAnnualWage - 1 }, p).outOfScope, false);
 });
 test('below the employee-insurance wage no pension premium is due: the national pension is fully exempt at that salary', () => {
   const single = (income: number) => simulate({ ...initialTaxState(), household: 'single', income }, p);
