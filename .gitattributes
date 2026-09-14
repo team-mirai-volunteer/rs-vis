@@ -1,0 +1,3 @@
+# シェルスクリプトは Vercel（Linux）で bash が実行するため LF 固定（Windows での編集で CRLF になるとビルドが落ちる）
+*.sh text eol=lf
+*.mjs text eol=lf
