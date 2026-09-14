@@ -87,7 +87,10 @@ try {
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();
   await page.getByLabel('消費税（推計）を含める').check();
   await page.getByLabel('OECD平均・最小・最大を重ねる').check();
-  await expect(page.getByText(/OECD定点/).first()).toBeVisible();
+  await expect(page.getByText('OECD平均', { exact: true }).first()).toBeVisible();
+  await page.getByRole('combobox', { name: /^家族構成/ }).selectOption('two-earners-children');
+  await expect(page.getByText(/連続系列はOECDに公開されていません/)).toBeVisible();
+  await page.getByRole('combobox', { name: /^家族構成/ }).selectOption('one-earner-children');
   await page.screenshot({ path: resolve(output, 'curve-oecd.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();

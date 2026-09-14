@@ -19,6 +19,16 @@ const SOURCES = [
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/JPN.......?startPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfilewithlabels',
   },
   {
+    // Continuous 50-250% of average wage (1% steps), four household types (couples = one earner): Japan, all measures
+    file: 'oecd-taxing-wages-decomp-jpn-2024-2025.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_DECOMP@DF_TW_DECOMP,2.1/JPN......?startPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfile',
+  },
+  {
+    // Continuous net personal average tax rate for all OECD members plus the OECD_REP aggregate
+    file: 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_DECOMP@DF_TW_DECOMP,2.1/.NPATR.....?startPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfile',
+  },
+  {
     file: 'oecd-taxing-wages-npatr-all-2023-2025.csv',
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/.NPATR.....A?startPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfile',
   },

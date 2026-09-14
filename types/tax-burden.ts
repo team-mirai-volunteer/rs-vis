@@ -232,7 +232,27 @@ export interface OecdPoint {
   japanDetail: Partial<Record<'GEBT' | 'CGITFP' | 'SLT' | 'EECSSC' | 'CTGG' | 'NPATR' | 'THP', number>>;
 }
 
+/** Continuous 50-250% of average wage curve for one stylised household (OECD Taxing Wages decompositions). */
+export interface OecdCurve {
+  oecdHouseholdType: string;
+  year: string;
+  averageWageJpy: number;
+  averageSource: string;
+  awRatio: number[];
+  japan: (number | null)[];
+  oecdAverage: number[];
+  min: number[];
+  minCountry: string[];
+  max: number[];
+  maxCountry: string[];
+  countries: number[];
+  /** Japan reference amounts (yen, absolute values) per awRatio: gross wage, central/local income tax, employee SSC, cash benefits. */
+  japanDetail: Record<'GWE' | 'IT_CG' | 'IT_LG' | 'EESSC' | 'CB', (number | null)[]>;
+}
+
 export interface OecdDataset {
   metadata: { source: string; sourceUrl: string; retrievedOn: string; notes: string[] };
   years: Record<string, { averageWageJpy: number | null; points: OecdPoint[] }>;
+  /** Keyed by our household id; two-earner households have no continuous series. */
+  curves: Partial<Record<HouseholdId, OecdCurve>>;
 }
