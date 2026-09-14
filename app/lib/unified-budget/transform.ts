@@ -32,21 +32,31 @@ import {
 const COLUMN_INDEX = new Map<UnifiedColumn, number>(UNIFIED_COLUMNS.map((c, i) => [c, i]));
 export const columnIndex = (c: UnifiedColumn) => COLUMN_INDEX.get(c) ?? 0;
 
-/** 1. 生成物 → 表示ノード */
-export function toViewGraph(graph: UnifiedGraph): UnifiedViewGraph {
-  const nodes: UnifiedViewNode[] = graph.nodes.map(n => {
+/**
+ * 1. 生成物 → 表示ノード。
+ *
+ * 生成物には「その基準では 0 円だが歳出予算現額はある」RS事業（当初予算 0 円＝補正・繰越のみ）が
+ * value 0 で入っている。予算書の基準ではこれを落とす（残すと recomputeValues が支出額で埋めてしまい、
+ * 当初予算のビューに補正の事業が当初予算として出る）。府省庁基準は keepZeroPrograms で残す
+ */
+export function toViewGraph(graph: UnifiedGraph, opts?: { keepZeroPrograms?: boolean }): UnifiedViewGraph {
+  const source = opts?.keepZeroPrograms ? graph.nodes : graph.nodes.filter(n => !(n.col === 'program' && n.kind === 'rs' && n.value <= 0));
+  const nodes: UnifiedViewNode[] = source.map(n => {
     const { id, name, value, col, ...rest } = n;
     return { id, name, value, type: col, details: { ...rest, column: col } };
   });
-  const links: SankeyLink[] = graph.edges.map(e => ({ source: e.source, target: e.target, value: e.value }));
+  const ids = new Set(nodes.map(n => n.id));
+  const links: SankeyLink[] = graph.edges
+    .filter(e => ids.has(e.source) && ids.has(e.target))
+    .map(e => ({ source: e.source, target: e.target, value: e.value }));
   return { nodes, links };
 }
 
 /**
  * 1'. 府省庁基準: MOF 側（会計〜目・非事業区分・outside）を捨て、RS事業を RS システムの府省庁に直接ぶら下げる
  * （旧 /sankey-svg と同じ 予算総計 → 府省庁 → 事業 → 事業(支出) → 支出先。総計は会計列に置く）。
- * 事業の値はそのまま（当初予算ファイルなら RS 当初予算）。府省庁ノードの値は配下事業の合計、総計は府省庁の合計。
- * 府省庁名の無い事業は「（府省庁不明）」に入れる
+ * 事業の値は歳出予算現額（rsCurrentBudget。旧 /sankey-svg と同じ。当初予算 0 円の事業も出る）。
+ * 府省庁ノードの値は配下事業の合計、総計は府省庁の合計。府省庁名の無い事業は「（府省庁不明）」に入れる
  */
 export const RS_MINISTRY_UNKNOWN = '（府省庁不明）';
 export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
@@ -59,11 +69,15 @@ export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
   });
   const ministryTotal = new Map<string, number>();
   const links: SankeyLink[] = [];
+  // 事業の値は歳出予算現額。基準ファイル側の value（当初予算など）ではないので、補正・繰越だけの事業も出る
+  const programValue = (n: UnifiedViewNode) => n.details.rsCurrentBudget ?? n.value;
   for (const n of kept) {
     if (n.details.column !== 'program') continue;
+    const v = programValue(n);
+    if (v <= 0) continue;
     const name = n.details.rsMinistry ?? RS_MINISTRY_UNKNOWN;
-    ministryTotal.set(name, (ministryTotal.get(name) ?? 0) + n.value);
-    links.push({ source: rsMinistryId(name), target: n.id, value: n.value });
+    ministryTotal.set(name, (ministryTotal.get(name) ?? 0) + v);
+    links.push({ source: rsMinistryId(name), target: n.id, value: v });
   }
   const ministries: UnifiedViewNode[] = [...ministryTotal.entries()].map(([name, value]) => ({
     id: rsMinistryId(name),

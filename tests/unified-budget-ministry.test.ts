@@ -77,3 +77,22 @@ test('府省庁基準でも所管の絞り込みは RS の府省庁名で効く'
   assert.ok(!ids.has('project-budget-2') && !ids.has('min-rs-内閣府'));
   assert.equal(g.nodes.find(n => n.id === RS_TOTAL_ID)?.value, 150); // 総計も絞り込み後の合計に縮む
 });
+
+test('府省庁基準の事業の値は歳出予算現額（当初予算 0 円の事業も出る）', () => {
+  // 当初予算 0 円（補正・繰越のみ）の事業。生成物には value 0 + rsCurrentBudget 付きで入っている
+  const g = toRsMinistryGraph({
+    nodes: [
+      node('project-budget-9', 'program', 0, { kind: 'rs', projectId: 9, rsMinistry: '経済産業省', rsCurrentBudget: 500 }),
+      node('project-budget-1', 'program', 100, { kind: 'rs', projectId: 1, rsMinistry: '経済産業省', rsCurrentBudget: 120 }),
+      node('project-spending-9', 'program-spending', 400, { kind: 'rs', projectId: 9 }),
+      node('r-X', 'recipient', 400),
+    ],
+    links: [link('project-budget-9', 'project-spending-9', 400), link('project-spending-9', 'r-X', 400)],
+  });
+  const byId = new Map(g.nodes.map(n => [n.id, n]));
+  // 当初予算 0 円でも歳出予算現額 500 で出る。事業1 も当初 100 ではなく現額 120
+  assert.equal(byId.get('min-rs-経済産業省')?.value, 620);
+  assert.ok(g.links.some(l => l.source === 'min-rs-経済産業省' && l.target === 'project-budget-9' && l.value === 500));
+  assert.equal(byId.get(RS_TOTAL_ID)?.value, 620);
+  assert.equal(byId.get('r-X')?.value, 400); // 支出先も残る（当初予算基準では孤立して消えていた）
+});

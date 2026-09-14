@@ -17,7 +17,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
+import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
   UNIFIED_FILTER_DEFAULT,
@@ -239,7 +239,7 @@ function UnifiedBudgetSankeyContent() {
   // 府省庁基準は MOF 側を捨てて RS府省庁 → 事業 に組み替える（旧 /sankey-svg 相当）
   const base = useMemo(() => {
     if (!graph) return null;
-    const view = toViewGraph(graph);
+    const view = toViewGraph(graph, { keepZeroPrograms: rsMinistryMode });
     return rsMinistryMode ? toRsMinistryGraph(view) : view;
   }, [graph, rsMinistryMode]);
 
@@ -336,8 +336,8 @@ function UnifiedBudgetSankeyContent() {
 
   const { metadata } = graph;
   const summary = rsMinistryMode
-    ? `${metadata.budgetYear}年度 府省庁基準（RSシステムの府省庁 → 事業。予算書の会計〜目は使わない） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
-        metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : '（当初予算）'
+    ? `${metadata.budgetYear}年度 府省庁基準（RSシステムの府省庁 → 事業。予算書の会計〜目は使わない）。事業の値は${
+        metadata.rsAmountKind === 'request' ? '翌年度要求額' : UNIFIED_RS_MINISTRY_MEASURE
       } / RSシート${metadata.rsSheetYear}`
     : `${metadata.budgetYear}年度 ${metadata.basisBudgetType} / 純計 ${formatBudgetFromYen(metadata.totals.net)}（総計 ${formatBudgetFromYen(metadata.totals.gross)}・繰入 ${formatBudgetFromYen(metadata.totals.transfer)}） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
     metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''
@@ -376,7 +376,7 @@ function UnifiedBudgetSankeyContent() {
         labelDensity={labelDensity}
         budgetYear={metadata.budgetYear}
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
-        rsMeasureLabel={rsMinistryMode ? '当初予算' : metadata.rsMeasureLabel}
+        rsMeasureLabel={rsMinistryMode ? UNIFIED_RS_MINISTRY_MEASURE : metadata.rsMeasureLabel}
         columnLabels={rsMinistryMode ? UNIFIED_RS_MINISTRY_COLUMN_LABELS : undefined}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
