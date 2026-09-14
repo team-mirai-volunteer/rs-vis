@@ -211,11 +211,16 @@ export const UNIFIED_BASES_BY_YEAR: Record<number, readonly UnifiedBasis[]> = {
 
 export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) => `unified-budget-${budgetYear}-${unifiedFileBasis(basis)}-graph.json`;
 
-/** 府省庁基準で使う列（RS府省庁 → 事業 → 事業(支出) → 支出先） */
-export const UNIFIED_RS_MINISTRY_COLUMNS: readonly UnifiedColumn[] = ['ministry', 'program', 'program-spending', 'recipient'];
+/** 府省庁基準で使う列（予算総計 → RS府省庁 → 事業 → 事業(支出) → 支出先。総計は会計列に置く） */
+export const UNIFIED_RS_MINISTRY_COLUMNS: readonly UnifiedColumn[] = ['account', 'ministry', 'program', 'program-spending', 'recipient'];
+/** 府省庁基準の列見出し（会計列は予算総計、所管列は府省庁） */
+export const UNIFIED_RS_MINISTRY_COLUMN_LABELS: Partial<Record<UnifiedColumn, string>> = { account: '予算総計', ministry: '府省庁' };
 /** 府省庁基準の RS府省庁ノード ID の接頭辞（MOF 所管 `min-` と衝突させない） */
 export const RS_MINISTRY_ID_PREFIX = 'min-rs-';
 export const rsMinistryId = (name: string) => `${RS_MINISTRY_ID_PREFIX}${name}`;
+/** 府省庁基準の予算総計ノード（旧 /sankey-svg の total 相当） */
+export const RS_TOTAL_ID = 'total-rs';
+export const RS_TOTAL_NAME = '予算総計';
 
 export interface UnifiedGraphMetadata {
   /** 予算年度（MOF会計年度） */

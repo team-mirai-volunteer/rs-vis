@@ -30,7 +30,7 @@ test('旧ノード ID の写像', () => {
   assert.equal(sankeySvgNodeIdToUnified('project-budget-12'), 'project-budget-12');
   assert.equal(sankeySvgNodeIdToUnified('r-99'), 'r-99');
   assert.equal(sankeySvgNodeIdToUnified('ministry-厚生労働省'), 'min-rs-厚生労働省'); // 旧省庁は RS の府省庁 → 府省庁基準のノード
-  assert.equal(sankeySvgNodeIdToUnified('total'), null);
+  assert.equal(sankeySvgNodeIdToUnified('total'), 'total-rs');
   assert.equal(sankeySvgNodeIdToUnified('__agg-project-budget'), null);
 });
 
@@ -67,5 +67,5 @@ test('選択が無ければピンから補う。年度未指定はシート 2025
   assert.equal(q.get('sel'), 'project-budget-3');
   assert.equal(q.get('year'), '2024');
   assert.equal(new URLSearchParams(sankeySvgSearchToUnified('pm=総務省')).get('sel'), 'min-rs-総務省');
-  assert.equal(new URLSearchParams(sankeySvgSearchToUnified('sel=total')).get('sel'), null);
+  assert.equal(new URLSearchParams(sankeySvgSearchToUnified('sel=total')).get('sel'), 'total-rs');
 });

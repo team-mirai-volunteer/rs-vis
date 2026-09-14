@@ -15,7 +15,7 @@
 import type { SankeyLink } from '@/types/sankey';
 import { parseAmountToYen } from '@/app/lib/format/yen';
 import type { UnifiedColumn, UnifiedGraph } from '@/types/unified-budget';
-import { UNIFIED_COLUMNS, UNIFIED_RS_MINISTRY_COLUMNS, rsMinistryId } from '@/types/unified-budget';
+import { RS_TOTAL_ID, RS_TOTAL_NAME, UNIFIED_COLUMNS, UNIFIED_RS_MINISTRY_COLUMNS, rsMinistryId } from '@/types/unified-budget';
 import {
   AGGREGATE_ID_PREFIX,
   DEFAULT_UNIFIED_TOP_N,
@@ -44,8 +44,8 @@ export function toViewGraph(graph: UnifiedGraph): UnifiedViewGraph {
 
 /**
  * 1'. 府省庁基準: MOF 側（会計〜目・非事業区分・outside）を捨て、RS事業を RS システムの府省庁に直接ぶら下げる
- * （旧 /sankey-svg と同じ 府省庁 → 事業 → 事業(支出) → 支出先）。
- * 事業の値はそのまま（当初予算ファイルなら RS 当初予算）。府省庁ノードの値は配下事業の合計。
+ * （旧 /sankey-svg と同じ 予算総計 → 府省庁 → 事業 → 事業(支出) → 支出先。総計は会計列に置く）。
+ * 事業の値はそのまま（当初予算ファイルなら RS 当初予算）。府省庁ノードの値は配下事業の合計、総計は府省庁の合計。
  * 府省庁名の無い事業は「（府省庁不明）」に入れる
  */
 export const RS_MINISTRY_UNKNOWN = '（府省庁不明）';
@@ -55,7 +55,7 @@ export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
     const d = n.details;
     if (!keepColumns.has(d.column)) return false;
     if (d.column === 'program') return d.kind === 'rs' && d.projectId !== undefined;
-    return d.column !== 'ministry'; // MOF 所管は捨てて RS府省庁で作り直す
+    return d.column !== 'ministry' && d.column !== 'account'; // MOF 所管・会計は捨てて RS府省庁・予算総計で作り直す
   });
   const ministryTotal = new Map<string, number>();
   const links: SankeyLink[] = [];
@@ -72,9 +72,15 @@ export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
     type: 'ministry',
     details: { column: 'ministry', ministry: name, rsMinistry: name },
   }));
+  let total = 0;
+  for (const m of ministries) {
+    total += m.value;
+    links.push({ source: RS_TOTAL_ID, target: m.id, value: m.value });
+  }
+  const totalNode: UnifiedViewNode = { id: RS_TOTAL_ID, name: RS_TOTAL_NAME, value: total, type: 'account', details: { column: 'account' } };
   const ids = new Set(kept.map(n => n.id));
   for (const l of view.links) if (ids.has(l.source) && ids.has(l.target)) links.push(l);
-  return recomputeValues({ nodes: [...ministries, ...kept], links });
+  return recomputeValues({ nodes: [totalNode, ...ministries, ...kept], links });
 }
 
 /** 辺から値を作り直す（変換のたびに呼ぶ） */

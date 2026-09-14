@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RS_MINISTRY_UNKNOWN, applyFilter, toRsMinistryGraph } from '../app/lib/unified-budget/transform';
+import { RS_TOTAL_ID } from '../types/unified-budget';
 import { UNIFIED_FILTER_DEFAULT, type UnifiedViewGraph, type UnifiedViewNode } from '../types/unified-budget-view';
 
 const node = (id: string, column: UnifiedViewNode['details']['column'], value: number, details: Partial<UnifiedViewNode['details']> = {}): UnifiedViewNode => ({
@@ -49,8 +50,8 @@ function sample(): UnifiedViewGraph {
 test('府省庁基準: MOF 側を捨てて RS府省庁 → 事業 に組み替える', () => {
   const g = toRsMinistryGraph(sample());
   const cols = new Set(g.nodes.map(n => n.details.column));
-  assert.deepEqual([...cols].sort(), ['ministry', 'program', 'program-spending', 'recipient']);
-  assert.ok(!g.nodes.some(n => n.id === 'min-内閣府及び厚生労働省'));
+  assert.deepEqual([...cols].sort(), ['account', 'ministry', 'program', 'program-spending', 'recipient']);
+  assert.ok(!g.nodes.some(n => n.id === 'min-内閣府及び厚生労働省' || n.id === 'acc-general'));
   assert.ok(!g.nodes.some(n => n.id === 'np-debt' || n.id === 'outside'));
 
   const byId = new Map(g.nodes.map(n => [n.id, n]));
@@ -59,6 +60,10 @@ test('府省庁基準: MOF 側を捨てて RS府省庁 → 事業 に組み替�
   assert.equal(byId.get('min-rs-内閣府')?.value, 300);
   assert.equal(byId.get(`min-rs-${RS_MINISTRY_UNKNOWN}`)?.value, 20);
   assert.equal(byId.get('min-rs-厚生労働省')?.details.ministry, '厚生労働省');
+  // 予算総計（旧サンキー図の total）は会計列に置き、府省庁の合計
+  assert.equal(byId.get(RS_TOTAL_ID)?.value, 470);
+  assert.equal(byId.get(RS_TOTAL_ID)?.details.column, 'account');
+  assert.ok(g.links.some(l => l.source === RS_TOTAL_ID && l.target === 'min-rs-内閣府' && l.value === 300));
   // 事業 → 支出 → 支出先は残る
   assert.ok(g.links.some(l => l.source === 'project-budget-1' && l.target === 'project-spending-1' && l.value === 80));
   assert.equal(byId.get('r-X')?.value, 80);
@@ -70,4 +75,5 @@ test('府省庁基準でも所管の絞り込みは RS の府省庁名で効く'
   const ids = new Set(g.nodes.map(n => n.id));
   assert.ok(ids.has('project-budget-1') && ids.has('project-budget-3') && ids.has('r-X'));
   assert.ok(!ids.has('project-budget-2') && !ids.has('min-rs-内閣府'));
+  assert.equal(g.nodes.find(n => n.id === RS_TOTAL_ID)?.value, 150); // 総計も絞り込み後の合計に縮む
 });
