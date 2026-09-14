@@ -60,6 +60,14 @@ export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGr
   const available = availableTaxItems(grid, hasConsumption);
   const items = available.filter(t => t.id !== 'net');
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);
+  // Child items switch off at an age that comes from the assumed birth years, not from the rules themselves.
+  const cells = grid[0]?.cells ?? [];
+  const span = (pick: (c: typeof cells[number]) => boolean) => {
+    const ages = cells.filter(pick).map(c => c.ageAt);
+    return ages.length ? { from: Math.min(...ages), to: Math.max(...ages) } : null;
+  };
+  const benefitSpan = span(c => c.childBenefit > 0);
+  const dependantSpan = span(c => c.childrenPresent > 0);
   return <div className="space-y-6">
     <div>
       <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。緑と橙はそれぞれに出てくる値の幅いっぱいに濃淡を割り当てています（0〜最大で塗ると、年金期の大きなマイナスに引きずられて現役期の差が見えなくなるため）。左パネルを「税・給付」に切り替えると、税目ごとのスライダーでこの表を動かせます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
@@ -71,6 +79,7 @@ export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGr
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{items.map(t => <Grid key={t.id} grid={grid} item={t.id} compact hasConsumption={hasConsumption} />)}</div>
       <ul className="mt-4 list-disc space-y-1 pl-5 text-xs leading-relaxed text-mirai-text-secondary">
         <li>所得税・住民税は年収が高いほど、また扶養控除が切れる年齢で濃くなる（累進）。</li>
+        {benefitSpan && dependantSpan && <li><strong>子どもに紐づく項目が切り替わる年齢は、制度ではなく前提の置き方で決まります。</strong>本モデルは大人32歳・34歳のときに子が生まれ23歳で独立すると置いているので、児童手当は{benefitSpan.from}〜{benefitSpan.to}歳の列にだけ出て、扶養控除は{dependantSpan.to}歳の列で終わります。児童手当は子の年齢（18歳以下）で決まる給付で、親の年齢とは関係ありません。出産年齢が違えば、養子縁組があれば、この列はそのままずれます。ここで見えているのは「子が巣立って世帯が子なしに変わる」ことであって、年齢そのものの効果ではありません。</li>}
         <li><strong>65歳の住民税だけ重いのは、住民税が前年所得課税だからです。</strong>年金生活に入った年に納めるのは前年（64歳）の給与で計算した住民税で、年金所得に見合う額に下がるのは翌年から。60歳の列が重いのも同じ理由（前年59歳の満額給与で課税）です。</li>
         <li>70歳以降に住民税が0になる行があるのも計算漏れではありません。公的年金等控除（65歳以上は最低110万円）を引いた合計所得が非課税限度額（1級地で単身45万円、控除対象配偶者のいる夫婦101万円）を下回るためで、本モデルでは片働き夫婦・子2人なら現役期年収500万円まで、単身でも300万円なら住民税非課税になります。800万円以上で横ばいなのは、厚生年金の標準報酬月額に上限（65万円）があり年金額が頭打ちになるため。金額で見ると現役期800万円の夫婦で年3.99万円、家計調査の無職世帯（70〜74歳）の実測平均4.19万円とほぼ一致します。</li>
         <li>年金・雇用保険料は現役期のみで、標準報酬の上限（65万円）を超える年収では負担率が下がる（上限効果）。</li>
