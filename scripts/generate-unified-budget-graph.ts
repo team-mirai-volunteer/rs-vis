@@ -20,6 +20,8 @@
  * 金額の基準（types/unified-budget.ts の冒頭コメント参照）:
  *   会計〜目〜事業区分は MOF目の basis（既定 initial=当初予算。supplementary=補正予算（第1号）の改予算額、settlement=決算の支出済額）。
  *   RS事業ノードは basis に応じて 当初予算 / 当初＋補正 / 執行額（執行年度以外は 2-2 の合計）。
+ *   加えて基準に依らない歳出予算現額を rsCurrentBudget に持たせる（府省庁基準が使う）。
+ *   当初予算 0 円（補正・繰越のみ）の事業は value 0 のまま出力し、予算書の基準では表示側が落とす。
  *   差分は擬似ノード outside からの流入で釣り合わせる。
  */
 
@@ -274,6 +276,8 @@ function main() {
         kind: 'rs',
         projectId: n.projectId,
         rsMinistry: n.ministry,
+        // 歳出予算現額（sankey-svg の事業ノードの値）。基準に依らず持たせる。府省庁基準が使う
+        rsCurrentBudget: n.value,
         accountCategory: n.accountCategory,
         ...(n.budgetSummary ? { budgetSummary: n.budgetSummary } : {}),
         ...(n.budgetBreakdown && n.budgetBreakdown.length > 0 ? { budgetBreakdown: n.budgetBreakdown } : {}),
@@ -294,6 +298,7 @@ function main() {
         kind: 'rs',
         projectId: p.projectId,
         rsMinistry: p.projectMinistry,
+        rsCurrentBudget: p.rsAmountTotal,
       });
       programValue.set(p.projectId, p.rsAmountTotal);
     }
@@ -391,7 +396,9 @@ function main() {
   for (const [pid, node] of programNode) {
     const inFlow = linkedIn.get(pid) ?? 0;
     const target = programValue.get(pid) ?? 0;
-    if (inFlow === 0 && target === 0) continue; // 何も流れない事業は出さない
+    // 何も流れない事業は出さない。ただし歳出予算現額があるもの（当初予算 0 円＝補正・繰越のみの事業）は
+    // 値 0 のまま残す: 府省庁基準がこの値を使うため。予算書の基準では表示側（toViewGraph）が落とす
+    if (inFlow === 0 && target === 0 && !((node.rsCurrentBudget ?? 0) > 0)) continue;
     if (target < inFlow) {
       // 目からの流入が事業の値を上回る（2-2 > 2-1 など）。ノード値は流入に合わせる
       node.value = inFlow;

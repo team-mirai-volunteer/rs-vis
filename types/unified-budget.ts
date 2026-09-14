@@ -112,6 +112,12 @@ export interface UnifiedNode {
   projectId?: number;
   /** RS側の府省庁名（MOF所管と異なることがある: 林野庁→農林水産省 等） */
   rsMinistry?: string;
+  /**
+   * RS事業の歳出予算現額（当初＋補正＋繰越＋予備費。旧 /sankey-svg が表示していた値）。
+   * 基準に依存しないので、当初予算 0 円（補正・繰越のみ）の事業もここには値が入る。
+   * 府省庁基準（RSの基準）はこの値を使う。value は基準ごとの測定量なので別物
+   */
+  rsCurrentBudget?: number;
   accountCategory?: 'general' | 'special' | 'both';
   budgetSummary?: BudgetSummary;
   /** 事業列のRS事業のみ。会計区分・歳出項目ごとの予算内訳（サイドパネルの予算・執行アコーディオン用） */
@@ -182,7 +188,7 @@ export const UNIFIED_BASIS_MOF_MEASURE: Record<UnifiedBasis, string> = {
   initial: '当初予算',
   supplementary: '補正後（改予算額）',
   settlement: '支出済額',
-  ministry: 'RS当初予算',
+  ministry: '歳出予算現額',
 };
 
 /** 列見出しに添える RS事業側の測定量（執行年度） */
@@ -190,7 +196,7 @@ export const UNIFIED_BASIS_RS_MEASURE: Record<UnifiedBasis, string> = {
   initial: '当初予算',
   supplementary: '当初＋補正',
   settlement: '執行額',
-  ministry: '当初予算',
+  ministry: '歳出予算現額',
 };
 
 /** 基準 → MOF 予算種別 */
@@ -215,6 +221,8 @@ export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) =>
 export const UNIFIED_RS_MINISTRY_COLUMNS: readonly UnifiedColumn[] = ['account', 'ministry', 'program', 'program-spending', 'recipient'];
 /** 府省庁基準の列見出し（会計列は予算総計、所管列は府省庁） */
 export const UNIFIED_RS_MINISTRY_COLUMN_LABELS: Partial<Record<UnifiedColumn, string>> = { account: '予算総計', ministry: '府省庁' };
+/** 府省庁基準の事業の値（旧 /sankey-svg と同じ歳出予算現額） */
+export const UNIFIED_RS_MINISTRY_MEASURE = '歳出予算現額';
 /** 府省庁基準の RS府省庁ノード ID の接頭辞（MOF 所管 `min-` と衝突させない） */
 export const RS_MINISTRY_ID_PREFIX = 'min-rs-';
 export const rsMinistryId = (name: string) => `${RS_MINISTRY_ID_PREFIX}${name}`;
