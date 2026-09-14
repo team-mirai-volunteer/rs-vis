@@ -16,6 +16,7 @@ assert.equal(p.metadata.status, 'prototype');
 assert.equal(p.metadata.modelVersion, MODEL_VERSION);
 assert.equal(p.monthlyRemuneration.length, p.monthlyBoundaries.length + 1);
 // The policy sliders start from current law, so the baseline in the code must still match the parameter file.
+assert(p.employeeInsuranceThreshold > 0 && p.lifecycle.nationalPension.monthly > 0);
 for (const key of ['childMonthly', 'localRate', 'pensionRate', 'healthRate', 'careRate', 'employmentRate'] as const) {
   assert.equal(BASE_REFORM[key], p[key], `BASE_REFORM.${key} は制度パラメータと一致していること`);
 }

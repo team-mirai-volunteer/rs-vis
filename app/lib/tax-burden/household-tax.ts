@@ -126,11 +126,28 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
   let pension = 0, health = 0, care = 0, employment = 0;
   const personalPremiums = h.adults.map(() => 0);
   h.adults.forEach((a, i) => {
-    if (a.salary > 0 && a.employeeInsured) {
-      const c = employeeContributions(a.salary, a.age, h.bonus, p, reform);
-      pension += c.pension; health += c.health; care += c.care; employment += c.employment;
-      personalPremiums[i] += c.pension + c.health + c.care + c.employment;
-    }
+    if (a.salary <= 0) return;
+    const c = employeeContributions(a.salary, a.age, h.bonus, p, reform);
+    // Employment insurance follows hours worked rather than the social-insurance wage floor, so any salary pays it.
+    employment += c.employment;
+    personalPremiums[i] += c.employment;
+    if (!a.employeeInsured) return;
+    pension += c.pension; health += c.health; care += c.care;
+    personalPremiums[i] += c.pension + c.health + c.care;
+  });
+  // First-category national pension: working age, no employees' pension, and not a dependent spouse of someone who has it.
+  // The premium is flat, so without the application-based exemption a very low wage would carry an absurd rate.
+  const np = lp.nationalPension;
+  h.adults.forEach((a, i) => {
+    if (a.age < np.minimumAge || a.age > np.maximumAge) return;
+    if (a.salary > 0 && a.employeeInsured) return;
+    const partnerInsured = hasSpouse && h.adults[1 - i].salary > 0 && h.adults[1 - i].employeeInsured;
+    if (partnerInsured && a.salary < np.thirdCategoryIncomeLimit) return;
+    const allowance = np.dependantAllowance * (i === principal ? dependants : 0);
+    const step = np.exemptions.find(e => totals[i] <= e.limit + allowance);
+    const premium = Math.round(np.monthly * 12 * (1 - (step?.exempt ?? 0)) * reform.pensionRate / p.pensionRate);
+    pension += premium;
+    personalPremiums[i] += premium;
   });
   // National health insurance: adults under 75 without employee insurance, unless a dependant of an insured partner.
   const insuredPartner = (i: number) => hasSpouse && h.adults[1 - i].salary > 0 && h.adults[1 - i].employeeInsured && h.adults[1 - i].age < 75;
@@ -139,14 +156,18 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     const nh = lp.nationalHealth;
     const memberIncome = nhiMembers.reduce((s, i) => s + totals[i], 0);
     const earners = nhiMembers.filter(i => totals[i] > 0).length;
-    const reduction = perCapitaReduction(memberIncome, nhiMembers.length, earners, nh.reductions);
-    const part = (rate: number, perCapita: number, cap: number, members: number[]) => {
+    // Children are insured under a parent's employee scheme when there is one, and are national-health members otherwise,
+    // where they carry the per-capita levy (the half rate for pre-school children is not modelled).
+    const childMembers = h.adults.some(a => a.salary > 0 && a.employeeInsured) ? 0 : h.childAges.length;
+    const covered = nhiMembers.length + childMembers;
+    const reduction = perCapitaReduction(memberIncome, covered, earners, nh.reductions);
+    const part = (rate: number, perCapita: number, cap: number, members: number[], heads = members.length) => {
       const incomeShare = members.reduce((s, i) => s + Math.max(0, totals[i] - p.localBasicAllowance) * rate, 0);
-      return Math.min(cap, Math.round(incomeShare + perCapita * members.length * (1 - reduction)));
+      return Math.min(cap, Math.round(incomeShare + perCapita * heads * (1 - reduction)));
     };
     const careMembers = nhiMembers.filter(i => h.adults[i].age >= 40 && h.adults[i].age < 65);
-    const basic = part(nh.basicRate, nh.basicPerCapita, nh.basicCap, nhiMembers);
-    const support = part(nh.supportRate, nh.supportPerCapita, nh.supportCap, nhiMembers);
+    const basic = part(nh.basicRate, nh.basicPerCapita, nh.basicCap, nhiMembers, covered);
+    const support = part(nh.supportRate, nh.supportPerCapita, nh.supportCap, nhiMembers, covered);
     const nhiCare = careMembers.length ? part(nh.careRate, nh.carePerCapita, nh.careCap, careMembers) : 0;
     health += Math.round((basic + support) * healthScale);
     care += Math.round(nhiCare * careScale);
