@@ -31,6 +31,9 @@ export const BASE_REFORM: Reform = {
   creditAnnual: 0, creditPhaseoutStart: 3000000, creditPhaseoutRate: 0.1,
   standardVat: 0.1, reducedVat: 0.08,
 };
+/** True once any policy slider has been moved away from current law, which is what makes the reform curve appear. */
+export const isReformed = (reform: Reform) => (Object.keys(BASE_REFORM) as (keyof Reform)[]).some(k => reform[k] !== BASE_REFORM[k]);
+
 export function initialTaxState(): TaxState {
   return { view: 'curve', fy: 2025, household: 'one-earner-children', age: 40,
     income: 5000000, share: 67, bonus: false, showAll: true,

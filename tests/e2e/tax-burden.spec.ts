@@ -6,11 +6,12 @@ test('tax prototype: reform, shared conditions, actual revenue, unavailable stat
   await page.goto('/tax-burden');
   await expect(page.getByRole('heading', { name: '誰が、どれだけ負担している？' })).toBeVisible();
   await expect(page.getByRole('table').first()).toBeVisible();
-  await page.getByRole('button', { name: '改革案を比較', exact: true }).click();
+  await page.getByRole('button', { name: /^税・給付/ }).click();
   await page.getByLabel('給付付き控除・世帯年額', { exact: true }).fill('30');
   await expect(page.getByText('100,000円', { exact: true }).first()).toBeVisible();
   const url = page.url();
   await page.reload();
+  await page.getByRole('button', { name: /^税・給付/ }).click();
   await expect(page.getByLabel('給付付き控除・世帯年額', { exact: true })).toHaveValue('30');
   expect(page.url()).toBe(url);
   await page.getByRole('button', { name: 'データについて', exact: true }).click();

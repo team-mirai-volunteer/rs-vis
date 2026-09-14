@@ -2,7 +2,7 @@
 
 import { useId, useMemo } from 'react';
 import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
-import { HOUSEHOLDS } from '@/app/lib/tax-burden/households';
+import { HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
 
 const COLORS = ['var(--primary-accent)', 'var(--stance-neutral)', 'var(--mirai-text)',
@@ -23,7 +23,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   const series = useMemo(() => HOUSEHOLDS.filter(h => showAll || h.id === state.household).map(h => ({
     household: h, points: curveSeries(state, params, h.id, undefined, consumption, incidence), index: HOUSEHOLDS.findIndex(x => x.id === h.id),
   })), [state, params, consumption, incidence, showAll]);
-  const reform = useMemo(() => state.view === 'reform' ? curveSeries(state, params, state.household, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
+  const reform = useMemo(() => isReformed(state.reform) ? curveSeries(state, params, state.household, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const curve = state.showOecd ? oecd?.curves[state.household] ?? null : null;
   const oecdYear = oecd?.years['2025'];
   // OECD publishes dual-earner couples only at fixed earnings points (100+67% and 100+100% of the average wage), never as a curve.
