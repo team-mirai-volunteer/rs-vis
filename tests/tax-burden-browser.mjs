@@ -62,13 +62,13 @@ try {
   await expect(page.getByRole('table').first()).toBeVisible();
   await page.screenshot({ path: resolve(output, 'desktop.png'), fullPage: true });
   await page.getByRole('button', { name: /^税・給付/ }).click();
-  await page.getByLabel('給付付き控除・世帯年額', { exact: true }).fill('30');
+  await page.getByLabel('給付付き控除（年額）・数値で入力', { exact: true }).fill('30');
   await expect(page.getByText('100,000円', { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: resolve(output, 'curve-policy.png'), fullPage: true });
   const shared = page.url();
   await page.reload();
   await page.getByRole('button', { name: /^税・給付/ }).click();
-  await expect(page.getByLabel('給付付き控除・世帯年額', { exact: true })).toHaveValue('30');
+  await expect(page.getByLabel('給付付き控除（年額）・数値で入力', { exact: true })).toHaveValue('30');
   expect(page.url()).toBe(shared);
   await page.getByRole('button', { name: '基準制度に戻す', exact: true }).click();
   await page.getByRole('button', { name: '世帯', exact: true }).click();
@@ -98,7 +98,7 @@ try {
   await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
   await expect(page.getByRole('heading', { name: /税目ごとに分解する/ })).toBeVisible();
   await page.getByRole('button', { name: /^税・給付/ }).click();
-  await page.getByLabel('住民税・所得割の税率').fill('0');
+  await page.getByLabel('住民税（所得割）', { exact: true }).fill('0');
   await expect(page.getByText('改革案で計算中', { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'heatmap-policy.png'), fullPage: true });
   await page.getByRole('button', { name: '基準制度に戻す', exact: true }).click();

@@ -217,7 +217,8 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
         else if (age >= 16) { dependantNational += lp.dependantAllowanceGeneral[0]; dependantLocal += lp.dependantAllowanceGeneral[1]; dependantDifference += 50000; }
       }
     }
-    const basic = p.basicAllowances.find(([upper]) => reference <= upper)![1] + reform.basicAllowanceExtra;
+    // The lever shifts the whole statutory schedule; a deduction can be removed but never becomes negative.
+    const basic = Math.max(0, p.basicAllowances.find(([upper]) => reference <= upper)![1] + reform.basicAllowanceExtra);
     const parent = h.loneParent && isPrincipal && reference <= 5000000 ? 350000 : 0;
     const localParent = h.loneParent && isPrincipal && reference <= 5000000 ? 300000 : 0;
     incomeTax += incomeTaxFromBase(reference - social - basic - spouse - dependantNational - parent, p);
