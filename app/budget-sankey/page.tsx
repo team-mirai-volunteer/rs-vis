@@ -26,7 +26,7 @@ import {
   type UnifiedViewFilter,
 } from '@/types/unified-budget-view';
 import type { LabelDensity } from '@/types/mof-hierarchy';
-import { applyFilter, applyTopN, collapseColumns, countByColumn, sortForDisplay, toViewGraph } from '@/app/lib/unified-budget/transform';
+import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toViewGraph } from '@/app/lib/unified-budget/transform';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -173,6 +173,14 @@ function UnifiedBudgetSankeyContent() {
   const collapsed = useMemo(() => (filtered ? collapseColumns(filtered, effectiveColumns) : null), [filtered, effectiveColumns]);
   const columnCounts = useMemo(() => (collapsed ? countByColumn(collapsed) : {}), [collapsed]);
   const display = useMemo(() => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset)) : null), [collapsed, topN, offset]);
+  // 選択ノード（一覧のリンク・検索・URL から来る）が TopN の窓から溢れて図に無いときは、
+  // その列の表示位置をノードが窓に入るところまで動かす。「図には出ていません」で止まらないようにする
+  useEffect(() => {
+    if (!selectedId || !collapsed || !display) return;
+    if (display.nodes.some(n => n.id === selectedId)) return;
+    const patch = offsetToReveal(collapsed, topN, offset, selectedId);
+    if (patch) setOffset(o => ({ ...o, ...patch }));
+  }, [selectedId, collapsed, display, topN, offset]);
   const ministries = useMemo(() => (base ? [...new Set(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name))] : []), [base]);
 
   // URL 同期

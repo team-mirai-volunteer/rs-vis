@@ -371,3 +371,39 @@ export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
   for (const n of view.nodes) if (!placed.has(n.id)) nodes.push(n);
   return { nodes, links: view.links };
 }
+
+/**
+ * 6. offsetToReveal: 選択ノードが TopN の窓から溢れて図に出ていないとき、その列の表示開始位置を
+ * ノードが窓の中央付近に来るように動かす（一覧のリンクや検索から来たときに「図に出ていません」で
+ * 止まらないようにする）。
+ * - 対象は applyTopN が TopN の候補として扱うノード（集約・区分・擬似ノードは常に出るので対象外）
+ * - 事業(支出) は事業と同じ事業IDの窓に従うので、事業列の位置を動かす
+ * - 動かす必要が無い（既に窓内）・対象外なら null
+ */
+export function offsetToReveal(view: UnifiedViewGraph, topN: UnifiedTopN, offset: UnifiedOffset, nodeId: string): Partial<UnifiedOffset> | null {
+  const node = view.nodes.find(n => n.id === nodeId);
+  if (!node) return null;
+  let target = node;
+  let column = node.details.column;
+  if (column === 'program-spending') {
+    if (node.details.projectId === undefined) return null;
+    const program = view.nodes.find(n => n.details.column === 'program' && n.details.projectId === node.details.projectId);
+    if (!program) return null;
+    target = program;
+    column = 'program';
+  }
+  if (target.details.standalone || target.details.aggregated || (target.details.kind && target.details.kind !== 'rs')) return null;
+  const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
+  if (limit <= 0) return null;
+  const candidates = view.nodes
+    .filter(n => n.details.column === column && !n.details.standalone && !(n.details.kind && n.details.kind !== 'rs'))
+    .sort((a, b) => b.value - a.value);
+  if (candidates.length <= limit) return null;
+  const rank = candidates.findIndex(n => n.id === target.id);
+  if (rank < 0) return null;
+  const maxOffset = Math.max(0, candidates.length - limit);
+  const current = Math.min(offset[column] ?? 0, maxOffset);
+  if (rank >= current && rank < current + limit) return null; // 既に窓内
+  const next = Math.max(0, Math.min(rank - Math.floor(limit / 2), maxOffset));
+  return { [column]: next };
+}

@@ -61,3 +61,25 @@ test('事業(支出) は事業と同じ事業IDの並びに揃える', () => {
   const ids = sortForDisplay(view).nodes.map(n => n.id);
   assert.deepEqual(ids.slice(2), ['project-2-spending', 'project-1-spending', '__others__program-spending']);
 });
+
+import { offsetToReveal } from '../app/lib/unified-budget/transform';
+
+test('offsetToReveal: 窓から溢れた項を中央付近に出す位置を返し、窓内なら null', () => {
+  const nodes: UnifiedViewNode[] = Array.from({ length: 100 }, (_, i) => node(`sec-${i}`, 'section', 1000 - i));
+  const view: UnifiedViewGraph = { nodes, links: [] };
+  // 上位 40 件表示・先頭から。70 位のノードは溢れている → 70 - 20 = 50 から表示
+  assert.deepEqual(offsetToReveal(view, { section: 40 }, {}, 'sec-70'), { section: 50 });
+  // 末尾近くは maxOffset (60) で止める
+  assert.deepEqual(offsetToReveal(view, { section: 40 }, {}, 'sec-99'), { section: 60 });
+  // 既に窓内なら動かさない
+  assert.equal(offsetToReveal(view, { section: 40 }, {}, 'sec-10'), null);
+  // 区分ノードや集約ノードは常に出るので対象外
+  assert.equal(offsetToReveal({ nodes: [...nodes, node('np-debt', 'program', 5, { kind: 'debt' })], links: [] }, { section: 40 }, {}, 'np-debt'), null);
+});
+
+test('offsetToReveal: 事業(支出) は同じ事業IDの事業列の窓を動かす', () => {
+  const programs: UnifiedViewNode[] = Array.from({ length: 60 }, (_, i) => node(`project-budget-${i}`, 'program', 600 - i, { kind: 'rs', projectId: i }));
+  const spending = node('project-spending-55', 'program-spending', 10, { kind: 'rs', projectId: 55 });
+  const view: UnifiedViewGraph = { nodes: [...programs, spending], links: [] };
+  assert.deepEqual(offsetToReveal(view, { program: 20 }, {}, 'project-spending-55'), { program: 40 });
+});
