@@ -39,8 +39,8 @@ export function simulate(state: SimulateState, p: TaxParameters,
   incidence?: IncidenceDataset | null): BurdenResult {
   const household = validateState(state, reform);
   const salaries = splitSalaries(state.income, household.earners, state.share);
-  const scopeReasons = salaries.flatMap((salary, i) => salary < p.minimumAnnualWage
-    ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与がフルタイム下限未満`] : []);
+  const scopeReasons = salaries.flatMap((salary, i) => salary < p.employeeInsuranceThreshold
+    ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与が被用者保険の賃金要件未満`] : []);
   const adults: AdultInput[] = Array.from({ length: household.adults }, (_, i) => ({
     age: state.age, salary: salaries[i] ?? 0, pension: 0, employeeInsured: (salaries[i] ?? 0) >= p.employeeInsuranceThreshold,
   }));

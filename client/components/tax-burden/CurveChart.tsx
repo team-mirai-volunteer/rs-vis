@@ -35,7 +35,9 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   const oecdMissing = state.showOecd && oecd && !curve && points.length === 0;
   const valid = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope && rateOf(p) !== null).map(p => rateOf(p)!);
   const oecdValues = (curve ? [...curve.min, ...curve.max, ...curve.oecdAverage] : points.flatMap(pt => [pt.min, pt.max, pt.oecdAverage])).map(v => v / 100);
-  const minY = Math.min(-0.1, Math.floor(Math.min(...valid, ...oecdValues) * 10) / 10);
+  // One deeply negative household (ひとり親 just above the wage requirement) would otherwise squash the whole chart,
+  // so the axis stops at -50% and anything beyond is clipped, as the note says.
+  const minY = Math.max(-0.5, Math.min(-0.1, Math.floor(Math.min(...valid, ...oecdValues) * 10) / 10));
   const maxY = Math.max(0.4, Math.ceil(Math.max(...valid, ...oecdValues) * 10) / 10);
   const tickStep = Math.max(0.1, Math.ceil((maxY - minY) / 8 * 10) / 10);
   const ticks = Array.from({ length: Math.floor((maxY - minY) / tickStep + 0.001) + 1 }, (_, i) => minY + i * tickStep);
@@ -143,7 +145,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
           </tr>)}</tbody></table></div>
       </div>}
       {oecdMissing && <p role="status" className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs">「{householdLabel}」に対応するOECDの公表値がありません。家族構成を変えるとOECD比較を表示します。</p>}
-      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与がフルタイム下限（年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）未満の参考計算です。給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円）未満の大人は厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算します。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。消費税・事業主負担を含まない。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
+      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円、フルタイムの最低賃金なら年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）に届かない帯です。ここでは厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算しますが、生活保護・無保険・被扶養者のどれになるかで実際の負担は大きく変わるため参考値として薄く描いています。これより上は被用者保険に入るので計算が確定します。縦軸の範囲を超える値は図の外に出ます。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。消費税・事業主負担を含まない。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
     </div>
   );
 }

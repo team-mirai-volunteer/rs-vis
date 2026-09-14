@@ -29,8 +29,8 @@ try {
   await expect(observation('external.exports')).toContainText('139.4兆円');
   await expect(observation('macro.potentialGdp')).toContainText('-6.76%');
   await expect(observation('fiscal.grossDebt')).toContainText('111.2%');
-  await expect(page.getByTestId('envelope-cpi')).toContainText('3.12%');
-  await expect(page.getByTestId('fx-stress-conclusion')).toContainText('4.46%');
+  await expect(page.getByTestId('envelope-cpi')).toContainText('2.40%');
+  await expect(page.getByTestId('fx-stress-conclusion')).toContainText('3.73%');
   await expect(page.getByTestId('national-burden')).toHaveText('46.7%');
   await expect(page.getByTestId('working-burden')).toHaveText('30.1%〜35.6%');
   await page.getByLabel('法人税の賃金帰着割合').selectOption('0');
@@ -43,7 +43,7 @@ try {
   await expect(observation('fiscal.interestPayments')).toContainText('利払いGDP比');
   await expect(page.getByTestId('fiscal-external')).toHaveCount(2);
   await expect(page.getByText('国民負担率と同じ範囲での「生産年齢人口の負担率」は未推計です。', { exact: false })).toBeVisible();
-  await expect(page.getByRole('region', { name: '留保後の枠の物価・為替リスク' })).toContainText('許容上限は 3.50%');
+  await expect(page.getByRole('region', { name: '留保後の枠の物価・為替リスク' })).toContainText('許容上限は 2.50%');
   const defaultEnvelopeCpi = await page.getByTestId('envelope-cpi').innerText();
   const annualTotal = page.getByTestId('annual-total');
   await expect(annualTotal).toHaveText('15.0兆円');
@@ -130,6 +130,13 @@ try {
   await expect(page.getByRole('meter')).toHaveCount(10);
   const comparison = page.getByRole('region', { name: '次の1兆円の政策比較表' });
   await expect(comparison.locator('tbody tr')).toHaveCount(13);
+  for (const metric of ['realGdpEffect', 'inflationPressure', 'exports', 'imports', 'domesticSubstitution', 'tradeBalanceEffect', 'potentialGdpEffect']) {
+    const values = comparison.locator(`[data-metric="${metric}"]`);
+    await expect(values).toHaveCount(13);
+    for (const year of [1, 3, 10]) await expect(values.locator(`[data-year="${year}"]`)).toHaveCount(13);
+  }
+  const semiPotential = comparison.locator('[data-policy="semiconductors"] [data-metric="potentialGdpEffect"]');
+  await expect(semiPotential.locator('[data-year="10"]')).toContainText('0.000兆円');
   const before = await comparison.innerText();
   await page.getByLabel('社会保険料減税・数値で入力').fill('10');
   await expect(annualTotal).toHaveText('20.0兆円');
@@ -161,7 +168,12 @@ try {
   await page.getByText('政策別の事業条件から試算する', { exact: true }).click();
   await expect(page.getByRole('region', { name: '政策固有の輸出入試算' })).toContainText('未推計');
   await page.getByLabel('投資1円あたり稼働後の年間売上（円/年）', { exact: true }).fill('1');
+  await expect(semiPotential.locator('[data-year="10"]')).toContainText('+0.500兆円');
+  await expect(semiPotential.locator('[data-year="1"]')).toContainText('0.000兆円');
+  const semiImports = comparison.locator('[data-policy="semiconductors"] [data-metric="imports"] [data-year="1"]');
+  const beforeProcurement = await semiImports.innerText();
   await page.getByLabel('建設・導入費の輸入割合（%）', { exact: true }).fill('30');
+  await expect.poll(() => semiImports.innerText()).not.toEqual(beforeProcurement);
   const industryRows = page.getByRole('region', { name: '政策固有の輸出入試算' }).locator('tbody tr');
   await expect(industryRows.first()).toContainText('-0.300兆円');
   await expect(industryRows.nth(1)).toContainText('0.500兆円');
@@ -172,10 +184,13 @@ try {
   await expect(powerRows.nth(1)).toContainText('5.68');
   await expect(powerRows.nth(1)).toContainText('9.11');
   await page.getByLabel('発電方式', { exact: true }).selectOption('nuclear');
+  const powerPotential = comparison.locator('[data-policy="generation"] [data-metric="potentialGdpEffect"] [data-year="10"]');
+  await expect(powerPotential).toContainText('0.000兆円');
   await expect(page.getByLabel('建設費（万円/kW）', { exact: true })).toHaveValue('60.025');
   await expect(powerRows.nth(2).locator('td').first()).toHaveText('0.00');
   await expect(powerRows.nth(3).locator('td').first()).toHaveText('1.67');
   await page.getByLabel('発電方式', { exact: true }).selectOption('hydro');
+  await expect(powerPotential).not.toContainText('0.000兆円');
   await expect(powerRows.nth(2).locator('td').first()).toHaveText('1.50');
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
   await expect(page.getByLabel('発電方式', { exact: true })).toHaveValue('hydro');

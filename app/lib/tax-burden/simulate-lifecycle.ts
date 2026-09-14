@@ -40,8 +40,8 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
   if (!Number.isInteger(state.workUntil) || state.workUntil < p.lifecycle.pensionStartAge || state.workUntil > 75) throw new Error('就労終了年齢が有効な範囲にありません');
   const careerSalaries = splitSalaries(state.income, household.earners, state.share);
   const pensions = Array.from({ length: household.adults }, (_, i) => annualPension(careerSalaries[i] ?? 0, state.bonus, p));
-  const scopeReasons = careerSalaries.flatMap((salary, i) => salary < p.minimumAnnualWage
-    ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与がフルタイム下限未満`] : []);
+  const scopeReasons = careerSalaries.flatMap((salary, i) => salary < p.employeeInsuranceThreshold
+    ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与が被用者保険の賃金要件未満`] : []);
   const years: LifecycleYear[] = [];
   // Resident tax is assessed on the previous year (前年所得課税): what a household pays at age N was computed from the
   // income and premiums of age N-1. That is why it stays at the working level the year after retiring, and why the first

@@ -20,10 +20,102 @@ import { industryTrade, powerTrade, powerCase, INDUSTRY_CASE, POLICY_TRADE_CHANN
 import { calibratedResponse } from '../app/lib/fiscal-space/calibration';
 import { fiscalExternal } from '../app/lib/fiscal-space/fiscal-external';
 import { BURDEN_INCIDENCE } from '../app/lib/fiscal-space/burden-data';
+import { projectResponse, projectResponses } from '../app/lib/fiscal-space/project-response';
 
 const preset = (id: string, overrides: Partial<Policy> = {}): Policy => ({ ...POLICIES.find(p => p.id === id)!, ...overrides });
 const near = (a: number, b: number, tolerance = 1e-10) => assert(Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(a), Math.abs(b)), `${a} ≈ ${b}`);
 const last = (policies: Policy[]) => simulate(initialEconomy(), policies).steps[9];
+
+test('comparison reports actual marginal outcomes at 1, 3 and 10 years, including delayed potential output', () => {
+  const initial = initialEconomy();
+  const current = [preset('cash', { annualCost: 4 * T })];
+  const candidate = preset('rd', { potentialGdpEffect: .5, implementationLag: 3 });
+  for (const referenceModel of ['ef2026', 'esri2022'] as const) {
+    const p = { ...P, referenceModel };
+    const row = compareNextTrillion(initial, current, p, NO_SHOCK, THRESHOLDS, [candidate])[0];
+    const base = simulate(initial, current, 10, p);
+    const extra = simulate(initial, [...current, { ...candidate, annualCost: T, duration: 1 }], 10, p);
+    assert.deepEqual(row.periods.map(period => period.year), [1, 3, 10]);
+    for (const period of row.periods) {
+      const step = extra.steps[period.year - 1], before = base.steps[period.year - 1];
+      near(period.realGdpEffect, step.state.macro.realGdp - before.state.macro.realGdp);
+      near(period.inflationPressure, step.state.macro.inflation - before.state.macro.inflation);
+      near(period.exports, step.state.external.exports - before.state.external.exports);
+      near(period.imports, step.state.external.imports - before.state.external.imports);
+      near(period.tradeBalanceEffect, period.exports - period.imports);
+      near(period.debtGdpChange, step.metrics.grossDebtGdp - before.metrics.grossDebtGdp);
+      near(period.potentialGdpEffect, step.state.macro.potentialGdp - before.state.macro.potentialGdp);
+    }
+    assert.equal(row.periods[0].potentialGdpEffect, 0);
+    assert.equal(row.periods[1].potentialGdpEffect, 0);
+    assert(row.periods[2].potentialGdpEffect > 0);
+    assert(row.supplyEffectConfigured);
+    assert(!compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [preset('rd')])[0].supplyEffectConfigured);
+  }
+});
+
+test('project imports replace the construction anchor, and operation affects GDP, potential and debt once', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const c = { ...INDUSTRY_CASE, annualSalesPerInvestment: 1, capexImportShare: .3, lag: 2 };
+  const policy = preset('semiconductors', { duration: 1, trade: { kind: 'industry', assumptions: c } });
+  const noSales = { ...policy, trade: { kind: 'industry' as const, assumptions: { ...c, annualSalesPerInvestment: 0 } } };
+  const actual = simulate(initial, [policy], 10, p);
+  const base = simulate(initial, [noSales], 10, p);
+  near(actual.steps[0].demand.imports, .3 * T);
+  near(actual.steps[0].state.macro.realGdp, base.steps[0].state.macro.realGdp);
+  near(actual.steps[2].demand.exports - base.steps[2].demand.exports, .5 * T);
+  near(actual.steps[2].demand.domesticSubstitution, .25 * T);
+  near(actual.steps[2].state.macro.realGdp - base.steps[2].state.macro.realGdp, .5 * T);
+  near(actual.steps[2].state.macro.potentialGdp - base.steps[2].state.macro.potentialGdp, .5 * T);
+  assert(actual.steps[9].state.fiscal.grossDebt < base.steps[9].state.fiscal.grossDebt);
+  for (const step of actual.steps) {
+    const d = step.demand;
+    near(d.additionalDemand, d.realOutput + d.imports - d.exports + d.prices);
+    near(step.state.external.tradeBalance, step.state.external.exports - step.state.external.imports);
+    near(step.state.external.tradeBalance, step.state.external.goodsBalance + step.state.external.servicesBalance);
+  }
+  const row = compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [policy])[0];
+  assert(row.periods[1].potentialGdpEffect > 0 && row.periods[2].potentialGdpEffect > 0);
+  assert.throws(() => simulate(initial, [{ ...policy, potentialGdpEffect: 1 }], 10, p));
+});
+
+test('project vintages deflate payments, expire, and cap overlapping substitution jointly', () => {
+  const initial = initialEconomy(); initial.macro.inflation = .1;
+  const p = { ...P, baselineInflation: .1, inflationPersistence: 0 };
+  const c = { ...INDUSTRY_CASE, annualSalesPerInvestment: 1, lag: 1, lifetime: 2 };
+  const policy = preset('semiconductors', { duration: 2, trade: { kind: 'industry', assumptions: c } });
+  near(projectResponse(initial, policy, 1, p).exports, 0);
+  near(projectResponse(initial, policy, 3, p).exports, .5 * T * (1 + 1 / 1.1));
+  near(projectResponse(initial, policy, 4, p).exports, .5 * T / 1.1);
+  near(projectResponse(initial, policy, 5, p).exports, 0);
+  const huge = { ...policy, annualCost: 10000 * T };
+  const combined = projectResponses(initial, [huge, huge], 3, p);
+  near(combined.reduce((sum, flow) => sum + flow.substitution, 0), initial.external.imports - initial.energy.importBill);
+  const doubled = projectResponses(initial, [{ ...huge, annualCost: huge.annualCost * 2 }], 3, p);
+  near(doubled[0].substitution, combined[0].substitution + combined[1].substitution);
+  assert.throws(() => simulate(initial, [preset('cash', { trade: policy.trade })]));
+  assert.throws(() => simulate(initial, [{ ...policy, trade: { kind: 'industry', assumptions: { ...c, capexImportShare: 2 } } }]));
+});
+
+test('power savings reach trade and energy bills once, while unknown nuclear imports suppress incomplete benefits', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const c = powerCase('solar');
+  const policy = preset('generation', { duration: 1, trade: { kind: 'power', assumptions: c } });
+  const without = { ...policy, trade: { kind: 'power' as const, assumptions: { ...c, thermalReplacement: 0 } } };
+  const actual = simulate(initial, [policy], 10, p), base = simulate(initial, [without], 10, p);
+  const saving = powerTrade(policy, 3, c).substitution;
+  near(actual.steps[2].demand.imports - base.steps[2].demand.imports, -saving);
+  near(actual.steps[2].state.external.imports - base.steps[2].state.external.imports,
+    -saving * (base.steps[1].state.macro.nominalGdp / base.steps[1].state.macro.realGdp));
+  near(actual.steps[2].state.energy.importBill - base.steps[2].state.energy.importBill,
+    actual.steps[2].state.external.imports - base.steps[2].state.external.imports);
+  const nuclear = { ...policy, trade: { kind: 'power' as const, assumptions: powerCase('nuclear') } };
+  assert.equal(projectResponse(initial, nuclear, 11, p).substitution, 0);
+  assert.equal(projectResponse(initial, nuclear, 11, p).operatingConfigured, false);
+  assert(projectResponse(initial, { ...nuclear, trade: { kind: 'power', assumptions: { ...powerCase('nuclear'), operatingImportYenPerKwh: 1 } } }, 11, p).substitution > 0);
+});
 
 test('corporate wage incidence adds allocated foregone wages to burden and income consistently', () => {
   const row = AGE_BURDEN[0].classes[3];
@@ -137,14 +229,14 @@ test('external stress compounds FX and world prices and raises inflation only on
   assert.throws(() => externalStress(path, NaN, 0, .04));
 });
 
-test('recommended envelope can breach 4% under conditional yen depreciation', () => {
+test('retained envelope can breach the configured CPI ceiling under conditional yen depreciation', () => {
   const initial = initialEconomy('latest');
   const weights: Record<string, number> = { 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 };
   const mix = POLICIES.map(policy => ({ policy, weight: weights[policy.id] ?? 0 }));
   const estimate = estimateFiscalSpace(initial, mix, THRESHOLDS, 10, P, NO_SHOCK);
   const audit = auditFiscalSpace(initial, mix, estimate, THRESHOLDS, 10, P, NO_SHOCK);
-  assert(audit.cpi.peak < .04);
-  assert(audit.externalStress[2].cpiPeak > .04);
+  assert(audit.cpi.peak < THRESHOLDS.inflation);
+  assert(audit.externalStress[2].cpiPeak > THRESHOLDS.inflation);
   assert(audit.externalStress[2].exceeds);
 });
 
@@ -225,7 +317,9 @@ test('envelope audit evaluates retained amount, estimates reference FX, and comp
   assert.equal(audit.extrapolatedYears, 5);
   for (let i = 1; i < audit.sensitivity.length; i++) assert(audit.sensitivity[i - 1].amount >= audit.sensitivity[i].amount);
   near(audit.sensitivity.find(r => r.limit === .03)!.amount, estimateFiscalSpace(initial, mix, { ...THRESHOLDS, inflation: .03 }, 10, P, NO_SHOCK).recommendedEnvelope);
-  assert.equal(THRESHOLDS.inflation, .035);
+  assert.equal(THRESHOLDS.inflation, .025);
+  assert.deepEqual(audit.sensitivity.map(r => r.limit), [.035, .03, .025]);
+  assert.deepEqual(audit.sensitivity.filter(r => r.current).map(r => r.limit), [.025]);
 });
 
 test('r > g raises debt/GDP at the same PB', () => {
@@ -288,13 +382,13 @@ test('sufficient lagged growth can offset short-run investment debt', () => {
 });
 test('stricter thresholds reduce the fiscal envelope', () => {
   const mix = [{ policy: preset('cash'), weight: 1 }];
-  const broad = estimateFiscalSpace(initialEconomy(), mix, THRESHOLDS, 10);
-  const strict = estimateFiscalSpace(initialEconomy(), mix, { ...THRESHOLDS, inflation: .021 }, 10);
+  const broad = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10);
+  const strict = estimateFiscalSpace(initialEconomy('latest'), mix, { ...THRESHOLDS, inflation: .021 }, 10);
   assert(strict.theoreticalMaximum < broad.theoreticalMaximum);
 });
 test('public investment and tax cuts have distinct policy-specific limits', () => {
-  const a = estimateFiscalSpace(initialEconomy(), [{ policy: preset('public-investment'), weight: 1 }], THRESHOLDS, 10);
-  const b = estimateFiscalSpace(initialEconomy(), [{ policy: preset('income-tax'), weight: 1 }], THRESHOLDS, 10);
+  const a = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('public-investment'), weight: 1 }], THRESHOLDS, 10);
+  const b = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('income-tax'), weight: 1 }], THRESHOLDS, 10);
   assert(a.theoreticalMaximum > 0); assert(b.theoreticalMaximum > 0);
   assert.notEqual(a.theoreticalMaximum, b.theoreticalMaximum);
 });
@@ -330,17 +424,21 @@ test('simulation is pure and mix order does not change results', () => {
 });
 test('search distinguishes initial violations, empty mixes and search cap', () => {
   const mix = [{ policy: preset('cash'), weight: 1 }];
-  assert.equal(estimateFiscalSpace(initialEconomy(), mix, { ...THRESHOLDS, debt: 1 }, 10).status, 'baseline-violated');
-  assert.equal(estimateFiscalSpace(initialEconomy(), [], THRESHOLDS, 10).status, 'empty-mix');
-  const cap = estimateFiscalSpace(initialEconomy(), mix, THRESHOLDS, 10, { ...P, searchCap: T / 100 });
+  // The 2024 observed CPI of 2.7% already exceeds the new default ceiling.
+  const historical = estimateFiscalSpace(initialEconomy('2024'), mix, THRESHOLDS, 10);
+  assert.equal(historical.status, 'baseline-violated');
+  assert.equal(historical.recommendedEnvelope, 0);
+  assert.equal(estimateFiscalSpace(initialEconomy('latest'), mix, { ...THRESHOLDS, debt: 1 }, 10).status, 'baseline-violated');
+  assert.equal(estimateFiscalSpace(initialEconomy('latest'), [], THRESHOLDS, 10).status, 'empty-mix');
+  const cap = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10, { ...P, searchCap: T / 100 });
   assert.equal(cap.status, 'search-cap'); near(cap.emergencyReserve + cap.recommendedEnvelope, cap.theoreticalMaximum);
 });
 test('safe endpoint and a nearby violation bracket the reported boundary', () => {
   const mix = [{ policy: preset('public-investment'), weight: 1 }];
-  const r = estimateFiscalSpace(initialEconomy(), mix, THRESHOLDS, 10);
+  const r = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10);
   assert.equal(r.status, 'boundary');
-  assert(peakConstraints(simulate(initialEconomy(), allocateMix(mix, r.theoreticalMaximum)), THRESHOLDS).every(c => c.status === 'safe'));
-  assert(peakConstraints(simulate(initialEconomy(), allocateMix(mix, r.theoreticalMaximum + P.searchTolerance * 2)), THRESHOLDS).some(c => c.status === 'violated'));
+  assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum)), THRESHOLDS).every(c => c.status === 'safe'));
+  assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum + P.searchTolerance * 2)), THRESHOLDS).some(c => c.status === 'violated'));
 });
 test('surpluses retire principal and accumulate assets only after full retirement', () => {
   const buckets = [{ principal: 100, coupon: .01, maturityYear: 5 }];
