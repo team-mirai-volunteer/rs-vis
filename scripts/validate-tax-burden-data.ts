@@ -4,8 +4,10 @@ import { gunzipSync } from 'node:zlib';
 import { readDataJson } from '@/app/lib/api/data-file';
 import { MODEL_VERSION, HOUSEHOLDS, initialTaxState } from '@/app/lib/tax-burden/households';
 import { simulate } from '@/app/lib/tax-burden/simulate';
+import { lifecycleSeries, annualPension } from '@/app/lib/tax-burden/simulate-lifecycle';
+import { basketForIncome, consumptionTax } from '@/app/lib/tax-burden/consumption-tax';
 import { taxRevenueFromOverview } from '@/app/lib/tax-burden/revenue';
-import type { TaxParameters, TaxRevenue } from '@/types/tax-burden';
+import type { ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
 import type { MOFBudgetOverview } from '@/types/mof-budget-overview';
 
 const p = readDataJson<TaxParameters>('tax-burden-params-2025.json', 'npm run generate-tax-burden-data');
@@ -15,6 +17,8 @@ assert.equal(p.monthlyRemuneration.length, p.monthlyBoundaries.length + 1);
 for (const values of [p.monthlyRemuneration, p.monthlyBoundaries]) {
   assert(values.every((n, i) => Number.isFinite(n) && n > 0 && (i === 0 || n > values[i - 1])));
 }
+
+// 1. Working-age grid: amounts non-negative, identities hold, scope flag follows each worker, rate undefined at zero income.
 let count = 0;
 for (const household of HOUSEHOLDS) {
   for (const age of [20, 39, 40, 64]) {
@@ -30,10 +34,72 @@ for (const household of HOUSEHOLDS) {
     }
   }
 }
+
+// 2. Hand-checked statutory cases (see docs/tasks/20260914_0725 検証結果 §2.1, §2.2).
+assert.equal(simulate({ ...initialTaxState(), household: 'single', income: 3000000 }, p).residentTax, 113000, '単身300万円の住民税（調整控除2,500円・森林環境税込み）');
+assert.equal(simulate({ ...initialTaxState(), household: 'single-children', income: 2500000 }, p).singleParentBenefit, 627600, 'ひとり親250万円は一部支給');
+
+// 3. R8: OECD Taxing Wages Japan 2025 reference values at the stylised points.
+//    OECD applies employee SSC as flat rates on gross earnings (9.15% + 5% + 0.55%, no long-term care), whereas this model
+//    uses the standard-remuneration table, 0.6% employment insurance and care insurance from age 40. The comparison below
+//    therefore runs at age 39 and accepts SSC within 3%; income-tax and local-tax gaps must be explained by the SSC gap.
+const oecd = readDataJson<OecdDataset>('tax-burden-oecd-2025.json', 'python scripts/generate-tax-burden-stats.py');
+const points = oecd.years['2025'].points;
+assert(points.length >= 8);
+let compared = 0;
+for (const pt of points) {
+  const d = pt.japanDetail;
+  if (d.GEBT === undefined || d.CGITFP === undefined || d.SLT === undefined || d.EECSSC === undefined || d.CTGG === undefined) continue;
+  const r = simulate({ ...initialTaxState(), household: pt.household, income: d.GEBT, share: pt.suggestedShare ?? 67, age: 39 }, p);
+  const ssc = r.pension + r.health + r.care + r.employment;
+  const sscGap = ssc - d.EECSSC;
+  assert(Math.abs(sscGap) <= d.EECSSC * 0.03, `${pt.household} AW${pt.awRatioTotal}: SSC ${ssc} vs OECD ${d.EECSSC}`);
+  // A larger SSC deduction lowers taxable income; allow the induced tax difference plus rounding.
+  // Rounding plus the 1,000-yen forest environment tax per adult, which the OECD table does not carry.
+  const adults = HOUSEHOLDS.find(h => h.id === pt.household)!.adults;
+  const inducedTax = Math.abs(sscGap) * 0.23 * p.reconstructionMultiplier + 1500 * adults;
+  const inducedLocal = Math.abs(sscGap) * 0.10 + (p.localForestTax + 1500) * adults;
+  if (pt.household !== 'single-children') {
+    assert(Math.abs(r.incomeTax - d.CGITFP) <= inducedTax, `${pt.household} AW${pt.awRatioTotal}: income tax ${r.incomeTax} vs ${d.CGITFP}`);
+    assert(Math.abs(r.residentTax - d.SLT) <= inducedLocal, `${pt.household} AW${pt.awRatioTotal}: local tax ${r.residentTax} vs ${d.SLT}`);
+    assert.equal(r.childBenefit, d.CTGG, `${pt.household}: child benefit`);
+  } else {
+    // OECD's 2025 single-parent row omits the single-parent deduction (identical tax to the childless single); only benefits are compared.
+    assert(Math.abs(r.benefits - d.CTGG) <= 15000, `single-children: transfers ${r.benefits} vs ${d.CTGG}`);
+  }
+  compared++;
+}
+assert(compared >= 8, 'R8 points compared');
+
+// 4. Lifecycle: earnings-related pension = 平均標準報酬額 × 5.481/1000 × 480か月 on a salary that maps exactly to a grade (47万円).
+//    厚労省モデル年金（平均標準報酬45.5万円・40年で報酬比例 約9.6万円/月）は再評価率を含むため、ここでは算式の一致のみ確認する。
+const model = annualPension(470000 * 12, false, p);
+assert.equal(model.earningsRelated, Math.round(470000 * 0.005481 * 480));
+assert.equal(model.basic, p.lifecycle.basicPensionFull);
+for (const household of HOUSEHOLDS) {
+  const years = lifecycleSeries({ ...initialTaxState(), household: household.id, income: 5000000 }, p);
+  assert.equal(years.length, 66);
+  assert(years.every(y => y.grossBurden >= 0 && y.benefits >= 0 && (y.income === 0 ? y.netRate === null : Number.isFinite(y.netRate))));
+  assert(years.find(y => y.ageAt === 70)!.pensionIncome > 0 && years.find(y => y.ageAt === 64)!.pensionIncome === 0);
+  assert(years.find(y => y.ageAt === 75)!.employment === 0 && years.find(y => y.ageAt === 75)!.health > 0);
+}
+
+// 5. Consumption data: leaves cover spending, ratios sane, estimated tax within spending-share bound.
+const consumption = readDataJson<ConsumptionDataset>('tax-burden-consumption-2024.json', 'python scripts/generate-tax-burden-stats.py');
+assert.equal(consumption.deciles.length, 10);
+for (const d of consumption.deciles) {
+  assert(Math.abs(d.standardGross + d.reducedGross + d.exemptGross - d.consumptionAnnual) <= 1200, `decile ${d.decile} leaves`);
+  assert(d.annualIncome > 0 && d.propensity > 0.3 && d.propensity < 1);
+  const t = consumptionTax({ standardGross: d.standardGross, reducedGross: d.reducedGross, exemptGross: d.exemptGross }, 0.1, 0.08, 'net-fixed');
+  assert(t.spendingRate! <= 0.1 / 1.1 + 1e-9);
+}
+assert(basketForIncome(consumption, 5000000).standardGross > 0);
+
+// 6. Revenue files unchanged.
 for (let year = 2017; year <= 2026; year++) {
   const overview = JSON.parse(gunzipSync(readFileSync(`public/data/mof-budget-overview-${year}.json.gz`)).toString('utf8')) as MOFBudgetOverview;
   const data = taxRevenueFromOverview(overview);
   assert.deepEqual(readDataJson<TaxRevenue>(`tax-revenue-${year}.json`, 'npm run generate-tax-burden-data'), data);
   assert(data.total > 0);
 }
-console.log(`PASS: ${count} household points; revenue totals for 2017–2026. OECD acceptance comparison NOT performed (reference data unavailable).`);
+console.log(`PASS: ${count} household points; R8 compared at ${compared} OECD points (differences explained by OECD's flat-rate SSC convention); lifecycle 6 households; consumption 10 deciles; revenue 2017–2026.`);
