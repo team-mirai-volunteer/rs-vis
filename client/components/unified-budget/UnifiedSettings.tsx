@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 表示設定（歯車）。`/sankey-svg` と同じく左下（ミニマップの右隣）に置き、上へ開く。
+ * 表示設定（歯車）。ハンバーガーがヘッダーへ移ったので、コントロールパネル（右上）の右隣に置き、下へ開く。
  * 文字サイズ・ラベル表示・関連フォーカス・表示する列。
  */
 
@@ -28,6 +28,7 @@ export function UnifiedSettings({
   availableColumns,
   onVisibleColumnsChange,
   summary,
+  placement = 'top-right',
 }: {
   fontPx: number;
   onFontPxChange: (value: number) => void;
@@ -41,14 +42,17 @@ export function UnifiedSettings({
   onVisibleColumnsChange: (columns: UnifiedColumn[]) => void;
   /** 年度・純計などの要約。パネル末尾に小さく出す */
   summary?: string;
+  /** 歯車の置き場所。パネルはボタンから離れる側（右上なら下、左下なら上）へ開く */
+  placement?: 'top-right' | 'bottom-left';
 }) {
+  const popoverPos = placement === 'top-right' ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1';
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (open) panelRef.current?.focus();
   }, [open]);
-  // 外（図のノードや他のコントロール）を押したら閉じる。開いたまま残ると左下を塞ぎ続けるため
+  // 外（図のノードや他のコントロール）を押したら閉じる。開いたまま残ると図を塞ぎ続けるため
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
@@ -61,7 +65,7 @@ export function UnifiedSettings({
   }, [open]);
 
   return (
-    <div ref={rootRef} data-pan-disabled="true" className="relative flex items-end">
+    <div ref={rootRef} data-pan-disabled="true" className={`relative flex ${placement === 'top-right' ? 'items-start' : 'items-end'}`}>
       <Button
         variant="outline"
         size="icon"
@@ -88,7 +92,7 @@ export function UnifiedSettings({
               setOpen(false);
             }
           }}
-          className="absolute bottom-full left-0 z-20 mb-1 flex w-80 flex-col gap-2.5 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs text-mirai-text shadow-soft outline-none"
+          className={`absolute ${popoverPos} z-20 flex w-80 flex-col gap-2.5 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs text-mirai-text shadow-soft outline-none`}
           style={{ colorScheme: 'light', maxWidth: 'calc(100vw - 24px)' }}
         >
           <div>
