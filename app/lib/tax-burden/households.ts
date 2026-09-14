@@ -53,5 +53,8 @@ export function initialTaxState(): TaxState {
   return { view: 'curve', fy: 2025, household: 'one-earner-children', age: 40,
     income: 5000000, share: 67, bonus: false, showAll: true,
     consumptionAssumption: 'net-fixed', reform: { ...BASE_REFORM },
-    continuation: 0.7, workUntil: 65, includeConsumption: false, showOecd: false, corporateShare: 0 };
+    // Half of the corporate income tax is assumed to reach wages. Japanese dynamic analyses (土居 2016, 2017) put the
+    // long-run share at 78-90% and the one-year share at 27-60%; the distributional conventions of public bodies put it
+    // at 18-25%. 50% sits between them and is the user's to change.
+    continuation: 0.7, workUntil: 65, includeConsumption: false, showOecd: false, corporateShare: 0.5 };
 }

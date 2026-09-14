@@ -38,27 +38,33 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   // corporate-tax incidence is switched on, the same two items are added to the OECD lines as well, so that the
   // comparison keeps comparing like with like. Japan's lines move on Japanese rates, the OECD lines on OECD ones.
   const overlay = useMemo(() => {
-    const options = { consumption, includeConsumption: state.includeConsumption,
-      assumption: state.consumptionAssumption, corporateShare: state.corporateShare };
+    const base = { consumption, assumption: state.consumptionAssumption, corporateShare: state.corporateShare };
     const japan = japanOverlayRates(oecd?.vat, incidence);
     const average = oecdOverlayRates(oecd?.vat, incidence);
-    const active = (state.includeConsumption && !!consumption) || state.corporateShare > 0;
+    const at = (rates: ReturnType<typeof japanOverlayRates>, includeConsumption: boolean) =>
+      (income: number) => overlayAddOn(income, rates, { ...base, includeConsumption });
     return {
-      active,
-      japanAt: (income: number) => overlayAddOn(income, japan, options),
-      oecdAt: (income: number) => overlayAddOn(income, average, options),
+      active: (state.includeConsumption && !!consumption) || state.corporateShare > 0,
+      japanAt: at(japan, state.includeConsumption), oecdAt: at(average, state.includeConsumption),
+      // The axis is sized for both toggle positions, so switching the consumption tax on does not rescale the chart.
+      japanWith: at(japan, true), oecdWith: at(average, true),
+      japanWithout: at(japan, false), oecdWithout: at(average, false),
     };
   }, [consumption, incidence, oecd, state.includeConsumption, state.consumptionAssumption, state.corporateShare]);
-  const shownCurve = useMemo(() => {
+  const adjustCurve = (japanAt: (income: number) => number, oecdAt: (income: number) => number) => {
     if (!curve) return null;
     const income = (i: number) => curve.averageWageJpy * curve.awRatio[i];
     return {
-      japan: curve.japan.map((v, i) => v === null ? null : v + overlay.japanAt(income(i))),
-      oecdAverage: curve.oecdAverage.map((v, i) => v + overlay.oecdAt(income(i))),
-      min: curve.min.map((v, i) => v + overlay.oecdAt(income(i))),
-      max: curve.max.map((v, i) => v + overlay.oecdAt(income(i))),
+      japan: curve.japan.map((v, i) => v === null ? null : v + japanAt(income(i))),
+      oecdAverage: curve.oecdAverage.map((v, i) => v + oecdAt(income(i))),
+      min: curve.min.map((v, i) => v + oecdAt(income(i))),
+      max: curve.max.map((v, i) => v + oecdAt(income(i))),
     };
-  }, [curve, overlay]);
+  };
+  const shownCurve = useMemo(() => adjustCurve(overlay.japanAt, overlay.oecdAt), [curve, overlay]);
+  const axisCurve = useMemo(() => ({
+    ceiling: adjustCurve(overlay.japanWith, overlay.oecdWith), floor: adjustCurve(overlay.japanWithout, overlay.oecdWithout),
+  }), [curve, overlay]);
   const shownPoints = useMemo(() => points.map(pt => ({
     ...pt,
     japan: pt.japan === null ? null : pt.japan + overlay.japanAt(pt.income),
@@ -66,14 +72,23 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
     min: pt.min + overlay.oecdAt(pt.income),
     max: pt.max + overlay.oecdAt(pt.income),
   })), [points, overlay]);
-  const valid = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope && rateOf(p) !== null).map(p => rateOf(p)!);
-  const oecdValues = (shownCurve ? [...shownCurve.min, ...shownCurve.max, ...shownCurve.oecdAverage]
-    : shownPoints.flatMap(pt => [pt.min, pt.max, pt.oecdAverage])).map(v => v / 100);
+  // Axis bounds are taken from both toggle positions at once: the consumption tax only adds, so the top comes from
+  // the with-consumption rate and the bottom from the rate without it. Switching the toggle then moves the lines,
+  // never the grid.
+  const inScope = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope);
+  const ceilingValues = inScope.map(p => p.netRateWithConsumption ?? p.netRate).filter((v): v is number => v !== null);
+  const floorValues = inScope.map(p => p.netRate).filter((v): v is number => v !== null);
+  const oecdSpan = (c: typeof shownCurve) => (c ? [...c.min, ...c.max, ...c.oecdAverage, ...c.japan.filter((v): v is number => v !== null)] : []).map(v => v / 100);
+  const pointSpan = (oecdAt: (income: number) => number) =>
+    points.flatMap(pt => [pt.min + oecdAt(pt.income), pt.max + oecdAt(pt.income), pt.oecdAverage + oecdAt(pt.income)]).map(v => v / 100);
+  const oecdCeiling = axisCurve.ceiling ? oecdSpan(axisCurve.ceiling) : pointSpan(overlay.oecdWith);
+  const oecdFloor = axisCurve.floor ? oecdSpan(axisCurve.floor) : pointSpan(overlay.oecdWithout);
   // One deeply negative household (ひとり親 just above the wage requirement) would otherwise squash the whole chart,
   // so the axis stops at -50% and anything beyond is clipped, as the note says.
-  const minY = Math.max(-0.5, Math.min(-0.1, Math.floor(Math.min(...valid, ...oecdValues) * 10) / 10));
-  const maxY = Math.max(0.4, Math.ceil(Math.max(...valid, ...oecdValues) * 10) / 10);
-  const tickStep = Math.max(0.1, Math.ceil((maxY - minY) / 8 * 10) / 10);
+  const minY = Math.max(-0.5, Math.min(-0.1, Math.floor(Math.min(...floorValues, ...oecdFloor) * 10) / 10));
+  const maxY = Math.max(0.4, Math.ceil(Math.max(...ceilingValues, ...oecdCeiling) * 10) / 10);
+  // A grid line every 10 points, so the same rate sits at the same height whatever is switched on.
+  const tickStep = 0.1;
   const ticks = Array.from({ length: Math.floor((maxY - minY) / tickStep + 0.001) + 1 }, (_, i) => minY + i * tickStep);
   const left = 65, top = 30, width = 735, height = 270;
   const x = (income: number) => left + income / 20000000 * width;
