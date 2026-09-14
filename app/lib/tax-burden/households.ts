@@ -27,7 +27,7 @@ export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
   { id: 'pensionReceipt', label: '公的年金の受給（差し引き）' },
 ];
 export const BASE_REFORM: Reform = {
-  basicAllowanceExtra: 0, insuranceMultiplier: 1, childMonthly: 10000,
+  basicAllowanceExtra: 0, incomeTaxMultiplier: 1, residentTaxMultiplier: 1, insuranceMultiplier: 1, childMonthly: 10000,
   creditAnnual: 0, creditPhaseoutStart: 3000000, creditPhaseoutRate: 0.1,
   standardVat: 0.1, reducedVat: 0.08,
 };
@@ -38,5 +38,5 @@ export function initialTaxState(): TaxState {
   return { view: 'curve', fy: 2025, household: 'one-earner-children', age: 40,
     income: 5000000, share: 67, bonus: false, showAll: true,
     consumptionAssumption: 'net-fixed', reform: { ...BASE_REFORM },
-    continuation: 0.7, workUntil: 65, taxItem: 'net', includeConsumption: false, showOecd: false, corporateShare: 0 };
+    continuation: 0.7, workUntil: 65, includeConsumption: false, showOecd: false, corporateShare: 0 };
 }

@@ -6,13 +6,13 @@ import { LIFECYCLE_END, LIFECYCLE_START } from '@/app/lib/tax-burden/simulate-li
 
 const PHASE_LABEL: Record<LifecycleYear['phase'], string> = { work: '現役', reemployed: '継続雇用', 'work-pension': '就労＋年金', pension: '年金' };
 
-export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
-  years: LifecycleYear[]; state: TaxState; selectedAge: number; onSelectAge: (age: number) => void;
+export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }: {
+  years: LifecycleYear[]; base?: LifecycleYear[] | null; state: TaxState; selectedAge: number; onSelectAge: (age: number) => void;
 }) {
   const id = useId().replace(/:/g, '');
   // Denominator is the fixed working-age income class; pensions received enter with a negative sign.
   const rateOf = (y: LifecycleYear) => y.careerRate === null ? null : (state.includeConsumption ? y.careerRate : (y.pensionAdjustedBurden - y.consumptionTax) / y.careerIncome);
-  const rates = years.map(rateOf).filter((v): v is number => v !== null && Number.isFinite(v));
+  const rates = [...years, ...(base ?? [])].map(rateOf).filter((v): v is number => v !== null && Number.isFinite(v));
   const minY = Math.min(-0.1, Math.floor(Math.min(...rates) * 10) / 10);
   const maxY = Math.max(0.4, Math.ceil(Math.max(...rates) * 10) / 10);
   const left = 65, top = 24, width = 735, height = 220;
@@ -21,9 +21,9 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
   const maxMoney = Math.max(...years.map(y => Math.max(y.income, y.disposable)), 1);
   const top2 = top + height + 60, height2 = 150;
   const y2 = (v: number) => top2 + (1 - v / maxMoney) * height2;
-  const line = (pick: (y: LifecycleYear) => number | null, outOfScope: boolean, scale: (v: number) => number) => {
+  const line = (pick: (y: LifecycleYear) => number | null, outOfScope: boolean, scale: (v: number) => number, series: LifecycleYear[] = years) => {
     let pen = false;
-    return years.map(yr => {
+    return series.map(yr => {
       const v = pick(yr);
       if (yr.outOfScope !== outOfScope || v === null || !Number.isFinite(v)) { pen = false; return ''; }
       const c = pen ? 'L' : 'M'; pen = true;
@@ -52,8 +52,9 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
           <line x1={x(b.age)} x2={x(b.age)} y1={top} y2={top2 + height2} stroke="var(--mirai-text-subtle)" strokeDasharray="2 4" />
           <text x={x(b.age) + 4} y={top + 12} fontSize="11" fill="var(--mirai-text-subtle)">{b.age}歳 {b.label}</text>
         </g>)}
+        {base && <path d={line(rateOf, false, y, base) + ' ' + line(rateOf, true, y, base)} fill="none" stroke="var(--mirai-text-subtle)" strokeWidth="2" />}
         <path d={line(rateOf, true, y)} fill="none" stroke="var(--primary-accent)" strokeWidth="2" opacity="0.2" />
-        <path d={line(rateOf, false, y)} fill="none" stroke="var(--primary-accent)" strokeWidth="3.5" />
+        <path d={line(rateOf, false, y)} fill="none" stroke="var(--primary-accent)" strokeWidth="3.5" strokeDasharray={base ? '9 5' : undefined} />
         {[0, 0.5, 1].map(f => <g key={f}>
           <line x1={left} x2={left + width} y1={y2(maxMoney * f)} y2={y2(maxMoney * f)} stroke="var(--mirai-border)" strokeDasharray="3 5" />
           <text x={left - 12} y={y2(maxMoney * f) + 4} textAnchor="end" fontSize="12" fill="var(--mirai-text-secondary)">{Math.round(maxMoney * f / 10000).toLocaleString('ja-JP')}万</text>
@@ -66,7 +67,8 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
       </svg>
     </div>
     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-mirai-text-secondary">
-      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" /></svg>純負担率（年金差し引き・現役期年収比）</span>
+      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" strokeDasharray={base ? '9 5' : undefined} /></svg>{base ? '改革案の' : ''}純負担率（年金差し引き・現役期年収比）</span>
+      {base && <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--mirai-text-subtle)" strokeWidth="2" /></svg>基準制度</span>}
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="6 3" /></svg>総収入（給与＋年金）</span>
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary)" strokeWidth="3" /></svg>可処分所得</span>
       <span>選択中：{selectedAge}歳（{PHASE_LABEL[years.find(y => y.ageAt === selectedAge)?.phase ?? 'work']}）。図をクリックで年齢を選べます。</span>

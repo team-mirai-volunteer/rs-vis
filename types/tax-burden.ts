@@ -16,6 +16,9 @@ export interface HouseholdDefinition {
 /** All monetary fields are annual yen unless their name explicitly says monthly. */
 export interface Reform {
   basicAllowanceExtra: number;
+  /** Multipliers applied to the computed tax, so each item in the decomposition has its own lever (1 = current law). */
+  incomeTaxMultiplier: number;
+  residentTaxMultiplier: number;
   insuranceMultiplier: number;
   childMonthly: number;
   creditAnnual: number;
@@ -40,8 +43,6 @@ export interface TaxState {
   continuation: number;
   /** Life-cycle view: age at which paid work stops (65 = retire when the pension starts; up to 75). Work after 65 applies the in-work pension reduction. */
   workUntil: number;
-  /** Heat-map view: tax item to colour by. */
-  taxItem: TaxItem;
   /** Add the estimated consumption tax (家計調査の十分位別支出構成から推計) to the burden. */
   includeConsumption: boolean;
   /** Overlay OECD average / min / max at the stylised earnings points. */

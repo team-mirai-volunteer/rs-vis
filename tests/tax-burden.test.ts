@@ -214,10 +214,30 @@ test('corporate tax incidence is an explicit assumption: off by default, flat on
   assert.equal(corporateTaxOnWages(null, 5000000, 0.25), 0, 'データが無ければ計算しない');
   assert.throws(() => wageIncidenceRate(incidence, 1.5));
 });
-test('heat-map grid covers all incomes and ages with consistent totals', () => {
-  const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);
+test('heat-map grid covers all incomes and ages with consistent totals and answers to the policy sliders', () => {
+  const base = initialTaxState();
+  const grid = heatmapGrid({ ...base, household: 'single' }, p, consumption);
   assert.equal(grid.length, 10);
   assert(grid.every(r => r.cells.length === 12 && r.cells.every(c => c.consumptionTax >= 0 && c.netRateWithConsumption !== null)));
+  // Each decomposition panel has its own lever: halving the income-tax multiplier halves that panel and nothing else.
+  const reform = { ...base.reform, incomeTaxMultiplier: 0.5 };
+  const halved = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, reform);
+  const cell = (g: typeof grid, income: number, age: number) => g.find(r => r.income === income)!.cells.find(c => c.ageAt === age)!;
+  assert.equal(cell(halved, 8000000, 40).incomeTax, Math.round(cell(grid, 8000000, 40).incomeTax * 0.5));
+  assert.equal(cell(halved, 8000000, 40).residentTax, cell(grid, 8000000, 40).residentTax);
+  const local = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, { ...base.reform, residentTaxMultiplier: 0 });
+  assert.equal(cell(local, 8000000, 40).residentTax, 0);
+  assert.equal(cell(local, 8000000, 40).incomeTax, cell(grid, 8000000, 40).incomeTax);
+});
+test('per-item multipliers scale the finished tax, leaving the rest of the household calculation alone', () => {
+  const base = initialTaxState();
+  const plain = simulate(base, p);
+  const doubled = simulate(base, p, { ...base.reform, incomeTaxMultiplier: 2, residentTaxMultiplier: 2 });
+  assert.equal(doubled.incomeTax, plain.incomeTax * 2);
+  assert.equal(doubled.residentTax, plain.residentTax * 2);
+  assert.equal(doubled.pension, plain.pension);
+  assert.equal(doubled.benefits, plain.benefits);
+  assert.equal(doubled.grossBurden - plain.grossBurden, plain.incomeTax + plain.residentTax);
 });
 test('cash benefits are split per programme; panels appear only for the ones a household receives', () => {
   const couple = heatmapGrid({ ...initialTaxState(), household: 'one-earner-children' }, p, consumption);
@@ -252,13 +272,13 @@ test('OECD dataset has Japan reference values at eight stylised points for 2025'
 });
 test('URL round trips every calculation and display condition', () => {
   const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const,
-    continuation: 0.5, workUntil: 70, taxItem: 'health' as const, includeConsumption: true, showOecd: true, view: 'age' as const };
+    continuation: 0.5, workUntil: 70, includeConsumption: true, showOecd: true, view: 'age' as const };
   state.reform.creditAnnual = 250000;
   assert.deepEqual(decodeTaxState(encodeTaxState(state)), { state, warning: null });
 });
 test('unknown model and invalid numbers fail safely with a visible warning; empty query needs no size property', () => {
   assert(decodeTaxState('?v=future&fy=2025').warning);
-  const decoded = decodeTaxState(`?v=${MODEL_VERSION}&fy=2025&income=Infinity&age=NaN&share=-1&creditAnnual=999999999&household=unknown&taxItem=nope`);
+  const decoded = decodeTaxState(`?v=${MODEL_VERSION}&fy=2025&income=Infinity&age=NaN&share=-1&creditAnnual=999999999&household=unknown`);
   assert(decoded.warning);
   assert.deepEqual(decoded.state, initialTaxState());
   assert.deepEqual(decodeTaxState(''), { state: initialTaxState(), warning: null });

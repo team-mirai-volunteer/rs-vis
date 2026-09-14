@@ -4,9 +4,9 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import { SlidersHorizontal, RotateCcw, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { HOUSEHOLDS, BASE_REFORM, TAX_ITEMS, isReformed } from '@/app/lib/tax-burden/households';
+import { HOUSEHOLDS, BASE_REFORM, isReformed } from '@/app/lib/tax-burden/households';
 import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
-import type { IncidenceDataset, TaxItem, TaxState } from '@/types/tax-burden';
+import type { IncidenceDataset, TaxState } from '@/types/tax-burden';
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
@@ -27,18 +27,16 @@ function Toggle({ label, note, checked, onChange, disabled = false }: { label: s
   </label>;
 }
 
-export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence, taxItems, taxItem }: {
+export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence }: {
   state: TaxState; setState: Dispatch<SetStateAction<TaxState>>; hasConsumption: boolean; hasOecd: boolean;
   incidence?: IncidenceDataset | null;
-  /** Heat-map only: the items this grid can actually colour, and the one in effect (a stored item that is always zero falls back). */
-  taxItems?: { id: TaxItem; label: string }[]; taxItem?: TaxItem;
 }) {
   // The curve view carries both the household scenario and the policy sliders. They swap in place so the chart stays on screen.
   const [tab, setTab] = useState<'household' | 'policy'>('household');
   const set = <K extends keyof TaxState>(key: K, value: TaxState[K]) => setState(s => ({ ...s, [key]: value }));
   const reform = <K extends keyof TaxState['reform']>(key: K, value: TaxState['reform'][K]) => setState(s => ({ ...s, reform: { ...s.reform, [key]: value } }));
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
-  const swappable = state.view === 'curve';
+  const swappable = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
   const policy = swappable && tab === 'policy';
   const reformed = isReformed(state.reform);
   // The policy tab holds only the sliders, so it stays short enough to use while the chart is on screen.
@@ -75,18 +73,19 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
           <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
         </section>}
-        {state.view === 'heatmap' && <label className="block space-y-2 border-t border-mirai-border pt-4 text-sm"><span>色にする税目</span>
-          <select className={inputClass} value={taxItem ?? state.taxItem} onChange={e => set('taxItem', e.target.value as TaxState['taxItem'])}>
-            {(taxItems ?? TAX_ITEMS.filter(t => hasConsumption || t.id !== 'consumption')).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-          {taxItem && taxItem !== state.taxItem && <span className="block text-xs text-mirai-text-subtle">選んでいた税目はこの世帯では常に0のため、純負担を表示しています。</span>}</label>}
         <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。子どもは大人32歳・34歳時に生まれ23歳で独立、大人は同年齢です。本人負担を計算します。</div>
       </>}
 
       {policy && <section className="space-y-3" aria-label="税・給付の条件">
-        <p className="text-xs leading-relaxed text-mirai-text-secondary">動かすと、基準制度のカーブに改革案のカーブ（太い破線）が重なります。世帯の条件は「世帯」タブで変えられます。</p>
-        <RangeField label="所得税の基礎控除を追加" value={state.reform.basicAllowanceExtra / 10000} min={0} max={200} step={5} suffix="万円" onChange={v => reform('basicAllowanceExtra', v * 10000)} />
+        <p className="text-xs leading-relaxed text-mirai-text-secondary">{state.view === 'curve' ? '動かすと、基準制度のカーブに改革案のカーブ（太い破線）が重なります。'
+          : state.view === 'age' ? '動かすと、基準制度の線（細い灰色）に改革案の線（破線）が重なります。'
+          : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
+        <h3 className="pt-1 text-xs font-bold text-primary-accent">税目を上げ下げする</h3>
+        <RangeField label="所得税の倍率" value={state.reform.incomeTaxMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('incomeTaxMultiplier', v / 100)} />
+        <RangeField label="住民税の倍率" value={state.reform.residentTaxMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('residentTaxMultiplier', v / 100)} />
         <RangeField label="本人保険料の倍率" value={state.reform.insuranceMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('insuranceMultiplier', v / 100)} />
+        <h3 className="pt-2 text-xs font-bold text-primary-accent">控除・給付を変える</h3>
+        <RangeField label="所得税の基礎控除を追加" value={state.reform.basicAllowanceExtra / 10000} min={0} max={200} step={5} suffix="万円" onChange={v => reform('basicAllowanceExtra', v * 10000)} />
         <RangeField label="児童手当・1人月額" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', v)} />
         <RangeField label="給付付き控除・世帯年額" value={state.reform.creditAnnual / 10000} min={0} max={100} step={5} suffix="万円" onChange={v => reform('creditAnnual', v * 10000)} />
         <RangeField label="給付の逓減開始年収" value={state.reform.creditPhaseoutStart / 10000} min={0} max={1000} step={50} suffix="万円" onChange={v => reform('creditPhaseoutStart', v * 10000)} />
@@ -100,7 +99,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
             <option value="net-fixed">税抜の数量・価格を固定（税込支出が動く）</option>
             <option value="gross-fixed">税込支出を固定（実質消費が動く）</option>
           </select></label>
-        <p className="text-xs leading-relaxed text-mirai-text-secondary">給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
+        <p className="text-xs leading-relaxed text-mirai-text-secondary">倍率は計算後の税額に掛けます（課税ベースではなく税額そのものを上げ下げする単純な操作）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
         <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
       </section>}
 
