@@ -8,7 +8,7 @@
     "fetch-tax-burden-sources": "node scripts/fetch-tax-burden-sources.mjs",
     "generate-tax-burden-stats": "python scripts/generate-tax-burden-stats.py",
     "test:tax-burden": "tsx --test tests/tax-burden.test.ts tests/tax-burden-api.test.ts",
-    "test:unified-budget": "tsx --test tests/unified-budget-sort.test.ts tests/unified-budget-policy-aggregate.test.ts tests/unified-budget-links.test.ts tests/unified-budget-filter.test.ts",
+    "test:unified-budget": "tsx --test tests/unified-budget-sort.test.ts tests/unified-budget-policy-aggregate.test.ts tests/unified-budget-links.test.ts tests/unified-budget-filter.test.ts tests/unified-budget-ministry.test.ts",
     "dev": "next dev --turbopack",
     "prebuild": "bash scripts/decompress-data.sh",
     "build": "next build",

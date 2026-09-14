@@ -66,6 +66,7 @@ export function UnifiedSankeyChart({
   budgetYear,
   basisMeasureLabel,
   rsMeasureLabel,
+  ministryColumnLabel,
   rsSheetYear,
   rsAmountKind,
   hasSpending = true,
@@ -91,6 +92,8 @@ export function UnifiedSankeyChart({
   basisMeasureLabel?: string;
   /** 列見出しに添える RS事業側の測定量（当初予算 / 当初＋補正 / 執行額）。無ければ年度種別から推定 */
   rsMeasureLabel?: string;
+  /** 所管列の見出し（府省庁基準では「府省庁」）。無ければ「所管」 */
+  ministryColumnLabel?: string;
   rsSheetYear: number;
   rsAmountKind: MofRsAmountKind;
   /** 事業(支出)・支出先の列がある年度か（無ければ支出額・支出先名・再委託の絞り込みを出さない） */
@@ -324,7 +327,7 @@ export function UnifiedSankeyChart({
    * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は MOF の当初予算
    */
   const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
-    const base = UNIFIED_COLUMN_LABELS[column];
+    const base = column === 'ministry' && ministryColumnLabel ? ministryColumnLabel : UNIFIED_COLUMN_LABELS[column];
     if (column === 'program') {
       const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
       return { label: `${base}_${budgetYear}`, measure };

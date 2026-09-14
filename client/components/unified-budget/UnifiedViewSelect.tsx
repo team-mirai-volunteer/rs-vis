@@ -19,7 +19,11 @@ import { cn } from '@/lib/utils';
  */
 export function presetOf(visible: UnifiedColumn[], available: UnifiedColumn[] = UNIFIED_COLUMNS as unknown as UnifiedColumn[]): UnifiedPreset {
   const key = UNIFIED_COLUMNS.filter(c => visible.includes(c)).join(',');
-  for (const [preset, cols] of Object.entries(UNIFIED_PRESET_COLUMNS) as Array<[UnifiedPreset, UnifiedColumn[]]>) {
+  const presets = Object.entries(UNIFIED_PRESET_COLUMNS) as Array<[UnifiedPreset, UnifiedColumn[]]>;
+  // まず列をそのまま比べる（府省庁基準のように使える列が RSのみ と同じ年度・基準で「統合」と誤判定しないため）、
+  // 次に「その年度で表示できる列」に絞って比べる
+  for (const [preset, cols] of presets) if (cols.join(',') === key) return preset;
+  for (const [preset, cols] of presets) {
     if (cols.filter(c => available.includes(c)).join(',') === key) return preset;
   }
   return 'full';

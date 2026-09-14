@@ -156,14 +156,25 @@ export interface UnifiedEdge {
  * - settlement: MOF 決算の支出済歳出額 / RS事業は執行額
  * 目の識別子が予算種別間で完全には一致しない（補正は「…外N目」に束ねられる）ため、基準をまたいだ合成はしない
  */
-export type UnifiedBasis = 'initial' | 'supplementary' | 'settlement';
+export type UnifiedBasis = 'initial' | 'supplementary' | 'settlement' | 'ministry';
 
-export const UNIFIED_BASES: readonly UnifiedBasis[] = ['initial', 'supplementary', 'settlement'];
+export const UNIFIED_BASES: readonly UnifiedBasis[] = ['initial', 'supplementary', 'settlement', 'ministry'];
+
+/**
+ * 「府省庁」は予算の基準ではなく紐づけの基準: MOF 予算書（会計〜目）を使わず、旧 /sankey-svg と同じ
+ * RS システムの府省庁 → 事業 の紐づけで見る。値は当初予算ファイルの RS事業値（RS 当初予算）。
+ * 別ファイルは持たず、当初予算の統合グラフをクライアント側で組み替える（app/lib/unified-budget/transform.ts toRsMinistryGraph）
+ */
+export const isRsMinistryBasis = (basis: UnifiedBasis): boolean => basis === 'ministry';
+
+/** 基準 → 読むファイルの基準（府省庁は当初予算ファイルの上に載せる） */
+export const unifiedFileBasis = (basis: UnifiedBasis): Exclude<UnifiedBasis, 'ministry'> => (basis === 'ministry' ? 'initial' : basis);
 
 export const UNIFIED_BASIS_LABELS: Record<UnifiedBasis, string> = {
   initial: '当初予算',
   supplementary: '補正予算',
   settlement: '決算',
+  ministry: '府省庁',
 };
 
 /** 列見出しに添える MOF 側の測定量 */
@@ -171,6 +182,7 @@ export const UNIFIED_BASIS_MOF_MEASURE: Record<UnifiedBasis, string> = {
   initial: '当初予算',
   supplementary: '補正後（改予算額）',
   settlement: '支出済額',
+  ministry: 'RS当初予算',
 };
 
 /** 列見出しに添える RS事業側の測定量（執行年度） */
@@ -178,6 +190,7 @@ export const UNIFIED_BASIS_RS_MEASURE: Record<UnifiedBasis, string> = {
   initial: '当初予算',
   supplementary: '当初＋補正',
   settlement: '執行額',
+  ministry: '当初予算',
 };
 
 /** 基準 → MOF 予算種別 */
@@ -185,17 +198,24 @@ export const UNIFIED_BASIS_MOF_BUDGET_TYPE: Record<UnifiedBasis, MOFBudgetType> 
   initial: '当初予算',
   supplementary: '補正予算（第1号）',
   settlement: '決算',
+  ministry: '当初予算',
 };
 
 /** 年度ごとに生成済みの基準。決算は年度終了後、補正は補正予算成立後に増える */
 export const UNIFIED_BASES_BY_YEAR: Record<number, readonly UnifiedBasis[]> = {
-  2023: ['initial', 'supplementary', 'settlement'],
-  2024: ['initial', 'supplementary', 'settlement'],
-  2025: ['initial', 'supplementary'],
-  2026: ['initial'],
+  2023: ['initial', 'supplementary', 'settlement', 'ministry'],
+  2024: ['initial', 'supplementary', 'settlement', 'ministry'],
+  2025: ['initial', 'supplementary', 'ministry'],
+  2026: ['initial', 'ministry'],
 };
 
-export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) => `unified-budget-${budgetYear}-${basis}-graph.json`;
+export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) => `unified-budget-${budgetYear}-${unifiedFileBasis(basis)}-graph.json`;
+
+/** 府省庁基準で使う列（RS府省庁 → 事業 → 事業(支出) → 支出先） */
+export const UNIFIED_RS_MINISTRY_COLUMNS: readonly UnifiedColumn[] = ['ministry', 'program', 'program-spending', 'recipient'];
+/** 府省庁基準の RS府省庁ノード ID の接頭辞（MOF 所管 `min-` と衝突させない） */
+export const RS_MINISTRY_ID_PREFIX = 'min-rs-';
+export const rsMinistryId = (name: string) => `${RS_MINISTRY_ID_PREFIX}${name}`;
 
 export interface UnifiedGraphMetadata {
   /** 予算年度（MOF会計年度） */
