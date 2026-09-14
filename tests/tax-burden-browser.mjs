@@ -53,7 +53,7 @@ try {
     if (url.pathname.startsWith('/logos/')) return route.fulfill({ contentType: 'image/svg+xml', body: readFileSync(resolve('public/logos/team-mirai-wordmark.svg')) });
     if (url.pathname.startsWith('/api/tax-burden/')) {
       const name = url.pathname.endsWith('params') ? 'tax-burden-params-2025' : url.pathname.endsWith('consumption') ? 'tax-burden-consumption-2024'
-        : url.pathname.endsWith('oecd') ? 'tax-burden-oecd-2025' : 'tax-revenue-2025';
+        : url.pathname.endsWith('oecd') ? 'tax-burden-oecd-2025' : url.pathname.endsWith('age') ? 'tax-burden-age-2024' : 'tax-revenue-2025';
       return route.fulfill({ contentType: 'application/json', body: readFileSync(resolve(`public/data/${name}.json`)) });
     }
     return route.fulfill({ contentType: 'text/html', body: html });
@@ -77,6 +77,15 @@ try {
   await page.screenshot({ path: resolve(output, 'revenue.png'), fullPage: true });
   await page.getByRole('button', { name: '実態統計', exact: true }).click();
   await expect(page.getByRole('heading', { name: '年収十分位別の負担率（実測＋消費税推計）' })).toBeVisible();
+  await page.getByRole('button', { name: '負担額（年額）', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '年収十分位別の負担額（実測＋消費税推計）' })).toBeVisible();
+  await page.getByRole('button', { name: '世帯主の年齢', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '世帯主年齢階級別の負担額（実測＋消費税推計）' })).toBeVisible();
+  await page.getByRole('button', { name: '無職世帯', exact: true }).click();
+  await expect(page.getByText('85歳～', { exact: true }).first()).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'stats-age.png'), fullPage: true });
+  await page.getByRole('button', { name: '年収階級', exact: true }).click();
+  await page.getByRole('button', { name: '負担率', exact: true }).click();
   await page.getByRole('button', { name: '年齢で見る', exact: true }).click();
   await expect(page.getByRole('heading', { name: '同じ所得階層の人が、年齢とともにどれだけ負担するか' })).toBeVisible();
   await expect(page.getByText('70歳の純負担率', { exact: true })).toBeVisible();

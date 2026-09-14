@@ -17,7 +17,7 @@ import { StatsPanel } from '@/client/components/tax-burden/StatsPanel';
 import { TaxControls } from '@/client/components/tax-burden/TaxControls';
 import { BurdenBreakdown, yen } from '@/client/components/tax-burden/BurdenBreakdown';
 import { RevenuePanel } from '@/client/components/tax-burden/RevenuePanel';
-import type { ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue, TaxView } from '@/types/tax-burden';
+import type { AgeDataset, ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue, TaxView } from '@/types/tax-burden';
 
 const VIEWS = [
   { id: 'curve', label: '世帯の負担カーブ', icon: ChartNoAxesCombined },
@@ -71,6 +71,7 @@ export default function TaxBurdenPage() {
   const { data: params, error } = useJson<TaxParameters>('/api/tax-burden/params?fy=2025', retry);
   const { data: consumption } = useJson<ConsumptionDataset>('/api/tax-burden/consumption?year=2024', retry);
   const { data: oecd } = useJson<OecdDataset>('/api/tax-burden/oecd', retry);
+  const { data: ageStats } = useJson<AgeDataset>(state.view === 'stats' ? '/api/tax-burden/age?year=2024' : null, retry);
   const { data: revenue, error: revenueError } = useJson<TaxRevenue>(state.view === 'revenue' ? '/api/tax-burden/revenue?fy=2025' : null, retry);
 
   const before = useMemo(() => params ? simulate(state, params, undefined, consumption) : null, [state, params, consumption]);
@@ -159,7 +160,7 @@ export default function TaxBurdenPage() {
 
       {state.view === 'revenue' && (revenueError ? errorCard(revenueError) : revenue ? <RevenuePanel data={revenue} onCompareIncomeTax={() => setView('curve')} /> : <Card><CardContent className="flex gap-3 pt-6" role="status"><Loader2 className="size-5 animate-spin" />歳入データを読み込んでいます…</CardContent></Card>)}
 
-      {state.view === 'stats' && (consumption ? <StatsPanel data={consumption} /> : <Card><CardContent className="mx-auto max-w-2xl space-y-5 py-12 text-center"><Database className="mx-auto size-10 text-primary-accent" /><h2 className="text-xl font-bold">実態統計を読み込んでいます</h2><p className="text-sm leading-relaxed">家計調査2024年・年収十分位別の直接税・社会保険料・消費支出を表示します。</p><Button asChild variant="outline"><a href="https://www.e-stat.go.jp/stat-search/files?stat_infid=000040246659" target="_blank" rel="noreferrer">e-Statの原表を確認する<ArrowRight /></a></Button></CardContent></Card>)}
+      {state.view === 'stats' && (consumption ? <StatsPanel data={consumption} age={ageStats} /> :<Card><CardContent className="mx-auto max-w-2xl space-y-5 py-12 text-center"><Database className="mx-auto size-10 text-primary-accent" /><h2 className="text-xl font-bold">実態統計を読み込んでいます</h2><p className="text-sm leading-relaxed">家計調査2024年・年収十分位別の直接税・社会保険料・消費支出を表示します。</p><Button asChild variant="outline"><a href="https://www.e-stat.go.jp/stat-search/files?stat_infid=000040246659" target="_blank" rel="noreferrer">e-Statの原表を確認する<ArrowRight /></a></Button></CardContent></Card>)}
 
       <footer className="py-4 text-xs leading-relaxed text-mirai-text-secondary">歳入の規模と、世帯の負担を分けて表示しています。政策の試算は対象・仮定とともに確認してください。</footer>
     </main>
