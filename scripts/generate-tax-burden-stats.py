@@ -2,12 +2,14 @@
 
 Inputs (data/raw/tax-burden/, fetched by scripts/fetch-tax-burden-sources.mjs):
   kakei-2024-table3-quintile-decile.xlsx       家計調査 2024年 第3表（総世帯・勤労者世帯、年間収入五分位・十分位）
+  kakei-2024-table3-2-age.xlsx                 家計調査 2024年 第3-2表（二人以上の世帯・勤労者世帯・無職世帯、世帯主の年齢階級別）
   oecd-taxing-wages-jpn-2024-2025.csv          OECD Taxing Wages country table, Japan, all measures
   oecd-taxing-wages-npatr-all-2023-2025.csv    OECD Taxing Wages, net personal average tax rate, all countries (stylised points)
   oecd-taxing-wages-decomp-jpn-2024-2025.csv   OECD Taxing Wages decompositions, Japan, 50-250% AW in 1% steps, all measures
   oecd-taxing-wages-decomp-npatr-all-2024-2025.csv  same flow, NPATR for all countries and the OECD_REP aggregate
 Outputs:
   public/data/tax-burden-consumption-2024.json(.gz)   十分位別の税込消費支出（課税区分別）・直接税・社会保険料
+  public/data/tax-burden-age-2024.json(.gz)           世帯主年齢階級別（勤労者世帯・無職世帯）の同項目。年間収入は非公表のため実収入を分母にする
   public/data/tax-burden-oecd-2025.json(.gz)          OECD 定点比較と日本の参照値（R8）
 CSV/Excel processing only; no UI or API logic here.
 """
@@ -65,6 +67,25 @@ def find_row(rows, label, level, parent):
     raise KeyError(f'{parent} > {label} (level {level}) not found')
 
 
+def resolve_leaves(rows):
+    """Bind map leaves to a sheet: use published sub-items when available, skip optional leaves that the table lacks."""
+    leaves = []
+    for leaf in MAP['leaves']:
+        subs = leaf.get('subLeaves')
+        if subs:
+            try:
+                leaves.extend((sub, find_row(rows, sub['label'], sub['level'], sub['parent'])) for sub in subs)
+                continue
+            except KeyError:
+                pass
+        try:
+            leaves.append((leaf, find_row(rows, leaf['label'], leaf['level'], leaf['parent'])))
+        except KeyError:
+            if not leaf.get('optional'):
+                raise
+    return leaves
+
+
 def value_row(rows, label, level=None):
     for lv, lb, _unit, vals in rows:
         if lb == label and (level is None or lv == level):
@@ -90,10 +111,7 @@ def build_consumption(retrieved: str) -> dict:
     header, rows = read_sheet(ws)
     bounds = parse_bounds(header)
     consumption = value_row(rows, '消費支出', 3)
-    leaves = []
-    for leaf in MAP['leaves']:
-        vals = find_row(rows, leaf['label'], leaf['level'], leaf['parent'])
-        leaves.append((leaf, vals))
+    leaves = resolve_leaves(rows)
     deciles = []
     for d in range(10):
         col = 6 + d  # values[0]=平均, 1..5 五分位, 6..15 十分位
@@ -141,6 +159,73 @@ def build_consumption(retrieved: str) -> dict:
             ],
         },
         'deciles': deciles,
+    }
+
+
+def classify_spending(rows, leaves, col):
+    """Sum tax-inclusive monthly spending by VAT class for one column, checking the leaves cover 消費支出."""
+    classes = {'standard': 0.0, 'reduced': 0.0, 'exempt': 0.0}
+    leaf_total = 0.0
+    for leaf, vals in leaves:
+        monthly = float(vals[col] or 0)
+        leaf_total += monthly
+        for cls, share in leaf['shares'].items():
+            classes[cls] += monthly * share
+    monthly_consumption = float(value_row(rows, '消費支出', 3)[col])
+    if abs(leaf_total - monthly_consumption) > max(50.0, monthly_consumption * 0.002):
+        raise SystemExit(f'column {col}: leaves {leaf_total:.0f} != 消費支出 {monthly_consumption:.0f}')
+    return classes, monthly_consumption
+
+
+AGE_SHEETS = [
+    ('勤労', '二人以上の世帯のうち勤労者世帯', ['～34歳', '35～39歳', '40～44歳', '45～49歳', '50～54歳', '55～59歳', '60～64歳', '65～69歳', '70歳～']),
+    ('無職', '二人以上の世帯のうち無職世帯', ['～59歳', '60～64歳', '65～69歳', '70～74歳', '75～79歳', '80～84歳', '85歳～']),
+]
+
+
+def build_age(retrieved: str) -> dict:
+    wb = openpyxl.load_workbook(RAW / 'kakei-2024-table3-2-age.xlsx', data_only=True)
+    groups = []
+    for sheet, population, labels in AGE_SHEETS:
+        header, rows = read_sheet(wb[sheet])
+        leaves = resolve_leaves(rows)
+        classes_out = []
+        for i, label in enumerate(labels):
+            col = 1 + i  # values[0] = 平均, then the published age classes in order
+            assert header[13 + col].strip() == label, f'{sheet}: expected {label} at column {13 + col}, got {header[13 + col]}'
+            classes, monthly_consumption = classify_spending(rows, leaves, col)
+            annual = lambda lbl, level=None: round(float(value_row(rows, lbl, level)[col]) * 12)
+            classes_out.append({
+                'label': label,
+                'headAge': float(value_row(rows, '世帯主の年齢', 1)[col]),
+                'householdSize': float(value_row(rows, '世帯人員', 1)[col]),
+                'earners': float(value_row(rows, '有業人員', 1)[col]),
+                'realIncomeAnnual': annual('実収入', 2),
+                'salaryAnnual': annual('勤め先収入', 4),
+                'pensionBenefitAnnual': annual('公的年金給付', 6),
+                'disposableAnnual': annual('可処分所得', 1),
+                'consumptionAnnual': round(monthly_consumption * 12),
+                'standardGross': round(classes['standard'] * 12),
+                'reducedGross': round(classes['reduced'] * 12),
+                'exemptGross': round(classes['exempt'] * 12),
+                'directTaxes': {'incomeTax': annual('勤労所得税', 5), 'residentTax': annual('個人住民税', 5), 'other': annual('他の税', 5)},
+                'socialInsurance': {'pension': annual('公的年金保険料', 5), 'health': annual('健康保険料', 5), 'care': annual('介護保険料', 5), 'other': annual('他の社会保険料', 5)},
+            })
+        groups.append({'population': population, 'classes': classes_out})
+    return {
+        'metadata': {
+            'survey': '家計調査 家計収支編 2024年 第3-2表 世帯主の年齢階級別',
+            'statInfId': '000040247076',
+            'sourceUrl': 'https://www.e-stat.go.jp/stat-search/files?stat_infid=000040247076',
+            'unit': '年額・円（公表月額×12）。支出は税込。年間収入は年齢階級別には非公表のため、負担率の分母は実収入（勤め先収入・公的年金給付等の月額×12）',
+            'retrievedOn': retrieved,
+            'mapVersion': MAP['version'],
+            'notes': MAP['notes'] + [
+                '無職世帯は世帯主が無職の世帯（年金受給者を多く含む）。直接税・社会保険料は年金からの徴収分を含む。',
+                '二人以上の世帯のみ。単身世帯は対象外。',
+            ],
+        },
+        'groups': groups,
     }
 
 
@@ -251,14 +336,17 @@ def build_oecd_curves() -> dict:
 
 def main() -> None:
     retrieved = date.today().isoformat()
-    for f in ('kakei-2024-table3-quintile-decile.xlsx', 'oecd-taxing-wages-jpn-2024-2025.csv', 'oecd-taxing-wages-npatr-all-2023-2025.csv',
+    for f in ('kakei-2024-table3-quintile-decile.xlsx', 'kakei-2024-table3-2-age.xlsx', 'oecd-taxing-wages-jpn-2024-2025.csv', 'oecd-taxing-wages-npatr-all-2023-2025.csv',
               'oecd-taxing-wages-decomp-jpn-2024-2025.csv', 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv'):
         if not (RAW / f).exists():
             sys.exit(f'missing {RAW / f}; run `node scripts/fetch-tax-burden-sources.mjs` first')
     consumption = build_consumption(retrieved)
     write_json(OUT / 'tax-burden-consumption-2024.json', consumption)
+    age = build_age(retrieved)
+    write_json(OUT / 'tax-burden-age-2024.json', age)
     oecd = build_oecd(retrieved)
     write_json(OUT / 'tax-burden-oecd-2025.json', oecd)
+    print(f"age: { {g['population']: len(g['classes']) for g in age['groups']} }")
     print(f"consumption: {len(consumption['deciles'])} deciles; oecd years: {list(oecd['years'])}, points: {[len(v['points']) for v in oecd['years'].values()]}; "
           f"curves: { {k: len(v['awRatio']) for k, v in oecd['curves'].items()} } ({next(iter(oecd['curves'].values()))['averageSource']})")
 

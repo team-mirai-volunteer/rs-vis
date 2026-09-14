@@ -214,6 +214,29 @@ export interface ConsumptionDataset {
   deciles: ConsumptionDecile[];
 }
 
+/** 家計調査 世帯主年齢階級別（勤労者世帯・無職世帯）。年間収入は非公表のため realIncomeAnnual を分母に使う。 */
+export interface AgeClass {
+  label: string;
+  headAge: number;
+  householdSize: number;
+  earners: number;
+  realIncomeAnnual: number;
+  salaryAnnual: number;
+  pensionBenefitAnnual: number;
+  disposableAnnual: number;
+  consumptionAnnual: number;
+  standardGross: number;
+  reducedGross: number;
+  exemptGross: number;
+  directTaxes: { incomeTax: number; residentTax: number; other: number };
+  socialInsurance: { pension: number; health: number; care: number; other: number };
+}
+
+export interface AgeDataset {
+  metadata: { survey: string; statInfId: string; sourceUrl: string; unit: string; retrievedOn: string; mapVersion: string; notes: string[] };
+  groups: { population: string; classes: AgeClass[] }[];
+}
+
 export interface OecdPoint {
   household: HouseholdId;
   oecdHouseholdType: string;

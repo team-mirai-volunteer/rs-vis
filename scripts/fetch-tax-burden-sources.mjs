@@ -15,6 +15,11 @@ const SOURCES = [
     url: 'https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040246659&fileKind=0',
   },
   {
+    file: 'kakei-2024-table3-2-age.xlsx',
+    // 家計調査 家計収支編 2024年 第3-2表 世帯主の年齢階級別（二人以上の世帯・勤労者世帯・無職世帯） stat_infid=000040247076
+    url: 'https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040247076&fileKind=0',
+  },
+  {
     file: 'oecd-taxing-wages-jpn-2024-2025.csv',
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/JPN.......?startPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfilewithlabels',
   },

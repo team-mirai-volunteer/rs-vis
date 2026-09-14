@@ -7,7 +7,7 @@ import { simulate } from '@/app/lib/tax-burden/simulate';
 import { lifecycleSeries, annualPension } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax } from '@/app/lib/tax-burden/consumption-tax';
 import { taxRevenueFromOverview } from '@/app/lib/tax-burden/revenue';
-import type { ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
+import type { AgeDataset, ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
 import type { MOFBudgetOverview } from '@/types/mof-budget-overview';
 
 const p = readDataJson<TaxParameters>('tax-burden-params-2025.json', 'npm run generate-tax-burden-data');
@@ -116,6 +116,14 @@ for (const d of consumption.deciles) {
   assert(t.spendingRate! <= 0.1 / 1.1 + 1e-9);
 }
 assert(basketForIncome(consumption, 5000000).standardGross > 0);
+const ageStats = readDataJson<AgeDataset>('tax-burden-age-2024.json', 'python scripts/generate-tax-burden-stats.py');
+assert.deepEqual(ageStats.groups.map(g => g.classes.length), [9, 7]);
+for (const g of ageStats.groups) for (const c of g.classes) {
+  assert(Math.abs(c.standardGross + c.reducedGross + c.exemptGross - c.consumptionAnnual) <= 1200, `${g.population} ${c.label} leaves`);
+  assert(c.realIncomeAnnual > 0 && c.pensionBenefitAnnual >= 0 && c.disposableAnnual > 0);
+  const burden = Object.values(c.directTaxes).reduce((s, v) => s + v, 0) + Object.values(c.socialInsurance).reduce((s, v) => s + v, 0);
+  assert(burden > 0 && burden < c.realIncomeAnnual, `${g.population} ${c.label} burden`);
+}
 
 // 6. Revenue files unchanged.
 for (let year = 2017; year <= 2026; year++) {

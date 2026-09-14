@@ -13,44 +13,330 @@
     "『他の交際費』は会費・つきあい費（課税）と祝儀等（不課税）が混在するため標準0.5・非課税0.5の按分（仮定）。",
     "『保健医療サービス』は保険診療を主とみて非課税扱い。自由診療分の課税は無視。『健康保持用摂取品』は飲食料品として軽減。",
     "『たばこ』『酒類』は消費税では標準税率。たばこ税・酒税は本対応表の対象外。",
-    "按分比率は仮定値であり、公表統計ではない。画面の注記に『按分は仮定』と表示する。"
+    "按分比率は仮定値であり、公表統計ではない。画面の注記に『按分は仮定』と表示する。",
+    "『教育』の内訳（授業料等・教科書・補習教育）が公表されている表では内訳で分類し、按分は使わない。『賄い費』が無い表では0として扱う。"
   ],
   "leaves": [
-    { "label": "穀類", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "魚介類", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "肉類", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "乳卵類", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "野菜・海藻", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "果物", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "油脂・調味料", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "菓子類", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "調理食品", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "飲料", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "酒類", "level": 5, "parent": "食料", "shares": { "standard": 1 } },
-    { "label": "一般外食", "level": 6, "parent": "外食", "shares": { "standard": 1 } },
-    { "label": "学校給食", "level": 6, "parent": "外食", "shares": { "reduced": 1 } },
-    { "label": "賄い費", "level": 5, "parent": "食料", "shares": { "reduced": 1 } },
-    { "label": "家賃地代", "level": 5, "parent": "住居", "shares": { "exempt": 1 } },
-    { "label": "設備修繕・維持", "level": 5, "parent": "住居", "shares": { "standard": 1 } },
-    { "label": "光熱・水道", "level": 4, "parent": "消費支出", "shares": { "standard": 1 } },
-    { "label": "家具・家事用品", "level": 4, "parent": "消費支出", "shares": { "standard": 1 } },
-    { "label": "被服及び履物", "level": 4, "parent": "消費支出", "shares": { "standard": 1 } },
-    { "label": "医薬品", "level": 5, "parent": "保健医療", "shares": { "standard": 1 } },
-    { "label": "健康保持用摂取品", "level": 5, "parent": "保健医療", "shares": { "reduced": 1 } },
-    { "label": "保健医療用品・器具", "level": 5, "parent": "保健医療", "shares": { "standard": 1 } },
-    { "label": "保健医療サービス", "level": 5, "parent": "保健医療", "shares": { "exempt": 1 } },
-    { "label": "交通・通信", "level": 4, "parent": "消費支出", "shares": { "standard": 1 } },
-    { "label": "教育", "level": 4, "parent": "消費支出", "shares": { "exempt": 0.75, "standard": 0.25 }, "mixed": true },
-    { "label": "教養娯楽", "level": 4, "parent": "消費支出", "shares": { "standard": 1 } },
-    { "label": "諸雑費", "level": 5, "parent": "その他の消費支出", "shares": { "standard": 1 } },
-    { "label": "こづかい(使途不明)", "level": 5, "parent": "その他の消費支出", "shares": { "standard": 0.7, "reduced": 0.3 }, "mixed": true },
-    { "label": "食料", "level": 6, "parent": "交際費", "shares": { "reduced": 1 } },
-    { "label": "家具・家事用品", "level": 6, "parent": "交際費", "shares": { "standard": 1 } },
-    { "label": "被服及び履物", "level": 6, "parent": "交際費", "shares": { "standard": 1 } },
-    { "label": "教養娯楽", "level": 6, "parent": "交際費", "shares": { "standard": 1 } },
-    { "label": "他の物品サービス", "level": 6, "parent": "交際費", "shares": { "standard": 1 } },
-    { "label": "贈与金", "level": 6, "parent": "交際費", "shares": { "exempt": 1 } },
-    { "label": "他の交際費", "level": 6, "parent": "交際費", "shares": { "standard": 0.5, "exempt": 0.5 }, "mixed": true },
-    { "label": "仕送り金", "level": 5, "parent": "その他の消費支出", "shares": { "exempt": 1 } }
+    {
+      "label": "穀類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "魚介類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "肉類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "乳卵類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "野菜・海藻",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "果物",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "油脂・調味料",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "菓子類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "調理食品",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "飲料",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "酒類",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "一般外食",
+      "level": 6,
+      "parent": "外食",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "学校給食",
+      "level": 6,
+      "parent": "外食",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "賄い費",
+      "level": 5,
+      "parent": "食料",
+      "shares": {
+        "reduced": 1
+      },
+      "optional": true
+    },
+    {
+      "label": "家賃地代",
+      "level": 5,
+      "parent": "住居",
+      "shares": {
+        "exempt": 1
+      }
+    },
+    {
+      "label": "設備修繕・維持",
+      "level": 5,
+      "parent": "住居",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "光熱・水道",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "家具・家事用品",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "被服及び履物",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "医薬品",
+      "level": 5,
+      "parent": "保健医療",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "健康保持用摂取品",
+      "level": 5,
+      "parent": "保健医療",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "保健医療用品・器具",
+      "level": 5,
+      "parent": "保健医療",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "保健医療サービス",
+      "level": 5,
+      "parent": "保健医療",
+      "shares": {
+        "exempt": 1
+      }
+    },
+    {
+      "label": "交通・通信",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "教育",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "exempt": 0.75,
+        "standard": 0.25
+      },
+      "mixed": true,
+      "subLeaves": [
+        {
+          "label": "授業料等",
+          "level": 5,
+          "parent": "教育",
+          "shares": {
+            "exempt": 1
+          }
+        },
+        {
+          "label": "教科書・学習参考教材",
+          "level": 5,
+          "parent": "教育",
+          "shares": {
+            "exempt": 1
+          }
+        },
+        {
+          "label": "補習教育",
+          "level": 5,
+          "parent": "教育",
+          "shares": {
+            "standard": 1
+          }
+        }
+      ]
+    },
+    {
+      "label": "教養娯楽",
+      "level": 4,
+      "parent": "消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "諸雑費",
+      "level": 5,
+      "parent": "その他の消費支出",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "こづかい(使途不明)",
+      "level": 5,
+      "parent": "その他の消費支出",
+      "shares": {
+        "standard": 0.7,
+        "reduced": 0.3
+      },
+      "mixed": true
+    },
+    {
+      "label": "食料",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "reduced": 1
+      }
+    },
+    {
+      "label": "家具・家事用品",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "被服及び履物",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "教養娯楽",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "他の物品サービス",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "standard": 1
+      }
+    },
+    {
+      "label": "贈与金",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "exempt": 1
+      }
+    },
+    {
+      "label": "他の交際費",
+      "level": 6,
+      "parent": "交際費",
+      "shares": {
+        "standard": 0.5,
+        "exempt": 0.5
+      },
+      "mixed": true
+    },
+    {
+      "label": "仕送り金",
+      "level": 5,
+      "parent": "その他の消費支出",
+      "shares": {
+        "exempt": 1
+      }
+    }
   ]
 }
