@@ -10,7 +10,7 @@ export const HOUSEHOLDS: HouseholdDefinition[] = [
   { id: 'two-earners-children', label: '共働き夫婦・子2人', adults: 2, earners: 2, children: 2 },
 ];
 export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
-  { id: 'net', label: '純負担（税＋保険料−給付）' },
+  { id: 'net', label: '純負担（税＋保険料−給付−年金）' },
   { id: 'incomeTax', label: '所得税' },
   { id: 'residentTax', label: '住民税' },
   { id: 'pension', label: '年金保険料' },
@@ -18,7 +18,11 @@ export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
   { id: 'care', label: '介護保険料' },
   { id: 'employment', label: '雇用保険料' },
   { id: 'consumption', label: '消費税（推計）' },
-  { id: 'benefits', label: '現金給付（差し引き）' },
+  { id: 'benefits', label: '現金給付の合計（差し引き）' },
+  { id: 'childBenefit', label: '児童手当（差し引き）' },
+  { id: 'singleParentBenefit', label: '児童扶養手当（差し引き）' },
+  { id: 'pensionSupport', label: '年金生活者支援給付金（差し引き）' },
+  { id: 'reformCredit', label: '改革案の追加給付（差し引き）' },
   { id: 'pensionReceipt', label: '公的年金の受給（差し引き）' },
 ];
 export const BASE_REFORM: Reform = {

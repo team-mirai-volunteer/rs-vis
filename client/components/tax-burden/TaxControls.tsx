@@ -5,7 +5,7 @@ import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { HOUSEHOLDS, BASE_REFORM, TAX_ITEMS } from '@/app/lib/tax-burden/households';
-import type { TaxState } from '@/types/tax-burden';
+import type { TaxItem, TaxState } from '@/types/tax-burden';
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
@@ -26,8 +26,10 @@ function Toggle({ label, note, checked, onChange, disabled = false }: { label: s
   </label>;
 }
 
-export function TaxControls({ state, setState, hasConsumption, hasOecd }: {
+export function TaxControls({ state, setState, hasConsumption, hasOecd, taxItems, taxItem }: {
   state: TaxState; setState: Dispatch<SetStateAction<TaxState>>; hasConsumption: boolean; hasOecd: boolean;
+  /** Heat-map only: the items this grid can actually colour, and the one in effect (a stored item that is always zero falls back). */
+  taxItems?: { id: TaxItem; label: string }[]; taxItem?: TaxItem;
 }) {
   const set = <K extends keyof TaxState>(key: K, value: TaxState[K]) => setState(s => ({ ...s, [key]: value }));
   const reform = <K extends keyof TaxState['reform']>(key: K, value: TaxState['reform'][K]) => setState(s => ({ ...s, reform: { ...s.reform, [key]: value } }));
@@ -61,9 +63,10 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd }: {
         <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
       </section>}
       {state.view === 'heatmap' && <label className="block space-y-2 border-t border-mirai-border pt-4 text-sm"><span>色にする税目</span>
-        <select className={inputClass} value={state.taxItem} onChange={e => set('taxItem', e.target.value as TaxState['taxItem'])}>
-          {TAX_ITEMS.filter(t => hasConsumption || t.id !== 'consumption').map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select></label>}
+        <select className={inputClass} value={taxItem ?? state.taxItem} onChange={e => set('taxItem', e.target.value as TaxState['taxItem'])}>
+          {(taxItems ?? TAX_ITEMS.filter(t => hasConsumption || t.id !== 'consumption')).map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+        {taxItem && taxItem !== state.taxItem && <span className="block text-xs text-mirai-text-subtle">選んでいた税目はこの世帯では常に0のため、純負担を表示しています。</span>}</label>}
       <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。子どもは大人32歳・34歳時に生まれ23歳で独立、大人は同年齢です。本人負担を計算します。</div>
       {state.view === 'reform' && <section className="space-y-5 border-t border-mirai-border pt-5" aria-label="改革案の条件">
         <h2 className="font-bold text-primary-accent">改革案をつくる</h2>
