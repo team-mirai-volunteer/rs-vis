@@ -3,6 +3,7 @@
  * 追加するときはここに 1 行足すだけでナビ・メニュー・トップページの 3 箇所に反映される。
  */
 export const PAGES = [
+  { href: '/fiscal-space', label: '財政余力シミュレータ', description: '次の1兆円で何が最初に足りなくなるか。政策・物価・労働・エネルギー・国債借換を仮定モデルで比較する', primary: true },
   { href: '/budget-sankey', label: 'サンキー図', description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れを 1 本のサンキーで追う。「RSのみ」で省庁 → 事業 → 支出先だけにも絞れる', primary: true },
   { href: '/project-bubble', label: 'バブルチャート', description: '5,000 超の事業を内容の近さで配置し、評価の低い事業を大きく表示する', primary: true },
   { href: '/quality', label: '評価一覧', description: '事業ごとの政策評価・執行透明性スコアを一覧で見る', primary: true },
