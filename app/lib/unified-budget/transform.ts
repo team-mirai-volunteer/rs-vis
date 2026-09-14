@@ -13,6 +13,7 @@
  */
 
 import type { SankeyLink } from '@/types/sankey';
+import { parseAmountToYen } from '@/app/lib/format/yen';
 import type { UnifiedColumn, UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
@@ -20,6 +21,7 @@ import {
   DEFAULT_UNIFIED_TOP_N,
   UNIFIED_AGGREGATE_UNITS,
   aggregateId,
+  type UnifiedFilterContext,
   type UnifiedOffset,
   type UnifiedTopN,
   type UnifiedViewFilter,
@@ -74,8 +76,10 @@ function removeNodes(view: UnifiedViewGraph, remove: Set<string>): UnifiedViewGr
  * - 所管の絞り込みは、その所管の 組織〜目 と、そこから流れない事業・支出先を落とす（下流は到達可能性で判定）。
  * - 非事業ノード（np-*）の除外は単純にノードを落とす。
  * - 名前検索は、一致したノードとその祖先・子孫だけを残す（関連フォーカスと同じ集合）。
+ * - 最後に事業・支出先単位の絞り込み（予算額・支出額・事業名・支出先名・再委託・政策評価スコア。applyProgramFilters）。
+ *   スコアは ctx.policy（/api/policy-summary）が渡されたときだけ効く
  */
-export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter): UnifiedViewGraph {
+export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, ctx?: UnifiedFilterContext): UnifiedViewGraph {
   let current = view;
   const remove = new Set<string>();
 
@@ -155,7 +159,162 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter): 
       current = { nodes: [], links: [] };
     }
   }
+
+  current = applyProgramFilters(current, filter, ctx);
   return current;
+}
+
+// ---- /sankey-svg から移植した事業・支出先単位の絞り込み ----
+
+const isRsProgram = (n: UnifiedViewNode) => n.details.column === 'program' && n.details.kind === 'rs' && n.details.projectId !== undefined;
+
+/** 名前のマッチ関数。正規表現が不正なら null（呼び出し側で「何も一致しない」扱いにする） */
+export function buildNameMatcher(query: string, useRegex: boolean): ((name: string) => boolean) | null {
+  const q = query.trim();
+  if (useRegex) {
+    try {
+      const re = new RegExp(q, 'i');
+      return name => re.test(name);
+    } catch {
+      return null;
+    }
+  }
+  const lower = q.toLocaleLowerCase();
+  return name => name.toLocaleLowerCase().includes(lower);
+}
+
+/** スコア範囲の境界（空欄・数値でないものは無し） */
+function parseScoreBound(t: string): number | null {
+  const s = t.trim();
+  if (s === '') return null;
+  const v = Number(s);
+  return Number.isFinite(v) ? v : null;
+}
+
+/**
+ * 事業単位の絞り込み（予算額・支出額・事業名・支出先名・再委託・政策評価スコア）。
+ * - 事業（program）と事業(支出)（program-spending）は同じ事業IDの双子なので、片方を落とすときはもう片方も落とす
+ * - 支出先名の絞り込みは、一致しない支出先を落としたうえで、支出先が1つも残らなかった事業も落とす
+ *   （/sankey-svg の Pass 2 と同じ。支出先の列が無い年度では何もしない）
+ * - 「再委託先を含む」（recipientIncludeSub）は事業単位の OR 判定。直接支出先か再委託先名のどちらかに一致する事業を残し、
+ *   支出先ノードは名前で隠さない（/sankey-svg と同じ）
+ * - スコアは ctx.policy が渡されたときだけ効く。範囲を指定した項目で評価が無い事業は落とす（0点扱いで残すと絞り込みの意味が薄れる）
+ * - 事業名・支出先名の正規表現が不正なときは何も一致しない（図が空になる）。UI は unifiedFilterIssues で警告を出す
+ * - 事業を落とした後は recomputeValues で上流（目・項…）の値が縮み、流れの無くなったノードは消える
+ */
+function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, ctx?: UnifiedFilterContext): UnifiedViewGraph {
+  const budgetMin = filter.budgetMin.trim() ? parseAmountToYen(filter.budgetMin) : null;
+  const budgetMax = filter.budgetMax.trim() ? parseAmountToYen(filter.budgetMax) : null;
+  const spendingMin = filter.spendingMin.trim() ? parseAmountToYen(filter.spendingMin) : null;
+  const spendingMax = filter.spendingMax.trim() ? parseAmountToYen(filter.spendingMax) : null;
+  const hasBudget = budgetMin !== null || budgetMax !== null;
+  const hasSpending = spendingMin !== null || spendingMax !== null;
+  const projectQuery = filter.projectQuery.trim();
+  const recipientQuery = filter.recipientQuery.trim();
+  const hasSubcontract = filter.subcontract !== 'any';
+  const subMinDepth = Math.max(2, Math.floor(filter.subcontractMinDepth) || 2);
+  const scoreFilters = (
+    [
+      ['o', filter.scoreO],
+      ['x', filter.scoreX],
+      ['n', filter.scoreN],
+    ] as const
+  )
+    .map(([key, r]) => ({ key, min: parseScoreBound(r.min), max: parseScoreBound(r.max) }))
+    .filter(f => f.min !== null || f.max !== null);
+  const policy = scoreFilters.length > 0 ? ctx?.policy : undefined;
+  const hasScore = policy !== undefined;
+
+  const hasRecipients = view.nodes.some(n => n.details.column === 'recipient');
+  const hasRecipientQuery = recipientQuery !== '' && hasRecipients;
+
+  if (!hasBudget && !hasSpending && !projectQuery && !hasRecipientQuery && !hasSubcontract && !hasScore) return view;
+
+  const matchesProject = projectQuery ? buildNameMatcher(projectQuery, filter.projectRegex) : undefined;
+  const matchesRecipient = hasRecipientQuery ? buildNameMatcher(recipientQuery, filter.recipientRegex) : undefined;
+  const includeSub = hasRecipientQuery && filter.recipientIncludeSub;
+
+  const spendingByPid = new Map<number, UnifiedViewNode>();
+  const programByPid = new Map<number, UnifiedViewNode>();
+  for (const n of view.nodes) {
+    if (n.details.projectId === undefined) continue;
+    if (n.details.column === 'program-spending') spendingByPid.set(n.details.projectId, n);
+    else if (n.details.column === 'program') programByPid.set(n.details.projectId, n);
+  }
+
+  // 支出先名（再委託先を含むモード）: 直接支出先が一致する事業(支出)の集合
+  let spendingWithDirectMatch: Set<string> | null = null;
+  const recipientNameById = new Map(view.nodes.filter(n => n.details.column === 'recipient').map(n => [n.id, n.name] as const));
+  if (matchesRecipient !== undefined && includeSub) {
+    spendingWithDirectMatch = new Set<string>();
+    for (const l of view.links) {
+      const name = recipientNameById.get(l.target);
+      if (name !== undefined && matchesRecipient !== null && matchesRecipient(name)) spendingWithDirectMatch.add(l.source);
+    }
+  }
+
+  const remove = new Set<string>();
+  const dropProject = (pid: number) => {
+    const p = programByPid.get(pid);
+    const s = spendingByPid.get(pid);
+    if (p) remove.add(p.id);
+    if (s) remove.add(s.id);
+  };
+
+  for (const n of view.nodes) {
+    if (isRsProgram(n)) {
+      const pid = n.details.projectId as number;
+      const s = spendingByPid.get(pid);
+      const failBudget = hasBudget && ((budgetMin !== null && n.value < budgetMin) || (budgetMax !== null && n.value > budgetMax));
+      // 支出額は事業(支出)の値。支出の無い事業（事業(支出)ノードが無い）は下限指定で落ち、上限のみなら残す
+      const spendingValue = s?.value ?? 0;
+      const failSpending = hasSpending && ((spendingMin !== null && spendingValue < spendingMin) || (spendingMax !== null && spendingValue > spendingMax));
+      const failName = matchesProject !== undefined && (matchesProject === null || !matchesProject(n.name));
+      const depth = n.details.subcontractDepth ?? 1;
+      const failSubcontract = hasSubcontract && (filter.subcontract === 'has' ? depth < subMinDepth : depth >= 2);
+      const failAnyRecipient =
+        spendingWithDirectMatch !== null &&
+        !((s !== undefined && spendingWithDirectMatch.has(s.id)) || (matchesRecipient != null && (n.details.subcontractRecipients ?? []).some(name => matchesRecipient(name))));
+      let failScore = false;
+      if (hasScore) {
+        const entry = policy[String(pid)];
+        for (const f of scoreFilters) {
+          const v = entry?.[f.key];
+          if (v === null || v === undefined || (f.min !== null && v < f.min) || (f.max !== null && v > f.max)) {
+            failScore = true;
+            break;
+          }
+        }
+      }
+      if (failBudget || failSpending || failName || failSubcontract || failAnyRecipient || failScore) dropProject(pid);
+    } else if (n.details.column === 'recipient') {
+      // 支出先ノードを名前で落とす（再委託先を含むモードでは隠さない）
+      if (matchesRecipient !== undefined && !includeSub && (matchesRecipient === null || !matchesRecipient(n.name))) remove.add(n.id);
+    }
+  }
+
+  // 支出先名で支出先を落としたときは、支出先が1つも残らなかった事業（と双子）も落とす
+  if (matchesRecipient !== undefined && !includeSub) {
+    const spendingWithSurvivor = new Set<string>();
+    for (const l of view.links) {
+      if (recipientNameById.has(l.target) && !remove.has(l.target)) spendingWithSurvivor.add(l.source);
+    }
+    for (const [pid, s] of spendingByPid) {
+      if (!remove.has(s.id) && !spendingWithSurvivor.has(s.id)) dropProject(pid);
+    }
+  }
+
+  // ノードを落として値を辺から作り直す。上流で流れの無くなった目・項と、事業(支出)を失った支出先は removeUnreachable が消す
+  return removeUnreachable(removeNodes(view, remove));
+}
+
+/** 入力の不備（UI が警告を出すため）。絞り込み自体は不正な正規表現を「何も一致しない」として扱う */
+export function unifiedFilterIssues(filter: UnifiedViewFilter): { projectRegexInvalid: boolean; recipientRegexInvalid: boolean } {
+  const bad = (q: string, useRegex: boolean) => useRegex && q.trim() !== '' && buildNameMatcher(q, true) === null;
+  return {
+    projectRegexInvalid: bad(filter.projectQuery, filter.projectRegex),
+    recipientRegexInvalid: bad(filter.recipientQuery, filter.recipientRegex),
+  };
 }
 
 /** 流入も流出も無くなったノードを落とす（recomputeValues が value=0 で落とすので通常は不要だが、明示） */

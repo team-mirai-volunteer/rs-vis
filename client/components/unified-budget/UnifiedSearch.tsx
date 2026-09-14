@@ -127,7 +127,7 @@ export function UnifiedSearch({
         </div>
       )}
       {filterOpen && (
-        <div className="absolute left-0 top-9 z-40 w-96 rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
+        <div className="absolute left-0 top-9 z-40 max-h-[calc(100vh-var(--app-header-h)-5rem)] w-[28rem] overflow-y-auto rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
           {filterFields}
         </div>
       )}

@@ -147,7 +147,11 @@ function main() {
     console.error(`❌ ${LINKAGE_FILE}(.gz) がありません。generate-mof-rs-kou-moku-linkage.ts を先に実行してください`);
     process.exit(1);
   }
-  if (linkage.metadata.rsSheetYear !== undefined && linkage.metadata.rsSheetYear !== SHEET_YEAR) {
+  if (linkage.metadata.rsSheetYear === undefined) {
+    // 旧形式の紐づけ表（2023 など）: metadata に rsSheetYear / rsAmountKind / projects[] が無い。
+    // --sheet の年度で作られたものとみなし、金額の意味は予算額（'budget'）として扱う
+    console.warn(`⚠️  紐づけ表 ${path.basename(LINKAGE_FILE)} は旧形式（rsSheetYear 無し）。--sheet ${SHEET_YEAR} のRSシート・予算額（budget）とみなして続行します`);
+  } else if (linkage.metadata.rsSheetYear !== SHEET_YEAR) {
     console.error(`❌ 紐づけ表のRSシート年度 ${linkage.metadata.rsSheetYear} と --sheet ${SHEET_YEAR} が一致しません`);
     process.exit(1);
   }
@@ -273,6 +277,9 @@ function main() {
         accountCategory: n.accountCategory,
         ...(n.budgetSummary ? { budgetSummary: n.budgetSummary } : {}),
         ...(n.budgetBreakdown && n.budgetBreakdown.length > 0 ? { budgetBreakdown: n.budgetBreakdown } : {}),
+        // 再委託の階層・再委託先名（絞り込み用）。sankey-svg と同じく再委託ありの事業だけが持つ
+        ...(n.subcontractDepth !== undefined && n.subcontractDepth >= 2 ? { subcontractDepth: n.subcontractDepth } : {}),
+        ...(n.subcontractRecipients && n.subcontractRecipients.length > 0 ? { subcontractRecipients: n.subcontractRecipients } : {}),
       });
       programValue.set(n.projectId, rsMeasure(n));
     }
