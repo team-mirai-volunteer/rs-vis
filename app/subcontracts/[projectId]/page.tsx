@@ -72,6 +72,7 @@ import { useSidePanel, SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX } from '@/clie
 import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
 import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
+import { truncateName, Ellipsis } from '@/client/components/unified-budget/sankey-label';
 
 // サイドパネルの既定幅は現状の SidePane 固定幅(390)を維持。最小/最大はサンキーと共通の値を使う
 const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 390;
@@ -240,6 +241,9 @@ const RIBBON_LABEL_SLOT_PX_BASE = 12;
 // 制約に合わせる）。再委託階層が深く5列以上になる場合は圧縮せず横へオーバーフローさせる。
 // 4列 = 予算・執行 / 事業 / 支出先(depth1) / 再委託先(depth2)。
 const RIBBON_VISIBLE_COLS = 4;
+// フロー図の縦フィットで上部に空ける画面px。上部ツールバー（一覧/表示切替）の下端 ~52px と、
+// SVG 内に描く列見出し（列名 + 合計の 2 行）がノード上端より上に出るぶんを確保する
+const RIBBON_FIT_TOP_RESERVE = 64;
 
 /**
  * ribbon図のフィット値を算出。横は「可視幅に4列」の固定ピッチ（zoom非依存）、
@@ -248,7 +252,7 @@ const RIBBON_VISIBLE_COLS = 4;
 function computeRibbonFit(cW: number, cH: number, contentH: number): { horizontalScale: number; baseZoom: number } {
   return {
     horizontalScale: (cW / RIBBON_VISIBLE_COLS) / (RIBBON_COL_W + RIBBON_COL_GAP),
-    baseZoom: Math.max(0.05, Math.min(10, (cH / contentH) * 0.9)),
+    baseZoom: Math.max(0.05, Math.min(10, (Math.max(100, cH - RIBBON_FIT_TOP_RESERVE) / contentH) * 0.9)),
   };
 }
 // フロー図ラベルを「画面上ほぼ一定サイズ（baseZoom 超のズームインで最大 ZOOM_FONT_MAX_RATIO 倍まで拡大）」
@@ -1239,14 +1243,12 @@ function SubcontractDetailPageInner() {
     setViewModeState(mode);
     replaceViewUrl(mode);
   }, []);
-  // サイドパネルの chrome 状態。表示位置はビューモードに連動する:
-  // ブロック図(A案)=右（既存の配置を維持）、フロー図(B案)=左（/sankey-svg と同じ配置）。
-  // 幅・折りたたみ状態は useSidePanel が side をまたいで共有するため、ビュー切替をまたいでも保持される
-  const sidePanelSide: 'left' | 'right' = viewMode === 'ribbon' ? 'left' : 'right';
-  const sidePanel = useSidePanel({ side: sidePanelSide, defaultWidth: SUBCONTRACT_PANEL_WIDTH_DEFAULT });
-  // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが左表示の
+  // サイドパネルの chrome 状態。ブロック図・フロー図ともに左表示（/sankey-svg・統合ビューと同じ配置）。
+  // 幅・折りたたみ状態は useSidePanel が保持するため、ビュー切替をまたいでも保持される
+  const sidePanel = useSidePanel({ side: 'left', defaultWidth: SUBCONTRACT_PANEL_WIDTH_DEFAULT });
+  // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが開いている
   // ときだけ退避オフセットが必要（サンキーの left: selectedNodeId... と同じ流儀）
-  const leftFloatOffset = sidePanelSide === 'left' && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
+  const leftFloatOffset = !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
@@ -1550,12 +1552,11 @@ function SubcontractDetailPageInner() {
     const container = containerRef.current;
     if (!container || !activeContentSize) return;
     // サイドパネルは position:fixed のオーバーレイで flex レイアウトの外にあるため、
-    // container.clientWidth はパネルを含む全幅になる。フィット計算はパネルが開いている側の
+    // container.clientWidth はパネルを含む全幅になる。フィット計算はパネル（左）が開いている
     // 幅を差し引いた「実際に見える領域」を基準にしないと、コンテンツの端（ルートカード等）が
-    // パネルの下に隠れてしまう（特にリボンビューは既定でパネルが左に開いているため顕著）
-    const reserveLeft = sidePanelSide === 'left' && !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
-    const reserveRight = sidePanelSide === 'right' && !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
-    const cW = Math.max(100, container.clientWidth - reserveLeft - reserveRight);
+    // パネルの下に隠れてしまう
+    const reserveLeft = !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
+    const cW = Math.max(100, container.clientWidth - reserveLeft);
     const cH = container.clientHeight;
     if (viewMode === 'ribbon') {
       // 横縦分離: 横は「可視幅に4列」の固定ピッチ（zoom非依存）、縦のみ高さフィットで baseZoom を決める。
@@ -1565,7 +1566,7 @@ function SubcontractDetailPageInner() {
       setBaseZoom(fitZoomV);
       setTransform({
         x: reserveLeft,
-        y: (cH - activeContentSize.h * fitZoomV) / 2,
+        y: RIBBON_FIT_TOP_RESERVE + (Math.max(100, cH - RIBBON_FIT_TOP_RESERVE) - activeContentSize.h * fitZoomV) / 2,
         scale: fitZoomV,
       });
       return;
@@ -1579,7 +1580,7 @@ function SubcontractDetailPageInner() {
       y: (cH - activeContentSize.h * fitZoom) / 2,
       scale: fitZoom,
     });
-  }, [activeContentSize, sidePanelSide, sidePanel.collapsed, sidePanel.effectiveWidth, viewMode]);
+  }, [activeContentSize, sidePanel.collapsed, sidePanel.effectiveWidth, viewMode]);
 
   // グラフ読み込み後に全体表示。ただし最初の1回はURLにz/tx/tyがあればそれを優先復元する
   useEffect(() => {
@@ -2172,6 +2173,61 @@ function SubcontractDetailPageInner() {
               ))}
             </defs>
 
+            {/* 列見出し（統合ビューと同じ SVG 内描画: 列名 12px/700 + 合計 11px を先頭ノードの上に）。
+                縦位置は全列で共通の RIBBON_MARGIN.top 基準（再委託先2 など深い列も同じ高さ）。
+                文字サイズはラベル同様 ribbonLabelFont で zoom を打ち消して画面上ほぼ一定にする */}
+            {(() => {
+              const L = safeRibbonLayout;
+              type Col = { key: string; label: string; amountText: string; x: number };
+              const cols: Col[] = [];
+              if (L.budgetItems.length > 0) {
+                // 実際に描画している予算内訳ノードの合計を見出しに出す（レイアウトの funnel と一致）
+                const budgetTotal = L.budgetItems.reduce((sum, b) => sum + b.amount, 0);
+                cols.push({ key: 'budget', label: '予算・執行', amountText: formatYen(budgetTotal), x: L.budgetItems[0].x });
+              }
+              cols.push({
+                key: 'root', label: '事業',
+                amountText: L.root.budgetH != null
+                  ? `${formatYen(L.root.budgetAmount ?? 0)} / ${formatYen(L.root.spendingAmount ?? graph.execution)}`
+                  : formatYen(graph.execution),
+                x: L.root.x,
+              });
+              // 深度1列は間接経費ノード（ブロックではない）を含めた合計を見出しに出す。
+              // ブロックが1件も無く間接経費のみの事業でも列見出しを出す
+              const depths = [...new Set([...L.bars.map((b) => b.depth), ...(L.indirectNode ? [1] : [])])].sort((a, b) => a - b);
+              for (const d of depths) {
+                const barsAtD = L.bars.filter((b) => b.depth === d);
+                const indirectAtD = d === 1 ? L.indirectNode : null;
+                if (barsAtD.length === 0 && !indirectAtD) continue;
+                const total = barsAtD.reduce((sum, b) => sum + b.totalAmount, 0) + (indirectAtD?.amount ?? 0);
+                const anchor = barsAtD[0] ?? indirectAtD!;
+                cols.push({
+                  key: `d${d}`,
+                  label: d === 1 ? '支出先' : d === 2 ? '再委託先' : `再委託先${d - 1}`,
+                  amountText: formatYen(total),
+                  x: anchor.x,
+                });
+              }
+              const labelPx = ribbonLabelFont(12);
+              const amountPx = ribbonLabelFont(11);
+              const totalY = RIBBON_MARGIN.top - ribbonLabelFont(6);
+              const labelY = totalY - amountPx - ribbonLabelFont(4);
+              return (
+                <g style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                  {cols.map((col) => (
+                    <g key={col.key}>
+                      <text x={ix(col.x)} y={labelY} fontSize={labelPx} fontWeight={700} style={{ fill: 'var(--mirai-text-secondary)' }}>
+                        {col.label}
+                      </text>
+                      <text x={ix(col.x)} y={totalY} fontSize={amountPx} style={{ fill: 'var(--mirai-text-muted)' }}>
+                        {col.amountText}
+                      </text>
+                    </g>
+                  ))}
+                </g>
+              );
+            })()}
+
             {/* 別財源レーンの区切り線（薄い破線 + ラベル。直接系バンド群と視覚的に区切る） */}
             {safeRibbonLayout.separateLane && (
               <g style={{ pointerEvents: 'none' }}>
@@ -2180,7 +2236,7 @@ function SubcontractDetailPageInner() {
                   y1={safeRibbonLayout.separateLane.top}
                   x2={ix(safeRibbonLayout.svgWidth)}
                   y2={safeRibbonLayout.separateLane.top}
-                  stroke="#cbd5e1"
+                  stroke="var(--mirai-border)"
                   strokeWidth={1}
                   strokeDasharray="4 4"
                 />
@@ -2205,7 +2261,7 @@ function SubcontractDetailPageInner() {
                   ix(safeRibbonLayout.indirectFlow.x2), safeRibbonLayout.indirectFlow.y2Top + ribbonIndirectShift, safeRibbonLayout.indirectFlow.y2Bot + ribbonIndirectShift,
                 )}
                 fill={COLOR_INDIRECT_COST}
-                fillOpacity={selectedBlock ? 0.1 : (hoveredNodeRaw?.kind === 'indirect' ? 0.55 : (hoveredBlockId ? 0.12 : 0.3))}
+                fillOpacity={selectedBlock ? 0.06 : (hoveredNodeRaw?.kind === 'indirect' ? 0.5 : (hoveredBlockId ? 0.06 : 0.28))}
                 style={{ pointerEvents: 'none' }}
               />
             )}
@@ -2219,18 +2275,10 @@ function SubcontractDetailPageInner() {
               const flowKey = `${flow.sourceBlock ?? 'root'}->${flow.targetBlock}-${i}`;
               const activeId = selectedBlock?.blockId ?? null;
               const isFlowHovered = hoveredRibbonFlowKey === flowKey;
-              let fillOpacity: number;
-              if (activeId) {
-                const isConnected = flow.sourceBlock === activeId || flow.targetBlock === activeId;
-                fillOpacity = isConnected ? (isFlowHovered ? 0.55 : 0.42) : 0.08;
-              } else if (isFlowHovered) {
-                fillOpacity = 0.6;
-              } else if (hoveredBlockId) {
-                const isConnected = flow.sourceBlock === hoveredBlockId || flow.targetBlock === hoveredBlockId;
-                fillOpacity = isConnected ? 0.5 : 0.1;
-              } else {
-                fillOpacity = 0.28;
-              }
+              // 統合ビューと同じ 3 段（既定 0.28 / ホバー 0.5 / 選択・ホバーと無関係 0.06）
+              const offSelection = activeId !== null && !(flow.sourceBlock === activeId || flow.targetBlock === activeId);
+              const offHover = hoveredBlockId !== null && !(flow.sourceBlock === hoveredBlockId || flow.targetBlock === hoveredBlockId);
+              const fillOpacity = offSelection || offHover ? 0.06 : (isFlowHovered ? 0.5 : 0.28);
               const sShift = ribbonShiftOf(flow.sourceBlock);
               const tShift = ribbonShiftOf(flow.targetBlock);
               return (
@@ -2295,17 +2343,29 @@ function SubcontractDetailPageInner() {
                 onMouseLeave={() => setHoveredNodeRaw(null)}
                 style={{ cursor: 'default' }}
               >
-                <rect x={ix(bi.x)} y={biY} width={iw(bi.w)} height={Math.max(1, bi.h)} rx={1} fill={SEMANTIC_PROJECT} vectorEffect="non-scaling-stroke" />
+                <rect x={ix(bi.x)} y={biY} width={iw(bi.w)} height={Math.max(1, bi.h)} rx={2} fill={SEMANTIC_PROJECT} vectorEffect="non-scaling-stroke" />
                 <text
                   x={ix(bi.x + bi.w + 6)}
                   y={biY + bi.h / 2}
                   dominantBaseline="middle"
                   fontSize={ribbonLabelFont(10)}
-                  fill="#333"
+                  fontWeight={500}
+                  fill="var(--mirai-text)"
+                  stroke="var(--card)"
+                  strokeWidth={3}
+                  paintOrder="stroke"
                   style={{ userSelect: 'none', pointerEvents: 'none' }}
                 >
-                  {bi.label.length > 16 ? bi.label.slice(0, 15) + '…' : bi.label}
-                  <tspan> ({formatYen(bi.amount)})</tspan>
+                  {(() => {
+                    const { text, truncated } = truncateName(bi.label, 15);
+                    return (
+                      <>
+                        {text}
+                        {truncated && <Ellipsis fontPx={ribbonLabelFont(10)} />}
+                      </>
+                    );
+                  })()}
+                  <tspan fill="var(--mirai-text-muted)"> ({formatYen(bi.amount)})</tspan>
                 </text>
               </g>
               );
@@ -2322,8 +2382,8 @@ function SubcontractDetailPageInner() {
                 <path
                   d={mergedProjectPath(ix(safeRibbonLayout.root.x), safeRibbonLayout.root.y, iw(RIBBON_BAR_W), safeRibbonLayout.root.budgetH, safeRibbonLayout.root.h)}
                   fill="url(#budget-exec-grad)"
-                  stroke={hoveredNodeRaw?.kind === 'root' ? '#111827' : 'none'}
-                  strokeWidth={hoveredNodeRaw?.kind === 'root' ? 1.5 : 0}
+                  stroke={hoveredNodeRaw?.kind === 'root' ? 'var(--mirai-text)' : 'none'}
+                  strokeWidth={hoveredNodeRaw?.kind === 'root' ? 1 : 0}
                   vectorEffect="non-scaling-stroke"
                   style={{ pointerEvents: 'all' }}
                 />
@@ -2333,10 +2393,10 @@ function SubcontractDetailPageInner() {
                   y={safeRibbonLayout.root.y}
                   width={iw(safeRibbonLayout.root.w)}
                   height={Math.max(1, safeRibbonLayout.root.h)}
-                  rx={1}
+                  rx={2}
                   fill="#e07040"
-                  stroke={hoveredNodeRaw?.kind === 'root' ? '#111827' : 'none'}
-                  strokeWidth={hoveredNodeRaw?.kind === 'root' ? 1.5 : 0}
+                  stroke={hoveredNodeRaw?.kind === 'root' ? 'var(--mirai-text)' : 'none'}
+                  strokeWidth={hoveredNodeRaw?.kind === 'root' ? 1 : 0}
                   vectorEffect="non-scaling-stroke"
                   style={{ pointerEvents: 'all' }}
                 />
@@ -2349,10 +2409,10 @@ function SubcontractDetailPageInner() {
                 style={{ pointerEvents: 'none' }}
               >
                 <div style={{ fontFamily: 'inherit', userSelect: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
-                  <div style={{ fontSize: ribbonLabelFont(9), fontWeight: 700, color: '#94a3b8' }}>事業 / PID {graph.projectId}</div>
-                  <div style={{ fontSize: ribbonLabelFont(11), fontWeight: 700, color: '#333', lineHeight: `${ribbonLabelFont(13)}px`, marginTop: 2, ...CLAMP_2_LINES }}>
+                  <div style={{ fontSize: ribbonLabelFont(9), fontWeight: 700, color: 'var(--mirai-text-muted)' }}>事業 / PID {graph.projectId}</div>
+                  <div style={{ fontSize: ribbonLabelFont(11), fontWeight: 700, color: 'var(--mirai-text)', lineHeight: `${ribbonLabelFont(13)}px`, marginTop: 2, ...CLAMP_2_LINES }}>
                     {graph.projectName}
-                    <span style={{ fontWeight: 500 }}> （支出 {graph.execution > 0 ? formatYen(graph.execution) : '—'}）</span>
+                    <span style={{ fontWeight: 500, color: 'var(--mirai-text-muted)' }}> （支出 {graph.execution > 0 ? formatYen(graph.execution) : '—'}）</span>
                   </div>
                 </div>
               </foreignObject>
@@ -2366,8 +2426,11 @@ function SubcontractDetailPageInner() {
                   dominantBaseline="middle"
                   textAnchor="end"
                   fontSize={ribbonLabelFont(11)}
-                  fontWeight={600}
-                  fill="#333"
+                  fontWeight={500}
+                  fill="var(--mirai-text)"
+                  stroke="var(--card)"
+                  strokeWidth={3}
+                  paintOrder="stroke"
                   style={{ userSelect: 'none', pointerEvents: 'none' }}
                 >
                   予算 {formatYen(safeRibbonLayout.root.budgetAmount)}
@@ -2380,19 +2443,21 @@ function SubcontractDetailPageInner() {
               const isSelected = selectedBlock?.blockId === bar.blockId;
               const isHovered = hoveredBlockId === bar.blockId;
               const palette = originPalette(bar.originKind);
-              const selectedStroke = palette.selectedStroke;
               const activeId = selectedBlock?.blockId ?? null;
               const isDimmed = activeId !== null && activeId !== bar.blockId && !safeRibbonLayout.flows.some(
                 (f) => (f.sourceBlock === activeId && f.targetBlock === bar.blockId) || (f.targetBlock === activeId && f.sourceBlock === bar.blockId)
               );
-              const barOpacity = isDimmed ? 0.35 : 1;
-              const labelColor = isDimmed ? '#bbb' : '#333';
+              const barOpacity = isDimmed ? 0.25 : 1;
+              const labelColor = isDimmed ? 'var(--mirai-text-muted)' : 'var(--mirai-text)';
               const amountLabel = bar.isZeroAmount ? '金額内訳なし' : formatYen(bar.totalAmount);
               const barLabelFontPx = ribbonLabelFont(11);
               const amountTspanText = ` (${amountLabel})`;
               // 金額部分（"(1,234億円)"）を必ず収めた上で名前部分を切り詰める（列幅からはみ出し・
-              // 文字切れを防ぐ。clipPath は保険として残すが、通常ケースではここで収まる）
-              const displayBlockName = truncateRibbonLabelName(bar.blockName, amountTspanText, iw(RIBBON_LABEL_W - 6), barLabelFontPx);
+              // 文字切れを防ぐ。clipPath は保険として残すが、通常ケースではここで収まる）。
+              // 省略記号は統合ビューと同じ半角幅の <Ellipsis> で描くため、切り詰め結果の末尾「…」を外す
+              const truncatedBlockName = truncateRibbonLabelName(bar.blockName, amountTspanText, iw(RIBBON_LABEL_W - 6), barLabelFontPx);
+              const blockNameTruncated = truncatedBlockName !== bar.blockName;
+              const displayBlockName = blockNameTruncated ? truncatedBlockName.slice(0, -1) : truncatedBlockName;
               const barY = bar.y + (ribbonBarShift.get(bar.blockId) ?? 0); // ラベル衝突回避の縦シフト
 
               return (
@@ -2403,28 +2468,15 @@ function SubcontractDetailPageInner() {
                   onMouseLeave={() => { setHoveredNodeRaw(null); setHoveredBlockId(null); }}
                   style={{ cursor: 'pointer' }}
                 >
-                  {isSelected && (
-                    <rect
-                      x={ix(bar.x - 3)}
-                      y={barY - 3}
-                      width={iw(bar.w + 6)}
-                      height={bar.h + 6}
-                      rx={4}
-                      fill="none"
-                      stroke={CARD_SELECTED_RING}
-                      strokeWidth={4}
-                      style={{ pointerEvents: 'none' }}
-                    />
-                  )}
                   <rect
                     x={ix(bar.x)}
                     y={barY}
                     width={iw(bar.w)}
                     height={Math.max(1, bar.h)}
-                    rx={1}
+                    rx={2}
                     fill={palette.header}
-                    stroke={isSelected ? selectedStroke : (isHovered ? '#111827' : 'none')}
-                    strokeWidth={isSelected ? 2.5 : (isHovered ? 1.5 : 0)}
+                    stroke={isSelected || isHovered ? 'var(--mirai-text)' : 'none'}
+                    strokeWidth={isSelected ? 1.5 : (isHovered ? 1 : 0)}
                     vectorEffect="non-scaling-stroke"
                     style={{ opacity: barOpacity, transition: 'opacity 0.12s ease' }}
                   />
@@ -2435,11 +2487,15 @@ function SubcontractDetailPageInner() {
                     fontSize={barLabelFontPx}
                     fontWeight={isSelected || isHovered ? 700 : 500}
                     fill={labelColor}
+                    stroke="var(--card)"
+                    strokeWidth={3}
+                    paintOrder="stroke"
                     clipPath={bar.depth === ribbonMaxDepth ? undefined : `url(#ribbon-clip-col-${bar.depth})`}
                     style={{ userSelect: 'none', pointerEvents: 'none' }}
                   >
                     {displayBlockName}
-                    <tspan>{amountTspanText}</tspan>
+                    {blockNameTruncated && <Ellipsis fontPx={barLabelFontPx} />}
+                    <tspan fill="var(--mirai-text-muted)">{amountTspanText}</tspan>
                   </text>
                 </g>
               );
@@ -2454,6 +2510,9 @@ function SubcontractDetailPageInner() {
               const iHovered = hoveredNodeRaw?.kind === 'indirect';
               const iFontPx = ribbonLabelFont(11);
               const iAmountText = ` (${formatYen(iNode.amount)})`;
+              const iTruncatedLabel = truncateRibbonLabelName(iNode.label, iAmountText, iw(RIBBON_LABEL_W - 6), iFontPx);
+              const iLabelTruncated = iTruncatedLabel !== iNode.label;
+              const iDisplayLabel = iLabelTruncated ? iTruncatedLabel.slice(0, -1) : iTruncatedLabel;
               return (
                 <g
                   onClick={handleIndirectClick}
@@ -2466,12 +2525,12 @@ function SubcontractDetailPageInner() {
                     y={iY}
                     width={iw(iNode.w)}
                     height={Math.max(1, iNode.h)}
-                    rx={1}
+                    rx={2}
                     fill={COLOR_INDIRECT_COST}
-                    stroke={iHovered ? '#111827' : 'none'}
-                    strokeWidth={iHovered ? 1.5 : 0}
+                    stroke={iHovered ? 'var(--mirai-text)' : 'none'}
+                    strokeWidth={iHovered ? 1 : 0}
                     vectorEffect="non-scaling-stroke"
-                    style={{ opacity: isDimmed ? 0.35 : 1, transition: 'opacity 0.12s ease' }}
+                    style={{ opacity: isDimmed ? 0.25 : 1, transition: 'opacity 0.12s ease' }}
                   />
                   <text
                     x={ix(iNode.x + iNode.w + 6)}
@@ -2479,12 +2538,16 @@ function SubcontractDetailPageInner() {
                     dominantBaseline="middle"
                     fontSize={iFontPx}
                     fontWeight={iHovered ? 700 : 500}
-                    fill={isDimmed ? '#bbb' : '#333'}
+                    fill={isDimmed ? 'var(--mirai-text-muted)' : 'var(--mirai-text)'}
+                    stroke="var(--card)"
+                    strokeWidth={3}
+                    paintOrder="stroke"
                     clipPath={ribbonMaxDepth > 1 ? 'url(#ribbon-clip-col-1)' : undefined}
                     style={{ userSelect: 'none', pointerEvents: 'none' }}
                   >
-                    {truncateRibbonLabelName(iNode.label, iAmountText, iw(RIBBON_LABEL_W - 6), iFontPx)}
-                    <tspan>{iAmountText}</tspan>
+                    {iDisplayLabel}
+                    {iLabelTruncated && <Ellipsis fontPx={iFontPx} />}
+                    <tspan fill="var(--mirai-text-muted)">{iAmountText}</tspan>
                   </text>
                 </g>
               );
@@ -2494,75 +2557,6 @@ function SubcontractDetailPageInner() {
           </g>
 
         </svg>
-
-        {/* 列見出し（メイン /sankey-svg の列ラベル方式）。列ごとの合計金額を列の上に
-            Sticky 表示する。pan/zoom に追従しつつ、スクロールで列頭が上に隠れても
-            上部ツールバーの直下に張り付く（top を max でクランプ）。 */}
-        {viewMode === 'ribbon' && (() => {
-          const L = safeRibbonLayout;
-          const scale = transform.scale;
-          const HEADER_TOP_RESERVE = 52; // 上部ツールバー（一覧/年度/タブ）の下端目安
-          const labelPx = scaleFont(11);
-          const amountPx = scaleFont(10);
-          type Col = { key: string; label: string; amountLines: string[]; xCenter: number };
-          const cols: Col[] = [];
-          if (L.budgetItems.length > 0) {
-            // 実際に描画している予算内訳ノードの合計を見出しに出す（レイアウトの funnel と一致）
-            const budgetTotal = L.budgetItems.reduce((s, b) => s + b.amount, 0);
-            cols.push({
-              key: 'budget', label: '予算・執行', amountLines: [formatYen(budgetTotal)],
-              xCenter: L.budgetItems[0].x + L.budgetItems[0].w / 2,
-            });
-          }
-          cols.push({
-            key: 'root', label: '事業',
-            amountLines: L.root.budgetH != null
-              ? [`${formatYen(L.root.budgetAmount ?? 0)} / ${formatYen(L.root.spendingAmount ?? graph.execution)}`]
-              : [formatYen(graph.execution)],
-            xCenter: L.root.x + L.root.w / 2,
-          });
-          // 深度1列は間接経費ノード（ブロックではない）を含めた合計を見出しに出す。
-          // ブロックが1件も無く間接経費のみの事業でも列見出しを出す
-          const depths = [...new Set([...L.bars.map((b) => b.depth), ...(L.indirectNode ? [1] : [])])].sort((a, b) => a - b);
-          for (const d of depths) {
-            const barsAtD = L.bars.filter((b) => b.depth === d);
-            const indirectAtD = d === 1 ? L.indirectNode : null;
-            if (barsAtD.length === 0 && !indirectAtD) continue;
-            const total = barsAtD.reduce((s, b) => s + b.totalAmount, 0) + (indirectAtD?.amount ?? 0);
-            const anchor = barsAtD[0] ?? indirectAtD!;
-            cols.push({
-              key: `d${d}`,
-              label: d === 1 ? '支出先' : d === 2 ? '再委託先' : `再委託先${d - 1}`,
-              amountLines: [formatYen(total)],
-              xCenter: anchor.x + anchor.w / 2,
-            });
-          }
-          // 全列で共通の Top 位置に見出しを揃える（列ごとの最上端ノードYではなく、Top揃えの
-          // 基準 RIBBON_MARGIN.top を使う。再委託先2 など深い列も 支出先/再委託先 と同じ高さになる）。
-          const colTopScreenY = transform.y + RIBBON_MARGIN.top * scale;
-          return cols.map((col) => {
-            // 横は zoom不変（horizontalScale）、縦は zoom連動（scale）で列位置を出す。
-            const screenX = transform.x + col.xCenter * horizontalScale;
-            const blockH = Math.round(labelPx * 1.4 + col.amountLines.length * amountPx * 1.4 + 6);
-            const top = Math.max(HEADER_TOP_RESERVE, colTopScreenY - blockH - 6);
-            return (
-              <div
-                key={col.key}
-                className="pointer-events-none select-none whitespace-nowrap rounded-md bg-background/80 px-2 py-0.5 text-center leading-[1.4] text-mirai-text-muted"
-                style={{
-                  position: 'absolute', left: screenX, top,
-                  transform: 'translateX(-50%)',
-                  fontSize: labelPx, cursor: 'default', zIndex: 6,
-                }}
-              >
-                <div>{col.label}</div>
-                {col.amountLines.map((a, i) => (
-                  <div key={i} style={{ fontSize: amountPx }}>{a}</div>
-                ))}
-              </div>
-            );
-          });
-        })()}
 
         {/* ホバーツールチップ — サンキー流儀のマウス追従 HTML div（220ms遅延・パン/ズーム直後は抑制） */}
         {hoveredNodeStable && !isPanning.current && !isHoverSuppressed && (() => {
@@ -2700,14 +2694,11 @@ function SubcontractDetailPageInner() {
           );
         })()}
 
-        {/* ズームコントロール — 右下（サイドパネルが右表示時のみ左にシフト。パネルが左表示のフロー図ビューでは
-            右側は空くため退避不要。パネルは position:fixed のオーバーレイのため、
-            キャンバスは全幅を使う＝このコントロールの座標系はビューポート全体に一致する） */}
+        {/* ズームコントロール — 右下（サイドパネルは左表示のため退避不要。パネルは position:fixed の
+            オーバーレイのため、キャンバスは全幅を使う＝このコントロールの座標系はビューポート全体に一致する） */}
         <div style={{
-          position: 'absolute', bottom: 12,
-          right: sidePanelSide === 'right' && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12,
+          position: 'absolute', bottom: 12, right: 12,
           zIndex: 15, display: 'flex', flexDirection: 'column', gap: 4,
-          transition: sidePanel.isResizing ? 'none' : 'right 0.2s ease',
         }}>
           {/* スクロールモード切替ボタン（/sankey-svg と同じ意匠） */}
           <div className="w-11 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
@@ -2807,9 +2798,9 @@ function SubcontractDetailPageInner() {
 
       </div>
 
-        {/* サイドパネル — ブロック図(A案)=右、フロー図(B案)=左（/sankey-svg と同じ配置） */}
+        {/* サイドパネル — ブロック図・フロー図ともに左（/sankey-svg・統合ビューと同じ配置） */}
         <SidePanelChrome
-          side={sidePanelSide}
+          side="left"
           open={!sidePanel.collapsed}
           onToggle={sidePanel.toggleCollapsed}
           width={sidePanel.effectiveWidth}
