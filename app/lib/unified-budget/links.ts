@@ -90,8 +90,8 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   if (p.get('fr') === '1') out.set('fr', '1');
   if (p.get('fp') === '1') out.set('ffp', '1');
 
-  // 絞り込み
-  for (const m of p.getAll('fm')) if (m.trim()) out.append('fmi', m.trim());
+  // 絞り込み。旧 fm（RS の府省庁名）は写さない: 統合ビューの fmi は MOF の所管（「内閣府及び厚生労働省」等）で
+  // 名前体系が違い、そのまま渡すと対象事業が落ちる
   const ac = p.get('ac');
   if (ac !== null) {
     if (ac.includes('g')) out.append('fac', 'general');

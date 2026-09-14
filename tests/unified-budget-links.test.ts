@@ -46,7 +46,7 @@ test('旧 /sankey-svg のクエリを統合ビューへ写す', () => {
   assert.equal(q.get('tre'), '80');
   assert.equal(q.get('tmi'), '20');
   assert.equal(q.get('opr'), '5');
-  assert.deepEqual(q.getAll('fmi'), ['厚生労働省', '総務省']);
+  assert.deepEqual(q.getAll('fmi'), []); // RS 府省庁名は MOF 所管と体系が違うので写さない
   assert.deepEqual(q.getAll('fac'), ['general', 'special']);
   assert.equal(q.get('fpq'), '年金');
   assert.equal(q.get('fpr'), '1');

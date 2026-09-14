@@ -17,7 +17,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 
 日本の2024年度予算・支出データをインタラクティブなSankey図で可視化する Next.js アプリ。
 
-**公開ページ**: `/sankey-svg`（メイン、`/` からリダイレクト）、`/subcontracts`、`/mof-budget-overview`（URL直打ち）、`/quality`（URL直打ち）、`/project-bubble`（URL直打ち・事業バブルチャート＝意味的2次元配置）、`/budget-sankey`（メニュー名「統合ビュー」。MOF予算書の会計→所管→項→目とRS事業→支出先を1本のサンキーで見る追加ビュー。設計: `docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md`）
+**公開ページ**: `/`（トップ。各ビューへの入口）、`/budget-sankey`（メイン・統合ビュー。メニュー名「サンキー図」。会計→所管→項→目→事業→支出先を 1 本のサンキーで見る。「RSのみ」プリセットが旧 `/sankey-svg` 相当。`/sankey-svg` は旧パラメータを写してここへリダイレクト）、`/subcontracts`、`/mof-budget-overview`（URL直打ち）、`/quality`（URL直打ち）、`/project-bubble`（URL直打ち・事業バブルチャート＝意味的2次元配置）、`/budget-sankey`（メニュー名「統合ビュー」。MOF予算書の会計→所管→項→目とRS事業→支出先を1本のサンキーで見る追加ビュー。設計: `docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md`）
 
 **Key Statistics**: 151.12兆円 総予算 / 5,003事業 / 26,823支出先（予算年度2023実績・再委託先含む）
 
@@ -43,7 +43,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 
 | 作業内容 | 使うスキル |
 |---------|-----------|
-| Sankey図の実装（/sankey-svg） | `/sankey` |
+| Sankey図の実装（/budget-sankey 統合ビュー） | `/sankey` |
 | データパイプライン・CSV処理・JSON生成 | `/pipeline` |
 | lint + TypeScript チェック | `/quality-check` |
 | CSVデータ更新→JSON生成→Git反映 | `/data-update` |
