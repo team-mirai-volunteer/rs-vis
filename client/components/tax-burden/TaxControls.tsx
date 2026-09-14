@@ -58,9 +58,10 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
   const reform = <K extends keyof TaxState['reform']>(key: K, value: TaxState['reform'][K]) => setState(s => ({ ...s, reform: { ...s.reform, [key]: value } }));
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const swappable = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
-  // The parameter file fixes the spacing between children; the slider moves the whole set.
-  const spacing = (lifecycle?.childBirthAges ?? [32, 34]).map(b => b - (lifecycle?.childBirthAges ?? [32, 34])[0]);
-  const birthAges = spacing.slice(0, household.children).map(gap => state.firstBirthAge + gap);
+  const birthAges = [state.firstBirthAge, state.secondBirthAge].slice(0, household.children);
+  const youngest = Math.max(...birthAges, 0);
+  const lastBenefitAge = youngest + 18;
+  const lastDependantAge = youngest + (lifecycle?.childLeavesAt ?? 23) - 1;
   const policy = swappable && tab === 'policy';
   const reformed = isReformed(state.reform);
   const allowance = basicAllowance ?? 580000;
@@ -86,20 +87,27 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
             className="w-24 rounded-xl border border-mirai-border bg-card px-3 py-2 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />万円</label>
         </div>}
         {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" onChange={v => set('age', v)} />}
-        {household.children > 0 && <RangeField label="第1子が生まれる親の年齢" value={state.firstBirthAge} min={BIRTH_AGE_RANGE[0]} max={BIRTH_AGE_RANGE[1]} suffix="歳" onChange={v => set('firstBirthAge', v)} />}
         {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
         <Toggle label="賞与2か月分を含める" note="月給12回＋1か月分を年2回" checked={state.bonus} onChange={v => set('bonus', v)} />
         {state.view === 'curve' && <>
           <Toggle label="6つの家族構成を重ねる" checked={state.showAll} onChange={v => set('showAll', v)} />
           <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025。単身・片働きは平均賃金比50〜250%の連続系列、共働きは定点のみ' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />
         </>}
+        {(state.view === 'age' || state.view === 'heatmap') && household.children > 0 && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="子どもの前提">
+          <h3 className="font-bold text-primary-accent">子どもの前提</h3>
+          <RangeField label="第1子が生まれる親の年齢" value={state.firstBirthAge} min={BIRTH_AGE_RANGE[0]} max={BIRTH_AGE_RANGE[1]} suffix="歳"
+            onChange={v => setState(st => ({ ...st, firstBirthAge: v, secondBirthAge: Math.max(v, st.secondBirthAge) }))} />
+          {household.children > 1 && <RangeField label="第2子が生まれる親の年齢" value={state.secondBirthAge} min={state.firstBirthAge} max={BIRTH_AGE_RANGE[1]} suffix="歳"
+            onChange={v => set('secondBirthAge', v)} />}
+          <p className="text-xs leading-relaxed text-mirai-text-subtle">児童手当も扶養控除も子の年齢で決まるので、年齢軸のどこで給付・控除が切れるかは出産年齢の置き方で決まります。児童手当は末子が18歳以下の間（親{lastBenefitAge}歳まで）、扶養控除は末子が独立する{lifecycle?.childLeavesAt ?? 23}歳まで（親{lastDependantAge}歳まで）です。</p>
+        </section>}
         {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
           <h3 className="font-bold text-primary-accent">働き方の前提</h3>
           <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
           <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
           <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
         </section>}
-        <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。{household.children > 0 && `子どもは大人${birthAges.join('歳・')}歳時に生まれ${lifecycle?.childLeavesAt ?? 23}歳で独立、`}大人は同年齢です。本人負担を計算します。{household.children > 0 && '児童手当は子が18歳以下の間だけ出るので、出産年齢を動かすと年齢軸のどこで給付が切れるかが変わります。'}</div>
+        <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。{household.children > 0 && `子どもは大人${birthAges.join('歳・')}歳時に生まれ${lifecycle?.childLeavesAt ?? 23}歳で独立、`}大人は同年齢です。本人負担を計算します。</div>
       </>}
 
       {policy && <section className="space-y-3" aria-label="税・給付の条件">

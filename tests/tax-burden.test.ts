@@ -305,7 +305,7 @@ test('OECD dataset has Japan reference values at eight stylised points for 2025'
 });
 test('URL round trips every calculation and display condition', () => {
   const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const,
-    continuation: 0.5, workUntil: 70, includeConsumption: true, showOecd: true, view: 'age' as const, firstBirthAge: 28 };
+    continuation: 0.5, workUntil: 70, includeConsumption: true, showOecd: true, view: 'age' as const, firstBirthAge: 28, secondBirthAge: 33 };
   state.reform.creditAnnual = 250000;
   assert.deepEqual(decodeTaxState(encodeTaxState(state)), { state, warning: null });
 });
@@ -339,19 +339,22 @@ test('the OECD comparison moves with the same assumptions as our own curve, at t
   assert.throws(() => overlayAddOn(5000000, japan, { ...off, corporateShare: 1.5 }), /帰着シェア/);
 });
 
-test('the first-birth age moves every child-linked item, and nothing else', () => {
-  const at = (firstBirthAge: number, age: number) => simulate({ ...initialTaxState(), age, firstBirthAge }, p);
-  // Children are born two years apart, so at 40 a birth age of 32 leaves an 8- and a 6-year-old at home.
-  assert.equal(at(32, 40).childBenefit, 2 * p.childMonthly * 12);
-  assert.equal(at(38, 40).childBenefit, 2 * p.childMonthlyUnder3 * 12, '2歳と0歳なら3歳未満の額になる');
-  // Child benefit stops when the younger child turns 19: born at 34, that is the parent's 53rd year.
-  assert.equal(at(32, 53).childBenefit, 0);
-  assert(at(32, 52).childBenefit > 0);
-  assert.equal(at(38, 59).childBenefit, 0, '出産が6年遅ければ給付の終わりも6年ずれる');
-  assert(at(38, 58).childBenefit > 0);
-  // A childless household ignores it entirely.
+test('each child has its own birth age, and it only touches child-linked items', () => {
+  const at = (firstBirthAge: number, secondBirthAge: number, age: number) =>
+    simulate({ ...initialTaxState(), age, firstBirthAge, secondBirthAge }, p);
+  // Born at 32 and 34, the children are 8 and 6 when the parent is 40.
+  assert.equal(at(32, 34, 40).childBenefit, 2 * p.childMonthly * 12);
+  assert.equal(at(38, 40, 40).childBenefit, 2 * p.childMonthlyUnder3 * 12, '2歳と0歳なら3歳未満の額になる');
+  // The second child can be spaced apart on its own: born at 40, it is 0 while the first is already 8.
+  assert.equal(at(32, 40, 40).childBenefit, p.childMonthly * 12 + p.childMonthlyUnder3 * 12);
+  // Child benefit runs while the younger child is 18 or under, so the last year follows the later birth.
+  assert.equal(at(32, 34, 53).childBenefit, 0);
+  assert(at(32, 34, 52).childBenefit > 0);
+  assert(at(32, 40, 58).childBenefit > 0, '第2子を遅らせた分だけ給付も伸びる');
+  assert.equal(at(32, 40, 59).childBenefit, 0);
+  // A childless household ignores both.
   const childless = (firstBirthAge: number) => simulate({ ...initialTaxState(), household: 'one-earner' as const, firstBirthAge }, p);
   assert.equal(childless(20).netBurden, childless(45).netBurden);
   assert.throws(() => simulate({ ...initialTaxState(), firstBirthAge: 17 }, p), /有効な範囲/);
-  assert.throws(() => simulate({ ...initialTaxState(), firstBirthAge: 46 }, p), /有効な範囲/);
+  assert.throws(() => simulate({ ...initialTaxState(), secondBirthAge: 46 }, p), /有効な範囲/);
 });
