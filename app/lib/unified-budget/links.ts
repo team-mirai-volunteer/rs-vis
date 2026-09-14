@@ -17,6 +17,13 @@ function base(sheetYear: number | string): URLSearchParams {
   return new URLSearchParams({ year: String(sheetYearToBudgetYear(sheetYear)), cols: UNIFIED_RS_COLS, fnrs: '0' });
 }
 
+/** 旧 /sankey-svg 相当（RS の府省庁 → 事業 → 事業(支出) → 支出先。基準「府省庁」） */
+function rsMinistryBase(sheetYear: number | string): URLSearchParams {
+  const p = base(sheetYear);
+  p.set('b', 'ministry');
+  return p;
+}
+
 /** 事業を選択し、関連ノードだけを表示した状態で開く（旧 sankeySvgProjectUrl 相当） */
 export function unifiedProjectUrl(projectId: number | string, sheetYear: number | string): string {
   const p = base(sheetYear);
@@ -45,7 +52,8 @@ export function unifiedRecipientNameFilterUrl(recipientName: string, sheetYear: 
 export function sankeySvgNodeIdToUnified(id: string): string | null {
   if (id.startsWith('project-spending-')) return id.replace('project-spending-', 'project-budget-');
   if (id.startsWith('project-budget-') || id.startsWith('r-')) return id;
-  if (id.startsWith('ministry-')) return `min-${id.slice('ministry-'.length)}`;
+  // 旧サンキー図の省庁は RS の府省庁名。統合ビューの MOF 所管（min-）とは体系が違うので、府省庁基準の RS府省庁ノードへ
+  if (id.startsWith('ministry-')) return `min-rs-${id.slice('ministry-'.length)}`;
   return null;
 }
 
@@ -58,7 +66,8 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   const p = typeof search === 'string' ? new URLSearchParams(search) : search;
   const yr = p.get('yr');
   const sheetYear = yr === '2024' || yr === '2025' ? yr : '2025';
-  const out = base(sheetYear);
+  // 旧サンキー図は RS の府省庁で紐づけていたので、基準「府省庁」で開く（省庁の選択・fm の絞り込みがそのまま写る）
+  const out = rsMinistryBase(sheetYear);
 
   // 選択（sel）。無ければピン（pp: 事業, pr: 支出先, pm: 省庁名）から補う
   const sel = p.get('sel');
@@ -69,7 +78,7 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
     const pm = p.get('pm');
     if (pp) selected = sankeySvgNodeIdToUnified(pp);
     else if (pr) selected = sankeySvgNodeIdToUnified(pr);
-    else if (pm) selected = `min-${pm}`;
+    else if (pm) selected = `min-rs-${pm}`;
   }
   if (selected) out.set('sel', selected);
 
@@ -90,8 +99,8 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   if (p.get('fr') === '1') out.set('fr', '1');
   if (p.get('fp') === '1') out.set('ffp', '1');
 
-  // 絞り込み。旧 fm（RS の府省庁名）は写さない: 統合ビューの fmi は MOF の所管（「内閣府及び厚生労働省」等）で
-  // 名前体系が違い、そのまま渡すと対象事業が落ちる
+  // 絞り込み。fm（RS の府省庁名）は所管の絞り込み fmi へ（府省庁基準の所管ノードは RS の府省庁名なので一致する）
+  for (const fm of p.getAll('fm')) if (fm.trim()) out.append('fmi', fm.trim());
   const ac = p.get('ac');
   if (ac !== null) {
     if (ac.includes('g')) out.append('fac', 'general');

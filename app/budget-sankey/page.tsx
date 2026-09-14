@@ -17,7 +17,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
+import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
   UNIFIED_FILTER_DEFAULT,
@@ -32,7 +32,7 @@ import {
 } from '@/types/unified-budget-view';
 import { usePolicySummary } from '@/client/components/unified-budget/policy-summary-cache';
 import type { LabelDensity } from '@/types/mof-hierarchy';
-import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toViewGraph } from '@/app/lib/unified-budget/transform';
+import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toRsMinistryGraph, toViewGraph } from '@/app/lib/unified-budget/transform';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -50,7 +50,8 @@ const basesOf = (year: number): readonly UnifiedBasis[] => UNIFIED_BASES_BY_YEAR
 /** その年度で使える基準に丸める（無ければ当初予算） */
 const coerceBasis = (year: number, basis: UnifiedBasis | null | undefined): UnifiedBasis =>
   basis && basesOf(year).includes(basis) ? basis : DEFAULT_BASIS;
-const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${basis}`;
+/** 読み込んだグラフのキー。府省庁基準は当初予算ファイルを共有する */
+const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${unifiedFileBasis(basis)}`;
 
 /** 列 → URL パラメータ名の短縮（t=TopN, o=表示位置） */
 const COL_KEY: Record<UnifiedColumn, string> = {
@@ -227,16 +228,26 @@ function UnifiedBudgetSankeyContent() {
   }, [year, effectiveBasis, graphs]);
 
   const graph = graphs.get(graphKey(year, effectiveBasis)) ?? null;
+  const rsMinistryMode = isRsMinistryBasis(effectiveBasis);
 
-  /** この年度に存在する列（支出の無い年度は事業(支出)・支出先が無い） */
-  const availableColumns = useMemo<UnifiedColumn[]>(() => (graph ? UNIFIED_COLUMNS.filter(c => (graph.metadata.counts[c] ?? 0) > 0) : [...UNIFIED_COLUMNS]), [graph]);
+  // 変換パイプライン。絞り込み・畳み込みまでは browse（サイドパネル用・全件）、TopN 後が図用。
+  // 府省庁基準は MOF 側を捨てて RS府省庁 → 事業 に組み替える（旧 /sankey-svg 相当）
+  const base = useMemo(() => {
+    if (!graph) return null;
+    const view = toViewGraph(graph);
+    return rsMinistryMode ? toRsMinistryGraph(view) : view;
+  }, [graph, rsMinistryMode]);
+
+  /** この基準・年度に存在する列（支出の無い年度は事業(支出)・支出先が無い。府省庁基準は会計〜目が無い） */
+  const availableColumns = useMemo<UnifiedColumn[]>(() => {
+    if (!base) return [...UNIFIED_COLUMNS];
+    const present = new Set(base.nodes.map(n => n.details.column));
+    return UNIFIED_COLUMNS.filter(c => present.has(c));
+  }, [base]);
   const effectiveColumns = useMemo(() => {
     const cols = visibleColumns.filter(c => availableColumns.includes(c));
     return cols.length > 0 ? cols : availableColumns.filter(c => c === 'ministry' || c === 'section' || c === 'program');
   }, [visibleColumns, availableColumns]);
-
-  // 変換パイプライン。絞り込み・畳み込みまでは browse（サイドパネル用・全件）、TopN 後が図用
-  const base = useMemo(() => (graph ? toViewGraph(graph) : null), [graph]);
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
   // 取得前（undefined）・取得失敗（null）のときは ctx.policy を渡さず、スコアの絞り込みは効かせない
   const scoreFilterActive = hasScoreRange(filter.scoreO) || hasScoreRange(filter.scoreX) || hasScoreRange(filter.scoreN);
@@ -281,7 +292,7 @@ function UnifiedBudgetSankeyContent() {
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -319,7 +330,11 @@ function UnifiedBudgetSankeyContent() {
   if (!graph || !display || !collapsed) return <CenterMessage text="データを取得できませんでした" error />;
 
   const { metadata } = graph;
-  const summary = `${metadata.budgetYear}年度 ${metadata.basisBudgetType} / 純計 ${formatBudgetFromYen(metadata.totals.net)}（総計 ${formatBudgetFromYen(metadata.totals.gross)}・繰入 ${formatBudgetFromYen(metadata.totals.transfer)}） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
+  const summary = rsMinistryMode
+    ? `${metadata.budgetYear}年度 府省庁基準（RSシステムの府省庁 → 事業。予算書の会計〜目は使わない） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
+        metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : '（当初予算）'
+      } / RSシート${metadata.rsSheetYear}`
+    : `${metadata.budgetYear}年度 ${metadata.basisBudgetType} / 純計 ${formatBudgetFromYen(metadata.totals.net)}（総計 ${formatBudgetFromYen(metadata.totals.gross)}・繰入 ${formatBudgetFromYen(metadata.totals.transfer)}） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
     metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''
   } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
@@ -356,7 +371,8 @@ function UnifiedBudgetSankeyContent() {
         labelDensity={labelDensity}
         budgetYear={metadata.budgetYear}
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
-        rsMeasureLabel={metadata.rsMeasureLabel}
+        rsMeasureLabel={rsMinistryMode ? '当初予算' : metadata.rsMeasureLabel}
+        ministryColumnLabel={rsMinistryMode ? '府省庁' : undefined}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
         hasSpending={metadata.hasSpending}

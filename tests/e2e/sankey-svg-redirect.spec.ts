@@ -13,12 +13,13 @@ test.describe('sankey-svg redirect', () => {
     expect(url.searchParams.get('year')).toBe('2024');
     expect(url.searchParams.get('cols')).toBe('mi,pr,ps,re');
     expect(url.searchParams.get('fnrs')).toBe('0');
+    expect(url.searchParams.get('b')).toBe('ministry'); // 旧サンキー図と同じ RS府省庁の紐づけ
   });
 
   test('old selection, pins, ranges and filters are mapped', async ({ page }) => {
     // 2024 年度の統合グラフ（約 20MB）を読むので長めに取る
     test.setTimeout(240_000);
-    await page.goto('/sankey-svg?yr=2025&sel=project-spending-2826&fr=1&tp=60&tr=80&fnp=%E5%B9%B4%E9%87%91&fp=1&z=2');
+    await page.goto('/sankey-svg?yr=2025&sel=project-spending-2826&fr=1&tp=60&tr=80&fm=%E5%8E%9A%E7%94%9F%E5%8A%B4%E5%83%8D%E7%9C%81&fnp=%E5%B9%B4%E9%87%91&fp=1&z=2');
     await expect(page).toHaveURL(/\/budget-sankey\?/);
     const q = new URL(page.url()).searchParams;
     expect(q.get('year')).toBe('2024');
@@ -27,7 +28,8 @@ test.describe('sankey-svg redirect', () => {
     expect(q.get('tpr')).toBe('60');
     expect(q.get('tps')).toBe('60');
     expect(q.get('tre')).toBe('80');
-    expect(q.getAll('fmi')).toEqual([]); // 旧 fm（RS 府省庁）は MOF 所管と体系が違うため写さない
+    expect(q.get('b')).toBe('ministry');
+    expect(q.getAll('fmi')).toEqual(['厚生労働省']); // 旧 fm（RS 府省庁）は府省庁基準の所管絞り込みへ
     expect(q.get('fpq')).toBe('年金');
     expect(q.get('ffp')).toBe('1');
     expect(q.get('z')).toBeNull();
