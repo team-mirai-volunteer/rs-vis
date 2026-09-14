@@ -661,8 +661,8 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
         <canvas ref={canvasRef} style={{ width: size.w, height: size.h }} />
       </div>
 
-      {/* ズーム操作。右側は凡例のフロートが使うので左下に置く */}
-      <div className="absolute bottom-3 left-3 flex flex-col overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
+      {/* ズーム操作。サンキー図と同じ右下に置く（凡例は右上から下へ伸びるが、下端は空けてある） */}
+      <div className="absolute bottom-3 right-3 flex flex-col overflow-hidden rounded-xl border border-mirai-border bg-card shadow-xs">
         <Button
           variant="ghost"
           onClick={() => zoomAt(size.w / 2, size.h / 2, 1.4)}
@@ -685,7 +685,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       </div>
 
       {transform.k > 1.05 && (
-        <div className="pointer-events-none absolute bottom-3 left-14 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] tabular-nums text-mirai-text-muted">
+        <div className="pointer-events-none absolute bottom-3 right-14 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] tabular-nums text-mirai-text-muted">
           ×{transform.k.toFixed(1)}
         </div>
       )}
