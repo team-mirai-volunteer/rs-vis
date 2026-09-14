@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { UNIFIED_BASES, UNIFIED_BASIS_LABELS, type UnifiedBasis } from '@/types/unified-budget';
 
 /**
- * 基準のセレクト。予算書の基準（当初予算・補正予算・決算）と、紐づけの基準（府省庁 = 旧サンキー図と同じ RS府省庁 → 事業）。
+ * 基準のセレクト。予算書の基準（当初予算・補正予算・決算）と、RSの基準（府省庁 = 旧サンキー図と同じ RS府省庁 → 事業）。
  * 表示プリセットの左に置く。年度によって生成済みの基準が違うので、無いものは disabled で出す（選択肢の並びは固定）。
  */
 const BUDGET_BASES = UNIFIED_BASES.filter(b => b !== 'ministry');
@@ -34,8 +34,8 @@ export function UnifiedBasisSelect({
             </option>
           ))}
         </optgroup>
-        <optgroup label="紐づけの基準">
-          <option value="ministry">{UNIFIED_BASIS_LABELS.ministry}（RS）</option>
+        <optgroup label="RSの基準">
+          <option value="ministry">{UNIFIED_BASIS_LABELS.ministry}</option>
         </optgroup>
       </select>
       <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted" />
