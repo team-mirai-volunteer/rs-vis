@@ -11,12 +11,13 @@ const PHASE = { work: '現役', reemployed: '継続雇用', 'work-pension': '就
 
 function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item: TaxItem; compact: boolean; hasConsumption: boolean }) {
   const values = grid.flatMap(r => r.cells.map(c => cellRate(c, item))).filter((v): v is number => v !== null);
-  const max = Math.max(0.005, ...values.map(v => Math.abs(v)));
+  const peak = Math.max(0, ...values.map(v => Math.abs(v)));
+  const max = Math.max(0.005, peak); // colour-scale floor, so an all-zero panel is not painted from a rounding artefact
   const label = TAX_ITEMS.find(t => t.id === item)!.label;
   const ages = compact ? HEATMAP_AGES.filter((_, i) => i % 2 === 0 || i === HEATMAP_AGES.length - 1) : HEATMAP_AGES;
   const rows = compact ? grid.filter((_, i) => i % 2 === 1 || i === grid.length - 1) : grid;
   return <div className={compact ? 'rounded-xl border border-mirai-border bg-card p-3' : ''}>
-    {compact && <p className="mb-2 text-xs font-bold">{label}<span className="ml-2 font-normal text-mirai-text-secondary">最大 {(max * 100).toFixed(1)}%</span></p>}
+    {compact && <p className="mb-2 text-xs font-bold">{label}<span className="ml-2 font-normal text-mirai-text-secondary">最大 {(peak * 100).toFixed(1)}%</span></p>}
     <div className="overflow-x-auto"><table className={`w-full border-separate border-spacing-0.5 tabular-nums ${compact ? 'text-[10px]' : 'text-xs'}`} aria-label={`${label}の年齢×年収ヒートマップ`}>
       <thead><tr><th scope="col" className="text-left font-normal">{compact ? '年収＼年齢' : '現役期年収＼年齢'}</th>{ages.map(a => <th key={a} scope="col" className="px-1 font-normal">{a}</th>)}</tr></thead>
       <tbody>{rows.map(row => <tr key={row.income}>
@@ -38,18 +39,19 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item
   </div>;
 }
 
-export function TaxHeatmap({ grid, item, hasConsumption }: { grid: HeatmapGrid; item: TaxItem; hasConsumption: boolean }) {
+export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGrid; hasConsumption: boolean; reformed: boolean }) {
+  const item: TaxItem = 'net';
   const label = TAX_ITEMS.find(t => t.id === item)!.label;
   const available = availableTaxItems(grid, hasConsumption);
   const items = available.filter(t => t.id !== 'net');
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);
   return <div className="space-y-6">
     <div>
-      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。左パネルの「色にする税目」で拡大する税目を選べます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
+      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。左パネルを「税・給付」に切り替えると、税目ごとのスライダーでこの表を動かせます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
       <Grid grid={grid} item={item} compact={false} hasConsumption={hasConsumption} />
     </div>
     <div>
-      <h3 className="mb-1 text-sm font-bold">税目ごとに分解する</h3>
+      <h3 className="mb-1 text-sm font-bold">税目ごとに分解する{reformed && <span className="ml-2 font-normal text-primary-accent">改革案で計算中</span>}</h3>
       <p className="mb-3 text-xs text-mirai-text-secondary">同じ格子を税目別に並べた小さな表（年収・年齢は間引き表示、値は%）。色の濃さは各表の最大値に対する比率なので、表の間で濃さは比べず、形（どの年齢・所得に偏るか）を比べてください。この世帯で常に0になる項目は表を出していません。0.0%は制度上0のときと、現役期年収に対して0.05%未満のときの両方があります（金額はセルにカーソルを当てると出ます）。</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{items.map(t => <Grid key={t.id} grid={grid} item={t.id} compact hasConsumption={hasConsumption} />)}</div>
       <ul className="mt-4 list-disc space-y-1 pl-5 text-xs leading-relaxed text-mirai-text-secondary">

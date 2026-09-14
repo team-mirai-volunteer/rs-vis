@@ -90,9 +90,9 @@ export const HEATMAP_INCOMES = [2000000, 3000000, 4000000, 5000000, 6000000, 800
 
 /** Model-based grid for view F: for each working-age income class, the burden of one tax item at each age. */
 export function heatmapGrid(state: TaxState, p: TaxParameters, consumption?: ConsumptionDataset | null,
-  incidence?: IncidenceDataset | null): { income: number; cells: LifecycleYear[] }[] {
+  incidence?: IncidenceDataset | null, reform?: Reform): { income: number; cells: LifecycleYear[] }[] {
   return HEATMAP_INCOMES.map(income => {
-    const series = lifecycleSeries({ ...state, income, includeConsumption: true }, p, undefined, consumption, incidence);
+    const series = lifecycleSeries({ ...state, income, includeConsumption: true }, p, reform, consumption, incidence);
     return { income, cells: HEATMAP_AGES.map(age => series.find(y => y.ageAt === age)!) };
   });
 }

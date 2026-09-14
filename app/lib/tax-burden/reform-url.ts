@@ -1,8 +1,9 @@
-import type { TaxItem, TaxState, TaxView } from '@/types/tax-burden';
-import { HOUSEHOLDS, initialTaxState, MODEL_VERSION, TAX_ITEMS } from './households';
+import type { TaxState, TaxView } from '@/types/tax-burden';
+import { HOUSEHOLDS, initialTaxState, MODEL_VERSION } from './households';
 
 export const REFORM_LIMITS = {
-  basicAllowanceExtra: [0, 2000000], insuranceMultiplier: [0, 2], childMonthly: [0, 50000],
+  basicAllowanceExtra: [0, 2000000], incomeTaxMultiplier: [0, 2], residentTaxMultiplier: [0, 2],
+  insuranceMultiplier: [0, 2], childMonthly: [0, 50000],
   creditAnnual: [0, 1000000], creditPhaseoutStart: [0, 10000000], creditPhaseoutRate: [0, 1],
   standardVat: [0, 1], reducedVat: [0, 1],
 } as const;
@@ -34,9 +35,6 @@ export function decodeTaxState(query: string): { state: TaxState; warning: strin
   const household = HOUSEHOLDS.find(h => h.id === q.get('household'));
   if (household) state.household = household.id;
   else if (q.has('household')) invalid = true;
-  const taxItem = TAX_ITEMS.find(t => t.id === q.get('taxItem'));
-  if (taxItem) state.taxItem = taxItem.id as TaxItem;
-  else if (q.has('taxItem')) invalid = true;
   state.age = numeric('age', state.age, 20, 64, true);
   state.income = numeric('income', state.income, 0, 20000000, true);
   state.share = numeric('share', state.share, 1, 99, true);
@@ -67,7 +65,7 @@ export function encodeTaxState(state: TaxState): string {
     household: state.household, age: String(state.age), income: String(state.income),
     share: String(state.share), bonus: state.bonus ? '1' : '0', showAll: state.showAll ? '1' : '0',
     consumption: state.consumptionAssumption, continuation: String(state.continuation),
-    workUntil: String(state.workUntil), taxItem: state.taxItem, corporateShare: String(state.corporateShare),
+    workUntil: String(state.workUntil), corporateShare: String(state.corporateShare),
     includeConsumption: state.includeConsumption ? '1' : '0', showOecd: state.showOecd ? '1' : '0' });
   for (const [key, value] of Object.entries(state.reform)) q.set(key, String(value));
   return q.toString();

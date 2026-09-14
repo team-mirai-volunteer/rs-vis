@@ -96,7 +96,13 @@ try {
   await page.screenshot({ path: resolve(output, 'age.png'), fullPage: true });
   await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
   await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
-  await expect(page.getByRole('heading', { name: '税目ごとに分解する' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /税目ごとに分解する/ })).toBeVisible();
+  await page.getByRole('button', { name: /^税・給付/ }).click();
+  await page.getByLabel('住民税の倍率').fill('0');
+  await expect(page.getByText('改革案で計算中', { exact: true })).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'heatmap-policy.png'), fullPage: true });
+  await page.getByRole('button', { name: '基準制度に戻す', exact: true }).click();
+  await page.getByRole('button', { name: '世帯', exact: true }).click();
   await page.screenshot({ path: resolve(output, 'heatmap.png'), fullPage: true });
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();
   await page.getByLabel('消費税（推計）を含める').check();

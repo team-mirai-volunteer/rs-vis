@@ -13,7 +13,6 @@ import { decodeTaxState, encodeTaxState } from '@/app/lib/tax-burden/reform-url'
 import { CurveChart } from '@/client/components/tax-burden/CurveChart';
 import { LifecycleChart, PHASE_LABEL } from '@/client/components/tax-burden/LifecycleChart';
 import { TaxHeatmap } from '@/client/components/tax-burden/TaxHeatmap';
-import { availableTaxItems } from '@/app/lib/tax-burden/heatmap-items';
 import { StatsPanel } from '@/client/components/tax-burden/StatsPanel';
 import { TaxControls } from '@/client/components/tax-burden/TaxControls';
 import { BurdenBreakdown, yen } from '@/client/components/tax-burden/BurdenBreakdown';
@@ -75,15 +74,14 @@ export default function TaxBurdenPage() {
   const { data: ageStats } = useJson<AgeDataset>(state.view === 'stats' ? '/api/tax-burden/age?year=2024' : null, retry);
   const { data: revenue, error: revenueError } = useJson<TaxRevenue>(state.view === 'revenue' ? '/api/tax-burden/revenue?fy=2025' : null, retry);
 
+  const reformed = isReformed(state.reform);
   const before = useMemo(() => params ? simulate(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence]);
   const after = useMemo(() => params ? simulate(state, params, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const impact = before && after ? fiscalImpact(before, after, state, consumption) : null;
-  const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence]);
-  const grid = useMemo(() => params && state.view === 'heatmap' ? heatmapGrid(state, params, consumption, incidence) : null, [state, params, consumption, incidence]);
-  const heatmapItems = useMemo(() => grid ? availableTaxItems(grid, !!consumption) : null, [grid, consumption]);
-  // A stored tax item that never pays for this household (児童扶養手当 on a couple, say) falls back to the net burden.
-  const taxItem = heatmapItems && !heatmapItems.some(t => t.id === state.taxItem) ? 'net' : state.taxItem;
-  const reformed = isReformed(state.reform);
+  // The age and heat-map views answer to the same policy sliders; the age view keeps a current-law series to compare against.
+  const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
+  const lifecycleBase = useMemo(() => params && state.view === 'age' && reformed ? lifecycleSeries(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence, reformed]);
+  const grid = useMemo(() => params && state.view === 'heatmap' ? heatmapGrid(state, params, consumption, incidence, state.reform) : null, [state, params, consumption, incidence]);
   const selected = reformed ? after : before;
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const setView = (view: TaxView) => setState(s => ({ ...s, view }));
@@ -120,7 +118,7 @@ export default function TaxBurdenPage() {
       </nav>
 
       {modelViews && <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} taxItems={heatmapItems ?? undefined} taxItem={taxItem} />
+        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
             {state.view === 'curve' && <>
@@ -149,7 +147,7 @@ export default function TaxBurdenPage() {
               </div>
               {lifecycle[0].outOfScope && <p role="status" className="rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm"><strong>適用範囲外の参考値：</strong>{lifecycle[0].scopeReasons.join('、')}。</p>}
               <Card><CardHeader><h2 className="text-lg font-bold">同じ所得階層の人が、年齢とともにどれだけ負担するか</h2><p className="mt-2 text-xs text-mirai-text-secondary">{household.label}・現役期の世帯年収 {(state.income / 10000).toLocaleString('ja-JP')}万円。60歳以降は賃金{Math.round(state.continuation * 100)}%で継続雇用、65歳から年金{state.workUntil > 65 ? `（${state.workUntil - 1}歳まで就労継続）` : ''}。</p></CardHeader>
-                <CardContent><LifecycleChart years={lifecycle} state={state} selectedAge={selectedAge} onSelectAge={setSelectedAge} />
+                <CardContent><LifecycleChart years={lifecycle} base={lifecycleBase} state={state} selectedAge={selectedAge} onSelectAge={setSelectedAge} />
                   <div className="mt-4 overflow-x-auto"><table className="w-full text-xs tabular-nums"><thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left">年齢</th><th scope="col" className="text-right">総収入</th><th scope="col" className="text-right">うち年金</th><th scope="col" className="text-right">税</th><th scope="col" className="text-right">保険料</th><th scope="col" className="text-right">給付</th><th scope="col" className="text-right">純負担率（年金差し引き・現役期年収比）</th><th scope="col" className="text-right">可処分所得</th></tr></thead>
                     <tbody>{[30, 40, 50, 60, 64, 65, 70, 75, 80].map(a => lifecycle.find(y => y.ageAt === a)!).map(y => <tr key={y.ageAt} className={`border-t border-mirai-border/30 ${y.ageAt === selectedAge ? 'font-bold' : ''}`}><th scope="row" className="py-1 text-left font-normal">{y.ageAt}歳（{PHASE_LABEL[y.phase]}）</th><td className="text-right">{yen(y.income)}</td><td className="text-right">{yen(y.pensionIncome)}</td><td className="text-right">{yen(y.incomeTax + y.residentTax + (state.includeConsumption ? y.consumptionTax : 0))}</td><td className="text-right">{yen(y.pension + y.health + y.care + y.employment)}</td><td className="text-right">{yen(y.benefits)}</td><td className="text-right">{rateText(y.careerRate === null ? null : (state.includeConsumption ? y.careerRate : (y.pensionAdjustedBurden - y.consumptionTax) / y.careerIncome))}</td><td className="text-right">{yen(y.disposable - (state.includeConsumption ? y.consumptionTax : 0))}</td></tr>)}</tbody></table></div>
                   <p className="mt-4 text-xs leading-relaxed text-mirai-text-secondary">年金は老齢基礎年金（満額）＋報酬比例部分（平均標準報酬額×5.481/1000×480か月）。65歳以降の医療保険は国民健康保険（東京都特別区の統一保険料・要照合）、75歳から後期高齢者医療（東京都広域連合）、介護保険第1号は国の標準段階×全国平均基準額。年金生活者支援給付金は所得要件を満たす場合のみ。住民税は前年所得課税で計算するため、就労初年度（20歳）は0、継続雇用で減収した60歳と年金生活に入った65歳には前年の給与に基づく重い住民税がかかります。</p>
@@ -158,7 +156,7 @@ export default function TaxBurdenPage() {
               {ageRow && <BurdenBreakdown before={ageRow} includeConsumption={state.includeConsumption} pensionIncome={ageRow.pensionIncome} title={`${selectedAge}歳の負担内訳`} />}
             </>}
             {state.view === 'heatmap' && grid && <Card><CardHeader><h2 className="text-lg font-bold">この税は、どの年齢・どの所得階層に重いか</h2><p className="mt-2 text-xs text-mirai-text-secondary">{household.label}。制度モデルで年齢×現役期年収の各セルを計算。</p></CardHeader>
-              <CardContent><TaxHeatmap grid={grid} item={taxItem} hasConsumption={!!consumption} /></CardContent></Card>}
+              <CardContent><TaxHeatmap grid={grid} hasConsumption={!!consumption} reformed={reformed} /></CardContent></Card>}
           </>}
         </div>
       </div>}

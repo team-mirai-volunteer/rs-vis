@@ -227,6 +227,10 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     residentTaxable.push(!exemptFlags[i].perCapita);
   });
 
+  // Per-item levers, applied to the finished tax so the heat-map panels can be raised and lowered one by one.
+  incomeTax = Math.round(incomeTax * reform.incomeTaxMultiplier);
+  residentTax = Math.round(residentTax * reform.residentTaxMultiplier);
+
   // 4. Cash benefits.
   const childBenefit = h.childAges.reduce((s, age) => s + (age <= 18 ? (age < 3 ? p.childMonthlyUnder3 : reform.childMonthly) * 12 : 0), 0);
   let singleParentBenefit = 0;
