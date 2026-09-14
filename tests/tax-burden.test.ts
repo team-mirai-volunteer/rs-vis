@@ -168,6 +168,29 @@ test('lifecycle: phases, retiree insurance and pension timing', () => {
   assert(w67.pension > 0 && w71.pension === 0, 'employees pension contributions stop at 70');
   assert(w67.pensionIncome < w72.pensionIncome, 'in-work reduction lowers the pension while working');
 });
+test('resident tax is assessed on the previous year: none in the first working year, still high the year after retiring', () => {
+  const ys = lifecycleSeries({ ...initialTaxState(), household: 'one-earner-children', income: 8000000 }, p);
+  const at = (age: number) => ys.find(y => y.ageAt === age)!;
+  assert.equal(at(20).residentTax, 0, '前年所得が無いので就労初年度は住民税なし');
+  assert.equal(at(60).residentTax, 413000, '継続雇用で減収しても前年59歳の満額給与で課税される');
+  assert.equal(at(65).residentTax, 242800, '年金生活の初年度も前年64歳の給与で課税される');
+  assert.equal(at(66).residentTax, 47400, '年金所得に見合う額になるのは翌年から');
+  assert.equal(at(71).residentTax, 39900, '老人控除対象配偶者（70歳以上）の判定も前年基準で1年ずれる');
+  const y = at(65);
+  assert.equal(y.grossBurden, y.incomeTax + y.residentTax + y.pension + y.health + y.care + y.employment);
+  assert.equal(y.netBurden, y.grossBurden - y.benefits);
+});
+test('elderly resident tax: pension deduction, the non-taxable limit and the old-age spouse credit', () => {
+  const at = (household: 'single' | 'one-earner-children', income: number, age: number) =>
+    lifecycleSeries({ ...initialTaxState(), household, income }, p).find(y => y.ageAt === age)!;
+  // 単身・年金191万 → 雑所得81万、社保18.6万、基礎控除43万 → 課税所得19.4万 → 所得割16,900＋均等割5,000
+  assert.equal(at('single', 5000000, 70).residentTax, 21900);
+  // 夫婦とも71歳・年金254万＋83万 → 老人配偶者控除38万、人的控除差15万で調整控除7,500円
+  assert.equal(at('one-earner-children', 8000000, 71).residentTax, 39900);
+  // 合計所得が非課税限度額（夫婦101万円・単身45万円）以下なら住民税はかからない
+  assert.equal(at('one-earner-children', 5000000, 70).residentTax, 0);
+  assert.equal(at('single', 3000000, 70).residentTax, 0);
+});
 test('heat-map grid covers all incomes and ages with consistent totals', () => {
   const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);
   assert.equal(grid.length, 10);
