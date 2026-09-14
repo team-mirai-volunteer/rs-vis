@@ -42,7 +42,7 @@ export function simulate(state: SimulateState, p: TaxParameters,
   const scopeReasons = salaries.flatMap((salary, i) => salary < p.minimumAnnualWage
     ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与がフルタイム下限未満`] : []);
   const adults: AdultInput[] = Array.from({ length: household.adults }, (_, i) => ({
-    age: state.age, salary: salaries[i] ?? 0, pension: 0, employeeInsured: (salaries[i] ?? 0) > 0,
+    age: state.age, salary: salaries[i] ?? 0, pension: 0, employeeInsured: (salaries[i] ?? 0) >= p.employeeInsuranceThreshold,
   }));
   const taxes = computeHousehold({ adults, childAges: childAgesAt(state.age, household.children, p),
     loneParent: household.adults === 1 && household.children > 0, bonus: state.bonus }, p, reform);

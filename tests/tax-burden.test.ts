@@ -33,6 +33,27 @@ test('coverage follows each worker, not household income; non-working spouse exc
   assert.equal(simulate({ ...base, income: p.minimumAnnualWage }, p).outOfScope, false);
   assert.equal(simulate({ ...base, income: p.minimumAnnualWage - 1 }, p).outOfScope, true);
 });
+test('below the employee-insurance wage no pension premium is due: the national pension is fully exempt at that salary', () => {
+  const single = (income: number) => simulate({ ...initialTaxState(), household: 'single', income }, p);
+  const np = p.lifecycle.nationalPension;
+  for (const income of [300000, 500000, 1000000, p.employeeInsuranceThreshold - 10000]) {
+    const r = single(income);
+    assert.equal(r.pension, 0, `${income}円では国民年金は全額免除`);
+    assert(r.health > 0 && r.employment > 0, '国民健康保険と雇用保険は残る');
+  }
+  // 給与所得は年収−65万円なので、賃金要件（105.6万円）未満では全額免除の基準（67万円）を超えられない。
+  assert(p.employeeInsuranceThreshold - p.salaryDeduction[0][2] < np.exemptions[0].limit);
+  assert(single(500000).netRate! < 0.1, '保険料が下げ止まらないので率が跳ね上がらない');
+  // 賃金要件を超えると厚生年金・健康保険に移り、保険料が段差になる（106万円の壁）。
+  const below = single(p.employeeInsuranceThreshold - 10000), above = single(p.employeeInsuranceThreshold);
+  assert(above.pension > 90000 && above.health > below.health);
+  assert(above.netRate! - below.netRate! > 0.1, '壁の段差は10ポイント超');
+});
+test('a dependent spouse is a third-category member and adds no pension premium', () => {
+  const couple = simulate({ ...initialTaxState(), household: 'one-earner-children', income: 5000000 }, p);
+  const solo = simulate({ ...initialTaxState(), household: 'single', income: 5000000 }, p);
+  assert.equal(couple.pension, solo.pension, '専業配偶者の国民年金保険料は発生しない');
+});
 test('care contribution switches at age 40 and the spouse income split is symmetric', () => {
   const state = initialTaxState();
   assert.equal(simulate({ ...state, age: 39 }, p).care, 0);

@@ -89,6 +89,12 @@ export interface LifecycleParameters {
   };
   latterStageHealth: { rate: number; perCapita: number; cap: number; reductions: [number, number, number, number][] };
   careFirstCategory: { baseAnnual: number; stages: { stage: number; multiplier: number }[] };
+  /** Flat first-category national pension, with the statutory application-based exemption steps. */
+  nationalPension: {
+    monthly: number; minimumAge: number; maximumAge: number;
+    thirdCategoryIncomeLimit: number; dependantAllowance: number;
+    exemptions: { limit: number; exempt: number }[];
+  };
   pensionSupport: { monthly: number; incomeThreshold: number };
 }
 
@@ -105,6 +111,8 @@ export interface TaxParameters {
     notes: string[];
   };
   minimumAnnualWage: number;
+  /** Wage at which a worker joins the employees' pension and health insurance (月8.8万円×12). */
+  employeeInsuranceThreshold: number;
   basicAllowances: [number, number][];
   incomeBrackets: [number, number, number][];
   salaryDeduction: [number, number, number][];
