@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
@@ -46,6 +46,8 @@ export default function ProjectMapPage() {
   const [showRegions, setShowRegions] = useState(true);
   const [showTable, setShowTable] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  /** sm 未満で左の絞り込み列（ボトムシート）を開いているか。既定は閉（図を広く見せる） */
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   // 絞り込み
   const [ministries, setMinistries] = useState<string[]>([]);
@@ -348,8 +350,16 @@ export default function ProjectMapPage() {
         )}
       </div>
 
-      {/* ── 左フロート列: 絞り込み（最上段）＋ 表示切替。幅を絞って中央を図に明け渡す ── */}
-      <div className="pointer-events-none absolute bottom-3 left-3 top-3 z-30 flex w-[268px] flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto">
+      {/* ── 左フロート列: 絞り込み（最上段）＋ 表示切替。幅を絞って中央を図に明け渡す。
+             sm 未満ではボトムシート（全幅・高さ 55vh）にして、左上のボタンで開閉する ── */}
+      <div
+        className={cn(
+          'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
+          'inset-x-3 bottom-3 max-h-[55vh]',
+          'sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-none sm:w-[268px]',
+          mobilePanelOpen || selected ? 'flex' : 'hidden'
+        )}
+      >
 
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
@@ -495,6 +505,20 @@ export default function ProjectMapPage() {
 
       </div>
 
+      {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
+      <div className="absolute left-3 top-3 z-40 sm:hidden">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="絞り込みと表示切替"
+          aria-expanded={mobilePanelOpen}
+          onClick={() => setMobilePanelOpen(v => !v)}
+          className={cn('border-mirai-border', mobilePanelOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
+        >
+          <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+        </Button>
+      </div>
+
       {/* ── 右上: ヘルプ（年度・ページ切替メニューは AppHeader へ） ── */}
       <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
         <div className="relative">
@@ -537,9 +561,9 @@ export default function ProjectMapPage() {
         </div>
       </div>
 
-      {/* ── 右フロート: 凡例（右上のヘルプの下から。右下はズーム操作に空ける） ── */}
+      {/* ── 右フロート: 凡例（右上のヘルプの下から。右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
       {data && !loading && (
-        <aside className="pointer-events-none absolute right-3 top-14 z-30 flex max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto">
+        <aside className="pointer-events-none absolute right-3 top-14 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
           <Legend
             entries={legend}
             mode={colorMode}
