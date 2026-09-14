@@ -20,7 +20,11 @@ test('tax prototype: reform, shared conditions, actual revenue, unavailable stat
   await page.getByRole('button', { name: '国の税収', exact: true }).click();
   await expect(page.getByRole('rowheader', { name: '法人税', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '実態統計', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '実態統計は、収録準備中です' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '年収十分位別の負担率（実測＋消費税推計）' })).toBeVisible();
+  await page.getByRole('button', { name: '年齢で見る', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '同じ所得階層の人が、年齢とともにどれだけ負担するか' })).toBeVisible();
+  await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
+  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

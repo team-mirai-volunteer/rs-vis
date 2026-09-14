@@ -1,7 +1,7 @@
 {
   "metadata": {
     "fiscalYear": 2025,
-    "modelVersion": "prototype-2025-1",
+    "modelVersion": "prototype-2025-2",
     "status": "prototype",
     "referenceDate": "2025-01-01",
     "documentRevision": "2025-11",
@@ -10,13 +10,17 @@
     "sourceUrl": "https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/income-support-redistribution-and-work-incentives/TaxBEN-Japan-latest.pdf",
     "notes": [
       "OECD日本2025年版の制度説明から作成した試作。TaxBEN実出力との照合は未完了。翁カーブの再現済みデータではありません。",
-      "大人は同年齢の正規被用者、子は6歳・8歳。給与以外の所得、生活保護、住宅手当、就学援助、年金・医療給付は含めません。",
+      "大人は同年齢の正規被用者。子は大人32歳・34歳時に生まれ（大人40歳で8歳・6歳）、23歳で世帯を離れると仮定。給与・公的年金以外の所得、生活保護、住宅手当、就学援助、医療給付は含めません。",
       "住民税の前年所得との時間差は無視。給与所得控除は資料の区間式を使用し、年末調整の給与所得控除後の給与等の金額の表による丸めは未反映。",
-      "調整控除はOECD説明書の国・地方の控除差の式を使用。原制度の人的控除差との照合は未完了。森林環境税は未収録。",
+      "調整控除の人的控除差は法定額（基礎控除5万円、配偶者控除5万円、配偶者特別控除は配偶者所得58万円超60万円未満5万円・60万円以上65万円未満3万円、一般扶養5万円、特定扶養18万円、ひとり親5万円）。2025年改正の基礎控除上乗せは差に含めません。",
+      "均等割は都民税1,000円＋特別区民税3,000円＋森林環境税1,000円。",
       "本人保険料率はOECD資料p.29の値（健康5%、介護0.8%、年金9.15%、雇用0.6%）を固定。実際の年度途中の料率変更は再現しません。",
       "標準報酬の等級は協会けんぽ令和6年表 https://www.kyoukaikenpo.or.jp/assets/r60213tokyo.pdf を参照。料率はこの表から転記せずOECDの値を使用。",
       "賞与ありは年収を14分割し、月給12回と1か月分賞与2回。個人の年間保険料は最後に1円単位へ丸めます。",
-      "児童扶養手当はOECD p.23の式。養育費・同居扶養義務者の所得は無しと仮定。原制度との照合は未完了。",
+      "児童扶養手当の所得は給与所得−8万円（社会保険料相当額の一律控除）。実際の社会保険料は控除しません。一部支給の逓減係数は令和6年度告示値（第1子0.0243194・第2子以降0.0037483）を転記。養育費・同居扶養義務者の所得は無しと仮定。",
+      "年齢軸（ビューE）: 老齢基礎年金は令和7年度満額831,700円、報酬比例部分は平均標準報酬額×5.481/1000×480か月。再評価率・経過的加算・加給年金・繰上げ繰下げ・退職時改定は未反映。60〜64歳は賃金×継続雇用係数で就労、65歳から年金。",
+      "年齢軸: 国民健康保険は東京都特別区の令和6年度統一保険料率（要照合・令和7年度値に更新予定）、後期高齢者医療は東京都後期高齢者医療広域連合の令和6・7年度料率、第1号介護保険料は国の標準13段階と全国平均基準額（第9期 月6,225円）。特定の自治体の計算例との照合は未完了。",
+      "年金生活者支援給付金は老齢のみ、480か月納付、補足的給付は未反映。",
       "NIRA No.89は夫婦50:50、子2歳・6歳、独自税制改正を反映。本試作の固定条件とは異なります。"
     ]
   },
@@ -37,13 +41,49 @@
   "pensionBonusCeiling": 1500000,
   "healthBonusCeiling": 5730000,
   "childMonthly": 10000,
+  "childMonthlyUnder3": 15000,
   "singleParentFullMonthly": 45500,
   "singleParentExtraMonthly": 10750,
   "singleParentThresholdBase": 690000,
   "singleParentLimitBase": 2080000,
   "singleParentThresholdPerChild": 380000,
+  "singleParentFirstCoefficient": 0.0243194,
+  "singleParentExtraCoefficient": 0.0037483,
   "localBasicAllowance": 430000,
   "localRate": 0.1,
   "localPerCapita": 4000,
-  "reconstructionMultiplier": 1.021
+  "localForestTax": 1000,
+  "adjustmentBasicDifference": 50000,
+  "reconstructionMultiplier": 1.021,
+  "lifecycle": {
+    "childBirthAges": [32, 34],
+    "childLeavesAt": 23,
+    "pensionStartAge": 65,
+    "retirementAge": 60,
+    "contributionMonths": 480,
+    "basicPensionFull": 831700,
+    "earningsRelatedRate": 0.005481,
+    "inWorkPensionThreshold": 510000,
+    "pensionDeductionUnder65": [[1300000,0,600000],[4100000,0.25,275000],[7700000,0.15,685000],[10000000,0.05,1455000],[1000000000,0,1955000]],
+    "pensionDeduction65": [[3300000,0,1100000],[4100000,0.25,275000],[7700000,0.15,685000],[10000000,0.05,1455000],[1000000000,0,1955000]],
+    "pensionDeductionMinimumUnder65": 600000,
+    "pensionDeductionMinimum65": 1100000,
+    "elderlySpouseAllowance": [480000, 380000],
+    "dependantAllowanceGeneral": [380000, 330000],
+    "dependantAllowanceSpecific": [630000, 450000],
+    "nationalHealth": {
+      "basicRate": 0.0869, "basicPerCapita": 49100, "basicCap": 650000,
+      "supportRate": 0.028, "supportPerCapita": 16500, "supportCap": 240000,
+      "careRate": 0.0236, "carePerCapita": 16600, "careCap": 170000,
+      "reductions": [[0.7, 430000, 0, 100000], [0.5, 430000, 305000, 100000], [0.2, 430000, 560000, 100000]]
+    },
+    "latterStageHealth": { "rate": 0.0967, "perCapita": 47300, "cap": 800000,
+      "reductions": [[0.7, 430000, 0, 100000], [0.5, 430000, 305000, 100000], [0.2, 430000, 560000, 100000]] },
+    "careFirstCategory": { "baseAnnual": 74700, "stages": [
+      { "stage": 1, "multiplier": 0.285 }, { "stage": 2, "multiplier": 0.485 }, { "stage": 3, "multiplier": 0.685 },
+      { "stage": 4, "multiplier": 0.9 }, { "stage": 5, "multiplier": 1.0 }, { "stage": 6, "multiplier": 1.2 },
+      { "stage": 7, "multiplier": 1.3 }, { "stage": 8, "multiplier": 1.5 }, { "stage": 9, "multiplier": 1.7 },
+      { "stage": 10, "multiplier": 1.9 }, { "stage": 11, "multiplier": 2.1 }, { "stage": 12, "multiplier": 2.3 }, { "stage": 13, "multiplier": 2.4 } ] },
+    "pensionSupport": { "monthly": 5450, "incomeThreshold": 789300 }
+  }
 }

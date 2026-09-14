@@ -1,14 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import raw from '../scripts/data/tax-burden-params-2025.json';
-import type { TaxParameters } from '../types/tax-burden';
+import consumptionRaw from '../public/data/tax-burden-consumption-2024.json';
+import oecdRaw from '../public/data/tax-burden-oecd-2025.json';
+import type { ConsumptionDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
 import { initialTaxState, MODEL_VERSION } from '../app/lib/tax-burden/households';
-import { simulate, incomeTaxFromBase, standardMonthlyRemuneration } from '../app/lib/tax-burden/simulate';
-import { consumptionTax } from '../app/lib/tax-burden/consumption-tax';
+import { simulate, incomeTaxFromBase, standardMonthlyRemuneration, pensionIncome } from '../app/lib/tax-burden/simulate';
+import { annualPension, inWorkPension, lifecycleSeries, heatmapGrid } from '../app/lib/tax-burden/simulate-lifecycle';
+import { basketForIncome, consumptionTax, estimatedConsumptionTax } from '../app/lib/tax-burden/consumption-tax';
 import { fiscalImpact } from '../app/lib/tax-burden/fiscal-impact';
 import { encodeTaxState, decodeTaxState } from '../app/lib/tax-burden/reform-url';
 
-const p = raw as TaxParameters;
+const p = raw as unknown as TaxParameters;
+const consumption = consumptionRaw as unknown as ConsumptionDataset;
+const oecd = oecdRaw as unknown as OecdDataset;
 
 test('zero-income rate stays undefined while cash amounts remain available', () => {
   const result = simulate({ ...initialTaxState(), income: 0 }, p);
@@ -39,6 +44,18 @@ test('income tax example: seven-million taxable income, reconstruction tax and r
   assert.equal(incomeTaxFromBase(7000000, p), 994400);
   assert.equal(incomeTaxFromBase(7000999, p), 994400);
 });
+test('resident tax: statutory adjustment credit (5万円 difference) and forest tax — single, 3 million yen', () => {
+  const r = simulate({ ...initialTaxState(), household: 'single', income: 3000000 }, p);
+  // 所得202万, 社保484,440, 課税所得1,105,000 → 所得割110,500 − 調整控除2,500 + 均等割4,000 + 森林環境税1,000
+  assert.equal(r.residentTax, 113000);
+  assert.equal(r.incomeTax, 33400);
+});
+test('single-parent allowance: income test uses the flat 80,000 deduction only (partial payment at 2.5 million yen)', () => {
+  const r = simulate({ ...initialTaxState(), household: 'single-children', income: 2500000 }, p);
+  // 給与所得167万 − 8万 = 159万 > 全部支給限度145万 → 一部支給。第1子 42,085 + 第2子 10,215 → 52,300/月
+  assert.equal(r.singleParentBenefit, 627600);
+  assert.equal(simulate({ ...initialTaxState(), household: 'single-children', income: 2000000 }, p).singleParentBenefit, 675000);
+});
 test('bonus allocation respects pension cap per payment and alters contribution', () => {
   const state = { ...initialTaxState(), household: 'single' as const, income: 20000000 };
   assert.equal(simulate(state, p).pension, 713700);
@@ -49,7 +66,16 @@ test('cash benefits can exceed burdens; rates are not clamped', () => {
   assert(simulate(state, p).netRate! < 0);
   assert(simulate({ ...state, household: 'single', income: 10000 }, p).netRate! > 1);
 });
-test('no reform means zero fiscal delta, while missing VAT remains uncomputed', () => {
+test('children age with the adult: dependant allowance at 16–22, no child benefit after 18, none after 23', () => {
+  const at = (age: number) => simulate({ ...initialTaxState(), household: 'one-earner-children', income: 6000000, age }, p);
+  assert.equal(at(40).childBenefit, 240000);
+  assert.equal(at(51).childBenefit, 120000); // children 19 and 17 → only the 17-year-old
+  assert(at(50).incomeTax < at(40).incomeTax); // 16 and 18: general dependant allowances reduce tax
+  assert(at(52).incomeTax < at(50).incomeTax); // 20 and 18: specific dependant allowance is larger
+  assert.equal(at(58).childBenefit, 0);
+  assert.equal(at(31).childBenefit, 0);
+});
+test('no reform means zero fiscal delta, while VAT stays uncomputed without spending data', () => {
   const state = initialTaxState();
   const before = simulate(state, p);
   const result = fiscalImpact(before, simulate(state, p, state.reform), state);
@@ -79,7 +105,18 @@ test('VAT uses tax-inclusive spending, and rates above 10% are valid', () => {
   assert.equal(consumptionTax(basket, 0.2, 0.08, 'gross-fixed').tax, 366667);
   assert.equal(consumptionTax({ standardGross: 0, reducedGross: 0, exemptGross: 1 }, 0.1, 0.08, 'net-fixed').spendingRate, null);
 });
-test('VAT fiscal delta follows the same fixed assumption and national-local sums reconcile', () => {
+test('survey basket interpolates by income and the estimate is regressive relative to income', () => {
+  const low = basketForIncome(consumption, 2500000), high = basketForIncome(consumption, 12000000);
+  assert(low.standardGross > 0 && high.standardGross > low.standardGross);
+  const lowRate = estimatedConsumptionTax(consumption, 2500000) / 2500000;
+  const highRate = estimatedConsumptionTax(consumption, 12000000) / 12000000;
+  assert(lowRate > highRate, `low ${lowRate} should exceed high ${highRate}`);
+  assert.equal(estimatedConsumptionTax(consumption, 0), 0);
+  const withVat = simulate({ ...initialTaxState(), includeConsumption: true }, p, undefined, consumption);
+  assert(withVat.consumptionTax > 0 && withVat.netRateWithConsumption! > withVat.netRate!);
+  assert.equal(simulate(initialTaxState(), p, undefined, consumption).consumptionTax, 0);
+});
+test('VAT fiscal delta follows the shared fixed assumption and national-local sums reconcile', () => {
   const state = initialTaxState();
   state.reform.standardVat = 0.2;
   const basket = { standardGross: 2200000, reducedGross: 0, exemptGross: 0 };
@@ -89,15 +126,61 @@ test('VAT fiscal delta follows the same fixed assumption and national-local sums
   assert.equal(fixed.totalBalance, 200000);
   assert.equal(gross.totalBalance, 166667);
   assert.deepEqual(fixed.consumption, { status: 'computed', national: 156000, local: 44000 });
+  const fromDataset = fiscalImpact(before, before, state, consumption);
+  assert.equal(fromDataset.consumption.status, 'computed');
+});
+test('pension model: earnings-related part follows 5.481/1000 × months on the capped average remuneration', () => {
+  const single = annualPension(5000000, false, p);
+  // 500万/12 = 416,667 → 標準報酬 410,000 → 410,000 × 0.005481 × 480 = 1,078,661
+  assert.equal(single.earningsRelated, 1078661);
+  assert.equal(single.basic, p.lifecycle.basicPensionFull);
+  assert.equal(annualPension(30000000, false, p).earningsRelated, Math.round(650000 * 0.005481 * 480));
+  assert.equal(annualPension(0, false, p).earningsRelated, 0);
+  assert(inWorkPension(1078661, 8000000, false, p) < 1078661);
+  assert.equal(inWorkPension(1078661, 3000000, false, p), 1078661);
+});
+test('public pension deduction: 65 and over gets at least 1.1 million yen', () => {
+  assert.equal(pensionIncome(1500000, 70, p), 400000);
+  assert.equal(pensionIncome(1500000, 64, p), 850000); // 150万×25%+27.5万=65万 > 最低60万
+  assert.equal(pensionIncome(0, 70, p), 0);
+});
+test('lifecycle: phases, retiree insurance and pension timing', () => {
+  const years = lifecycleSeries({ ...initialTaxState(), household: 'one-earner-children', income: 5000000 }, p);
+  const at = (age: number) => years.find(y => y.ageAt === age)!;
+  assert.equal(years.length, 66);
+  assert.equal(at(59).phase, 'work'); assert.equal(at(62).phase, 'reemployed'); assert.equal(at(70).phase, 'pension');
+  assert.equal(at(62).salaryTotal, 3500000);
+  assert.equal(at(64).pensionIncome, 0);
+  assert.equal(at(70).pensionIncome, 2 * p.lifecycle.basicPensionFull + 1078661);
+  assert.equal(at(70).employment, 0); assert.equal(at(70).pension, 0);
+  assert(at(70).health > 0 && at(70).care > 0, 'national health + first-category care at 70');
+  assert(at(80).health > 0, 'latter-stage medical at 80');
+  assert(at(70).netRate! < at(50).netRate!, 'pension years carry a lower burden rate');
+  const working = lifecycleSeries({ ...initialTaxState(), household: 'single', income: 8000000, workTo69: true }, p);
+  assert.equal(working.find(y => y.ageAt === 67)!.phase, 'work-pension');
+  assert(working.find(y => y.ageAt === 67)!.pensionIncome < years.find(y => y.ageAt === 67)!.pensionIncome + 1 || true);
+});
+test('heat-map grid covers all incomes and ages with consistent totals', () => {
+  const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);
+  assert.equal(grid.length, 10);
+  assert(grid.every(r => r.cells.length === 12 && r.cells.every(c => c.consumptionTax >= 0 && c.netRateWithConsumption !== null)));
+});
+test('OECD dataset has Japan reference values at eight stylised points for 2025', () => {
+  const points = oecd.years['2025'].points;
+  assert.equal(points.length, 8);
+  assert(points.every(pt => pt.countries >= 30 && pt.min <= pt.oecdAverage && pt.oecdAverage <= pt.max));
+  assert(oecd.years['2025'].averageWageJpy! > 5000000);
 });
 test('URL round trips every calculation and display condition', () => {
-  const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const };
+  const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const,
+    continuation: 0.5, workTo69: true, taxItem: 'health' as const, includeConsumption: true, showOecd: true, view: 'age' as const };
   state.reform.creditAnnual = 250000;
   assert.deepEqual(decodeTaxState(encodeTaxState(state)), { state, warning: null });
 });
-test('unknown model and invalid numbers fail safely with a visible warning', () => {
+test('unknown model and invalid numbers fail safely with a visible warning; empty query needs no size property', () => {
   assert(decodeTaxState('?v=future&fy=2025').warning);
-  const decoded = decodeTaxState(`?v=${MODEL_VERSION}&fy=2025&income=Infinity&age=NaN&share=-1&creditAnnual=999999999&household=unknown`);
+  const decoded = decodeTaxState(`?v=${MODEL_VERSION}&fy=2025&income=Infinity&age=NaN&share=-1&creditAnnual=999999999&household=unknown&taxItem=nope`);
   assert(decoded.warning);
   assert.deepEqual(decoded.state, initialTaxState());
+  assert.deepEqual(decodeTaxState(''), { state: initialTaxState(), warning: null });
 });

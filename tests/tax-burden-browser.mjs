@@ -52,7 +52,8 @@ try {
     if (url.pathname === '/page.js') return route.fulfill({ contentType: 'application/javascript', body: readFileSync(bundle) });
     if (url.pathname.startsWith('/logos/')) return route.fulfill({ contentType: 'image/svg+xml', body: readFileSync(resolve('public/logos/team-mirai-wordmark.svg')) });
     if (url.pathname.startsWith('/api/tax-burden/')) {
-      const name = url.pathname.endsWith('params') ? 'tax-burden-params-2025' : 'tax-revenue-2025';
+      const name = url.pathname.endsWith('params') ? 'tax-burden-params-2025' : url.pathname.endsWith('consumption') ? 'tax-burden-consumption-2024'
+        : url.pathname.endsWith('oecd') ? 'tax-burden-oecd-2025' : 'tax-revenue-2025';
       return route.fulfill({ contentType: 'application/json', body: readFileSync(resolve(`public/data/${name}.json`)) });
     }
     return route.fulfill({ contentType: 'text/html', body: html });
@@ -75,7 +76,19 @@ try {
   await expect(page.getByRole('rowheader', { name: '法人税', exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'revenue.png'), fullPage: true });
   await page.getByRole('button', { name: '実態統計', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '実態統計は、収録準備中です' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '年収十分位別の負担率（実測＋消費税推計）' })).toBeVisible();
+  await page.getByRole('button', { name: '年齢で見る', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '同じ所得階層の人が、年齢とともにどれだけ負担するか' })).toBeVisible();
+  await expect(page.getByText('70歳の純負担率', { exact: true })).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'age.png'), fullPage: true });
+  await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
+  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'heatmap.png'), fullPage: true });
+  await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();
+  await page.getByLabel('消費税（推計）を含める').check();
+  await page.getByLabel('OECD平均・最小・最大を重ねる').check();
+  await expect(page.getByText(/OECD定点/).first()).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'curve-oecd.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();
   await expect(page.getByRole('table').first()).toBeVisible();
@@ -84,6 +97,6 @@ try {
   await page.getByLabel('世帯年収を万円で入力').fill('0');
   await expect(page.getByText('未定義', { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
-  writeFileSync(resolve(output, 'result.json'), JSON.stringify({ passed: true, pageErrors: errors, integration: 'offline React page; Next Link/Image adapted; actual generated data', screenshots: ['desktop.png', 'mobile.png', 'revenue.png'] }, null, 2));
+  writeFileSync(resolve(output, 'result.json'), JSON.stringify({ passed: true, pageErrors: errors, integration: 'offline React page; Next Link/Image adapted; actual generated data', screenshots: ['desktop.png', 'mobile.png', 'revenue.png', 'age.png', 'heatmap.png', 'curve-oecd.png'] }, null, 2));
   console.log(`PASS: offline browser smoke test; desktop/mobile screenshots in ${output}`);
 } finally { await browser.close(); }
