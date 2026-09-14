@@ -10,16 +10,29 @@ import type { IncidenceDataset, TaxState } from '@/types/tax-burden';
 
 /** Slider values are percentage points; round through integers so an untouched rate stays exactly equal to current law. */
 const rate = (percent: number) => Math.round(percent * 1000) / 100000;
+/** Fractions are stored, percentages are shown; round so 0.08 does not surface as 8.000000000000002. */
+const pct = (fraction: number) => Number((fraction * 100).toFixed(2));
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
-export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false }: {
-  label: string; value: number; min: number; max: number; step?: number; suffix?: string; onChange: (value: number) => void; disabled?: boolean;
+export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false, editable = false, note }: {
+  label: string; value: number; min: number; max: number; step?: number; suffix?: string;
+  onChange: (value: number) => void; disabled?: boolean; editable?: boolean; note?: string;
 }) {
+  const clamp = (n: number) => Math.max(min, Math.min(max, n));
   return <label className="block space-y-1 text-sm">
-    <span className="flex items-center justify-between gap-2"><span>{label}</span><span className="font-bold tabular-nums">{Number(value.toFixed(2)).toLocaleString('ja-JP')}{suffix}</span></span>
+    <span className="flex items-center justify-between gap-2"><span>{label}</span>
+      {editable
+        ? <span className="flex shrink-0 items-center gap-1 font-bold tabular-nums">
+            <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={Number(value.toFixed(2))} disabled={disabled}
+              onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
+              className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40" />
+            {suffix}</span>
+        : <span className="font-bold tabular-nums">{Number(value.toFixed(2)).toLocaleString('ja-JP')}{suffix}</span>}
+    </span>
     <input aria-label={label} type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={e => onChange(Number(e.target.value))}
       className="w-full accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40" />
+    {note && <span className="block text-xs text-mirai-text-subtle">{note}</span>}
   </label>;
 }
 
@@ -30,9 +43,11 @@ function Toggle({ label, note, checked, onChange, disabled = false }: { label: s
   </label>;
 }
 
-export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence }: {
+export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence, basicAllowance }: {
   state: TaxState; setState: Dispatch<SetStateAction<TaxState>>; hasConsumption: boolean; hasOecd: boolean;
   incidence?: IncidenceDataset | null;
+  /** Statutory basic deduction for the selected income, so the slider can show an amount instead of an offset. */
+  basicAllowance?: number;
 }) {
   // The curve view carries both the household scenario and the policy sliders. They swap in place so the chart stays on screen.
   const [tab, setTab] = useState<'household' | 'policy'>('household');
@@ -42,6 +57,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
   const swappable = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
   const policy = swappable && tab === 'policy';
   const reformed = isReformed(state.reform);
+  const allowance = basicAllowance ?? 580000;
   // The policy tab holds only the sliders, so it stays short enough to use while the chart is on screen.
   return <Card className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
     <CardHeader className="gap-3 pb-4">
@@ -85,28 +101,30 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
         <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
         <h3 className="pt-1 text-xs font-bold text-primary-accent">定率のものは料率で</h3>
-        <RangeField label="住民税・所得割の税率" value={state.reform.localRate * 100} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
-        <RangeField label="年金保険料率（本人）" value={state.reform.pensionRate * 100} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
-        <RangeField label="医療保険料率（本人）" value={state.reform.healthRate * 100} min={0} max={20} step={0.05} suffix="%" onChange={v => reform('healthRate', rate(v))} />
-        <RangeField label="介護保険料率（本人）" value={state.reform.careRate * 100} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('careRate', rate(v))} />
-        <RangeField label="雇用保険料率（本人）" value={state.reform.employmentRate * 100} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('employmentRate', rate(v))} />
-        <RangeField label="消費税・標準税率" value={Math.round(state.reform.standardVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
+        <RangeField editable label="住民税（所得割）" value={pct(state.reform.localRate)} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
+        <RangeField editable label="年金保険料率" value={pct(state.reform.pensionRate)} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
+        <RangeField editable label="医療保険料率" value={pct(state.reform.healthRate)} min={0} max={20} step={0.05} suffix="%" onChange={v => reform('healthRate', rate(v))} />
+        <RangeField editable label="介護保険料率" value={pct(state.reform.careRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('careRate', rate(v))} />
+        <RangeField editable label="雇用保険料率" value={pct(state.reform.employmentRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('employmentRate', rate(v))} />
+        <RangeField editable label="消費税・標準税率" value={pct(state.reform.standardVat)} min={0} max={25} step={0.5} suffix="%" disabled={!hasConsumption}
           onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, standardVat: rate(v) } }))} />
-        <RangeField label="消費税・軽減税率" value={Math.round(state.reform.reducedVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
+        <RangeField editable label="消費税・軽減税率" value={pct(state.reform.reducedVat)} min={0} max={25} step={0.5} suffix="%" disabled={!hasConsumption}
           onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, reducedVat: rate(v) } }))} />
         <h3 className="pt-2 text-xs font-bold text-primary-accent">累進の所得税は控除で</h3>
-        <RangeField label="所得税の基礎控除を追加" value={state.reform.basicAllowanceExtra / 10000} min={0} max={200} step={5} suffix="万円" onChange={v => reform('basicAllowanceExtra', v * 10000)} />
+        <RangeField editable label="所得税の基礎控除" value={(allowance + state.reform.basicAllowanceExtra) / 10000} min={0} max={(allowance + 2000000) / 10000} step={1} suffix="万円"
+          note={`現行は所得に応じて58〜95万円（この年収では${(allowance / 10000).toLocaleString('ja-JP')}万円）。差額を全ての所得階層に足し引きします。`}
+          onChange={v => reform('basicAllowanceExtra', Math.round(v * 10000) - allowance)} />
         <h3 className="pt-2 text-xs font-bold text-primary-accent">給付を変える</h3>
-        <RangeField label="児童手当・1人月額" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', v)} />
-        <RangeField label="給付付き控除・世帯年額" value={state.reform.creditAnnual / 10000} min={0} max={100} step={5} suffix="万円" onChange={v => reform('creditAnnual', v * 10000)} />
-        <RangeField label="給付の逓減開始年収" value={state.reform.creditPhaseoutStart / 10000} min={0} max={1000} step={50} suffix="万円" onChange={v => reform('creditPhaseoutStart', v * 10000)} />
-        <RangeField label="給付の逓減率" value={state.reform.creditPhaseoutRate * 100} min={0} max={100} step={5} suffix="%" onChange={v => reform('creditPhaseoutRate', v / 100)} />
+        <RangeField editable label="児童手当（月額）" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', Math.round(v))} />
+        <RangeField editable label="給付付き控除（年額）" value={state.reform.creditAnnual / 10000} min={0} max={100} step={5} suffix="万円" onChange={v => reform('creditAnnual', Math.round(v * 10000))} />
+        <RangeField editable label="逓減の開始年収" value={state.reform.creditPhaseoutStart / 10000} min={0} max={1000} step={50} suffix="万円" onChange={v => reform('creditPhaseoutStart', Math.round(v * 10000))} />
+        <RangeField editable label="逓減率" value={pct(state.reform.creditPhaseoutRate)} min={0} max={100} step={5} suffix="%" onChange={v => reform('creditPhaseoutRate', rate(v))} />
         <label className="block space-y-1 text-sm"><span>消費税を変えたときの前提</span>
           <select className={inputClass} value={state.consumptionAssumption} disabled={!hasConsumption} onChange={e => set('consumptionAssumption', e.target.value as TaxState['consumptionAssumption'])}>
             <option value="net-fixed">税抜の数量・価格を固定（税込支出が動く）</option>
             <option value="gross-fixed">税込支出を固定（実質消費が動く）</option>
           </select></label>
-        <p className="text-xs leading-relaxed text-mirai-text-secondary">所得税は累進なので税率ではなく基礎控除で動かします。保険料率は本人負担分で、国民健康保険・後期高齢者医療・第1号介護保険料にも同じ比率で反映します（住民税の均等割と森林環境税は定額なので動きません）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
+        <p className="text-xs leading-relaxed text-mirai-text-secondary">所得税は累進なので税率ではなく基礎控除で動かします。基礎控除は選択中の年収に適用される現行額を表示し、そこからの差額を全ての所得階層に足し引きします。保険料率は本人負担分で、国民健康保険・後期高齢者医療・第1号介護保険料にも同じ比率で反映します（住民税の均等割と森林環境税は定額なので動きません）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
       </section>}
 
       {!policy && state.view !== 'heatmap' && <div className="border-t border-mirai-border pt-4">

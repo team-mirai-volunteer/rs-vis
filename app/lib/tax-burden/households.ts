@@ -35,7 +35,7 @@ export const BASE_REFORM: Reform = {
 
 /** Ranges shared by the sliders, the URL reader and the runtime guard. */
 export const REFORM_LIMITS: Record<keyof Reform, readonly [number, number]> = {
-  basicAllowanceExtra: [0, 2000000], localRate: [0, 0.2], pensionRate: [0, 0.3], healthRate: [0, 0.2],
+  basicAllowanceExtra: [-950000, 2000000], localRate: [0, 0.2], pensionRate: [0, 0.3], healthRate: [0, 0.2],
   careRate: [0, 0.05], employmentRate: [0, 0.05], childMonthly: [0, 50000],
   creditAnnual: [0, 1000000], creditPhaseoutStart: [0, 10000000], creditPhaseoutRate: [0, 1],
   standardVat: [0, 0.25], reducedVat: [0, 0.25],

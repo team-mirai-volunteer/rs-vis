@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { HOUSEHOLDS, initialTaxState, isReformed } from '@/app/lib/tax-burden/households';
-import { simulate } from '@/app/lib/tax-burden/simulate';
+import { simulate, statutoryBasicAllowance } from '@/app/lib/tax-burden/simulate';
 import { heatmapGrid, lifecycleSeries } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { fiscalImpact } from '@/app/lib/tax-burden/fiscal-impact';
 import { decodeTaxState, encodeTaxState } from '@/app/lib/tax-burden/reform-url';
@@ -118,7 +118,7 @@ export default function TaxBurdenPage() {
       </nav>
 
       {modelViews && <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} />
+        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} basicAllowance={params ? statutoryBasicAllowance(state, params) : undefined} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
             {state.view === 'curve' && <>

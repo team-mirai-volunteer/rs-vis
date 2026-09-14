@@ -1,6 +1,6 @@
 import type { BurdenResult, ConsumptionDataset, HouseholdId, IncidenceDataset, Reform, TaxParameters, TaxState } from '@/types/tax-burden';
 import { baseReform, HOUSEHOLDS, REFORM_LIMITS } from './households';
-import { computeHousehold, type AdultInput } from './household-tax';
+import { computeHousehold, salaryIncome, type AdultInput } from './household-tax';
 import { estimatedConsumptionTax } from './consumption-tax';
 import { corporateTaxOnWages } from './incidence';
 
@@ -58,6 +58,15 @@ export function simulate(state: SimulateState, p: TaxParameters,
     care: taxes.care, employment: taxes.employment, childBenefit: taxes.childBenefit, singleParentBenefit: taxes.singleParentBenefit,
     reformCredit: taxes.reformCredit, grossBurden, benefits: taxes.benefits, netBurden,
     netRate: income > 0 ? netBurden / income : null, outOfScope: scopeReasons.length > 0, scopeReasons };
+}
+
+/** The statutory basic deduction for the principal earner at this income, which the panel shows as the starting point. */
+export function statutoryBasicAllowance(state: Pick<TaxState, 'income' | 'household' | 'share'>, p: TaxParameters): number {
+  const household = HOUSEHOLDS.find(h => h.id === state.household);
+  if (!household || !Number.isFinite(state.income)) return p.basicAllowances[0][1];
+  const salaries = splitSalaries(state.income, household.earners, state.share);
+  const reference = salaryIncome(salaries[0], household.children > 0, p);
+  return p.basicAllowances.find(([upper]) => reference <= upper)![1];
 }
 
 export function curveSeries(state: TaxState, p: TaxParameters, id: HouseholdId, reform?: Reform,
