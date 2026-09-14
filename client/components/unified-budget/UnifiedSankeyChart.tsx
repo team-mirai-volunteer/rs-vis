@@ -120,8 +120,9 @@ export function UnifiedSankeyChart({
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
   const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
+  // 浮島の左右余白ぶんを含む。スマホ幅ではパネルがボトムシートになり横幅を取らない
   const panelOpenWidth =
-    selectedId !== null && !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0; // 浮島の左右余白ぶんを含む
+    selectedId !== null && !sidePanel.collapsed && viewport.width >= 640 ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0;
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
@@ -463,7 +464,7 @@ export function UnifiedSankeyChart({
                   rx={2}
                   fill={color}
                   opacity={dim ? 0.25 : 1}
-                  stroke={isSelected ? 'var(--mirai-text)' : details?.kind === 'transfer' ? '#64748b' : undefined}
+                  stroke={isSelected ? 'var(--mirai-text)' : details?.kind === 'transfer' ? 'var(--mirai-text-muted)' : undefined}
                   strokeWidth={isSelected ? 1.5 : details?.kind === 'transfer' ? 1 : undefined}
                   strokeDasharray={!isSelected && details?.kind === 'transfer' ? '3 2' : undefined}
                 />

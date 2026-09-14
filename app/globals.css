@@ -10,7 +10,8 @@
  * ============================================================ */
 :root {
   --radius: 0.625rem;
-  /* 共通ヘッダー（AppHeader）の高さ。固定キャンバス型ページはこの下から始める */
+  /* 共通ヘッダー（AppHeader）の高さ。固定キャンバス型ページはこの下から始める。
+     640px 未満では右スロット（年度・基準など）が 2 段目に落ちるぶん高くなる（AppHeader.tsx と対） */
   --app-header-h: 72px;
 
   /* shadcn 意味タグ */
@@ -140,5 +141,12 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* スマホ幅: AppHeader が 2 段（島 48px + コントロール列 46px）になる */
+@media (max-width: 639px) {
+  :root {
+    --app-header-h: 118px;
   }
 }

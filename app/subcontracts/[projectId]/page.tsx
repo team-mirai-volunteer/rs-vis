@@ -69,6 +69,7 @@ import {
 import { summarizeOffFlowIndirectCosts, INDIRECT_COST_NODE_LABEL, type IndirectCostSummary } from '@/app/lib/subcontracts/indirect-costs';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
 import { useSidePanel, SIDE_PANEL_WIDTH_MIN, SIDE_PANEL_WIDTH_MAX } from '@/client/hooks/useSidePanel';
+import { useIsNarrow } from '@/client/hooks/useMediaQuery';
 import { useBaseFontPx } from '@/client/hooks/useBaseFontPx';
 import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
@@ -179,10 +180,10 @@ function flowOriginBadgeColor(origin: FlowOrigin): { bg: string; fg: string } {
   switch (origin) {
     case 'direct': return { bg: '#f9dddd', fg: COLOR_DIRECT_BODY_SUBTLE };
     // 移替・参考は意味色を持たせずグレー系（意味色は直接/再委託/別財源のみ）
-    case 'transfer': return { bg: '#eceff2', fg: '#475569' };
+    case 'transfer': return { bg: 'var(--mirai-surface-muted)', fg: 'var(--mirai-text-secondary)' };
     case 'separate-origin': return { bg: '#ece5f5', fg: COLOR_SEPARATE_ORIGIN_BODY_TEXT };
     case 'subcontract': return { bg: '#faedcf', fg: COLOR_SUBCONTRACT_BODY_SUBTLE };
-    case 'reference': return { bg: '#f1f5f9', fg: '#475569' };
+    case 'reference': return { bg: 'var(--mirai-surface-gray)', fg: 'var(--mirai-text-secondary)' };
   }
 }
 
@@ -1246,6 +1247,7 @@ function SubcontractDetailPageInner() {
   // サイドパネルの chrome 状態。ブロック図・フロー図ともに左表示（/sankey-svg・統合ビューと同じ配置）。
   // 幅・折りたたみ状態は useSidePanel が保持するため、ビュー切替をまたいでも保持される
   const sidePanel = useSidePanel({ side: 'left', defaultWidth: SUBCONTRACT_PANEL_WIDTH_DEFAULT });
+  const isNarrow = useIsNarrow();
   // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが開いている
   // ときだけ退避オフセットが必要（サンキーの left: selectedNodeId... と同じ流儀）
   const leftFloatOffset = !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
@@ -1555,7 +1557,8 @@ function SubcontractDetailPageInner() {
     // container.clientWidth はパネルを含む全幅になる。フィット計算はパネル（左）が開いている
     // 幅を差し引いた「実際に見える領域」を基準にしないと、コンテンツの端（ルートカード等）が
     // パネルの下に隠れてしまう
-    const reserveLeft = !sidePanel.collapsed ? sidePanel.effectiveWidth : 0;
+    // スマホ幅ではパネルがボトムシートになり横幅を取らない
+    const reserveLeft = !sidePanel.collapsed && !isNarrow ? sidePanel.effectiveWidth : 0;
     const cW = Math.max(100, container.clientWidth - reserveLeft);
     const cH = container.clientHeight;
     if (viewMode === 'ribbon') {
@@ -1580,7 +1583,7 @@ function SubcontractDetailPageInner() {
       y: (cH - activeContentSize.h * fitZoom) / 2,
       scale: fitZoom,
     });
-  }, [activeContentSize, sidePanel.collapsed, sidePanel.effectiveWidth, viewMode]);
+  }, [activeContentSize, sidePanel.collapsed, sidePanel.effectiveWidth, viewMode, isNarrow]);
 
   // グラフ読み込み後に全体表示。ただし最初の1回はURLにz/tx/tyがあればそれを優先復元する
   useEffect(() => {
@@ -1876,12 +1879,12 @@ function SubcontractDetailPageInner() {
                         fontFamily: 'inherit',
                       }}>
                         {amountLabel && (
-                          <div style={{ fontSize: scaleFont(9), fontWeight: 700, color: '#475569', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: scaleFont(9), fontWeight: 700, color: 'var(--mirai-text-secondary)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {amountLabel}
                           </div>
                         )}
                         {edge.note && (
-                          <div style={{ fontSize: scaleFont(8), fontWeight: 600, color: '#64748b', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: scaleFont(8), fontWeight: 600, color: 'var(--mirai-text-muted)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {edge.note}
                           </div>
                         )}
@@ -1962,7 +1965,7 @@ function SubcontractDetailPageInner() {
                   <div style={{ fontSize: scaleFont(9), fontWeight: 700, color: 'rgba(255,255,255,0.78)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     事業 / PID {graph.projectId}
                   </div>
-                  <div style={{ fontSize: scaleFont(11), fontWeight: 700, color: '#fff', lineHeight: `${scaleFont(13)}px`, marginTop: 3, ...CLAMP_2_LINES }}>
+                  <div style={{ fontSize: scaleFont(11), fontWeight: 700, color: 'var(--card)', lineHeight: `${scaleFont(13)}px`, marginTop: 3, ...CLAMP_2_LINES }}>
                     {graph.projectName}
                   </div>
                 </div>
@@ -2012,7 +2015,7 @@ function SubcontractDetailPageInner() {
               const palette = originPalette(lb.originKind);
               const nodeColor = palette.header;
               // カード本体は白背景（意味色はヘッダ帯・ボーダーで表現。メイン画面のフラットな作法に統一）
-              const bodyFill = '#fff';
+              const bodyFill = 'var(--card)';
               const bodyTextColor = palette.bodyText;
               const bodySubtleTextColor = palette.bodySubtle;
               const recipients = lb.node.recipients;
@@ -2091,14 +2094,14 @@ function SubcontractDetailPageInner() {
                   >
                     <div style={{ fontFamily: 'inherit', userSelect: 'none' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{ flex: 1, minWidth: 0, fontSize: scaleFont(12), fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ flex: 1, minWidth: 0, fontSize: scaleFont(12), fontWeight: 700, color: 'var(--card)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {lb.blockName}
                         </div>
                         <span style={{
                           flexShrink: 0,
                           fontSize: scaleFont(9),
                           fontWeight: 700,
-                          color: '#fff',
+                          color: 'var(--card)',
                           background: 'rgba(255,255,255,0.26)',
                           borderRadius: 999,
                           padding: '2px 7px',
@@ -2602,7 +2605,7 @@ function SubcontractDetailPageInner() {
             const badge = getAccountBadgeStyle(key);
             if (!badge) return null;
             return (
-              <span style={{ background: badge.background, color: '#fff', padding: '1px 6px', borderRadius: 8, fontSize: scaleFont(9), fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap' }}>
+              <span style={{ background: badge.background, color: 'var(--card)', padding: '1px 6px', borderRadius: 8, fontSize: scaleFont(9), fontWeight: 700, lineHeight: 1.4, whiteSpace: 'nowrap' }}>
                 {badge.label}
               </span>
             );
