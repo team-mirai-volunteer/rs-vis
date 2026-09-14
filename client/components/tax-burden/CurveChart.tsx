@@ -45,13 +45,22 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   const x = (income: number) => left + income / 20000000 * width;
   const y = (rate: number) => top + (maxY - rate) / (maxY - minY) * height;
   const path = (points: BurdenResult[], outOfScope: boolean) => {
+    const drawn = (i: number) => {
+      const q = points[i];
+      return q !== undefined && q.outOfScope === outOfScope && rateOf(q) !== null;
+    };
     let pen = false;
-    return points.map(p => {
+    const commands: string[] = [];
+    points.forEach((p, i) => {
       const rate = rateOf(p);
-      if (p.outOfScope !== outOfScope || rate === null) { pen = false; return ''; }
-      const command = pen ? 'L' : 'M'; pen = true;
-      return `${command}${x(p.income).toFixed(2)},${y(rate).toFixed(2)}`;
-    }).join(' ');
+      if (rate === null) { pen = false; return; }
+      // Each half also draws the point just across the boundary, so the two segments meet at the 106万円の壁
+      // instead of leaving a gap where the step should be.
+      if (p.outOfScope !== outOfScope && !drawn(i - 1) && !drawn(i + 1)) { pen = false; return; }
+      commands.push(`${pen ? 'L' : 'M'}${x(p.income).toFixed(2)},${y(rate).toFixed(2)}`);
+      pen = true;
+    });
+    return commands.join(' ');
   };
   const oecdX = (i: number) => x(curve!.averageWageJpy * curve!.awRatio[i]);
   const linePath = (values: (number | null)[]) => values.map((v, i) => v === null ? '' : `${i === 0 || values[i - 1] === null ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ');
