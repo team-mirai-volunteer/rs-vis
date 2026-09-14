@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:fiscal-space": "tsx --test tests/fiscal-space.test.ts",
+    "test:fiscal-space:browser": "node tests/fiscal-space-browser.mjs",
     "generate-tax-burden-data": "tsx scripts/generate-tax-burden-data.ts",
     "validate-tax-burden-data": "tsx scripts/validate-tax-burden-data.ts",
     "fetch-tax-burden-sources": "node scripts/fetch-tax-burden-sources.mjs",
