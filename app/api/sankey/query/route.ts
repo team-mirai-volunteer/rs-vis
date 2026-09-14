@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sankeySvgSearchToUnified } from '@/app/lib/unified-budget/links';
 import { notFound } from 'next/navigation';
 import { loadSankeyGraph } from '@/app/lib/api/sankey-graph-loader';
 import { parseYear, buildMetadata, serverErrorResponse, SUPPORTED_YEARS } from '@/app/lib/api/api-notes';
@@ -166,7 +167,7 @@ export async function GET(req: Request) {
       }, SANKEY_QUERY_NOTES),
       summary,
       links: {
-        webView: `/sankey-svg?${params.toString()}`,
+        webView: `/budget-sankey?${sankeySvgSearchToUnified(params)}`,
         ...(apiDocsLink() ? { docs: apiDocsLink() } : {}),
       },
     };

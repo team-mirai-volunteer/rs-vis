@@ -1,3 +1,4 @@
+import { unifiedProjectNameFilterUrl, unifiedRecipientNameFilterUrl } from '@/app/lib/unified-budget/links';
 /**
  * API応答に埋め込む関連リンク（HATEOAS）の組み立て。
  * すべて相対URLで返し、ホスト名に依存しない。
@@ -35,17 +36,15 @@ export function recipientLinks(key: string, year?: string): {
 }
 
 /**
- * /sankey-svg の名前フィルタ（既存機能）へのディープリンク。
- * fnp=事業名フィルタ, fnr=支出先名フィルタ, fp=1 でフィルタパネルを開く。
+ * 統合ビュー（/budget-sankey）を名前で絞り込んだ状態で開くディープリンク。
+ * かつては /sankey-svg（fnp / fnr）を指していた。year は RS シート年度（未指定は 2025）。
  */
 export function sankeyProjectViewLink(projectName: string, year?: string): string {
-  const yr = year ? `&yr=${year}` : '';
-  return `/sankey-svg?fnp=${encodeURIComponent(projectName)}&fp=1${yr}`;
+  return unifiedProjectNameFilterUrl(projectName, year ?? '2025');
 }
 
 export function sankeyRecipientViewLink(recipientName: string, year?: string): string {
-  const yr = year ? `&yr=${year}` : '';
-  return `/sankey-svg?fnr=${encodeURIComponent(recipientName)}&fp=1${yr}`;
+  return unifiedRecipientNameFilterUrl(recipientName, year ?? '2025');
 }
 
 /** 法人番号から外部サイト（gBizINFO）へのリンク */
