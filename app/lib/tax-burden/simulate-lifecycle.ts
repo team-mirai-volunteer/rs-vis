@@ -1,5 +1,5 @@
 import type { ConsumptionDataset, IncidenceDataset, LifecyclePhase, LifecycleYear, Reform, TaxParameters, TaxState } from '@/types/tax-burden';
-import { BASE_REFORM, HOUSEHOLDS } from './households';
+import { baseReform, HOUSEHOLDS } from './households';
 import { computeHousehold, employeeContributions, type AdultInput } from './household-tax';
 import { childAgesAt, splitSalaries, validateState } from './simulate';
 import { estimatedConsumptionTax } from './consumption-tax';
@@ -12,13 +12,13 @@ export const LIFECYCLE_END = 85;
 export function annualPension(careerSalary: number, bonus: boolean, p: TaxParameters): { basic: number; earningsRelated: number } {
   const lp = p.lifecycle;
   if (careerSalary <= 0) return { basic: lp.basicPensionFull, earningsRelated: 0 };
-  const { averageStandard } = employeeContributions(careerSalary, 40, bonus, p, 1);
+  const { averageStandard } = employeeContributions(careerSalary, 40, bonus, p, p);
   return { basic: lp.basicPensionFull, earningsRelated: Math.round(averageStandard * lp.earningsRelatedRate * lp.contributionMonths) };
 }
 
 /** In-work old-age pension: half of the excess over the monthly threshold is suspended from the earnings-related part. */
 export function inWorkPension(earningsRelated: number, salary: number, bonus: boolean, p: TaxParameters): number {
-  const { averageStandard } = employeeContributions(salary, 65, bonus, p, 1);
+  const { averageStandard } = employeeContributions(salary, 65, bonus, p, p);
   const monthlyExcess = averageStandard + earningsRelated / 12 - p.lifecycle.inWorkPensionThreshold;
   const suspended = Math.max(0, monthlyExcess / 2) * 12;
   return Math.max(0, Math.round(earningsRelated - suspended));
@@ -33,7 +33,7 @@ export function phaseAt(age: number, state: Pick<TaxState, 'workUntil'>, p: TaxP
 }
 
 /** Burden by age for a household whose working-age income class is fixed (view E). */
-export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Reform = { ...BASE_REFORM, childMonthly: p.childMonthly },
+export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Reform = baseReform(p),
   consumption?: ConsumptionDataset | null, incidence?: IncidenceDataset | null): LifecycleYear[] {
   const household = validateState({ ...state, age: 40 }, reform);
   if (!Number.isFinite(state.continuation) || state.continuation < 0 || state.continuation > 1) throw new Error('継続雇用係数が有効な範囲にありません');

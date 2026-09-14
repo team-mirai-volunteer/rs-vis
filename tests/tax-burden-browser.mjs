@@ -98,7 +98,7 @@ try {
   await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
   await expect(page.getByRole('heading', { name: /税目ごとに分解する/ })).toBeVisible();
   await page.getByRole('button', { name: /^税・給付/ }).click();
-  await page.getByLabel('住民税の倍率').fill('0');
+  await page.getByLabel('住民税・所得割の税率').fill('0');
   await expect(page.getByText('改革案で計算中', { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'heatmap-policy.png'), fullPage: true });
   await page.getByRole('button', { name: '基準制度に戻す', exact: true }).click();

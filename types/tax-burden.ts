@@ -14,12 +14,19 @@ export interface HouseholdDefinition {
 }
 
 /** All monetary fields are annual yen unless their name explicitly says monthly. */
+/**
+ * Policy levers shaped like the instruments themselves: income tax is progressive, so it moves through the basic
+ * deduction, while the resident tax, the employee premiums and the consumption tax are flat rates and move as rates.
+ * The premium rates are the employee shares; the same proportional change carries over to national health, latter-stage
+ * medical and first-category care premiums so that one lever still moves one line of the decomposition.
+ */
 export interface Reform {
   basicAllowanceExtra: number;
-  /** Multipliers applied to the computed tax, so each item in the decomposition has its own lever (1 = current law). */
-  incomeTaxMultiplier: number;
-  residentTaxMultiplier: number;
-  insuranceMultiplier: number;
+  localRate: number;
+  pensionRate: number;
+  healthRate: number;
+  careRate: number;
+  employmentRate: number;
   childMonthly: number;
   creditAnnual: number;
   creditPhaseoutStart: number;

@@ -26,11 +26,26 @@ export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
   { id: 'corporateTax', label: '法人税の転嫁（仮定）' },
   { id: 'pensionReceipt', label: '公的年金の受給（差し引き）' },
 ];
+/** Current law for the 2025 parameter file; validate-tax-burden-data checks that these still match it. */
 export const BASE_REFORM: Reform = {
-  basicAllowanceExtra: 0, incomeTaxMultiplier: 1, residentTaxMultiplier: 1, insuranceMultiplier: 1, childMonthly: 10000,
-  creditAnnual: 0, creditPhaseoutStart: 3000000, creditPhaseoutRate: 0.1,
+  basicAllowanceExtra: 0, localRate: 0.1, pensionRate: 0.0915, healthRate: 0.05, careRate: 0.008, employmentRate: 0.006,
+  childMonthly: 10000, creditAnnual: 0, creditPhaseoutStart: 3000000, creditPhaseoutRate: 0.1,
   standardVat: 0.1, reducedVat: 0.08,
 };
+
+/** Ranges shared by the sliders, the URL reader and the runtime guard. */
+export const REFORM_LIMITS: Record<keyof Reform, readonly [number, number]> = {
+  basicAllowanceExtra: [0, 2000000], localRate: [0, 0.2], pensionRate: [0, 0.3], healthRate: [0, 0.2],
+  careRate: [0, 0.05], employmentRate: [0, 0.05], childMonthly: [0, 50000],
+  creditAnnual: [0, 1000000], creditPhaseoutStart: [0, 10000000], creditPhaseoutRate: [0, 1],
+  standardVat: [0, 0.25], reducedVat: [0, 0.25],
+};
+
+/** Current law as the parameter file states it, which is what an untouched panel computes with. */
+export const baseReform = (p: { childMonthly: number; localRate: number; pensionRate: number; healthRate: number; careRate: number; employmentRate: number }): Reform => ({
+  ...BASE_REFORM, childMonthly: p.childMonthly, localRate: p.localRate, pensionRate: p.pensionRate,
+  healthRate: p.healthRate, careRate: p.careRate, employmentRate: p.employmentRate,
+});
 /** True once any policy slider has been moved away from current law, which is what makes the reform curve appear. */
 export const isReformed = (reform: Reform) => (Object.keys(BASE_REFORM) as (keyof Reform)[]).some(k => reform[k] !== BASE_REFORM[k]);
 

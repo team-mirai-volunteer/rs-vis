@@ -1,12 +1,8 @@
 import type { TaxState, TaxView } from '@/types/tax-burden';
-import { HOUSEHOLDS, initialTaxState, MODEL_VERSION } from './households';
+import { HOUSEHOLDS, initialTaxState, MODEL_VERSION, REFORM_LIMITS } from './households';
 
-export const REFORM_LIMITS = {
-  basicAllowanceExtra: [0, 2000000], incomeTaxMultiplier: [0, 2], residentTaxMultiplier: [0, 2],
-  insuranceMultiplier: [0, 2], childMonthly: [0, 50000],
-  creditAnnual: [0, 1000000], creditPhaseoutStart: [0, 10000000], creditPhaseoutRate: [0, 1],
-  standardVat: [0, 1], reducedVat: [0, 1],
-} as const;
+export { REFORM_LIMITS };
+
 const VIEWS: TaxView[] = ['curve', 'revenue', 'stats', 'age', 'heatmap'];
 
 export function decodeTaxState(query: string): { state: TaxState; warning: string | null } {
