@@ -11,7 +11,7 @@ test.describe('sankey-svg redirect', () => {
     await expect(page).toHaveURL(/\/budget-sankey\?/);
     const url = new URL(page.url());
     expect(url.searchParams.get('year')).toBe('2024');
-    expect(url.searchParams.get('cols')).toBe('mi,pr,ps,re');
+    expect(url.searchParams.get('cols')).toBe('ac,mi,pr,ps,re'); // 予算総計 → 府省庁 → 事業 → 事業(支出) → 支出先
     expect(url.searchParams.get('fnrs')).toBe('0');
     expect(url.searchParams.get('b')).toBe('ministry'); // 旧サンキー図と同じ RS府省庁の紐づけ
   });

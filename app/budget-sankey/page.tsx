@@ -17,7 +17,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
+import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
   UNIFIED_FILTER_DEFAULT,
@@ -238,7 +238,7 @@ function UnifiedBudgetSankeyContent() {
     return rsMinistryMode ? toRsMinistryGraph(view) : view;
   }, [graph, rsMinistryMode]);
 
-  /** この基準・年度に存在する列（支出の無い年度は事業(支出)・支出先が無い。府省庁基準は会計〜目が無い） */
+  /** この基準・年度に存在する列（支出の無い年度は事業(支出)・支出先が無い。府省庁基準は 予算総計(会計列)・府省庁・事業〜支出先） */
   const availableColumns = useMemo<UnifiedColumn[]>(() => {
     if (!base) return [...UNIFIED_COLUMNS];
     const present = new Set(base.nodes.map(n => n.details.column));
@@ -372,7 +372,7 @@ function UnifiedBudgetSankeyContent() {
         budgetYear={metadata.budgetYear}
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
         rsMeasureLabel={rsMinistryMode ? '当初予算' : metadata.rsMeasureLabel}
-        ministryColumnLabel={rsMinistryMode ? '府省庁' : undefined}
+        columnLabels={rsMinistryMode ? UNIFIED_RS_MINISTRY_COLUMN_LABELS : undefined}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
         hasSpending={metadata.hasSpending}

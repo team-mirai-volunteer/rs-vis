@@ -17,10 +17,14 @@ function base(sheetYear: number | string): URLSearchParams {
   return new URLSearchParams({ year: String(sheetYearToBudgetYear(sheetYear)), cols: UNIFIED_RS_COLS, fnrs: '0' });
 }
 
-/** 旧 /sankey-svg 相当（RS の府省庁 → 事業 → 事業(支出) → 支出先。基準「府省庁」） */
+/** 府省庁基準で旧 /sankey-svg と同じ列（予算総計（会計列）→ 府省庁 → 事業 → 事業(支出) → 支出先） */
+export const UNIFIED_RS_MINISTRY_COLS = 'ac,mi,pr,ps,re';
+
+/** 旧 /sankey-svg 相当（予算総計 → RS の府省庁 → 事業 → 事業(支出) → 支出先。基準「府省庁」） */
 function rsMinistryBase(sheetYear: number | string): URLSearchParams {
   const p = base(sheetYear);
   p.set('b', 'ministry');
+  p.set('cols', UNIFIED_RS_MINISTRY_COLS);
   return p;
 }
 
@@ -48,12 +52,13 @@ export function unifiedRecipientNameFilterUrl(recipientName: string, sheetYear: 
   return `/budget-sankey?${p.toString()}`;
 }
 
-/** 旧 /sankey-svg のノード ID → 統合ビューのノード ID。対応が無いもの（総計・集約）は null */
+/** 旧 /sankey-svg のノード ID → 統合ビューのノード ID（府省庁基準の語彙）。対応が無いもの（集約）は null */
 export function sankeySvgNodeIdToUnified(id: string): string | null {
   if (id.startsWith('project-spending-')) return id.replace('project-spending-', 'project-budget-');
   if (id.startsWith('project-budget-') || id.startsWith('r-')) return id;
   // 旧サンキー図の省庁は RS の府省庁名。統合ビューの MOF 所管（min-）とは体系が違うので、府省庁基準の RS府省庁ノードへ
   if (id.startsWith('ministry-')) return `min-rs-${id.slice('ministry-'.length)}`;
+  if (id === 'total') return 'total-rs'; // 予算総計は府省庁基準の総計ノードへ
   return null;
 }
 
