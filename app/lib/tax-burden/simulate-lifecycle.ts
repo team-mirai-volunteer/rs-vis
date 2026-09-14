@@ -23,11 +23,11 @@ export function inWorkPension(earningsRelated: number, salary: number, bonus: bo
   return Math.max(0, Math.round(earningsRelated - suspended));
 }
 
-export function phaseAt(age: number, state: Pick<TaxState, 'workTo69'>, p: TaxParameters): LifecyclePhase {
+export function phaseAt(age: number, state: Pick<TaxState, 'workUntil'>, p: TaxParameters): LifecyclePhase {
   const lp = p.lifecycle;
   if (age < lp.retirementAge) return 'work';
   if (age < lp.pensionStartAge) return 'reemployed';
-  if (state.workTo69 && age < 70) return 'work-pension';
+  if (age < state.workUntil) return 'work-pension';
   return 'pension';
 }
 
@@ -36,6 +36,7 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
   consumption?: ConsumptionDataset | null): LifecycleYear[] {
   const household = validateState({ ...state, age: 40 }, reform);
   if (!Number.isFinite(state.continuation) || state.continuation < 0 || state.continuation > 1) throw new Error('継続雇用係数が有効な範囲にありません');
+  if (!Number.isInteger(state.workUntil) || state.workUntil < p.lifecycle.pensionStartAge || state.workUntil > 75) throw new Error('就労終了年齢が有効な範囲にありません');
   const careerSalaries = splitSalaries(state.income, household.earners, state.share);
   const pensions = Array.from({ length: household.adults }, (_, i) => annualPension(careerSalaries[i] ?? 0, state.bonus, p));
   const scopeReasons = careerSalaries.flatMap((salary, i) => salary < p.minimumAnnualWage
