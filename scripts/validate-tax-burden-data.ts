@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { readDataJson } from '@/app/lib/api/data-file';
-import { MODEL_VERSION, HOUSEHOLDS, initialTaxState } from '@/app/lib/tax-burden/households';
+import { BASE_REFORM, MODEL_VERSION, HOUSEHOLDS, initialTaxState } from '@/app/lib/tax-burden/households';
 import { simulate } from '@/app/lib/tax-burden/simulate';
 import { lifecycleSeries, annualPension } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax } from '@/app/lib/tax-burden/consumption-tax';
@@ -15,6 +15,10 @@ const p = readDataJson<TaxParameters>('tax-burden-params-2025.json', 'npm run ge
 assert.equal(p.metadata.status, 'prototype');
 assert.equal(p.metadata.modelVersion, MODEL_VERSION);
 assert.equal(p.monthlyRemuneration.length, p.monthlyBoundaries.length + 1);
+// The policy sliders start from current law, so the baseline in the code must still match the parameter file.
+for (const key of ['childMonthly', 'localRate', 'pensionRate', 'healthRate', 'careRate', 'employmentRate'] as const) {
+  assert.equal(BASE_REFORM[key], p[key], `BASE_REFORM.${key} は制度パラメータと一致していること`);
+}
 for (const values of [p.monthlyRemuneration, p.monthlyBoundaries]) {
   assert(values.every((n, i) => Number.isFinite(n) && n > 0 && (i === 0 || n > values[i - 1])));
 }

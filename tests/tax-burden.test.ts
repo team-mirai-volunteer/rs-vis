@@ -5,7 +5,7 @@ import consumptionRaw from '../public/data/tax-burden-consumption-2024.json';
 import oecdRaw from '../public/data/tax-burden-oecd-2025.json';
 import incidenceRaw from '../public/data/tax-burden-incidence.json';
 import type { ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
-import { initialTaxState, MODEL_VERSION, TAX_ITEMS } from '../app/lib/tax-burden/households';
+import { baseReform, initialTaxState, MODEL_VERSION, TAX_ITEMS } from '../app/lib/tax-burden/households';
 import { availableTaxItems, cellRate } from '../app/lib/tax-burden/heatmap-items';
 import { simulate, incomeTaxFromBase, standardMonthlyRemuneration, pensionIncome } from '../app/lib/tax-burden/simulate';
 import { annualPension, inWorkPension, lifecycleSeries, heatmapGrid } from '../app/lib/tax-burden/simulate-lifecycle';
@@ -219,25 +219,30 @@ test('heat-map grid covers all incomes and ages with consistent totals and answe
   const grid = heatmapGrid({ ...base, household: 'single' }, p, consumption);
   assert.equal(grid.length, 10);
   assert(grid.every(r => r.cells.length === 12 && r.cells.every(c => c.consumptionTax >= 0 && c.netRateWithConsumption !== null)));
-  // Each decomposition panel has its own lever: halving the income-tax multiplier halves that panel and nothing else.
-  const reform = { ...base.reform, incomeTaxMultiplier: 0.5 };
-  const halved = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, reform);
+  // Each flat-rate lever moves its own panel: dropping the resident rate to zero leaves only the per-capita levy.
   const cell = (g: typeof grid, income: number, age: number) => g.find(r => r.income === income)!.cells.find(c => c.ageAt === age)!;
-  assert.equal(cell(halved, 8000000, 40).incomeTax, Math.round(cell(grid, 8000000, 40).incomeTax * 0.5));
-  assert.equal(cell(halved, 8000000, 40).residentTax, cell(grid, 8000000, 40).residentTax);
-  const local = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, { ...base.reform, residentTaxMultiplier: 0 });
-  assert.equal(cell(local, 8000000, 40).residentTax, 0);
+  const local = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, { ...base.reform, localRate: 0 });
+  assert.equal(cell(local, 8000000, 40).residentTax, p.localPerCapita + p.localForestTax);
   assert.equal(cell(local, 8000000, 40).incomeTax, cell(grid, 8000000, 40).incomeTax);
+  const care = heatmapGrid({ ...base, household: 'single' }, p, consumption, null, { ...base.reform, careRate: 0 });
+  assert.equal(cell(care, 8000000, 50).care, 0, '第2号の介護保険料が消える');
+  assert.equal(cell(care, 8000000, 70).care, 0, '65歳以降の第1号介護保険料も同じレバーで動く');
+  assert.equal(cell(care, 8000000, 50).pension, cell(grid, 8000000, 50).pension);
 });
-test('per-item multipliers scale the finished tax, leaving the rest of the household calculation alone', () => {
+test('flat-rate levers move one line each, and current-law values change nothing', () => {
   const base = initialTaxState();
   const plain = simulate(base, p);
-  const doubled = simulate(base, p, { ...base.reform, incomeTaxMultiplier: 2, residentTaxMultiplier: 2 });
-  assert.equal(doubled.incomeTax, plain.incomeTax * 2);
-  assert.equal(doubled.residentTax, plain.residentTax * 2);
-  assert.equal(doubled.pension, plain.pension);
-  assert.equal(doubled.benefits, plain.benefits);
-  assert.equal(doubled.grossBurden - plain.grossBurden, plain.incomeTax + plain.residentTax);
+  assert.deepEqual(simulate(base, p, baseReform(p)), plain, '現行法どおりの料率なら結果は変わらない');
+  const noLocal = simulate(base, p, { ...base.reform, localRate: 0 });
+  assert.equal(noLocal.residentTax, p.localPerCapita + p.localForestTax, '所得割が消えても均等割と森林環境税は残る');
+  assert.equal(noLocal.incomeTax, plain.incomeTax);
+  const doublePension = simulate(base, p, { ...base.reform, pensionRate: p.pensionRate * 2 });
+  assert(Math.abs(doublePension.pension - plain.pension * 2) <= 1);
+  assert.equal(doublePension.health, plain.health);
+  assert(doublePension.incomeTax < plain.incomeTax, '保険料が増えれば社会保険料控除で所得税は下がる');
+  // The employee rate carries over to the elderly schemes, so one lever keeps moving one line at every age.
+  const at70 = (reform?: typeof base.reform) => lifecycleSeries({ ...base, income: 8000000 }, p, reform).find(y => y.ageAt === 70)!;
+  assert(Math.abs(at70({ ...base.reform, healthRate: p.healthRate * 2 }).health - at70().health * 2) <= 2, '国民健康保険も同じ比率で動く');
 });
 test('cash benefits are split per programme; panels appear only for the ones a household receives', () => {
   const couple = heatmapGrid({ ...initialTaxState(), household: 'one-earner-children' }, p, consumption);

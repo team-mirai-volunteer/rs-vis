@@ -8,6 +8,9 @@ import { HOUSEHOLDS, BASE_REFORM, isReformed } from '@/app/lib/tax-burden/househ
 import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
 import type { IncidenceDataset, TaxState } from '@/types/tax-burden';
 
+/** Slider values are percentage points; round through integers so an untouched rate stays exactly equal to current law. */
+const rate = (percent: number) => Math.round(percent * 1000) / 100000;
+
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
 export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false }: {
@@ -80,26 +83,29 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         <p className="text-xs leading-relaxed text-mirai-text-secondary">{state.view === 'curve' ? '動かすと、基準制度のカーブに改革案のカーブ（太い破線）が重なります。'
           : state.view === 'age' ? '動かすと、基準制度の線（細い灰色）に改革案の線（破線）が重なります。'
           : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
-        <h3 className="pt-1 text-xs font-bold text-primary-accent">税目を上げ下げする</h3>
-        <RangeField label="所得税の倍率" value={state.reform.incomeTaxMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('incomeTaxMultiplier', v / 100)} />
-        <RangeField label="住民税の倍率" value={state.reform.residentTaxMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('residentTaxMultiplier', v / 100)} />
-        <RangeField label="本人保険料の倍率" value={state.reform.insuranceMultiplier * 100} min={0} max={200} step={5} suffix="%" onChange={v => reform('insuranceMultiplier', v / 100)} />
-        <h3 className="pt-2 text-xs font-bold text-primary-accent">控除・給付を変える</h3>
+        <h3 className="pt-1 text-xs font-bold text-primary-accent">定率のものは料率で</h3>
+        <RangeField label="住民税・所得割の税率" value={state.reform.localRate * 100} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
+        <RangeField label="年金保険料率（本人）" value={state.reform.pensionRate * 100} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
+        <RangeField label="医療保険料率（本人）" value={state.reform.healthRate * 100} min={0} max={20} step={0.05} suffix="%" onChange={v => reform('healthRate', rate(v))} />
+        <RangeField label="介護保険料率（本人）" value={state.reform.careRate * 100} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('careRate', rate(v))} />
+        <RangeField label="雇用保険料率（本人）" value={state.reform.employmentRate * 100} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('employmentRate', rate(v))} />
+        <RangeField label="消費税・標準税率" value={Math.round(state.reform.standardVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
+          onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, standardVat: rate(v) } }))} />
+        <RangeField label="消費税・軽減税率" value={Math.round(state.reform.reducedVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
+          onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, reducedVat: rate(v) } }))} />
+        <h3 className="pt-2 text-xs font-bold text-primary-accent">累進の所得税は控除で</h3>
         <RangeField label="所得税の基礎控除を追加" value={state.reform.basicAllowanceExtra / 10000} min={0} max={200} step={5} suffix="万円" onChange={v => reform('basicAllowanceExtra', v * 10000)} />
+        <h3 className="pt-2 text-xs font-bold text-primary-accent">給付を変える</h3>
         <RangeField label="児童手当・1人月額" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', v)} />
         <RangeField label="給付付き控除・世帯年額" value={state.reform.creditAnnual / 10000} min={0} max={100} step={5} suffix="万円" onChange={v => reform('creditAnnual', v * 10000)} />
         <RangeField label="給付の逓減開始年収" value={state.reform.creditPhaseoutStart / 10000} min={0} max={1000} step={50} suffix="万円" onChange={v => reform('creditPhaseoutStart', v * 10000)} />
         <RangeField label="給付の逓減率" value={state.reform.creditPhaseoutRate * 100} min={0} max={100} step={5} suffix="%" onChange={v => reform('creditPhaseoutRate', v / 100)} />
-        <RangeField label="消費税・標準税率" value={Math.round(state.reform.standardVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
-          onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, standardVat: v / 100 } }))} />
-        <RangeField label="消費税・軽減税率" value={Math.round(state.reform.reducedVat * 100)} min={0} max={25} step={1} suffix="%" disabled={!hasConsumption}
-          onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, reducedVat: v / 100 } }))} />
         <label className="block space-y-1 text-sm"><span>消費税を変えたときの前提</span>
           <select className={inputClass} value={state.consumptionAssumption} disabled={!hasConsumption} onChange={e => set('consumptionAssumption', e.target.value as TaxState['consumptionAssumption'])}>
             <option value="net-fixed">税抜の数量・価格を固定（税込支出が動く）</option>
             <option value="gross-fixed">税込支出を固定（実質消費が動く）</option>
           </select></label>
-        <p className="text-xs leading-relaxed text-mirai-text-secondary">倍率は計算後の税額に掛けます（課税ベースではなく税額そのものを上げ下げする単純な操作）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
+        <p className="text-xs leading-relaxed text-mirai-text-secondary">所得税は累進なので税率ではなく基礎控除で動かします。保険料率は本人負担分で、国民健康保険・後期高齢者医療・第1号介護保険料にも同じ比率で反映します（住民税の均等割と森林環境税は定額なので動きません）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
         <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
       </section>}
 

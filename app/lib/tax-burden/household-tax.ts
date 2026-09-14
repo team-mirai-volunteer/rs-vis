@@ -70,18 +70,20 @@ export function standardMonthlyRemuneration(monthly: number, p: TaxParameters): 
   return p.monthlyRemuneration[index < 0 ? p.monthlyRemuneration.length - 1 : index];
 }
 
-/** Employee-side contributions for one salaried adult. */
-export function employeeContributions(salary: number, age: number, bonusMode: boolean, p: TaxParameters, multiplier: number) {
+export interface PremiumRates { pensionRate: number; healthRate: number; careRate: number; employmentRate: number }
+
+/** Employee-side contributions for one salaried adult, at the given employee rates. */
+export function employeeContributions(salary: number, age: number, bonusMode: boolean, p: TaxParameters, rates: PremiumRates) {
   const monthly = salary / (bonusMode ? 14 : 12);
   const standard = standardMonthlyRemuneration(monthly, p);
   const bonus = bonusMode ? floorTo(monthly, 1000) : 0;
   const pensionBase = Math.min(p.pensionCeiling, Math.max(p.pensionMinimum, standard)) * 12 + Math.min(p.pensionBonusCeiling, bonus) * 2;
   const healthBase = Math.min(p.healthCeiling, standard) * 12 + Math.min(p.healthBonusCeiling, bonus * 2);
   return {
-    pension: age < 70 ? Math.round(pensionBase * p.pensionRate * multiplier) : 0,
-    health: age < 75 ? Math.round(healthBase * p.healthRate * multiplier) : 0,
-    care: age >= 40 && age < 65 ? Math.round(healthBase * p.careRate * multiplier) : 0,
-    employment: Math.round(salary * p.employmentRate * multiplier),
+    pension: age < 70 ? Math.round(pensionBase * rates.pensionRate) : 0,
+    health: age < 75 ? Math.round(healthBase * rates.healthRate) : 0,
+    care: age >= 40 && age < 65 ? Math.round(healthBase * rates.careRate) : 0,
+    employment: Math.round(salary * rates.employmentRate),
     /** Average standard remuneration per month (for the earnings-related pension). */
     averageStandard: (Math.min(p.pensionCeiling, Math.max(p.pensionMinimum, standard)) * 12 + Math.min(p.pensionBonusCeiling, bonus) * 2) / 12,
   };
@@ -117,12 +119,15 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
   });
   const householdTaxable = exemptFlags.some(f => !f.perCapita);
 
-  // 2. Insurance premiums.
+  // 2. Insurance premiums. The elderly schemes have their own statutory rates, so a change to the employee rate is
+  //    carried over proportionally: one slider keeps moving one line of the decomposition at every age.
+  const healthScale = p.healthRate > 0 ? reform.healthRate / p.healthRate : 1;
+  const careScale = p.careRate > 0 ? reform.careRate / p.careRate : 1;
   let pension = 0, health = 0, care = 0, employment = 0;
   const personalPremiums = h.adults.map(() => 0);
   h.adults.forEach((a, i) => {
     if (a.salary > 0 && a.employeeInsured) {
-      const c = employeeContributions(a.salary, a.age, h.bonus, p, reform.insuranceMultiplier);
+      const c = employeeContributions(a.salary, a.age, h.bonus, p, reform);
       pension += c.pension; health += c.health; care += c.care; employment += c.employment;
       personalPremiums[i] += c.pension + c.health + c.care + c.employment;
     }
@@ -143,9 +148,9 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     const basic = part(nh.basicRate, nh.basicPerCapita, nh.basicCap, nhiMembers);
     const support = part(nh.supportRate, nh.supportPerCapita, nh.supportCap, nhiMembers);
     const nhiCare = careMembers.length ? part(nh.careRate, nh.carePerCapita, nh.careCap, careMembers) : 0;
-    health += Math.round((basic + support) * reform.insuranceMultiplier);
-    care += Math.round(nhiCare * reform.insuranceMultiplier);
-    const perMember = Math.round((basic + support + nhiCare) * reform.insuranceMultiplier / nhiMembers.length);
+    health += Math.round((basic + support) * healthScale);
+    care += Math.round(nhiCare * careScale);
+    const perMember = Math.round(((basic + support) * healthScale + nhiCare * careScale) / nhiMembers.length);
     nhiMembers.forEach(i => { personalPremiums[i] += perMember; });
   }
   // Latter-stage elderly medical insurance (75+), assessed per person with household-based reductions.
@@ -157,7 +162,7 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     const reduction = perCapitaReduction(householdIncome, h.adults.length, earners, ls.reductions);
     latterMembers.forEach(i => {
       const premium = Math.min(ls.cap, Math.round(Math.max(0, totals[i] - p.localBasicAllowance) * ls.rate + ls.perCapita * (1 - reduction)));
-      const scaled = Math.round(premium * reform.insuranceMultiplier);
+      const scaled = Math.round(premium * healthScale);
       health += scaled; personalPremiums[i] += scaled;
     });
   }
@@ -176,7 +181,7 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     } else {
       stage = pensionPlusIncome <= 800000 ? 1 : pensionPlusIncome <= 1200000 ? 2 : 3;
     }
-    const premium = Math.round(lp.careFirstCategory.baseAnnual * stages.find(s => s.stage === stage)!.multiplier * reform.insuranceMultiplier);
+    const premium = Math.round(lp.careFirstCategory.baseAnnual * stages.find(s => s.stage === stage)!.multiplier * careScale);
     care += premium; personalPremiums[i] += premium;
   });
 
@@ -222,14 +227,10 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     const adjustment = localBase <= 2000000 ? 0.05 * Math.min(deductionDifference, localBase)
       : Math.max(2500, 0.05 * (deductionDifference - (localBase - 2000000)));
     const perCapita = exemptFlags[i].perCapita ? 0 : p.localPerCapita + p.localForestTax;
-    const incomeShare = exemptFlags[i].incomeShare ? 0 : floorTo(localBase * p.localRate - adjustment, 100);
+    const incomeShare = exemptFlags[i].incomeShare ? 0 : floorTo(localBase * reform.localRate - adjustment, 100);
     residentTax += perCapita + incomeShare;
     residentTaxable.push(!exemptFlags[i].perCapita);
   });
-
-  // Per-item levers, applied to the finished tax so the heat-map panels can be raised and lowered one by one.
-  incomeTax = Math.round(incomeTax * reform.incomeTaxMultiplier);
-  residentTax = Math.round(residentTax * reform.residentTaxMultiplier);
 
   // 4. Cash benefits.
   const childBenefit = h.childAges.reduce((s, age) => s + (age <= 18 ? (age < 3 ? p.childMonthlyUnder3 : reform.childMonthly) * 12 : 0), 0);

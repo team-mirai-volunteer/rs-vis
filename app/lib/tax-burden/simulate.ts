@@ -1,5 +1,5 @@
 import type { BurdenResult, ConsumptionDataset, HouseholdId, IncidenceDataset, Reform, TaxParameters, TaxState } from '@/types/tax-burden';
-import { BASE_REFORM, HOUSEHOLDS } from './households';
+import { baseReform, HOUSEHOLDS, REFORM_LIMITS } from './households';
 import { computeHousehold, type AdultInput } from './household-tax';
 import { estimatedConsumptionTax } from './consumption-tax';
 import { corporateTaxOnWages } from './incidence';
@@ -19,7 +19,10 @@ export function validateState(state: Pick<TaxState, 'income' | 'household' | 'sh
   if (!household || !Number.isFinite(state.income) || state.income < 0 || state.income > 20000000 ||
       !Number.isFinite(state.share) || state.share < 1 || state.share > 99 ||
       !Number.isInteger(state.age) || state.age < 20 || state.age > 64 ||
-      Object.values(reform).some(v => !Number.isFinite(v) || v < 0)) throw new Error('計算条件が有効な範囲にありません');
+      (Object.keys(REFORM_LIMITS) as (keyof Reform)[]).some(k =>
+        !Number.isFinite(reform[k]) || reform[k] < REFORM_LIMITS[k][0] || reform[k] > REFORM_LIMITS[k][1])) {
+    throw new Error('計算条件が有効な範囲にありません');
+  }
   return household;
 }
 
@@ -32,7 +35,7 @@ export function splitSalaries(income: number, earners: number, share: number): n
 
 /** Working-age household (view C): salaried adults of the same age, children at their age for that adult age. */
 export function simulate(state: SimulateState, p: TaxParameters,
-  reform: Reform = { ...BASE_REFORM, childMonthly: p.childMonthly }, consumption?: ConsumptionDataset | null,
+  reform: Reform = baseReform(p), consumption?: ConsumptionDataset | null,
   incidence?: IncidenceDataset | null): BurdenResult {
   const household = validateState(state, reform);
   const salaries = splitSalaries(state.income, household.earners, state.share);
