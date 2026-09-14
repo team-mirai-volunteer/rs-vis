@@ -28,8 +28,8 @@ export default function Home() {
             </p>
           </div>
           <Button asChild size="lg" className="shrink-0">
-            <Link href="/sankey-svg">
-              サンキー図を見る <ArrowRight />
+            <Link href="/budget-sankey">
+              統合ビューを見る <ArrowRight />
             </Link>
           </Button>
         </section>

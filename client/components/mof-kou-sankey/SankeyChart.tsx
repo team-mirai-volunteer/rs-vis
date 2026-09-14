@@ -431,7 +431,7 @@ export function SankeyChart({
                                 href={rsLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title="/sankey-svgで開く"
+                                title="統合ビューで開く"
                                 onClick={e => e.stopPropagation()}
                                 className="shrink-0 px-0.5 text-mirai-text-muted hover:text-primary-accent"
                               >

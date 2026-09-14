@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { unifiedProjectNameFilterUrl } from '@/app/lib/unified-budget/links';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import {
   COLOR_MODE_LABELS, SIZE_METRIC_LABELS,
@@ -811,8 +812,8 @@ function SelectedPanel({
           </Link>
         </Button>
         <Button asChild variant="outline" size="xs" className="border-mirai-border text-[11px] font-medium text-mirai-text-subtle">
-          <Link href={`/sankey-svg?fnp=${encodeURIComponent(point.name)}&fp=1&yr=${year}`}>
-            サンキー図で見る
+          <Link href={unifiedProjectNameFilterUrl(point.name, year)}>
+            統合ビューで見る
           </Link>
         </Button>
       </div>

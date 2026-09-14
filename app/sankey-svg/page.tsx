@@ -12,6 +12,7 @@ import {
   getColumn, getNodeColor, getLinkColor, ribbonPath, formatYen, sortPriority,
 } from '@/app/lib/sankey-svg-constants';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import type { NavPageHref } from '@/components/navigation/pages';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -3393,7 +3394,8 @@ export default function RealDataSankeyPage() {
 
   return (
     <>
-    <AppHeader position="fixed" current="/sankey-svg">
+    {/* このページは統合ビューへのリダイレクトに置き換える予定。ナビ一覧からは外したため型だけ合わせる */}
+      <AppHeader position="fixed" current={'/sankey-svg' as unknown as NavPageHref}>
       {/* 年度切替。スマホ幅では設定ダイアログ側に置くためヘッダーには出さない */}
       {!isCompactWidth && (
         <YearSelect
