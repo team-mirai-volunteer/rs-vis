@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useMemo } from 'react';
-import type { BurdenResult, ConsumptionDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
+import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
 import { HOUSEHOLDS } from '@/app/lib/tax-burden/households';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
 
@@ -12,17 +12,18 @@ const OECD_BAND = 'rgba(80, 120, 200, 0.16)';
 const OECD_LINE = 'rgb(60, 100, 190)';
 const OECD_JAPAN = 'rgb(200, 90, 60)';
 
-export function CurveChart({ state, params, consumption, oecd, onIncomeChange }: {
-  state: TaxState; params: TaxParameters; consumption: ConsumptionDataset | null; oecd: OecdDataset | null; onIncomeChange: (income: number) => void;
+export function CurveChart({ state, params, consumption, oecd, incidence, onIncomeChange }: {
+  state: TaxState; params: TaxParameters; consumption: ConsumptionDataset | null; oecd: OecdDataset | null;
+  incidence: IncidenceDataset | null; onIncomeChange: (income: number) => void;
 }) {
   const id = useId().replace(/:/g, '');
   const rateOf = (p: BurdenResult) => state.includeConsumption ? p.netRateWithConsumption : p.netRate;
   // In OECD comparison mode the chart focuses on the selected household, as the Okina curve does.
   const showAll = state.showAll && !state.showOecd;
   const series = useMemo(() => HOUSEHOLDS.filter(h => showAll || h.id === state.household).map(h => ({
-    household: h, points: curveSeries(state, params, h.id, undefined, consumption), index: HOUSEHOLDS.findIndex(x => x.id === h.id),
-  })), [state, params, consumption, showAll]);
-  const reform = useMemo(() => state.view === 'reform' ? curveSeries(state, params, state.household, state.reform, consumption) : null, [state, params, consumption]);
+    household: h, points: curveSeries(state, params, h.id, undefined, consumption, incidence), index: HOUSEHOLDS.findIndex(x => x.id === h.id),
+  })), [state, params, consumption, incidence, showAll]);
+  const reform = useMemo(() => state.view === 'reform' ? curveSeries(state, params, state.household, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const curve = state.showOecd ? oecd?.curves[state.household] ?? null : null;
   const oecdYear = oecd?.years['2025'];
   // OECD publishes dual-earner couples only at fixed earnings points (100+67% and 100+100% of the average wage), never as a curve.
@@ -55,7 +56,7 @@ export function CurveChart({ state, params, consumption, oecd, onIncomeChange }:
   const nearestOecd = curve ? curve.awRatio.reduce((best, r, i) => Math.abs(curve.averageWageJpy * r - state.income) < Math.abs(curve.averageWageJpy * curve.awRatio[best] - state.income) ? i : best, 0) : -1;
   return (
     <div>
-      <p className="mb-2 text-xs text-mirai-text-secondary">縦軸：純負担率（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ 世帯年収</p>
+      <p className="mb-2 text-xs text-mirai-text-secondary">縦軸：純負担率（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''}{state.corporateShare > 0 ? '・法人税の転嫁' : ''} − 現金給付）÷ 世帯年収</p>
       <p className="mb-2 text-xs text-mirai-text-subtle sm:hidden">グラフは左右にスクロールできます。</p>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="世帯負担カーブ（左右にスクロール可能）">
       {/* SVG is the data chart, not an icon. Icons elsewhere use lucide-react. */}

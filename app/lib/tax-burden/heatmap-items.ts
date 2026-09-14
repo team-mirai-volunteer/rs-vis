@@ -5,6 +5,8 @@ export type HeatmapGrid = { income: number; cells: LifecycleYear[] }[];
 
 /** The model pays these cash benefits one by one; their total only deserves its own panel when more than one of them pays. */
 export const BENEFIT_PARTS: TaxItem[] = ['childBenefit', 'singleParentBenefit', 'pensionSupport', 'reformCredit'];
+/** Items that only exist under an assumption the user switched on; hidden while they are zero everywhere. */
+const CONDITIONAL: TaxItem[] = [...BENEFIT_PARTS, 'corporateTax'];
 
 /** Rates are relative to the fixed working-age income class (the row), never to pension income; money received counts as negative burden. */
 export function cellRate(y: LifecycleYear, item: TaxItem): number | null {
@@ -18,6 +20,7 @@ export function cellRate(y: LifecycleYear, item: TaxItem): number | null {
     case 'singleParentBenefit': return per(-y.singleParentBenefit);
     case 'pensionSupport': return per(-y.pensionSupport);
     case 'reformCredit': return per(-y.reformCredit);
+    case 'corporateTax': return per(y.corporateTax);
     case 'pensionReceipt': return per(-y.pensionIncome);
     default: return per(y[item]);
   }
@@ -31,6 +34,7 @@ export function availableTaxItems(grid: HeatmapGrid, hasConsumption: boolean) {
     if (!hasConsumption && t.id === 'consumption') return false;
     if (t.id === 'benefits') return parts.length > 1;
     if (BENEFIT_PARTS.includes(t.id)) return parts.includes(t.id);
+    if (CONDITIONAL.includes(t.id)) return pays(t.id);
     return true;
   });
 }

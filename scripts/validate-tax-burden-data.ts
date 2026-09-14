@@ -6,8 +6,9 @@ import { MODEL_VERSION, HOUSEHOLDS, initialTaxState } from '@/app/lib/tax-burden
 import { simulate } from '@/app/lib/tax-burden/simulate';
 import { lifecycleSeries, annualPension } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax } from '@/app/lib/tax-burden/consumption-tax';
+import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
 import { taxRevenueFromOverview } from '@/app/lib/tax-burden/revenue';
-import type { AgeDataset, ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
+import type { AgeDataset, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
 import type { MOFBudgetOverview } from '@/types/mof-budget-overview';
 
 const p = readDataJson<TaxParameters>('tax-burden-params-2025.json', 'npm run generate-tax-burden-data');
@@ -124,6 +125,15 @@ for (const g of ageStats.groups) for (const c of g.classes) {
   const burden = Object.values(c.directTaxes).reduce((s, v) => s + v, 0) + Object.values(c.socialInsurance).reduce((s, v) => s + v, 0);
   assert(burden > 0 && burden < c.realIncomeAnnual, `${g.population} ${c.label} burden`);
 }
+
+// 5b. Corporate tax incidence: totals are sane and the implied rate on wages is a few percent.
+const incidence = readDataJson<IncidenceDataset>('tax-burden-incidence.json', 'python scripts/generate-tax-burden-stats.py');
+assert(incidence.corporateTaxTotal > 1e13 && incidence.wagesAndSalaries > 1e14);
+assert(incidence.compensationOfEmployees > incidence.wagesAndSalaries, '雇用者報酬 > 賃金・俸給');
+assert(incidence.referenceShares.length > 0 && incidence.referenceShares.every(r => r.share > 0 && r.share < 1));
+assert.equal(wageIncidenceRate(incidence, 0), 0);
+const quarterRate = wageIncidenceRate(incidence, 0.25);
+assert(quarterRate > 0.01 && quarterRate < 0.1, `25%帰着の賃金比 ${quarterRate}`);
 
 // 6. Revenue files unchanged.
 for (let year = 2017; year <= 2026; year++) {

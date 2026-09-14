@@ -6,6 +6,7 @@ import { GET as revenue } from '../app/api/tax-burden/revenue/route';
 import { GET as consumption } from '../app/api/tax-burden/consumption/route';
 import { GET as oecd } from '../app/api/tax-burden/oecd/route';
 import { GET as age } from '../app/api/tax-burden/age/route';
+import { GET as incidence } from '../app/api/tax-burden/incidence/route';
 
 test('parameter API declares prototype status and rejects unsupported years', async () => {
   const response = await parameters(new NextRequest('http://localhost/api/tax-burden/params?fy=2025'));
@@ -38,6 +39,10 @@ test('consumption and OECD APIs serve the generated statistics', async () => {
   const o = await oecd();
   assert.equal(o.status, 200);
   assert((await o.json()).years['2025'].points.length >= 8);
+  const i = await incidence();
+  assert.equal(i.status, 200);
+  const inc = await i.json();
+  assert(inc.corporateTaxTotal > 0 && inc.wagesAndSalaries > inc.corporateTaxTotal);
   const a = await age(new NextRequest('http://localhost/api/tax-burden/age?year=2024'));
   assert.equal(a.status, 200);
   const groups = (await a.json()).groups;

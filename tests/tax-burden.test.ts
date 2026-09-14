@@ -3,18 +3,21 @@ import assert from 'node:assert/strict';
 import raw from '../scripts/data/tax-burden-params-2025.json';
 import consumptionRaw from '../public/data/tax-burden-consumption-2024.json';
 import oecdRaw from '../public/data/tax-burden-oecd-2025.json';
-import type { ConsumptionDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
+import incidenceRaw from '../public/data/tax-burden-incidence.json';
+import type { ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
 import { initialTaxState, MODEL_VERSION, TAX_ITEMS } from '../app/lib/tax-burden/households';
 import { availableTaxItems, cellRate } from '../app/lib/tax-burden/heatmap-items';
 import { simulate, incomeTaxFromBase, standardMonthlyRemuneration, pensionIncome } from '../app/lib/tax-burden/simulate';
 import { annualPension, inWorkPension, lifecycleSeries, heatmapGrid } from '../app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax, estimatedConsumptionTax } from '../app/lib/tax-burden/consumption-tax';
+import { corporateTaxOnWages, wageIncidenceRate } from '../app/lib/tax-burden/incidence';
 import { fiscalImpact } from '../app/lib/tax-burden/fiscal-impact';
 import { encodeTaxState, decodeTaxState } from '../app/lib/tax-burden/reform-url';
 
 const p = raw as unknown as TaxParameters;
 const consumption = consumptionRaw as unknown as ConsumptionDataset;
 const oecd = oecdRaw as unknown as OecdDataset;
+const incidence = incidenceRaw as unknown as IncidenceDataset;
 
 test('zero-income rate stays undefined while cash amounts remain available', () => {
   const result = simulate({ ...initialTaxState(), income: 0 }, p);
@@ -190,6 +193,26 @@ test('elderly resident tax: pension deduction, the non-taxable limit and the old
   // 合計所得が非課税限度額（夫婦101万円・単身45万円）以下なら住民税はかからない
   assert.equal(at('one-earner-children', 5000000, 70).residentTax, 0);
   assert.equal(at('single', 3000000, 70).residentTax, 0);
+});
+test('corporate tax incidence is an explicit assumption: off by default, flat on wages, none in retirement', () => {
+  const base = initialTaxState();
+  assert.equal(base.corporateShare, 0, '既定では仮定を置かない');
+  assert.equal(simulate(base, p, undefined, null, incidence).corporateTax, 0);
+  const quarter = { ...base, corporateShare: 0.25 };
+  const rate = incidence.corporateTaxTotal * 0.25 / incidence.wagesAndSalaries;
+  const r = simulate(quarter, p, undefined, null, incidence);
+  assert.equal(r.corporateTax, Math.round(5000000 * rate));
+  assert.equal(r.grossBurden, simulate(base, p, undefined, null, incidence).grossBurden + r.corporateTax);
+  assert.equal(r.netBurden, r.grossBurden - r.benefits);
+  // Proportional to wages, so the rate on pay does not change with income.
+  const high = simulate({ ...quarter, income: 15000000 }, p, undefined, null, incidence);
+  assert(Math.abs(high.corporateTax / 15000000 - r.corporateTax / 5000000) < 1e-6);
+  const years = lifecycleSeries(quarter, p, undefined, null, incidence);
+  assert(years.find(y => y.ageAt === 40)!.corporateTax > 0);
+  assert.equal(years.find(y => y.ageAt === 70)!.corporateTax, 0, '年金だけの年には賃金が無いので乗らない');
+  assert.equal(wageIncidenceRate(incidence, 0), 0);
+  assert.equal(corporateTaxOnWages(null, 5000000, 0.25), 0, 'データが無ければ計算しない');
+  assert.throws(() => wageIncidenceRate(incidence, 1.5));
 });
 test('heat-map grid covers all incomes and ages with consistent totals', () => {
   const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);

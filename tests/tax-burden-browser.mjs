@@ -53,7 +53,7 @@ try {
     if (url.pathname.startsWith('/logos/')) return route.fulfill({ contentType: 'image/svg+xml', body: readFileSync(resolve('public/logos/team-mirai-wordmark.svg')) });
     if (url.pathname.startsWith('/api/tax-burden/')) {
       const name = url.pathname.endsWith('params') ? 'tax-burden-params-2025' : url.pathname.endsWith('consumption') ? 'tax-burden-consumption-2024'
-        : url.pathname.endsWith('oecd') ? 'tax-burden-oecd-2025' : url.pathname.endsWith('age') ? 'tax-burden-age-2024' : 'tax-revenue-2025';
+        : url.pathname.endsWith('oecd') ? 'tax-burden-oecd-2025' : url.pathname.endsWith('age') ? 'tax-burden-age-2024' : url.pathname.endsWith('incidence') ? 'tax-burden-incidence' : 'tax-revenue-2025';
       return route.fulfill({ contentType: 'application/json', body: readFileSync(resolve(`public/data/${name}.json`)) });
     }
     return route.fulfill({ contentType: 'text/html', body: html });
@@ -104,6 +104,10 @@ try {
   await page.screenshot({ path: resolve(output, 'curve-oecd-two-earners.png'), fullPage: true });
   await page.getByRole('combobox', { name: /^家族構成/ }).selectOption('one-earner-children');
   await page.screenshot({ path: resolve(output, 'curve-oecd.png'), fullPage: true });
+  await page.getByLabel('賃金へ転嫁される割合').fill('25');
+  await expect(page.getByRole('rowheader', { name: '法人税の転嫁（仮定）' })).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'curve-incidence.png'), fullPage: true });
+  await page.getByLabel('賃金へ転嫁される割合').fill('0');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();
   await expect(page.getByRole('table').first()).toBeVisible();

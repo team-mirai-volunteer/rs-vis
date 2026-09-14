@@ -18,7 +18,7 @@ import { StatsPanel } from '@/client/components/tax-burden/StatsPanel';
 import { TaxControls } from '@/client/components/tax-burden/TaxControls';
 import { BurdenBreakdown, yen } from '@/client/components/tax-burden/BurdenBreakdown';
 import { RevenuePanel } from '@/client/components/tax-burden/RevenuePanel';
-import type { AgeDataset, ConsumptionDataset, OecdDataset, TaxParameters, TaxRevenue, TaxView } from '@/types/tax-burden';
+import type { AgeDataset, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxRevenue, TaxView } from '@/types/tax-burden';
 
 const VIEWS = [
   { id: 'curve', label: '世帯の負担カーブ', icon: ChartNoAxesCombined },
@@ -72,14 +72,15 @@ export default function TaxBurdenPage() {
   const { data: params, error } = useJson<TaxParameters>('/api/tax-burden/params?fy=2025', retry);
   const { data: consumption } = useJson<ConsumptionDataset>('/api/tax-burden/consumption?year=2024', retry);
   const { data: oecd } = useJson<OecdDataset>('/api/tax-burden/oecd', retry);
+  const { data: incidence } = useJson<IncidenceDataset>('/api/tax-burden/incidence', retry);
   const { data: ageStats } = useJson<AgeDataset>(state.view === 'stats' ? '/api/tax-burden/age?year=2024' : null, retry);
   const { data: revenue, error: revenueError } = useJson<TaxRevenue>(state.view === 'revenue' ? '/api/tax-burden/revenue?fy=2025' : null, retry);
 
-  const before = useMemo(() => params ? simulate(state, params, undefined, consumption) : null, [state, params, consumption]);
-  const after = useMemo(() => params ? simulate(state, params, state.reform, consumption) : null, [state, params, consumption]);
+  const before = useMemo(() => params ? simulate(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence]);
+  const after = useMemo(() => params ? simulate(state, params, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const impact = before && after ? fiscalImpact(before, after, state, consumption) : null;
-  const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, undefined, consumption) : null, [state, params, consumption]);
-  const grid = useMemo(() => params && state.view === 'heatmap' ? heatmapGrid(state, params, consumption) : null, [state, params, consumption]);
+  const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence]);
+  const grid = useMemo(() => params && state.view === 'heatmap' ? heatmapGrid(state, params, consumption, incidence) : null, [state, params, consumption, incidence]);
   const heatmapItems = useMemo(() => grid ? availableTaxItems(grid, !!consumption) : null, [grid, consumption]);
   // A stored tax item that never pays for this household (児童扶養手当 on a couple, say) falls back to the net burden.
   const taxItem = heatmapItems && !heatmapItems.some(t => t.id === state.taxItem) ? 'net' : state.taxItem;
@@ -119,7 +120,7 @@ export default function TaxBurdenPage() {
       </nav>
 
       {modelViews && <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} taxItems={heatmapItems ?? undefined} taxItem={taxItem} />
+        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} taxItems={heatmapItems ?? undefined} taxItem={taxItem} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
             {(state.view === 'curve' || state.view === 'reform') && <>
@@ -132,7 +133,7 @@ export default function TaxBurdenPage() {
               </div>
               {selected.outOfScope && <p role="status" className="rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm"><strong>適用範囲外の参考値：</strong>{selected.scopeReasons.join('、')}。就労者1人の下限は{yen(params.minimumAnnualWage)}です。</p>}
               <Card><CardHeader className="flex-row items-start justify-between gap-3"><div><h2 className="text-lg font-bold">年収と、税・保険料・給付の関係</h2><p className="mt-2 text-xs text-mirai-text-secondary">2025年版 ／ {state.view === 'reform' ? '基準制度と改革案' : '家族構成別の参考カーブ'}。図をクリックすると年収を選べます。</p></div><Button size="sm" variant="ghost" onClick={() => dialog.current?.showModal()}><Info />計算条件</Button></CardHeader>
-                <CardContent><CurveChart state={state} params={params} consumption={consumption} oecd={oecd} onIncomeChange={setIncome} />
+                <CardContent><CurveChart state={state} params={params} consumption={consumption} oecd={oecd} incidence={incidence} onIncomeChange={setIncome} />
                   <p className="mt-4 text-xs text-mirai-text-secondary">出典：<a className="text-primary-accent underline" href={params.metadata.sourceUrl} target="_blank" rel="noreferrer">OECD 日本の税・給付制度説明書 2025</a>{state.showOecd && oecd && <>、<a className="text-primary-accent underline" href="https://www.oecd.org/en/data/datasets/taxing-wages.html" target="_blank" rel="noreferrer">OECD Taxing Wages</a>（{oecd.metadata.retrievedOn}取得）</>}{state.includeConsumption && consumption && <>、<a className="text-primary-accent underline" href={consumption.metadata.sourceUrl} target="_blank" rel="noreferrer">{consumption.metadata.survey}</a></>}。独自の試作計算。事業主負担は含みません。</p>
                 </CardContent>
               </Card>

@@ -2,12 +2,12 @@
   "source": "score-project-quality-ai.py --benchmark",
   "model": "openai/gpt-5.6-luna",
   "year": 2025,
-  "generatedAt": "2026-09-13T13:14:33",
+  "generatedAt": "2026-09-14T19:12:42",
   "usage": {
     "policy": {
-      "prompt_tokens": 128595,
-      "completion_tokens": 7770,
-      "cost": 0.026816399999999997,
+      "prompt_tokens": 133880,
+      "completion_tokens": 7941,
+      "cost": 0.027370409999999998,
       "calls": 5
     },
     "recipient": {
@@ -16,8 +16,8 @@
       "cost": 0.0,
       "calls": 0
     },
-    "total": 0.026816399999999997,
-    "policyPerProject": 0.0008938799999999999
+    "total": 0.027370409999999998,
+    "policyPerProject": 0.0009123469999999999
   },
   "projects": [
     {
@@ -29,15 +29,15 @@
       "policyCategory": "digital",
       "designClarity": 7,
       "evidenceReadiness": 9,
-      "budgetProportionality": 3,
-      "necessity": 7,
+      "budgetProportionality": 5,
+      "necessity": 6,
       "axisIdentify": null,
       "axisPurpose": null,
       "policyFindings": {
-        "design": "監理活動から適合率等へ接続するが便益経路に混在あり",
-        "evidence": "登録アウトカム4件に実績・出典、達成率も確認可能",
-        "proportionality": "執行1760.2億円÷監理件数不明、支出先も不明",
-        "necessity": "各府省が重複整備を失う。代替は同等、責任"
+        "design": "レビューから適合確認まで接続するが国民便益は抽象的",
+        "evidence": "登録アウトカム実績・達成率・出典があり概要とも整合",
+        "proportionality": "執行1760.2億円÷確認40件＝約44億円/件、支出先不明",
+        "necessity": "行政の重複・非効率が拡大。既存統制は同等で不明。責任"
       }
     },
     {
@@ -47,17 +47,17 @@
       "budgetAmount": 239569000,
       "execAmount": 247378158,
       "policyCategory": "public_safety",
-      "designClarity": 8,
+      "designClarity": 9,
       "evidenceReadiness": 10,
-      "budgetProportionality": 6,
-      "necessity": 8,
+      "budgetProportionality": 8,
+      "necessity": 9,
       "axisIdentify": 87.3,
       "axisPurpose": 70.3,
       "policyFindings": {
-        "design": "名簿・警告・捜査から被害防止・検挙へ接続",
-        "evidence": "登録アウトカム実績・達成率・出典が複数整備",
-        "proportionality": "執行2.5億円÷成果件数不明、機器・委託先は対応",
-        "necessity": "高齢者等が被害防止・捜査を失う。民間代替は割高、責任"
+        "design": "被害者・捜査活動・阻止や検挙まで明確に接続",
+        "evidence": "登録アウトカム実績・達成率・出典が揃い概要とも整合",
+        "proportionality": "執行2.5億円÷リスト51万件＝約490円/件、実務先へ配分",
+        "necessity": "高齢者等が被害防止を失う。民間任せは割高。責任"
       }
     },
     {
@@ -68,16 +68,16 @@
       "execAmount": 193261025301,
       "policyCategory": "diplomacy",
       "designClarity": 5,
-      "evidenceReadiness": 2,
-      "budgetProportionality": 5,
+      "evidenceReadiness": 3,
+      "budgetProportionality": 4,
       "necessity": 4,
       "axisIdentify": 72.4,
       "axisPurpose": 75.1,
       "policyFindings": {
-        "design": "援助から開発成果へ接続するが国民便益は抽象的",
-        "evidence": "登録は活動指標1件のみ、概要にも成果実績なし",
-        "proportionality": "執行1932.6億円÷87件＝約22.2億円/件、配分粗い",
-        "necessity": "被援助国が施設等を失う。国民便益不明、受益者負担、制度"
+        "design": "案件実施から開発成果へ接続するが国民便益は抽象的",
+        "evidence": "登録は活動指標1件のみで成果実績・出典なし",
+        "proportionality": "執行1932.6億円÷87案件＝約22.2億円/件、最終配分が粗い",
+        "necessity": "被援助国が支援を失うが国民便益不明。受益者負担、制度"
       }
     },
     {
@@ -90,14 +90,14 @@
       "designClarity": 9,
       "evidenceReadiness": 10,
       "budgetProportionality": 8,
-      "necessity": 8,
+      "necessity": 9,
       "axisIdentify": 52.1,
       "axisPurpose": 92.0,
       "policyFindings": {
-        "design": "対象所得層、給付、進学・中退改善を明確に接続",
-        "evidence": "登録アウトカム3件に実績・達成率・出典が整合",
-        "proportionality": "予算4244.4億円÷対象人数不明、自治体経由で給付",
-        "necessity": "低所得生徒が就学支援を失う。自治体・貸与は割高、制度"
+        "design": "対象所得層、給付、進学・中退改善まで明確",
+        "evidence": "登録アウトカム3件に実績・達成率・出典があり概要とも整合",
+        "proportionality": "執行4047.1億円÷活動指標236＝約17.2億円、自治体経由給付",
+        "necessity": "低所得生徒が就学支援を失う。自治体代替は割高。制度"
       }
     },
     {
@@ -114,10 +114,10 @@
       "axisIdentify": 39.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "給与負担から教員確保・教育水準まで多段接続",
-        "evidence": "登録アウトカム1件に実績・出典、他は実績なし",
-        "proportionality": "予算16260.4億円÷67自治体＝約242.7億円、法定負担",
-        "necessity": "公立校が教員確保を失う。自治体単独は割高、制度"
+        "design": "給与負担から教員確保、教育水準まで多段接続",
+        "evidence": "登録アウトカム1件に実績・出典、概要にも統計あり",
+        "proportionality": "執行16172.5億円÷自治体11者＝約1470億円、法定給与負担",
+        "necessity": "公立校が教員給与財源を失う。自治体代替は割高。制度"
       }
     },
     {
@@ -127,17 +127,17 @@
       "budgetAmount": 1087615854000,
       "execAmount": 1087615854000,
       "policyCategory": "higher_edu",
-      "designClarity": 7,
+      "designClarity": 6,
       "evidenceReadiness": 9,
-      "budgetProportionality": 8,
+      "budgetProportionality": 7,
       "necessity": 8,
       "axisIdentify": 64.6,
       "axisPurpose": 47.4,
       "policyFindings": {
-        "design": "交付金から大学運営・中期目標達成へ接続",
-        "evidence": "登録アウトカム2件に実績・達成率・出典あり",
-        "proportionality": "予算10876.2億円÷85法人＝約128億円/法人、大学へ交付",
-        "necessity": "学生・研究者が安定教育研究を失う。競争資金は割高、責任"
+        "design": "交付から大学運営・目標達成へ接続するが便益が広範",
+        "evidence": "登録アウトカム実績・達成率・出典があり概要とも整合",
+        "proportionality": "執行10876.2億円÷85法人＝約128億円/法人、用途が広範",
+        "necessity": "学生・研究者・地域が教育研究を失う。市場代替は割高。責任"
       }
     },
     {
@@ -148,16 +148,16 @@
       "execAmount": 247329486174,
       "policyCategory": "rnd",
       "designClarity": 7,
-      "evidenceReadiness": 6,
+      "evidenceReadiness": 5,
       "budgetProportionality": 7,
-      "necessity": 7,
+      "necessity": 8,
       "axisIdentify": 75.6,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "研究支援から研究進展まで接続。ただし最終便益が抽象的",
-        "evidence": "登録は活動指標のみだが実績・達成率と概要の統計あり",
-        "proportionality": "2530.2億÷194974件≈129.8万円/件。基金・その他が粗い",
-        "necessity": "研究者が研究費を失う。民間資金は割高、代替なし。責任"
+        "design": "研究者対象と助成活動は明確だが、研究成果への経路が粗い",
+        "evidence": "登録は活動指標のみだが、概要文に論文数等の統計引用あり",
+        "proportionality": "2473.3億円÷19.5万件≈127万円/件、研究者・JSPSへ配分",
+        "necessity": "研究者が基礎研究費を失う。民間代替は割高。なし"
       }
     },
     {
@@ -169,15 +169,15 @@
       "policyCategory": "culture",
       "designClarity": 7,
       "evidenceReadiness": 3,
-      "budgetProportionality": 4,
-      "necessity": 9,
+      "budgetProportionality": 5,
+      "necessity": 8,
       "axisIdentify": 28.5,
       "axisPurpose": 92.5,
       "policyFindings": {
-        "design": "文化財・保存修理・継承を接続。国民便益も明確",
-        "evidence": "登録は活動指標1件のみで、概要にも成果数値なし",
-        "proportionality": "718.3億÷件数不明で単価算定不可。その他46%で追跡粗い",
-        "necessity": "所有者が修理・防災支援を失う。代替は割高。制度"
+        "design": "文化財と保存修理は特定され、継承・滅失防止へ接続",
+        "evidence": "登録は活動指標1件のみで、成果実績や出典がない",
+        "proportionality": "718.3億円÷対象件数不詳で単価算定不能、補助先も粗い",
+        "necessity": "所有者が文化財保存を失う。所有者負担は割高。制度"
       }
     },
     {
@@ -187,17 +187,17 @@
       "budgetAmount": 322108000,
       "execAmount": 304490000,
       "policyCategory": "culture",
-      "designClarity": 6,
+      "designClarity": 7,
       "evidenceReadiness": 9,
-      "budgetProportionality": 6,
-      "necessity": 4,
+      "budgetProportionality": 8,
+      "necessity": 5,
       "axisIdentify": 5.5,
       "axisPurpose": 73.1,
       "policyFindings": {
-        "design": "活動から文化振興へ接続するが、年金と成果の対応が弱い",
-        "evidence": "登録アウトカム3件に実績・出典あり。概要とも整合",
-        "proportionality": "3.2億÷120人≈267万円/人。会員年金が81%",
-        "necessity": "会員が年金を失う。文化振興は他手段が同等。受益者負担。なし"
+        "design": "会員活動から国民の鑑賞機会・芸術発展まで接続",
+        "evidence": "登録アウトカム実績3件、達成率・出典あり",
+        "proportionality": "3.2億円÷会員120人≈267万円/人、年金受給者へ直接支出",
+        "necessity": "芸術院会員が年金を失う。受益者負担が相当、代替は同等。制度"
       }
     },
     {
@@ -209,15 +209,15 @@
       "policyCategory": "health_insurance",
       "designClarity": 5,
       "evidenceReadiness": 9,
-      "budgetProportionality": 7,
-      "necessity": 10,
+      "budgetProportionality": 8,
+      "necessity": 9,
       "axisIdentify": 57.7,
       "axisPurpose": 70.0,
       "policyFindings": {
-        "design": "給付から保険者健全化へ接続。国民の医療便益は未接続",
-        "evidence": "登録アウトカム3件に実績・達成率・出典あり",
-        "proportionality": "101702.1億÷対象人数不明で単価算定不可。法定交付",
-        "necessity": "加入者が保険給付を失う。民間代替は割高。制度"
+        "design": "保険者の健全化までで、患者の健康改善への経路が浅い",
+        "evidence": "登録アウトカム実績3件、達成率・出典あり",
+        "proportionality": "101702.1億円÷保険者数不詳、法定保険者への交付",
+        "necessity": "加入者が保険診療を失う。代替なし。制度"
       }
     },
     {
@@ -228,15 +228,15 @@
       "execAmount": 2740031482354,
       "policyCategory": "public_assistance",
       "designClarity": 6,
-      "evidenceReadiness": 8,
-      "budgetProportionality": 9,
-      "necessity": 10,
+      "evidenceReadiness": 9,
+      "budgetProportionality": 10,
+      "necessity": 9,
       "axisIdentify": 27.1,
       "axisPurpose": 78.1,
       "policyFindings": {
-        "design": "保護実施から給付適正化等へ接続。生活保障の測定が弱い",
-        "evidence": "登録アウトカム2件に実績・出典あり。就労成果は未達",
-        "proportionality": "27835.2億÷202万576人≈137.8万円/人。自治体給付",
+        "design": "困窮者への保護は明確だが、最低生活保障への接続が中心",
+        "evidence": "登録アウトカム2件に実績・達成率・出典あり",
+        "proportionality": "27835.2億円÷202万人≈137.7万円/人、自治体から直接給付",
         "necessity": "困窮者が最低生活を失う。自治体単独は割高。制度"
       }
     },
@@ -254,10 +254,10 @@
       "axisIdentify": 0.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "給付から生活安定へ一段接続。受給者状態の具体化が弱い",
-        "evidence": "受給者数の実績はあるが、登録アウトカム実績なし",
-        "proportionality": "254804.8億÷3592.8万人≈70.9万円/人。受給者へ全額給付",
-        "necessity": "受給者が基礎年金を失う。個人扶養は割高。制度"
+        "design": "給付活動と生活安定の接続はあるが、成果経路は一段のみ",
+        "evidence": "受給者数のアウトプット実績のみで、アウトカム実績なし",
+        "proportionality": "254804.8億円÷3592.8万人≈70.9万円/人、受給者へ直接給付",
+        "necessity": "年金受給者が所得保障を失う。代替なし。制度"
       }
     },
     {
@@ -267,17 +267,17 @@
       "budgetAmount": 990178535000,
       "execAmount": 990178535000,
       "policyCategory": "rnd",
-      "designClarity": 9,
+      "designClarity": 8,
       "evidenceReadiness": 7,
-      "budgetProportionality": 3,
-      "necessity": 8,
+      "budgetProportionality": 5,
+      "necessity": 7,
       "axisIdentify": 100.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "技術開発から国内供給・経済安全保障まで多段接続",
-        "evidence": "登録アウトカム実績・出典あり、他アウトカムは未実績",
-        "proportionality": "9901.8億円÷基金追加交付1件＝9901.8億円、基金管理法人に集中",
-        "necessity": "国内企業が通信・半導体供給を失う。代替は割高。制度"
+        "design": "研究開発から採択、目標達成・実用化まで接続",
+        "evidence": "登録アウトカム実績・達成率・出典あり、未実績指標も多い",
+        "proportionality": "9901.8億円÷採択31件＝約319億円/件、基金配分粗い",
+        "necessity": "国内企業が通信・半導体供給基盤を失う。民間投資は割高。責任"
       }
     },
     {
@@ -288,16 +288,16 @@
       "execAmount": 339986201000,
       "policyCategory": "sme",
       "designClarity": 9,
-      "evidenceReadiness": 8,
-      "budgetProportionality": 4,
-      "necessity": 5,
+      "evidenceReadiness": 9,
+      "budgetProportionality": 5,
+      "necessity": 6,
       "axisIdentify": 81.5,
       "axisPurpose": 93.5,
       "policyFindings": {
-        "design": "複数施策を生産性・売上向上へ多段接続",
-        "evidence": "登録アウトカム2件に実績、売上増加率は出典あり",
-        "proportionality": "3399.9億円÷支援件数不明で単価不明、基金管理・再委託が多い",
-        "necessity": "中小企業が補助を失う。融資等は同等。なし"
+        "design": "企業課題、支援手段、生産性・売上成果を多段接続",
+        "evidence": "登録アウトカム2件に実績・達成率・出典あり",
+        "proportionality": "3399.9億円÷申請9985件＝約0.34億円/件、その他配分粗い",
+        "necessity": "中小企業が投資・承継支援を失う。融資等は割高。なし"
       }
     },
     {
@@ -307,17 +307,17 @@
       "budgetAmount": 1950677545000,
       "execAmount": 1950677545000,
       "policyCategory": "energy",
-      "designClarity": 5,
+      "designClarity": 6,
       "evidenceReadiness": 4,
-      "budgetProportionality": 3,
-      "necessity": 4,
+      "budgetProportionality": 4,
+      "necessity": 5,
       "axisIdentify": 100.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "値下げから小売反映まで接続するが家計効果は浅い",
-        "evidence": "活動実績のみで、登録アウトカム実績なし",
-        "proportionality": "19506.8億円÷基金追加1件＝19506.8億円、最終配分不明",
-        "necessity": "家計・運送業が値下げを失う。減税は安い。制度"
+        "design": "価格抑制まで接続するが家計便益の経路は浅い",
+        "evidence": "活動実績のみで、価格抑制アウトカムに実績なし",
+        "proportionality": "19506.8億円÷価格引下げ実施34件＝約574億円/件、基金配分不明",
+        "necessity": "家計・運送業が価格抑制を失う。給付等は同等。制度"
       }
     },
     {
@@ -329,15 +329,15 @@
       "policyCategory": "road",
       "designClarity": 7,
       "evidenceReadiness": 10,
-      "budgetProportionality": 5,
+      "budgetProportionality": 7,
       "necessity": 8,
       "axisIdentify": 53.6,
       "axisPurpose": 81.2,
       "policyFindings": {
-        "design": "整備からミッシングリンク、速達性まで接続",
-        "evidence": "登録アウトカム実績・達成率・出典が整合",
-        "proportionality": "執行8973.7億円÷新規開通80km＝約112.2億円/km、その他42%",
-        "necessity": "地域住民・物流が道路便益を失う。代替は割高。制度"
+        "design": "道路整備からミッシングリンク、速達性まで接続",
+        "evidence": "登録アウトカム2件に実績・達成率・出典が整合",
+        "proportionality": "執行8973.7億円÷新規開通80km＝約112.2億円/km、工事対応",
+        "necessity": "利用者が安全な幹線・物流網を失う。民間整備は割高。責任"
       }
     },
     {
@@ -349,15 +349,15 @@
       "policyCategory": "river",
       "designClarity": 7,
       "evidenceReadiness": 3,
-      "budgetProportionality": 4,
+      "budgetProportionality": 5,
       "necessity": 9,
       "axisIdentify": 53.3,
       "axisPurpose": 72.7,
       "policyFindings": {
-        "design": "改修から整備率まで接続するが被害軽減が未接続",
-        "evidence": "登録は活動指標のみ、概要にも成果数値なし",
-        "proportionality": "執行3316.8億円÷整備延長不明で単価不明、その他44%",
-        "necessity": "沿川住民が洪水防護を失う。代替なし。技術"
+        "design": "改修から整備率まで接続するが被害軽減は未接続",
+        "evidence": "登録は活動指標2件のみ、アウトカム実績なし",
+        "proportionality": "執行3316.8億円÷活動137件＝約24.2億円/件、その他37%",
+        "necessity": "住民が洪水防護を失う。自治体単独は割高。責任"
       }
     },
     {
@@ -367,17 +367,17 @@
       "budgetAmount": 408142888781,
       "execAmount": 259270840000,
       "policyCategory": "port_airport",
-      "designClarity": 5,
+      "designClarity": 6,
       "evidenceReadiness": 8,
-      "budgetProportionality": 6,
+      "budgetProportionality": 7,
       "necessity": 8,
       "axisIdentify": 75.9,
       "axisPurpose": 65.9,
       "policyFindings": {
-        "design": "港湾整備から輸送費低減まで一段接続",
-        "evidence": "登録アウトカム実績・達成率・出典あり",
-        "proportionality": "執行2592.7億円÷整備77港＝約33.7億円/港、その他22%",
-        "necessity": "荷主・消費者が物流費低減を失う。代替は割高。制度"
+        "design": "港湾整備から輸送コスト低減まで一段で接続",
+        "evidence": "輸送コスト低減の登録アウトカム実績・出典あり",
+        "proportionality": "執行2592.7億円÷整備77港＝約33.7億円/港、工事対応",
+        "necessity": "荷主が海上輸送網と低コストを失う。民間単独は割高。責任"
       }
     },
     {
@@ -387,17 +387,17 @@
       "budgetAmount": 1735353560830,
       "execAmount": 1099286851000,
       "policyCategory": "disaster",
-      "designClarity": 6,
+      "designClarity": 5,
       "evidenceReadiness": 2,
-      "budgetProportionality": 5,
+      "budgetProportionality": 3,
       "necessity": 8,
       "axisIdentify": 23.7,
       "axisPurpose": 44.2,
       "policyFindings": {
-        "design": "活動から整備・安全確保へ接続するが、便益は計画単位で粗い",
-        "evidence": "登録は活動指標1件のみで、アウトカム実績・出典なし",
-        "proportionality": "執行10992.9億円÷計画数不明で単価不算定、その他76%で粗い",
-        "necessity": "被災地域住民が安全な施設を失う。自治体単独は割高。制度"
+        "design": "計画支援から安全向上へ接続するが便益が広い",
+        "evidence": "登録は活動指標1件のみで成果実績・出典なし",
+        "proportionality": "執行10992.9億円、その他76%で数量・最終配分不明",
+        "necessity": "自治体・住民が防災機能を失う。代替なし。制度"
       }
     },
     {
@@ -414,10 +414,10 @@
       "axisIdentify": 55.1,
       "axisPurpose": 68.7,
       "policyFindings": {
-        "design": "復旧から被災地の安全回復まで接続し、対象と活動も具体的",
-        "evidence": "活動3件は達成率まで実績あり、アウトカム実績はなし",
-        "proportionality": "執行3804.3億円÷復旧450件＝約8.5億円/件、その他支出が目立つ",
-        "necessity": "被災地住民が河川等の復旧を失う。自治体単独は割高。制度"
+        "design": "復旧から背後地安全度回復まで接続し対象も明確",
+        "evidence": "活動3指標の実績・達成率はあるが成果指標なし",
+        "proportionality": "執行3804.3億円÷450件≈8.5億円/件、工事対応",
+        "necessity": "被災地域住民が復旧を失う。代替は割高。制度"
       }
     },
     {
@@ -427,17 +427,17 @@
       "budgetAmount": 323952244028,
       "execAmount": 302903300637,
       "policyCategory": "defense",
-      "designClarity": 6,
-      "evidenceReadiness": 10,
-      "budgetProportionality": 7,
-      "necessity": 8,
+      "designClarity": 7,
+      "evidenceReadiness": 9,
+      "budgetProportionality": 8,
+      "necessity": 9,
       "axisIdentify": 70.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "取得から後方支援体制へ接続するが、抑止力の便益が抽象的",
-        "evidence": "登録アウトカム実績・達成率・出典があり、取得実績とも整合",
-        "proportionality": "執行3029億円÷契約15機＝約202億円/機、米国政府へ直接支出",
-        "necessity": "国民が航空防衛・抑止力を失う。代替機は割高。責任・裁量"
+        "design": "取得・配備を追えるが抑止力向上の経路は浅い",
+        "evidence": "登録アウトカム実績・達成率・出典があり概要とも整合",
+        "proportionality": "執行3029億円÷15機≈202億円/機、米政府から直接取得",
+        "necessity": "自衛隊・国民が防空抑止を失う。代替は割高。責任・裁量"
       }
     },
     {
@@ -447,17 +447,17 @@
       "budgetAmount": 834814091000,
       "execAmount": 476078412000,
       "policyCategory": "defense",
-      "designClarity": 7,
-      "evidenceReadiness": 8,
+      "designClarity": 6,
+      "evidenceReadiness": 7,
       "budgetProportionality": 5,
       "necessity": 7,
       "axisIdentify": 71.6,
       "axisPurpose": 87.7,
       "policyFindings": {
-        "design": "移転・返還・訓練から負担軽減へ接続するが国民便益は粗い",
-        "evidence": "登録アウトカム1件に実績・出典あり、他の成果指標は未実績",
-        "proportionality": "執行4760.8億円÷整備件数不明で単価不算定、その他19%かつ下請",
-        "necessity": "沖縄住民が負担軽減を失い国民は安全を損なう。代替は不明。制度"
+        "design": "施設整備から訓練移転へ接続するが国民便益は粗い",
+        "evidence": "登録アウトカム1件に実績・出典、他は未計測",
+        "proportionality": "執行4760.8億円÷7施設≈680億円、用途・配分が粗い",
+        "necessity": "基地周辺住民が負担軽減を失う。代替は割高。制度"
       }
     },
     {
@@ -468,16 +468,16 @@
       "execAmount": 202687000,
       "policyCategory": "survey_pr",
       "designClarity": 9,
-      "evidenceReadiness": 9,
-      "budgetProportionality": 4,
-      "necessity": 4,
+      "evidenceReadiness": 8,
+      "budgetProportionality": 3,
+      "necessity": 5,
       "axisIdentify": 100.0,
       "axisPurpose": 98.1,
       "policyFindings": {
-        "design": "意見聴取から政策反映まで多段接続し、対象・活動が明確",
-        "evidence": "登録アウトカム3件に実績・達成率・出典があり内容とも整合",
-        "proportionality": "執行2億円÷登録4532人＝約4.4万円/人、PwCが89%を受注",
-        "necessity": "こどもが政策参加機会を失う。学校・自治体対応が安い。なし"
+        "design": "意見聴取から政策反映まで多段接続し対象も明確",
+        "evidence": "登録アウトカム3件に実績・出典がある",
+        "proportionality": "執行2億円÷4532人≈4.4万円/人、PwCが89%",
+        "necessity": "こどもが政策参加機会を失う。自治体対応は同等。制度"
       }
     },
     {
@@ -489,15 +489,15 @@
       "policyCategory": "childcare",
       "designClarity": 9,
       "evidenceReadiness": 8,
-      "budgetProportionality": 7,
+      "budgetProportionality": 8,
       "necessity": 9,
       "axisIdentify": 14.6,
       "axisPurpose": 70.0,
       "policyFindings": {
-        "design": "給付から保育の質・子育て環境まで多段接続し対象も明確",
-        "evidence": "登録アウトカム2件に実績・出典あり、主要指標には未実績もある",
-        "proportionality": "執行18076.2億円÷受皿2.8万人＝約646万円/人、その他82%で粗い",
-        "necessity": "子育て世帯が保育給付を失う。自治体単独は割高。制度"
+        "design": "給付から保育の質・安心まで多段接続し対象も明確",
+        "evidence": "登録アウトカム2件に実績・出典がある",
+        "proportionality": "執行18076.2億円÷対象人数不明、法定市町村給付",
+        "necessity": "保護者・児童が保育給付を失う。代替は割高。制度"
       }
     },
     {
@@ -508,16 +508,16 @@
       "execAmount": 305963229000,
       "policyCategory": "scholarship",
       "designClarity": 9,
-      "evidenceReadiness": 5,
-      "budgetProportionality": 9,
-      "necessity": 8,
+      "evidenceReadiness": 6,
+      "budgetProportionality": 8,
+      "necessity": 7,
       "axisIdentify": 97.0,
       "axisPurpose": 91.7,
       "policyFindings": {
-        "design": "低所得・多子世帯から進学・家計改善まで多段接続",
-        "evidence": "登録は活動実績中心だが概要に進学率等の統計あり",
-        "proportionality": "執行3059.6億円÷35万人＝約87.4万円/人、給付先へ直接配分",
-        "necessity": "低所得学生が進学機会を失う。貸与型等は割高。制度"
+        "design": "低所得・多子世帯等への給付から進学・就職まで多段接続",
+        "evidence": "登録は活動実績のみだが概要文に進学率等の統計あり",
+        "proportionality": "予算5437.7億円÷35万人＝約15.5万円/人、給付先は学生",
+        "necessity": "低所得学生が進学支援を失う。貸与等は割高。制度"
       }
     },
     {
@@ -529,15 +529,15 @@
       "policyCategory": "industry_subsidy",
       "designClarity": 7,
       "evidenceReadiness": 4,
-      "budgetProportionality": 4,
+      "budgetProportionality": 7,
       "necessity": 7,
       "axisIdentify": 70.0,
       "axisPurpose": 70.0,
       "policyFindings": {
-        "design": "設備・技術支援から供給強靱化まで接続するが便益は抽象的",
-        "evidence": "登録は活動指標2件の実績のみで成果実績なし",
-        "proportionality": "4078億円÷実支援件数不明＝単価算定不能、基金に全額滞留",
-        "necessity": "国内企業が蓄電池供給を失う。民間単独は割高。責任"
+        "design": "国内生産基盤強化の経路は明確だが最終便益が粗い",
+        "evidence": "登録は活動指標のみだが国内シェア等の課題数値あり",
+        "proportionality": "4078億円÷150GWh＝約27.2億円/GWh、基金残高・配分が粗い",
+        "necessity": "国内企業が電池供給基盤を失う。市場調達は割高。責任"
       }
     },
     {
@@ -548,16 +548,16 @@
       "execAmount": 98072302369,
       "policyCategory": "environment",
       "designClarity": 7,
-      "evidenceReadiness": 6,
+      "evidenceReadiness": 5,
       "budgetProportionality": 7,
       "necessity": 6,
       "axisIdentify": 40.0,
       "axisPurpose": 90.6,
       "policyFindings": {
-        "design": "窓改修から住宅性能・CO2削減まで接続し対象も明確",
-        "evidence": "活動実績・達成率あり、概要にも改修戸数等の複数根拠",
-        "proportionality": "執行980.7億円÷32万戸＝約30.6万円/戸、その他配分が粗い",
-        "necessity": "住宅所有者が省エネ改修を逃す。規制等は割高。なし"
+        "design": "改修補助から住宅性能・CO2削減まで接続するが指標に弱さ",
+        "evidence": "活動実績あり、概要文に改修戸数・申請戸数の実績あり",
+        "proportionality": "執行980.7億円÷約32万戸＝約30.6万円/戸、消費者へ配分",
+        "necessity": "住宅所有者が改修補助を失う。規制・融資は割高。なし"
       }
     },
     {
@@ -569,15 +569,15 @@
       "policyCategory": "industry_subsidy",
       "designClarity": 9,
       "evidenceReadiness": 9,
-      "budgetProportionality": 6,
+      "budgetProportionality": 7,
       "necessity": 8,
       "axisIdentify": 100.0,
       "axisPurpose": 100.0,
       "policyFindings": {
-        "design": "認定計画から生産開始・供給確保まで多段接続",
-        "evidence": "登録アウトカム3件に実績・出典があり売上や世界シェアを検証可能",
-        "proportionality": "4713.9億円÷認定6件＝約785.7億円/件、基金残高が大きく単価検証困難",
-        "necessity": "国内産業が半導体供給を失う。輸入依存は割高。責任"
+        "design": "認定・設備整備・生産開始・供給確保を多段接続",
+        "evidence": "登録アウトカム実績・達成率・出典があり概要とも整合",
+        "proportionality": "4713.9億円÷6計画＝約785.7億円/計画、基金配分は粗い",
+        "necessity": "国内需要者が安定供給を失う。輸入依存は割高。責任"
       }
     },
     {
@@ -586,18 +586,18 @@
       "ministry": "厚生労働省",
       "budgetAmount": 192322000,
       "execAmount": 0,
-      "policyCategory": "survey_pr",
-      "designClarity": 5,
-      "evidenceReadiness": 2,
-      "budgetProportionality": 2,
+      "policyCategory": "digital",
+      "designClarity": 6,
+      "evidenceReadiness": 1,
+      "budgetProportionality": 3,
       "necessity": 6,
       "axisIdentify": 0.0,
       "axisPurpose": 70.0,
       "policyFindings": {
-        "design": "調査からDB運用・医療安全まで接続するが対象便益は未具体化",
-        "evidence": "登録指標はあるが実績値がなく、概要も実績検証に乏しい",
-        "proportionality": "1.9億円÷調査・会議件数不明＝単価不明、支出先も未特定",
-        "necessity": "医療機関がDB活用を失い安全低下。民間任意は同等。制度"
+        "design": "会議・仕様策定からDB運用と医療安全まで接続",
+        "evidence": "登録指標・概要文とも成果実績がなく検証不能",
+        "proportionality": "予算1.9億円÷DB件数不明、民間2者への内容・単価不明",
+        "necessity": "医療機関が統一DBを失う。民間連携は同等。制度"
       }
     },
     {
@@ -607,17 +607,17 @@
       "budgetAmount": 0,
       "execAmount": 0,
       "policyCategory": "rnd",
-      "designClarity": 5,
-      "evidenceReadiness": 4,
+      "designClarity": 7,
+      "evidenceReadiness": 3,
       "budgetProportionality": null,
       "necessity": 6,
       "axisIdentify": 0.0,
       "axisPurpose": 40.0,
       "policyFindings": {
-        "design": "調査・基準策定から普及まで接続するが国民便益は遠い",
-        "evidence": "登録実績はないが概要に高齢化・担い手不足の統計引用あり",
-        "proportionality": "",
-        "necessity": "建設現場が安全な自動施工基準を失う。代替なし。責任"
+        "design": "調査・基準策定から工事適用・普及まで接続",
+        "evidence": "登録指標は未実績だが概要文に担い手不足の統計あり",
+        "proportionality": "金額・対象工事件数が未提示で単価換算不能",
+        "necessity": "建設現場が安全基準を失う。民間任せは割高。制度"
       }
     }
   ]
