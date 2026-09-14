@@ -72,7 +72,9 @@ export function AppHeader({
             {children}
           </div>
         )}
-        <div className="ml-auto flex h-12 shrink-0 items-center sm:ml-0">
+        {/* 右スロットがあれば sm 以上ではそちらが ml-auto を持つ（両方に持たせると余白が二分され中央に寄る）。
+            右スロットが無いページ（トップなど）は自身で右端へ寄せる */}
+        <div className={cn('ml-auto flex h-12 shrink-0 items-center', children && 'sm:ml-0')}>
           <PageNavMenu current={current} />
         </div>
       </div>
