@@ -43,7 +43,7 @@ export function TaxHeatmap({ grid, item, hasConsumption }: { grid: HeatmapGrid; 
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);
   return <div className="space-y-6">
     <div>
-      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。左パネルの「色にする税目」で拡大する税目を選べます。</p>
+      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。左パネルの「色にする税目」で拡大する税目を選べます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
       <Grid grid={grid} item={item} compact={false} hasConsumption={hasConsumption} />
     </div>
     <div>

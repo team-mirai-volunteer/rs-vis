@@ -52,10 +52,11 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, taxItems
       {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
       <Toggle label="賞与2か月分を含める" note="月給12回＋1か月分を年2回" checked={state.bonus} onChange={v => set('bonus', v)} />
       {(state.view === 'curve' || state.view === 'reform') && <Toggle label="6つの家族構成を重ねる" checked={state.showAll} onChange={v => set('showAll', v)} />}
-      <div className="space-y-3 border-t border-mirai-border pt-4">
+      {/* The heat-map always includes the consumption-tax estimate (it is one of the panels), so the toggle would do nothing there. */}
+      {state.view !== 'heatmap' && <div className="space-y-3 border-t border-mirai-border pt-4">
         <Toggle label="消費税（推計）を含める" note={hasConsumption ? '家計調査2024年の年収十分位別支出から推計' : '消費支出データ未読込'} checked={state.includeConsumption} disabled={!hasConsumption} onChange={v => set('includeConsumption', v)} />
         {(state.view === 'curve' || state.view === 'reform') && <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025。単身・片働きは平均賃金比50〜250%の連続系列、共働きは定点のみ' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />}
-      </div>
+      </div>}
       {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-4 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
         <h2 className="font-bold text-primary-accent">働き方の前提</h2>
         <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
