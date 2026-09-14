@@ -197,9 +197,12 @@ export function computeHousehold(h: HouseholdInput, p: TaxParameters, reform: Re
     const spouse = hasSpouse && isPrincipal ? Math.ceil(spouseNational * spouseMultiplier / 10000) * 10000 : 0;
     const localSpouse = hasSpouse && isPrincipal ? Math.ceil(spouseLocal * spouseMultiplier / 10000) * 10000 : 0;
     // Statutory personal-deduction difference for the spouse (used only by the local adjustment credit).
+    // For a dependent spouse it is the national allowance minus the local one: 5万円, or 10万円 once the spouse turns 70.
+    // Inside the spouse special allowance range the statute fixes it at 5万/3万 instead.
     let spouseDifference = 0;
     if (hasSpouse && isPrincipal && spouseMultiplier > 0) {
-      const full = partnerReference <= 600000 ? 50000 : partnerReference <= 650000 ? 30000 : 0;
+      const full = partnerReference <= 580000 ? spouseNational - spouseLocal
+        : partnerReference <= 600000 ? 50000 : partnerReference <= 650000 ? 30000 : 0;
       spouseDifference = Math.ceil(full * spouseMultiplier / 10000) * 10000;
     }
     let dependantNational = 0, dependantLocal = 0, dependantDifference = 0;

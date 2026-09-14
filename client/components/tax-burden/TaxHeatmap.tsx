@@ -27,7 +27,7 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item
           const bg = v === null ? 'transparent' : v < 0 ? `rgba(217, 119, 87, ${0.12 + alpha * 0.75})` : `rgba(30, 150, 140, ${0.06 + alpha * 0.85})`;
           return <td key={c.ageAt} className={`rounded px-1 text-center ${compact ? 'py-1' : 'py-2'} ${c.outOfScope ? 'opacity-40' : ''} ${alpha > 0.6 ? 'text-white' : ''}`} style={{ backgroundColor: bg }}
             title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円（うち年金${Math.round(c.pensionIncome / 10000).toLocaleString('ja-JP')}万円）、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * c.careerIncome).toLocaleString('ja-JP')}円、現役期年収比）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
-            {v === null ? '—' : (v * 100).toFixed(compact ? 0 : 1)}
+            {v === null ? '—' : (v * 100).toFixed(1)}
           </td>;
         })}
       </tr>)}</tbody>
@@ -48,10 +48,12 @@ export function TaxHeatmap({ grid, item, hasConsumption }: { grid: HeatmapGrid; 
     </div>
     <div>
       <h3 className="mb-1 text-sm font-bold">税目ごとに分解する</h3>
-      <p className="mb-3 text-xs text-mirai-text-secondary">同じ格子を税目別に並べた小さな表（年収・年齢は間引き表示、値は%）。色の濃さは各表の最大値に対する比率なので、表の間で濃さは比べず、形（どの年齢・所得に偏るか）を比べてください。この世帯で常に0になる項目は表を出していません。</p>
+      <p className="mb-3 text-xs text-mirai-text-secondary">同じ格子を税目別に並べた小さな表（年収・年齢は間引き表示、値は%）。色の濃さは各表の最大値に対する比率なので、表の間で濃さは比べず、形（どの年齢・所得に偏るか）を比べてください。この世帯で常に0になる項目は表を出していません。0.0%は制度上0のときと、現役期年収に対して0.05%未満のときの両方があります（金額はセルにカーソルを当てると出ます）。</p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{items.map(t => <Grid key={t.id} grid={grid} item={t.id} compact hasConsumption={hasConsumption} />)}</div>
       <ul className="mt-4 list-disc space-y-1 pl-5 text-xs leading-relaxed text-mirai-text-secondary">
         <li>所得税・住民税は年収が高いほど、また扶養控除が切れる年齢で濃くなる（累進）。</li>
+        <li><strong>65歳の住民税だけ重いのは、住民税が前年所得課税だからです。</strong>年金生活に入った年に納めるのは前年（64歳）の給与で計算した住民税で、年金所得に見合う額に下がるのは翌年から。60歳の列が重いのも同じ理由（前年59歳の満額給与で課税）です。</li>
+        <li>70歳以降に住民税が0になる行があるのも計算漏れではありません。公的年金等控除（65歳以上は最低110万円）を引いた合計所得が非課税限度額（1級地で単身45万円、控除対象配偶者のいる夫婦101万円）を下回るためで、本モデルでは片働き夫婦・子2人なら現役期年収500万円まで、単身でも300万円なら住民税非課税になります。800万円以上で横ばいなのは、厚生年金の標準報酬月額に上限（65万円）があり年金額が頭打ちになるため。金額で見ると現役期800万円の夫婦で年3.99万円、家計調査の無職世帯（70〜74歳）の実測平均4.19万円とほぼ一致します。</li>
         <li>年金・雇用保険料は現役期のみで、標準報酬の上限（65万円）を超える年収では負担率が下がる（上限効果）。</li>
         <li>医療・介護保険料は65歳以降も続く。介護保険料（第1号）は所得段階別の定額（全国平均基準額 年7.5万円×段階倍率）を夫婦それぞれが払うため、年金収入250〜340万円の夫婦で年9〜17万円。家計調査の無職世帯（65歳以上）の実測平均は年8〜9万円で、現役期より明らかに重い。</li>
         <li>消費税（推計）は年収が低いほど負担率が高い（逆進）。</li>

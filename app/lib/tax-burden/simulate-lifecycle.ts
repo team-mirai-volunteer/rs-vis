@@ -42,6 +42,11 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
   const scopeReasons = careerSalaries.flatMap((salary, i) => salary < p.minimumAnnualWage
     ? [`${i === 0 ? '第1就労者' : '第2就労者'}の給与がフルタイム下限未満`] : []);
   const years: LifecycleYear[] = [];
+  // Resident tax is assessed on the previous year (前年所得課税): what a household pays at age N was computed from the
+  // income and premiums of age N-1. That is why it stays at the working level the year after retiring, and why the first
+  // working year pays none. National health, latter-stage medical and first-category care premiums are assessed the same
+  // way in reality, but this model still bases them on the current year (noted in the parameter file).
+  let payableResidentTax = 0;
   for (let age = LIFECYCLE_START; age <= LIFECYCLE_END; age++) {
     const phase = phaseAt(age, state, p);
     const working = phase === 'work' || phase === 'reemployed' || phase === 'work-pension';
@@ -59,15 +64,19 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
     const consumptionTax = state.includeConsumption && consumption
       ? estimatedConsumptionTax(consumption, gross, reform.standardVat, reform.reducedVat, state.consumptionAssumption) : 0;
     const careerIncome = Math.round(state.income);
-    const pensionAdjustedBurden = taxes.netBurden + consumptionTax - taxes.pensionTotal;
+    const residentTax = payableResidentTax;
+    payableResidentTax = taxes.residentTax;
+    const grossBurden = taxes.grossBurden - taxes.residentTax + residentTax;
+    const netBurden = grossBurden - taxes.benefits;
+    const pensionAdjustedBurden = netBurden + consumptionTax - taxes.pensionTotal;
     years.push({
       careerIncome, pensionAdjustedBurden, careerRate: careerIncome > 0 ? pensionAdjustedBurden / careerIncome : null,
-      consumptionTax, netRateWithConsumption: gross > 0 ? (taxes.netBurden + consumptionTax) / gross : null,
+      consumptionTax, netRateWithConsumption: gross > 0 ? (netBurden + consumptionTax) / gross : null,
       ageAt: age, phase, income: gross, salaries: adults.map(a => a.salary), salaryTotal: taxes.salaryTotal, pensionIncome: taxes.pensionTotal,
-      incomeTax: taxes.incomeTax, residentTax: taxes.residentTax, pension: taxes.pension, health: taxes.health, care: taxes.care, employment: taxes.employment,
+      incomeTax: taxes.incomeTax, residentTax, pension: taxes.pension, health: taxes.health, care: taxes.care, employment: taxes.employment,
       childBenefit: taxes.childBenefit, singleParentBenefit: taxes.singleParentBenefit, pensionSupport: taxes.pensionSupport, reformCredit: taxes.reformCredit,
-      grossBurden: taxes.grossBurden, benefits: taxes.benefits, netBurden: taxes.netBurden, netRate: gross > 0 ? taxes.netBurden / gross : null,
-      disposable: gross - taxes.netBurden, childrenPresent: childAges.length,
+      grossBurden, benefits: taxes.benefits, netBurden, netRate: gross > 0 ? netBurden / gross : null,
+      disposable: gross - netBurden, childrenPresent: childAges.length,
       outOfScope: scopeReasons.length > 0, scopeReasons,
     });
   }

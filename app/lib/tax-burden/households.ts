@@ -1,6 +1,6 @@
 import type { HouseholdDefinition, Reform, TaxItem, TaxState } from '@/types/tax-burden';
 
-export const MODEL_VERSION = 'prototype-2025-2';
+export const MODEL_VERSION = 'prototype-2025-3';
 export const HOUSEHOLDS: HouseholdDefinition[] = [
   { id: 'single', label: '単身・子なし', adults: 1, earners: 1, children: 0 },
   { id: 'single-children', label: 'ひとり親・子2人', adults: 1, earners: 1, children: 2 },
