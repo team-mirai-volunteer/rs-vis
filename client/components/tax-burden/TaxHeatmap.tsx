@@ -4,12 +4,14 @@ import type { LifecycleYear, TaxItem } from '@/types/tax-burden';
 import { HEATMAP_AGES } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { TAX_ITEMS } from '@/app/lib/tax-burden/households';
 
+/** Rates are relative to the fixed working-age income class (row), never to pension income; pensions received count as negative burden. */
 export function cellRate(y: LifecycleYear, item: TaxItem): number | null {
-  if (y.income <= 0) return null;
-  if (item === 'net') return y.netRateWithConsumption ?? y.netRate;
-  if (item === 'consumption') return y.consumptionTax / y.income;
-  if (item === 'benefits') return -y.benefits / y.income;
-  return y[item] / y.income;
+  if (y.careerIncome <= 0) return null;
+  if (item === 'net') return y.careerRate;
+  if (item === 'consumption') return y.consumptionTax / y.careerIncome;
+  if (item === 'benefits') return -y.benefits / y.careerIncome;
+  if (item === 'pensionReceipt') return -y.pensionIncome / y.careerIncome;
+  return y[item] / y.careerIncome;
 }
 
 const PHASE = { work: '現役', reemployed: '継続雇用', 'work-pension': '就労＋年金', pension: '年金' } as const;
@@ -31,13 +33,13 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: { income: number;
           const alpha = v === null ? 0 : Math.min(1, Math.abs(v) / max);
           const bg = v === null ? 'transparent' : v < 0 ? `rgba(217, 119, 87, ${0.12 + alpha * 0.75})` : `rgba(30, 150, 140, ${0.06 + alpha * 0.85})`;
           return <td key={c.ageAt} className={`rounded px-1 text-center ${compact ? 'py-1' : 'py-2'} ${c.outOfScope ? 'opacity-40' : ''} ${alpha > 0.6 ? 'text-white' : ''}`} style={{ backgroundColor: bg }}
-            title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * c.income).toLocaleString('ja-JP')}円）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
+            title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円（うち年金${Math.round(c.pensionIncome / 10000).toLocaleString('ja-JP')}万円）、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * c.careerIncome).toLocaleString('ja-JP')}円、現役期年収比）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
             {v === null ? '—' : (v * 100).toFixed(compact ? 0 : 1)}
           </td>;
         })}
       </tr>)}</tbody>
     </table></div>
-    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。65歳以降は年金収入が分母で、年金額は現役期年収から算出。薄いセルは就労者の給与がフルタイム下限未満。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
+    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。分母はすべての年齢で行の現役期年収。65歳以降の公的年金は負担のマイナス（受け取り）として扱い、年金額は現役期年収から算出。薄いセルは就労者の給与がフルタイム下限未満。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
   </div>;
 }
 
@@ -46,7 +48,7 @@ export function TaxHeatmap({ grid, item, hasConsumption }: { grid: { income: num
   const items = TAX_ITEMS.filter(t => t.id !== 'net' && (hasConsumption || t.id !== 'consumption'));
   return <div className="space-y-6">
     <div>
-      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ その年齢の総収入。行は現役期の世帯年収、列は年齢。濃いほど負担率が高い（橙は給付超過・差し引き）。左パネルの「色にする税目」で拡大する税目を選べます。</p>
+      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。左パネルの「色にする税目」で拡大する税目を選べます。</p>
       <Grid grid={grid} item={item} compact={false} hasConsumption={hasConsumption} />
     </div>
     <div>
@@ -56,8 +58,9 @@ export function TaxHeatmap({ grid, item, hasConsumption }: { grid: { income: num
       <ul className="mt-4 list-disc space-y-1 pl-5 text-xs leading-relaxed text-mirai-text-secondary">
         <li>所得税・住民税は年収が高いほど、また扶養控除が切れる年齢で濃くなる（累進）。</li>
         <li>年金・雇用保険料は現役期のみで、標準報酬の上限（65万円）を超える年収では負担率が下がる（上限効果）。</li>
-        <li>医療・介護保険料は65歳以降も続き、年金収入が分母になるため高齢期で相対的に重くなりやすい。介護保険料（第1号）は所得段階別の定額（全国平均基準額 年7.5万円×段階倍率）を夫婦それぞれが払うため、年金収入250〜340万円の夫婦で年9〜17万円（3〜5%）。家計調査の無職世帯（65歳以上）の実測平均は年8〜9万円（実収入の2.4〜2.9%）で、現役期（0.5〜1%）より明らかに重い。</li>
+        <li>医療・介護保険料は65歳以降も続く。介護保険料（第1号）は所得段階別の定額（全国平均基準額 年7.5万円×段階倍率）を夫婦それぞれが払うため、年金収入250〜340万円の夫婦で年9〜17万円（3〜5%）。家計調査の無職世帯（65歳以上）の実測平均は年8〜9万円（実収入の2.4〜2.9%）で、現役期（0.5〜1%）より明らかに重い。</li>
         <li>消費税（推計）は年収が低いほど負担率が高い（逆進）。現金給付（児童手当・児童扶養手当）は子育て期・低所得で大きい。</li>
+        <li>公的年金の受給は65歳以降に現役期年収の40〜80%相当の受け取りとなり、純負担は負に転じる。現役期年収が高いほど年金の対年収比は小さい（基礎年金が定額、報酬比例に上限があるため）。</li>
       </ul>
     </div>
   </div>;

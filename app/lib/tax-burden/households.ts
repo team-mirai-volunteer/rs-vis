@@ -19,6 +19,7 @@ export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
   { id: 'employment', label: '雇用保険料' },
   { id: 'consumption', label: '消費税（推計）' },
   { id: 'benefits', label: '現金給付（差し引き）' },
+  { id: 'pensionReceipt', label: '公的年金の受給（差し引き）' },
 ];
 export const BASE_REFORM: Reform = {
   basicAllowanceExtra: 0, insuranceMultiplier: 1, childMonthly: 10000,
