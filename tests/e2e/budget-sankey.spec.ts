@@ -182,7 +182,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
   test('year switch updates the column header year and falls back to 当初予算', async ({ page }) => {
     await openPage(page, 'year=2024&b=settlement');
-    const basisSelect = page.getByLabel('予算の基準');
+    const basisSelect = page.getByLabel('基準');
     await expect(basisSelect).toHaveValue('settlement');
 
     await page.getByLabel('年度').selectOption('2026');
@@ -202,7 +202,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await openPage(page);
     await expect(columnHeader(page, '項_2024').first()).toContainText('当初予算');
 
-    await page.getByLabel('予算の基準').selectOption('settlement');
+    await page.getByLabel('基準').selectOption('settlement');
     await expect(page).toHaveURL(/[?&]b=settlement/);
     await expect(columnHeader(page, '項_2024').first()).toContainText('支出済額', { timeout: RENDER_TIMEOUT });
     await expect(columnHeader(page, '事業_2024').first()).toContainText('執行額');
