@@ -15,11 +15,11 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
   const rates = [...years, ...(base ?? [])].map(rateOf).filter((v): v is number => v !== null && Number.isFinite(v));
   const minY = Math.min(-0.1, Math.floor(Math.min(...rates) * 10) / 10);
   const maxY = Math.max(0.4, Math.ceil(Math.max(...rates) * 10) / 10);
-  const left = 65, top = 24, width = 735, height = 220;
+  const left = 65, top = 34, width = 735, height = 220;
   const x = (age: number) => left + (age - LIFECYCLE_START) / (LIFECYCLE_END - LIFECYCLE_START) * width;
   const y = (rate: number) => top + (maxY - rate) / (maxY - minY) * height;
   const maxMoney = Math.max(...years.map(y => Math.max(y.income, y.disposable)), 1);
-  const top2 = top + height + 60, height2 = 150;
+  const top2 = top + height + 80, height2 = 150;
   const y2 = (v: number) => top2 + (1 - v / maxMoney) * height2;
   const line = (pick: (y: LifecycleYear) => number | null, outOfScope: boolean, scale: (v: number) => number, series: LifecycleYear[] = years) => {
     let pen = false;
@@ -31,7 +31,7 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
     }).join(' ');
   };
   const boundaries = [40, 60, 65, 75].map(age => ({ age, label: { 40: '介護保険（第2号）', 60: '継続雇用', 65: '年金開始・国保', 75: '後期高齢者医療' }[age] }));
-  const totalHeight = top2 + height2 + 40;
+  const totalHeight = top2 + height2 + 44;
   const ticks = Array.from({ length: Math.round((maxY - minY) / 0.1) + 1 }, (_, i) => minY + i * 0.1);
   return <div>
     <p className="mb-2 text-xs text-mirai-text-secondary">上：（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付 − 公的年金の受給）÷ 現役期の世帯年収。年金は負担のマイナスとして扱うため、受給期は負の値（受け取り超過）になる。下：総収入と可処分所得（年額）。</p>
@@ -43,6 +43,13 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
           onSelectAge(Math.max(LIFECYCLE_START, Math.min(LIFECYCLE_END, Math.round(LIFECYCLE_START + (px - left) / width * (LIFECYCLE_END - LIFECYCLE_START)))));
         }}>
         <title id={`${id}-title`}>年齢別の純負担率と可処分所得・試作</title>
+        <text x={left} y={top - 12} fontSize="12" fill="var(--mirai-text)" fontWeight="bold">純負担率（現役期年収比・%）</text>
+        <text x={left} y={top2 - 12} fontSize="12" fill="var(--mirai-text)" fontWeight="bold">金額（年額・万円）</text>
+        {[[top, height], [top2, height2]].map(([t, h]) => <g key={t} stroke="var(--mirai-text-subtle)">
+          <line x1={left} x2={left} y1={t} y2={t + h} />
+          <line x1={left} x2={left + width} y1={t + h} y2={t + h} />
+        </g>)}
+        {[20, 30, 40, 50, 60, 65, 70, 75, 80, 85].map(a => <text key={`age1-${a}`} x={x(a)} y={top + height + 18} textAnchor="middle" fontSize="12" fill="var(--mirai-text-secondary)">{a}</text>)}
         {ticks.map(rate => <g key={rate}>
           <line x1={left} x2={left + width} y1={y(rate)} y2={y(rate)} stroke="var(--mirai-border)" strokeDasharray="3 5" />
           <text x={left - 12} y={y(rate) + 4} textAnchor="end" fontSize="12" fill="var(--mirai-text-secondary)">{Math.round(rate * 100)}%</text>
