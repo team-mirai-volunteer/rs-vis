@@ -361,25 +361,24 @@ function UnifiedBudgetSankeyContent() {
         rsAmountKind={metadata.rsAmountKind}
         hasSpending={metadata.hasSpending}
         scoreStatus={!scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
-        bottomLeftExtra={
-          <UnifiedSettings
-            fontPx={fontPx}
-            onFontPxChange={setFontPx}
-            defaultFontPx={LABEL_FONT_PX_DEFAULT}
-            labelDensity={labelDensity}
-            onLabelDensityChange={setLabelDensity}
-            focusRelated={focusRelated}
-            onFocusRelatedChange={setFocusRelated}
-            visibleColumns={effectiveColumns}
-            availableColumns={availableColumns}
-            onVisibleColumnsChange={setVisibleColumns}
-            summary={summary}
-          />
-        }
       />
 
+      {/* 右上: 表示数のコントロールパネルと、その右に表示設定（歯車） */}
       <div className="absolute right-3 top-3 z-30 flex items-start gap-2">
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
+        <UnifiedSettings
+          fontPx={fontPx}
+          onFontPxChange={setFontPx}
+          defaultFontPx={LABEL_FONT_PX_DEFAULT}
+          labelDensity={labelDensity}
+          onLabelDensityChange={setLabelDensity}
+          focusRelated={focusRelated}
+          onFocusRelatedChange={setFocusRelated}
+          visibleColumns={effectiveColumns}
+          availableColumns={availableColumns}
+          onVisibleColumnsChange={setVisibleColumns}
+          summary={summary}
+        />
       </div>
 
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}

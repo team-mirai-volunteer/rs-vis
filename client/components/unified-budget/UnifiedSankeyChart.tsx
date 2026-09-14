@@ -68,7 +68,6 @@ export function UnifiedSankeyChart({
   rsMeasureLabel,
   rsSheetYear,
   rsAmountKind,
-  bottomLeftExtra,
   hasSpending = true,
   scoreStatus = 'idle',
 }: {
@@ -94,8 +93,6 @@ export function UnifiedSankeyChart({
   rsMeasureLabel?: string;
   rsSheetYear: number;
   rsAmountKind: MofRsAmountKind;
-  /** 左下・ミニマップの右隣に置くもの（表示設定の歯車） */
-  bottomLeftExtra?: React.ReactNode;
   /** 事業(支出)・支出先の列がある年度か（無ければ支出額・支出先名・再委託の絞り込みを出さない） */
   hasSpending?: boolean;
   /** 政策評価スコアの取得状況（絞り込み欄の補足表示用） */
@@ -684,14 +681,8 @@ export function UnifiedSankeyChart({
         </SidePanelChrome>
       )}
 
-      {/* 左下: 設定（歯車）を一番左に、その右にミニマップ */}
-      {bottomLeftExtra && (
-        <div data-pan-disabled="true" className="absolute z-30 flex items-end transition-[left] duration-200" style={{ left: panelOpenWidth + 12, bottom: 16 }}>
-          {bottomLeftExtra}
-        </div>
-      )}
-
-      <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12 + 48} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
+      {/* 左下: ミニマップ（表示設定はコントロールパネルの右へ移した） */}
+      <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
         <ZoomButton icon={Plus} title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
