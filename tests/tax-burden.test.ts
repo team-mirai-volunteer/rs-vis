@@ -220,15 +220,17 @@ test('elderly resident tax: pension deduction, the non-taxable limit and the old
   assert.equal(at('one-earner-children', 5000000, 70).residentTax, 0);
   assert.equal(at('single', 3000000, 70).residentTax, 0);
 });
-test('corporate tax incidence is an explicit assumption: off by default, flat on wages, none in retirement', () => {
+test('corporate tax incidence is an explicit assumption: 50% by default, flat on wages, none in retirement', () => {
   const base = initialTaxState();
-  assert.equal(base.corporateShare, 0, '既定では仮定を置かない');
-  assert.equal(simulate(base, p, undefined, null, incidence).corporateTax, 0);
+  assert.equal(base.corporateShare, 0.5, '既定は日本の推計と分配分析の慣行の間を取った50%');
+  const none = { ...base, corporateShare: 0 };
+  assert.equal(simulate(none, p, undefined, null, incidence).corporateTax, 0);
+  assert(incidence.referenceShares.some(r => r.label.startsWith('土居')), '日本を対象にした参考値がある');
   const quarter = { ...base, corporateShare: 0.25 };
   const rate = incidence.corporateTaxTotal * 0.25 / incidence.wagesAndSalaries;
   const r = simulate(quarter, p, undefined, null, incidence);
   assert.equal(r.corporateTax, Math.round(5000000 * rate));
-  assert.equal(r.grossBurden, simulate(base, p, undefined, null, incidence).grossBurden + r.corporateTax);
+  assert.equal(r.grossBurden, simulate(none, p, undefined, null, incidence).grossBurden + r.corporateTax);
   assert.equal(r.netBurden, r.grossBurden - r.benefits);
   // Proportional to wages, so the rate on pay does not change with income.
   const high = simulate({ ...quarter, income: 15000000 }, p, undefined, null, incidence);

@@ -135,8 +135,8 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         <RangeField label="賃金へ転嫁される割合" value={Math.round(state.corporateShare * 100)} min={0} max={100} step={1} suffix="%" onChange={v => set('corporateShare', v / 100)} />
         <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.corporateShare > 0
           ? `法人所得課税${(incidence.corporateTaxTotal / 1e12).toFixed(1)}兆円（国税＋地方税・${incidence.metadata.year}年）の${Math.round(state.corporateShare * 100)}%を全国の賃金・俸給${(incidence.wagesAndSalaries / 1e12).toFixed(0)}兆円で割り、給与の${(wageIncidenceRate(incidence, state.corporateShare) * 100).toFixed(2)}%として上乗せしています。`
-          : '法人税は企業が納めますが、一部は賃金の抑制を通じて働き手が負担しているという実証研究があります。0%のままなら計算に入れません。'}
-          確立した値は無く、参考として{incidence.referenceShares.map(r => `${r.label}${Math.round(r.share * 100)}%`).join('、')}。日本を対象にした研究に基づく値ではありません。</p>
+          : '法人税は企業が納めますが、一部は賃金の抑制を通じて働き手が負担しているという実証研究があります。0%なら計算に入れません。'}
+          確立した値は無いため既定は50%の仮置きです。参考値は{incidence.referenceShares.map(r => `${r.label}${Math.round(r.share * 100)}%`).join('、')}。日本の数字（土居）は動学的一般均衡モデルのシミュレーションで、個票による実証推計ではありません。</p>
       </section>}
     </CardContent>
   </Card>;
