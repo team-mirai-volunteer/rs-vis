@@ -119,7 +119,7 @@ export default function TaxBurdenPage() {
       </nav>
 
       {modelViews && <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} basicAllowance={params ? statutoryBasicAllowance(state, params) : undefined} />
+        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} basicAllowance={params ? statutoryBasicAllowance(state, params) : undefined} lifecycle={params?.lifecycle} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
             {state.view === 'curve' && <>

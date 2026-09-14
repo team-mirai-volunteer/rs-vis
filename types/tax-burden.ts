@@ -56,6 +56,8 @@ export interface TaxState {
   showOecd: boolean;
   /** Assumed share of corporate income tax passed on to wages (0 = do not show it). */
   corporateShare: number;
+  /** Adult age when the first child is born. The spacing between children comes from the parameter file. */
+  firstBirthAge: number;
 }
 
 /** Rules for pension income, retiree insurance and lifecycle assumptions (annual yen unless stated). */

@@ -5,8 +5,9 @@ import { yen } from './BurdenBreakdown';
 const AGES = [30, 40, 50, 60, 64, 65, 70, 75, 80];
 
 /**
- * The same nine ages in two tables: yen in one, share of the working-age income in the other. Money and rates used to
- * share a row, which made the one percentage column read as if it belonged to the yen next to it.
+ * The same nine ages in two tables: share of the working-age income in one, yen in the other. Money and rates used to
+ * share a row, which made the one percentage column read as if it belonged to the yen next to it. The order follows the
+ * chart above: rate first, amounts second.
  * Both tables carry the same items, so the two can be read side by side, and the rate columns add up to the net rate:
  * tax + contributions − benefits − pension received.
  */
@@ -22,18 +23,6 @@ export function LifecycleTable({ years, state, selectedAge }: { years: Lifecycle
   const rowClass = (y: LifecycleYear) => `border-t border-mirai-border/30 ${y.ageAt === selectedAge ? 'font-bold' : ''}`;
   return <div className="mt-4 grid gap-5">
     <div>
-      <h3 className="mb-1 text-xs font-bold">年額（円）</h3>
-      <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums" aria-label="年齢別の金額（年額）">
-        <thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left font-normal">年齢</th>
-          <th scope="col" className={head}>総収入</th><th scope="col" className={head}>うち年金</th><th scope="col" className={head}>税</th>
-          <th scope="col" className={head}>保険料</th><th scope="col" className={head}>給付</th><th scope="col" className={head}>可処分所得</th></tr></thead>
-        <tbody>{rows.map(y => <tr key={y.ageAt} className={rowClass(y)}>{rowHead(y)}
-          <td className="whitespace-nowrap text-right">{yen(y.income)}</td><td className="whitespace-nowrap text-right">{yen(y.pensionIncome)}</td><td className="whitespace-nowrap text-right">{yen(tax(y))}</td>
-          <td className="whitespace-nowrap text-right">{yen(premiums(y))}</td><td className="whitespace-nowrap text-right">{yen(y.benefits)}</td>
-          <td className="whitespace-nowrap text-right">{yen(y.disposable - consumption(y))}</td></tr>)}</tbody>
-      </table></div>
-    </div>
-    <div>
       <h3 className="mb-1 text-xs font-bold">現役期年収に対する割合（%）</h3>
       <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums" aria-label="年齢別の割合（現役期年収比）">
         <thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left font-normal">年齢</th>
@@ -45,6 +34,18 @@ export function LifecycleTable({ years, state, selectedAge }: { years: Lifecycle
           <td className="whitespace-nowrap text-right">{share(y, net(y))}</td></tr>)}</tbody>
       </table></div>
       <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">分母はどの年齢も現役期の世帯年収。給付と年金の受給は負の値で、税＋保険料＋給付＋年金の受給＝純負担率になります。税には{state.includeConsumption ? '消費税推計と' : ''}法人税の転嫁（仮定）を含みます。</p>
+    </div>
+    <div>
+      <h3 className="mb-1 text-xs font-bold">年額（円）</h3>
+      <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums" aria-label="年齢別の金額（年額）">
+        <thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left font-normal">年齢</th>
+          <th scope="col" className={head}>総収入</th><th scope="col" className={head}>うち年金</th><th scope="col" className={head}>税</th>
+          <th scope="col" className={head}>保険料</th><th scope="col" className={head}>給付</th><th scope="col" className={head}>可処分所得</th></tr></thead>
+        <tbody>{rows.map(y => <tr key={y.ageAt} className={rowClass(y)}>{rowHead(y)}
+          <td className="whitespace-nowrap text-right">{yen(y.income)}</td><td className="whitespace-nowrap text-right">{yen(y.pensionIncome)}</td><td className="whitespace-nowrap text-right">{yen(tax(y))}</td>
+          <td className="whitespace-nowrap text-right">{yen(premiums(y))}</td><td className="whitespace-nowrap text-right">{yen(y.benefits)}</td>
+          <td className="whitespace-nowrap text-right">{yen(y.disposable - consumption(y))}</td></tr>)}</tbody>
+      </table></div>
     </div>
   </div>;
 }

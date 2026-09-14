@@ -59,7 +59,7 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
       const earningsRelated = receiving ? (phase === 'work-pension' && salary > 0 ? inWorkPension(pensions[i].earningsRelated, salary, state.bonus, p) : pensions[i].earningsRelated) : 0;
       return { age, salary, pension: receiving ? pensions[i].basic + earningsRelated : 0, employeeInsured: salary >= p.employeeInsuranceThreshold };
     });
-    const childAges = childAgesAt(age, household.children, p);
+    const childAges = childAgesAt(age, household.children, p, state.firstBirthAge);
     const taxes = computeHousehold({ adults, childAges, loneParent: household.adults === 1 && household.children > 0, bonus: state.bonus }, p, reform);
     const gross = taxes.gross;
     const consumptionTax = state.includeConsumption && consumption

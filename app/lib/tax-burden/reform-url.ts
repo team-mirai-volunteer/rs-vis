@@ -1,5 +1,6 @@
 import type { TaxState, TaxView } from '@/types/tax-burden';
 import { HOUSEHOLDS, initialTaxState, MODEL_VERSION, REFORM_LIMITS } from './households';
+import { BIRTH_AGE_RANGE } from './simulate';
 
 export { REFORM_LIMITS };
 
@@ -37,6 +38,7 @@ export function decodeTaxState(query: string): { state: TaxState; warning: strin
   state.continuation = numeric('continuation', state.continuation, 0, 1);
   state.workUntil = numeric('workUntil', state.workUntil, 65, 75, true);
   state.corporateShare = numeric('corporateShare', state.corporateShare, 0, 1);
+  state.firstBirthAge = numeric('firstBirthAge', state.firstBirthAge, BIRTH_AGE_RANGE[0], BIRTH_AGE_RANGE[1], true);
   for (const key of ['bonus', 'showAll', 'includeConsumption', 'showOecd'] as const) {
     if (q.has(key)) {
       if (q.get(key) === '1' || q.get(key) === '0') state[key] = q.get(key) === '1';
@@ -61,7 +63,7 @@ export function encodeTaxState(state: TaxState): string {
     household: state.household, age: String(state.age), income: String(state.income),
     share: String(state.share), bonus: state.bonus ? '1' : '0', showAll: state.showAll ? '1' : '0',
     consumption: state.consumptionAssumption, continuation: String(state.continuation),
-    workUntil: String(state.workUntil), corporateShare: String(state.corporateShare),
+    workUntil: String(state.workUntil), corporateShare: String(state.corporateShare), firstBirthAge: String(state.firstBirthAge),
     includeConsumption: state.includeConsumption ? '1' : '0', showOecd: state.showOecd ? '1' : '0' });
   for (const [key, value] of Object.entries(state.reform)) q.set(key, String(value));
   return q.toString();

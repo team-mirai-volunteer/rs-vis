@@ -4,6 +4,7 @@ import { useState, type Dispatch, type SetStateAction } from 'react';
 import { SlidersHorizontal, RotateCcw, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { BIRTH_AGE_RANGE } from '@/app/lib/tax-burden/simulate';
 import { HOUSEHOLDS, BASE_REFORM, isReformed } from '@/app/lib/tax-burden/households';
 import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
 import type { IncidenceDataset, TaxState } from '@/types/tax-burden';
@@ -43,11 +44,13 @@ function Toggle({ label, note, checked, onChange, disabled = false }: { label: s
   </label>;
 }
 
-export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence, basicAllowance }: {
+export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence, basicAllowance, lifecycle }: {
   state: TaxState; setState: Dispatch<SetStateAction<TaxState>>; hasConsumption: boolean; hasOecd: boolean;
   incidence?: IncidenceDataset | null;
   /** Statutory basic deduction for the selected income, so the slider can show an amount instead of an offset. */
   basicAllowance?: number;
+  /** Child spacing and the age they leave home, so the note can follow the birth-age slider. */
+  lifecycle?: { childBirthAges: number[]; childLeavesAt: number };
 }) {
   // The curve view carries both the household scenario and the policy sliders. They swap in place so the chart stays on screen.
   const [tab, setTab] = useState<'household' | 'policy'>('household');
@@ -55,6 +58,9 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
   const reform = <K extends keyof TaxState['reform']>(key: K, value: TaxState['reform'][K]) => setState(s => ({ ...s, reform: { ...s.reform, [key]: value } }));
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const swappable = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
+  // The parameter file fixes the spacing between children; the slider moves the whole set.
+  const spacing = (lifecycle?.childBirthAges ?? [32, 34]).map(b => b - (lifecycle?.childBirthAges ?? [32, 34])[0]);
+  const birthAges = spacing.slice(0, household.children).map(gap => state.firstBirthAge + gap);
   const policy = swappable && tab === 'policy';
   const reformed = isReformed(state.reform);
   const allowance = basicAllowance ?? 580000;
@@ -80,6 +86,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
             className="w-24 rounded-xl border border-mirai-border bg-card px-3 py-2 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />万円</label>
         </div>}
         {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" onChange={v => set('age', v)} />}
+        {household.children > 0 && <RangeField label="第1子が生まれる親の年齢" value={state.firstBirthAge} min={BIRTH_AGE_RANGE[0]} max={BIRTH_AGE_RANGE[1]} suffix="歳" onChange={v => set('firstBirthAge', v)} />}
         {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
         <Toggle label="賞与2か月分を含める" note="月給12回＋1か月分を年2回" checked={state.bonus} onChange={v => set('bonus', v)} />
         {state.view === 'curve' && <>
@@ -92,7 +99,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
           <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
         </section>}
-        <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。子どもは大人32歳・34歳時に生まれ23歳で独立、大人は同年齢です。本人負担を計算します。</div>
+        <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。{household.children > 0 && `子どもは大人${birthAges.join('歳・')}歳時に生まれ${lifecycle?.childLeavesAt ?? 23}歳で独立、`}大人は同年齢です。本人負担を計算します。{household.children > 0 && '児童手当は子が18歳以下の間だけ出るので、出産年齢を動かすと年齢軸のどこで給付が切れるかが変わります。'}</div>
       </>}
 
       {policy && <section className="space-y-3" aria-label="税・給付の条件">
