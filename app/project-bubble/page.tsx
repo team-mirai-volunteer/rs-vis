@@ -483,6 +483,16 @@ export default function ProjectMapPage() {
         )}
       </div>
 
+      {/* 選択中の事業の詳細。サンキー図と同じく左側に出す */}
+      {data && !loading && (
+        <SelectedPanel
+          point={selected}
+          cluster={selected ? clusterById.get(selected.c) : undefined}
+          year={year}
+          onClose={() => setSelected(null)}
+        />
+      )}
+
       </div>
 
       {/* ── 右上: ヘルプ（年度・ページ切替メニューは AppHeader へ） ── */}
@@ -527,9 +537,9 @@ export default function ProjectMapPage() {
         </div>
       </div>
 
-      {/* ── 右フロート: 凡例と選択中の事業（メニューボタンの下から） ── */}
+      {/* ── 右フロート: 凡例（右上のヘルプの下から。右下はズーム操作に空ける） ── */}
       {data && !loading && (
-        <aside className="pointer-events-none absolute bottom-3 right-3 top-14 z-30 flex w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto">
+        <aside className="pointer-events-none absolute right-3 top-14 z-30 flex max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto">
           <Legend
             entries={legend}
             mode={colorMode}
@@ -537,12 +547,6 @@ export default function ProjectMapPage() {
             lockedKey={legendLock}
             onHover={setLegendHover}
             onToggle={key => setLegendLock(k => (k === key ? null : key))}
-          />
-          <SelectedPanel
-            point={selected}
-            cluster={selected ? clusterById.get(selected.c) : undefined}
-            year={year}
-            onClose={() => setSelected(null)}
           />
         </aside>
       )}

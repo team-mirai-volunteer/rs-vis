@@ -35,6 +35,7 @@ import { FactRow } from './FactRow';
 import type { WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { truncateName, Ellipsis } from './sankey-label';
 
 export const LABEL_FONT_PX_DEFAULT = 11;
 
@@ -45,23 +46,6 @@ const ZOOM_MIN = 0.3;
 const SEARCH_ROW_PX = 54;
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
-
-/** 名前を max 文字に切る。切ったかどうかは呼び出し側が省略記号を描くために使う */
-function truncateName(name: string, max: number): { text: string; truncated: boolean } {
-  return name.length > max ? { text: name.slice(0, max), truncated: true } : { text: name, truncated: false };
-}
-
-/**
- * 省略記号。Noto Sans JP の「…」は全角幅で前後に空きが出て 1 文字ぶん場所を食うので、
- * textLength で半角幅に詰めて描く（隣のラベルと被る幅を減らす）
- */
-function Ellipsis({ fontPx }: { fontPx: number }) {
-  return (
-    <tspan textLength={fontPx * 0.5} lengthAdjust="spacingAndGlyphs">
-      …
-    </tspan>
-  );
-}
 
 export function UnifiedSankeyChart({
   nodes,
@@ -700,13 +684,14 @@ export function UnifiedSankeyChart({
         </SidePanelChrome>
       )}
 
+      {/* 左下: 設定（歯車）を一番左に、その右にミニマップ */}
       {bottomLeftExtra && (
-        <div data-pan-disabled="true" className="absolute z-30 flex items-end transition-[left] duration-200" style={{ left: panelOpenWidth + 12 + (showMinimap ? MINIMAP_W + 22 : 48), bottom: showMinimap ? 8 : 16 }}>
+        <div data-pan-disabled="true" className="absolute z-30 flex items-end transition-[left] duration-200" style={{ left: panelOpenWidth + 12, bottom: 16 }}>
           {bottomLeftExtra}
         </div>
       )}
 
-      <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
+      <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12 + 48} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
         <ZoomButton icon={Plus} title="拡大" onClick={() => zoomFromButton(ZOOM_STEP)} />
