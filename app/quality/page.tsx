@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
 import { YearSelect } from '@/components/navigation/YearSelect';
+import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
@@ -204,6 +205,8 @@ export default function QualityPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [distMetric, setDistMetric] = useState<DistMetric>('overallScore');
   const [showGuide, setShowGuide] = useState(false);
+  /** sm 未満でヒストグラム・絞り込み列を開いているか（PC では常に表示） */
+  const [filterOpen, setFilterOpen] = useState(false);
   // 政策指標の足きり（下限/上限）。空欄は無制限
   const [scoreFilters, setScoreFilters] = useState(EMPTY_SCORE_FILTERS);
   /** 継続年数の足きり。0-100 のスコアではないので scoreFilters とは別に持つ */
@@ -450,6 +453,17 @@ export default function QualityPage() {
           ))}
         </div>
         <YearSelect value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
+        {/* sm 未満はヒストグラム・絞り込み列を畳んでいるので、ここから開く */}
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="絞り込みと分布"
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen(v => !v)}
+          className={cn('shrink-0 border-mirai-border sm:hidden', filterOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
+        >
+          <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+        </Button>
       </AppHeader>
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={() => setDialogItem(null)} year={year} />}
       {mode === 'section' && (
@@ -517,8 +531,9 @@ export default function QualityPage() {
         </div>
       </div>
 
-      {/* Score distribution summary (10-point bins) + histogram */}
-      <div className="relative shrink-0 w-full px-3 py-3">
+      {/* Score distribution summary (10-point bins) + histogram。
+          sm 未満では縦を食いすぎるので「絞り込み」ボタンで開閉する（既定は閉じて表を見せる） */}
+      <div className={cn('relative shrink-0 w-full px-3 py-3 sm:block', filterOpen ? 'block' : 'hidden')}>
         {(() => {
           const binRanges: { label: string; range: ScoreRange; lo: number; hi: number }[] = [
             { label: '100', range: '100-100', lo: 100, hi: 100 },
