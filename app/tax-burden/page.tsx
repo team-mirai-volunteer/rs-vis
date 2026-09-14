@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarRange, ChartNoAxesCombined, ClipboardCheck, Database, Grid3x3, Info, Landmark, Loader2, Share2, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowRight, CalendarRange, ChartNoAxesCombined, ClipboardCheck, Database, Grid3x3, Info, Landmark, Loader2, Share2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AppHeader } from '@/components/navigation/AppHeader';
-import { HOUSEHOLDS, initialTaxState } from '@/app/lib/tax-burden/households';
+import { HOUSEHOLDS, initialTaxState, isReformed } from '@/app/lib/tax-burden/households';
 import { simulate } from '@/app/lib/tax-burden/simulate';
 import { heatmapGrid, lifecycleSeries } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { fiscalImpact } from '@/app/lib/tax-burden/fiscal-impact';
@@ -22,7 +22,6 @@ import type { AgeDataset, ConsumptionDataset, IncidenceDataset, OecdDataset, Tax
 
 const VIEWS = [
   { id: 'curve', label: '世帯の負担カーブ', icon: ChartNoAxesCombined },
-  { id: 'reform', label: '改革案を比較', icon: SlidersHorizontal },
   { id: 'age', label: '年齢で見る', icon: CalendarRange },
   { id: 'heatmap', label: '税目×年齢×年収', icon: Grid3x3 },
   { id: 'revenue', label: '国の税収', icon: Landmark },
@@ -84,7 +83,8 @@ export default function TaxBurdenPage() {
   const heatmapItems = useMemo(() => grid ? availableTaxItems(grid, !!consumption) : null, [grid, consumption]);
   // A stored tax item that never pays for this household (児童扶養手当 on a couple, say) falls back to the net burden.
   const taxItem = heatmapItems && !heatmapItems.some(t => t.id === state.taxItem) ? 'net' : state.taxItem;
-  const selected = state.view === 'reform' ? after : before;
+  const reformed = isReformed(state.reform);
+  const selected = reformed ? after : before;
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const setView = (view: TaxView) => setState(s => ({ ...s, view }));
   const setIncome = (income: number) => setState(s => ({ ...s, income }));
@@ -97,7 +97,7 @@ export default function TaxBurdenPage() {
   }
   const loading = <Card className="min-h-96"><CardContent className="flex items-center gap-3 pt-10" role="status"><Loader2 className="size-5 animate-spin" />計算データを読み込んでいます…</CardContent></Card>;
   const errorCard = (message: string) => <Card><CardContent className="space-y-3 pt-6"><p role="alert">{message}</p><Button onClick={() => setRetry(v => v + 1)}>再読み込みする</Button></CardContent></Card>;
-  const modelViews = state.view === 'curve' || state.view === 'reform' || state.view === 'age' || state.view === 'heatmap';
+  const modelViews = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
 
   return <div className="min-h-screen bg-background text-mirai-text">
     <AppHeader current="/tax-burden">
@@ -123,21 +123,21 @@ export default function TaxBurdenPage() {
         <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} incidence={incidence} taxItems={heatmapItems ?? undefined} taxItem={taxItem} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
-            {(state.view === 'curve' || state.view === 'reform') && <>
+            {state.view === 'curve' && <>
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: state.view === 'reform' ? '改革案の純負担率' : '選択世帯の純負担率', value: rateText(state.includeConsumption ? selected.netRateWithConsumption : selected.netRate), note: selected.netRate === null ? '年収0円では率を計算しません' : `${household.label}・${(state.income / 10000).toLocaleString('ja-JP')}万円` },
+                  { label: reformed ? '改革案の純負担率' : '選択世帯の純負担率', value: rateText(state.includeConsumption ? selected.netRateWithConsumption : selected.netRate), note: selected.netRate === null ? '年収0円では率を計算しません' : `${household.label}・${(state.income / 10000).toLocaleString('ja-JP')}万円` },
                   { label: '年間の純負担額', value: yen(selected.netBurden + (state.includeConsumption ? selected.consumptionTax : 0)), note: state.includeConsumption ? '税・本人保険料・消費税推計 − 現金給付' : '税・本人保険料 − 現金給付' },
-                  { label: state.view === 'reform' ? '基準制度からの家計の改善額' : '年間の現金給付', value: yen(state.view === 'reform' ? (before.netBurden + before.consumptionTax) - (selected.netBurden + selected.consumptionTax) : selected.benefits), note: state.view === 'reform' ? '＋は手取りが増える方向' : '児童手当・児童扶養手当' },
+                  { label: reformed ? '基準制度からの家計の改善額' : '年間の現金給付', value: yen(reformed ? (before.netBurden + before.consumptionTax) - (selected.netBurden + selected.consumptionTax) : selected.benefits), note: reformed ? '＋は手取りが増える方向' : '児童手当・児童扶養手当' },
                 ].map(item => <Card key={item.label}><CardContent className="pt-5"><p className="text-xs text-mirai-text-secondary">{item.label}</p><p className="mt-2 text-2xl font-bold tabular-nums text-primary-accent">{item.value}</p><p className="mt-2 text-xs text-mirai-text-secondary">{item.note}</p></CardContent></Card>)}
               </div>
               {selected.outOfScope && <p role="status" className="rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm"><strong>適用範囲外の参考値：</strong>{selected.scopeReasons.join('、')}。就労者1人の下限は{yen(params.minimumAnnualWage)}です。</p>}
-              <Card><CardHeader className="flex-row items-start justify-between gap-3"><div><h2 className="text-lg font-bold">年収と、税・保険料・給付の関係</h2><p className="mt-2 text-xs text-mirai-text-secondary">2025年版 ／ {state.view === 'reform' ? '基準制度と改革案' : '家族構成別の参考カーブ'}。図をクリックすると年収を選べます。</p></div><Button size="sm" variant="ghost" onClick={() => dialog.current?.showModal()}><Info />計算条件</Button></CardHeader>
+              <Card><CardHeader className="flex-row items-start justify-between gap-3"><div><h2 className="text-lg font-bold">年収と、税・保険料・給付の関係</h2><p className="mt-2 text-xs text-mirai-text-secondary">2025年版 ／ {reformed ? '基準制度と改革案（破線）' : '家族構成別の参考カーブ'}。図をクリックすると年収を選べます。</p></div><Button size="sm" variant="ghost" onClick={() => dialog.current?.showModal()}><Info />計算条件</Button></CardHeader>
                 <CardContent><CurveChart state={state} params={params} consumption={consumption} oecd={oecd} incidence={incidence} onIncomeChange={setIncome} />
                   <p className="mt-4 text-xs text-mirai-text-secondary">出典：<a className="text-primary-accent underline" href={params.metadata.sourceUrl} target="_blank" rel="noreferrer">OECD 日本の税・給付制度説明書 2025</a>{state.showOecd && oecd && <>、<a className="text-primary-accent underline" href="https://www.oecd.org/en/data/datasets/taxing-wages.html" target="_blank" rel="noreferrer">OECD Taxing Wages</a>（{oecd.metadata.retrievedOn}取得）</>}{state.includeConsumption && consumption && <>、<a className="text-primary-accent underline" href={consumption.metadata.sourceUrl} target="_blank" rel="noreferrer">{consumption.metadata.survey}</a></>}。独自の試作計算。事業主負担は含みません。</p>
                 </CardContent>
               </Card>
-              <BurdenBreakdown before={before} after={state.view === 'reform' ? after ?? undefined : undefined} impact={state.view === 'reform' ? impact ?? undefined : undefined} includeConsumption={state.includeConsumption} />
+              <BurdenBreakdown before={before} after={reformed ? after ?? undefined : undefined} impact={reformed ? impact ?? undefined : undefined} includeConsumption={state.includeConsumption} />
             </>}
             {state.view === 'age' && lifecycle && <>
               <div className="grid gap-3 sm:grid-cols-3">

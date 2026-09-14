@@ -6,7 +6,7 @@ export const REFORM_LIMITS = {
   creditAnnual: [0, 1000000], creditPhaseoutStart: [0, 10000000], creditPhaseoutRate: [0, 1],
   standardVat: [0, 1], reducedVat: [0, 1],
 } as const;
-const VIEWS: TaxView[] = ['curve', 'reform', 'revenue', 'stats', 'age', 'heatmap'];
+const VIEWS: TaxView[] = ['curve', 'revenue', 'stats', 'age', 'heatmap'];
 
 export function decodeTaxState(query: string): { state: TaxState; warning: string | null } {
   const state = initialTaxState();
@@ -27,7 +27,9 @@ export function decodeTaxState(query: string): { state: TaxState; warning: strin
     return value;
   };
   const view = q.get('view');
-  if (view && VIEWS.includes(view as TaxView)) state.view = view as TaxView;
+  // 'reform' was a separate tab before the policy sliders moved into the curve view; keep old links working.
+  if (view === 'reform') state.view = 'curve';
+  else if (view && VIEWS.includes(view as TaxView)) state.view = view as TaxView;
   else if (view) invalid = true;
   const household = HOUSEHOLDS.find(h => h.id === q.get('household'));
   if (household) state.household = household.id;

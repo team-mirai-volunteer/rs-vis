@@ -46,7 +46,7 @@ export function BurdenBreakdown({ before, after, impact, includeConsumption, pen
         </> : <>
           <p>純負担率は、世帯の税・本人保険料から現金給付を引き、総収入で割った値です。負の値は、負担より給付が多いことを表します。</p>
           <p>財務省の国民負担率は、国・地方の税と事業主負担を含む社会保障負担を、国民所得で割った指標です。この曲線とは直接比較できません。</p>
-          <div className="rounded-xl bg-mirai-surface-teal p-4"><p className="font-bold text-primary-accent">制度の違いを、条件を揃えて見る</p><p className="mt-2 text-xs">「改革案を比較」では控除・給付・消費税率を変え、家計の変化と財政収支への影響を同時に確認できます。「年齢で見る」では年金受給後の負担率の変化を追えます。</p></div>
+          <div className="rounded-xl bg-mirai-surface-teal p-4"><p className="font-bold text-primary-accent">制度の違いを、条件を揃えて見る</p><p className="mt-2 text-xs">左パネルを「税・給付」に切り替えると、控除・給付・消費税率を動かしながら同じ図で改革案のカーブと財政収支への影響を確認できます。「年齢で見る」では年金受給後の負担率の変化を追えます。</p></div>
           <p className="text-xs text-mirai-text-secondary">本画面は試作です。OECD Taxing Wages の日本値との照合では、差はOECD側の保険料簡略化で説明できる範囲でした（詳細は「データについて」）。</p>
         </>}
       </CardContent>
