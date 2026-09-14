@@ -91,7 +91,7 @@ try {
   await expect(page.getByText('70歳の純負担率', { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'age.png'), fullPage: true });
   await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
-  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(9);
+  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
   await expect(page.getByRole('heading', { name: '税目ごとに分解する' })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'heatmap.png'), fullPage: true });
   await page.getByRole('button', { name: '世帯の負担カーブ', exact: true }).click();

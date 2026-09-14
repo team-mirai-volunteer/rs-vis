@@ -156,6 +156,10 @@ test('lifecycle: phases, retiree insurance and pension timing', () => {
   assert(at(70).health > 0 && at(70).care > 0, 'national health + first-category care at 70');
   assert(at(80).health > 0, 'latter-stage medical at 80');
   assert(at(70).netRate! < at(50).netRate!, 'pension years carry a lower burden rate');
+  assert.equal(at(50).careerIncome, 5000000);
+  assert.equal(at(50).pensionAdjustedBurden, at(50).netBurden, 'no pension before 65');
+  assert(at(70).careerRate! < 0, 'pension received exceeds taxes and premiums → negative rate against the career income');
+  assert.equal(at(70).pensionAdjustedBurden, at(70).netBurden - at(70).pensionIncome);
   const working = lifecycleSeries({ ...initialTaxState(), household: 'single', income: 8000000, workUntil: 72 }, p);
   const w67 = working.find(y => y.ageAt === 67)!, w71 = working.find(y => y.ageAt === 71)!, w72 = working.find(y => y.ageAt === 72)!;
   assert.equal(w67.phase, 'work-pension'); assert.equal(w71.phase, 'work-pension'); assert.equal(w72.phase, 'pension');

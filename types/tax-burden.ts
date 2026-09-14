@@ -2,7 +2,7 @@ export type HouseholdId = 'single' | 'single-children' | 'one-earner' | 'one-ear
 export type TaxView = 'curve' | 'revenue' | 'stats' | 'reform' | 'age' | 'heatmap';
 export type ConsumptionAssumption = 'net-fixed' | 'gross-fixed';
 /** Tax items the heat-map can colour by. */
-export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption' | 'benefits' | 'net';
+export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption' | 'benefits' | 'pensionReceipt' | 'net';
 
 export interface HouseholdDefinition {
   id: HouseholdId;
@@ -162,6 +162,12 @@ export interface LifecycleYear extends BurdenResult {
   pensionSupport: number;
   disposable: number;
   childrenPresent: number;
+  /** The fixed working-age household income (the income class) used as the denominator across all ages. */
+  careerIncome: number;
+  /** Taxes + employee contributions (+ estimated consumption tax when enabled) − cash benefits − public pension received. */
+  pensionAdjustedBurden: number;
+  /** pensionAdjustedBurden ÷ careerIncome; negative once pensions exceed what is paid. Null when careerIncome is 0. */
+  careerRate: number | null;
 }
 
 export interface ConsumptionBasket {

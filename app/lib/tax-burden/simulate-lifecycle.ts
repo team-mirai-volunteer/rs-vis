@@ -58,7 +58,10 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
     const gross = taxes.gross;
     const consumptionTax = state.includeConsumption && consumption
       ? estimatedConsumptionTax(consumption, gross, reform.standardVat, reform.reducedVat, state.consumptionAssumption) : 0;
+    const careerIncome = Math.round(state.income);
+    const pensionAdjustedBurden = taxes.netBurden + consumptionTax - taxes.pensionTotal;
     years.push({
+      careerIncome, pensionAdjustedBurden, careerRate: careerIncome > 0 ? pensionAdjustedBurden / careerIncome : null,
       consumptionTax, netRateWithConsumption: gross > 0 ? (taxes.netBurden + consumptionTax) / gross : null,
       ageAt: age, phase, income: gross, salaries: adults.map(a => a.salary), salaryTotal: taxes.salaryTotal, pensionIncome: taxes.pensionTotal,
       incomeTax: taxes.incomeTax, residentTax: taxes.residentTax, pension: taxes.pension, health: taxes.health, care: taxes.care, employment: taxes.employment,

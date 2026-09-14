@@ -10,7 +10,8 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
   years: LifecycleYear[]; state: TaxState; selectedAge: number; onSelectAge: (age: number) => void;
 }) {
   const id = useId().replace(/:/g, '');
-  const rateOf = (y: LifecycleYear) => state.includeConsumption ? y.netRateWithConsumption : y.netRate;
+  // Denominator is the fixed working-age income class; pensions received enter with a negative sign.
+  const rateOf = (y: LifecycleYear) => y.careerRate === null ? null : (state.includeConsumption ? y.careerRate : (y.pensionAdjustedBurden - y.consumptionTax) / y.careerIncome);
   const rates = years.map(rateOf).filter((v): v is number => v !== null && Number.isFinite(v));
   const minY = Math.min(-0.1, Math.floor(Math.min(...rates) * 10) / 10);
   const maxY = Math.max(0.4, Math.ceil(Math.max(...rates) * 10) / 10);
@@ -33,7 +34,7 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
   const totalHeight = top2 + height2 + 40;
   const ticks = Array.from({ length: Math.round((maxY - minY) / 0.1) + 1 }, (_, i) => minY + i * 0.1);
   return <div>
-    <p className="mb-2 text-xs text-mirai-text-secondary">上：純負担率（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ その年齢の総収入（給与＋公的年金）。下：総収入と可処分所得（年額）。</p>
+    <p className="mb-2 text-xs text-mirai-text-secondary">上：（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付 − 公的年金の受給）÷ 現役期の世帯年収。年金は負担のマイナスとして扱うため、受給期は負の値（受け取り超過）になる。下：総収入と可処分所得（年額）。</p>
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年齢別の負担率と可処分所得（左右にスクロール可能）">
       <svg viewBox={`0 0 830 ${totalHeight}`} className="w-full min-w-[640px]" role="img" aria-labelledby={`${id}-title`}
         onPointerDown={event => {
@@ -65,7 +66,7 @@ export function LifecycleChart({ years, state, selectedAge, onSelectAge }: {
       </svg>
     </div>
     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-mirai-text-secondary">
-      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" /></svg>純負担率</span>
+      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" /></svg>純負担率（年金差し引き・現役期年収比）</span>
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="6 3" /></svg>総収入（給与＋年金）</span>
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary)" strokeWidth="3" /></svg>可処分所得</span>
       <span>選択中：{selectedAge}歳（{PHASE_LABEL[years.find(y => y.ageAt === selectedAge)?.phase ?? 'work']}）。図をクリックで年齢を選べます。</span>
