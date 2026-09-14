@@ -3,7 +3,9 @@
 Inputs (data/raw/tax-burden/, fetched by scripts/fetch-tax-burden-sources.mjs):
   kakei-2024-table3-quintile-decile.xlsx       家計調査 2024年 第3表（総世帯・勤労者世帯、年間収入五分位・十分位）
   oecd-taxing-wages-jpn-2024-2025.csv          OECD Taxing Wages country table, Japan, all measures
-  oecd-taxing-wages-npatr-all-2023-2025.csv    OECD Taxing Wages, net personal average tax rate, all countries
+  oecd-taxing-wages-npatr-all-2023-2025.csv    OECD Taxing Wages, net personal average tax rate, all countries (stylised points)
+  oecd-taxing-wages-decomp-jpn-2024-2025.csv   OECD Taxing Wages decompositions, Japan, 50-250% AW in 1% steps, all measures
+  oecd-taxing-wages-decomp-npatr-all-2024-2025.csv  same flow, NPATR for all countries and the OECD_REP aggregate
 Outputs:
   public/data/tax-burden-consumption-2024.json(.gz)   十分位別の税込消費支出（課税区分別）・直接税・社会保険料
   public/data/tax-burden-oecd-2025.json(.gz)          OECD 定点比較と日本の参照値（R8）
@@ -186,14 +188,16 @@ def build_oecd(retrieved: str) -> dict:
                 'japanDetail': detail,
             })
         out_years[year] = {'averageWageJpy': aw, 'points': entries}
+    curves = build_oecd_curves()
     return {
+        'curves': curves,
         'metadata': {
-            'source': 'OECD Taxing Wages – country tables (DSD_TAX_WAGES_COU@DF_TW_COU 2.1), measure NPATR = 所得税＋本人社会保険料−現金給付 ÷ 総給与',
+            'source': 'OECD Taxing Wages – country tables (DSD_TAX_WAGES_COU@DF_TW_COU 2.1) と tax wedge decompositions (DF_TW_DECOMP 2.1)。NPATR = 所得税＋本人社会保険料−現金給付 ÷ 総給与',
             'sourceUrl': 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/',
             'retrievedOn': retrieved,
             'notes': [
-                'OECD平均は加盟38か国の単純平均（OECDが公表する加重・単純平均とは一致しない場合がある）。',
-                '定点（平均賃金比67・100・167%、共働きは100+67・100+100）のみ。連続カーブは公開フローに無い。',
+                '定点（years.points）のOECD平均は加盟38か国の単純平均。連続カーブ（curves）のOECD平均は OECD 公表の集計系列 OECD_REP（各カーブの averageSource に記載。無い場合は加盟国の単純平均）。',
+                '連続カーブは平均賃金比50〜250%（1%刻み）、4類型（単身・子なし、単身・子2人、片働き夫婦・子なし、片働き夫婦・子2人）。共働きの連続系列は公開されていない。',
                 '日本の平均賃金（AW）はOECD推計の給与所得者平均で、本試作の最低賃金・標準報酬とは別系列。',
                 'japanDetail は R8（受入照合用）。GEBT=総給与, CGITFP=国の所得税, SLT=地方税, EECSSC=本人社会保険料, CTGG=現金給付, THP=手取り。',
             ],
@@ -202,16 +206,61 @@ def build_oecd(retrieved: str) -> dict:
     }
 
 
+CURVE_TYPES = [('S_C0', 'single'), ('S_C2', 'single-children'), ('C_C0', 'one-earner'), ('C_C2', 'one-earner-children')]
+
+
+def build_oecd_curves() -> dict:
+    """Continuous 50-250% AW curves: Japan (OECD calculation), OECD aggregate, min/max across members, Japan detail (R8)."""
+    rows = [r for r in csv.DictReader(open(RAW / 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv', encoding='utf-8')) if r['OBS_VALUE'] != '']
+    jpn = [r for r in csv.DictReader(open(RAW / 'oecd-taxing-wages-decomp-jpn-2024-2025.csv', encoding='utf-8')) if r['OBS_VALUE'] != '']
+    year = max(r['TIME_PERIOD'] for r in rows)
+    rows = [r for r in rows if r['TIME_PERIOD'] == year]
+    jpn = [r for r in jpn if r['TIME_PERIOD'] == year]
+    aggregate = next((code for code in ('OECD_REP', 'OECD') if any(r['REF_AREA'] == code for r in rows)), None)
+    aw = next(float(r['OBS_VALUE']) for r in jpn if r['MEASURE'] == 'GWE' and r['UNIT_MEASURE'] == 'XDC' and r['HOUSEHOLD_TYPE'] == 'S_C0' and r['INCOME_PRINCIPAL'] == 'AW100')
+    out = {}
+    for ht, household in CURVE_TYPES:
+        by_ratio: dict[int, dict[str, float]] = {}
+        for r in rows:
+            if r['HOUSEHOLD_TYPE'] == ht and r['INCOME_PRINCIPAL'].startswith('AW'):
+                by_ratio.setdefault(int(r['INCOME_PRINCIPAL'][2:]), {})[r['REF_AREA']] = float(r['OBS_VALUE'])
+        ratios = sorted(k for k in by_ratio if 50 <= k <= 250)
+        detail = {m: [] for m in ('GWE', 'IT_CG', 'IT_LG', 'EESSC', 'CB')}
+        jd = {(r['MEASURE'], r['INCOME_PRINCIPAL']): float(r['OBS_VALUE']) for r in jpn if r['HOUSEHOLD_TYPE'] == ht and r['UNIT_MEASURE'] == 'XDC'}
+        series = {'awRatio': [], 'japan': [], 'oecdAverage': [], 'min': [], 'minCountry': [], 'max': [], 'maxCountry': [], 'countries': []}
+        for k in ratios:
+            members = {c: v for c, v in by_ratio[k].items() if c in OECD_MEMBERS}
+            if len(members) < 30:
+                continue
+            lo = min(members, key=members.get); hi = max(members, key=members.get)
+            series['awRatio'].append(k / 100)
+            series['japan'].append(members.get('JPN'))
+            avg = by_ratio[k].get(aggregate) if aggregate else None
+            series['oecdAverage'].append(round(avg if avg is not None else statistics.fmean(members.values()), 3))
+            series['min'].append(members[lo]); series['minCountry'].append(lo)
+            series['max'].append(members[hi]); series['maxCountry'].append(hi)
+            series['countries'].append(len(members))
+            for m in detail:
+                v = jd.get((m, f'AW{k}'))
+                detail[m].append(None if v is None else abs(v))  # taxes and SSC are published as negatives in this flow
+        out[household] = {'oecdHouseholdType': ht, 'year': year, 'averageWageJpy': aw,
+                          'averageSource': f'OECD aggregate series {aggregate}' if aggregate else 'simple mean of member countries',
+                          **series, 'japanDetail': detail}
+    return out
+
+
 def main() -> None:
     retrieved = date.today().isoformat()
-    for f in ('kakei-2024-table3-quintile-decile.xlsx', 'oecd-taxing-wages-jpn-2024-2025.csv', 'oecd-taxing-wages-npatr-all-2023-2025.csv'):
+    for f in ('kakei-2024-table3-quintile-decile.xlsx', 'oecd-taxing-wages-jpn-2024-2025.csv', 'oecd-taxing-wages-npatr-all-2023-2025.csv',
+              'oecd-taxing-wages-decomp-jpn-2024-2025.csv', 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv'):
         if not (RAW / f).exists():
             sys.exit(f'missing {RAW / f}; run `node scripts/fetch-tax-burden-sources.mjs` first')
     consumption = build_consumption(retrieved)
     write_json(OUT / 'tax-burden-consumption-2024.json', consumption)
     oecd = build_oecd(retrieved)
     write_json(OUT / 'tax-burden-oecd-2025.json', oecd)
-    print(f"consumption: {len(consumption['deciles'])} deciles; oecd years: {list(oecd['years'])}, points: {[len(v['points']) for v in oecd['years'].values()]}")
+    print(f"consumption: {len(consumption['deciles'])} deciles; oecd years: {list(oecd['years'])}, points: {[len(v['points']) for v in oecd['years'].values()]}; "
+          f"curves: { {k: len(v['awRatio']) for k, v in oecd['curves'].items()} } ({next(iter(oecd['curves'].values()))['averageSource']})")
 
 
 if __name__ == '__main__':

@@ -70,6 +70,28 @@ for (const pt of points) {
   compared++;
 }
 assert(compared >= 8, 'R8 points compared');
+// 3b. Continuous curves (50–250% AW, 1% steps): the model's NPATR at age 39 must stay within 1.5 points of the OECD Japan
+//     series wherever the model is in scope. Employee SSC differ by convention (see above), which moves NPATR by ≲0.8 points.
+let curvePoints = 0, worst = 0;
+for (const [household, curve] of Object.entries(oecd.curves)) {
+  assert.equal(curve.awRatio.length, 201, `${household}: 201 earnings points`);
+  curve.awRatio.forEach((ratio, i) => {
+    const japan = curve.japan[i];
+    if (japan === null) return;
+    const income = curve.averageWageJpy * ratio;
+    const r = simulate({ ...initialTaxState(), household: household as keyof typeof oecd.curves, income, age: 39 }, p);
+    if (r.outOfScope || r.netRate === null) return;
+    const gap = Math.abs(r.netRate * 100 - japan);
+    worst = Math.max(worst, gap);
+    // OECD's 2025 single-parent series omits the single-parent deduction (35万円) and models the child-rearing allowance
+    // with its own simplifications, so that household is held to a looser 3-point tolerance.
+    const tolerance = household === 'single-children' ? 3.0 : 1.5;
+    assert(gap <= tolerance, `${household} AW${Math.round(ratio * 100)}%: model ${(r.netRate * 100).toFixed(2)} vs OECD Japan ${japan.toFixed(2)}`);
+    assert(curve.min[i] <= curve.oecdAverage[i] && curve.oecdAverage[i] <= curve.max[i], `${household} AW${Math.round(ratio * 100)}%: OECD range`);
+    curvePoints++;
+  });
+}
+assert(curvePoints > 600, 'continuous OECD points compared');
 
 // 4. Lifecycle: earnings-related pension = 平均標準報酬額 × 5.481/1000 × 480か月 on a salary that maps exactly to a grade (47万円).
 //    厚労省モデル年金（平均標準報酬45.5万円・40年で報酬比例 約9.6万円/月）は再評価率を含むため、ここでは算式の一致のみ確認する。
@@ -102,4 +124,4 @@ for (let year = 2017; year <= 2026; year++) {
   assert.deepEqual(readDataJson<TaxRevenue>(`tax-revenue-${year}.json`, 'npm run generate-tax-burden-data'), data);
   assert(data.total > 0);
 }
-console.log(`PASS: ${count} household points; R8 compared at ${compared} OECD points (differences explained by OECD's flat-rate SSC convention); lifecycle 6 households; consumption 10 deciles; revenue 2017–2026.`);
+console.log(`PASS: ${count} household points; R8 compared at ${compared} stylised OECD points and ${curvePoints} continuous points (max NPATR gap ${worst.toFixed(2)} pt; differences explained by OECD's flat-rate SSC convention); lifecycle 6 households; consumption 10 deciles; revenue 2017–2026.`);

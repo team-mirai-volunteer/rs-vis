@@ -170,6 +170,12 @@ test('OECD dataset has Japan reference values at eight stylised points for 2025'
   assert.equal(points.length, 8);
   assert(points.every(pt => pt.countries >= 30 && pt.min <= pt.oecdAverage && pt.oecdAverage <= pt.max));
   assert(oecd.years['2025'].averageWageJpy! > 5000000);
+  const curve = oecd.curves['one-earner-children']!;
+  assert.equal(curve.awRatio.length, 201);
+  assert.equal(curve.awRatio[0], 0.5); assert.equal(curve.awRatio[200], 2.5);
+  assert(curve.japan.every(v => v !== null) && curve.min.every((v, i) => v <= curve.oecdAverage[i] && curve.oecdAverage[i] <= curve.max[i]));
+  assert(curve.japan[0]! > curve.oecdAverage[0], 'Japan burden at 50% AW exceeds the OECD average (the Okina-curve finding)');
+  assert.equal(oecd.curves['two-earners'], undefined);
 });
 test('URL round trips every calculation and display condition', () => {
   const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const,

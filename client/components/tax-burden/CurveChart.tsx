@@ -8,22 +8,25 @@ import { curveSeries } from '@/app/lib/tax-burden/simulate';
 const COLORS = ['var(--primary-accent)', 'var(--stance-neutral)', 'var(--mirai-text)',
   'var(--primary)', 'var(--mirai-reaction-active)', 'var(--mirai-text-subtle)'];
 const DASHES = ['', '7 3', '2 3', '', '10 3 2 3', '5 4'];
+const OECD_BAND = 'rgba(80, 120, 200, 0.16)';
+const OECD_LINE = 'rgb(60, 100, 190)';
+const OECD_JAPAN = 'rgb(200, 90, 60)';
 
 export function CurveChart({ state, params, consumption, oecd, onIncomeChange }: {
   state: TaxState; params: TaxParameters; consumption: ConsumptionDataset | null; oecd: OecdDataset | null; onIncomeChange: (income: number) => void;
 }) {
   const id = useId().replace(/:/g, '');
   const rateOf = (p: BurdenResult) => state.includeConsumption ? p.netRateWithConsumption : p.netRate;
-  const series = useMemo(() => HOUSEHOLDS.filter(h => state.showAll || h.id === state.household).map(h => ({
+  // In OECD comparison mode the chart focuses on the selected household, as the Okina curve does.
+  const showAll = state.showAll && !state.showOecd;
+  const series = useMemo(() => HOUSEHOLDS.filter(h => showAll || h.id === state.household).map(h => ({
     household: h, points: curveSeries(state, params, h.id, undefined, consumption), index: HOUSEHOLDS.findIndex(x => x.id === h.id),
-  })), [state, params, consumption]);
+  })), [state, params, consumption, showAll]);
   const reform = useMemo(() => state.view === 'reform' ? curveSeries(state, params, state.household, state.reform, consumption) : null, [state, params, consumption]);
-  const oecdYear = oecd?.years['2025'];
-  const oecdPoints = state.showOecd && oecdYear?.averageWageJpy
-    ? oecdYear.points.filter(pt => series.some(s => s.household.id === pt.household)).map(pt => ({ ...pt, income: oecdYear.averageWageJpy! * pt.awRatioTotal }))
-    : [];
+  const curve = state.showOecd ? oecd?.curves[state.household] ?? null : null;
+  const oecdMissing = state.showOecd && oecd && !curve;
   const valid = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope && rateOf(p) !== null).map(p => rateOf(p)!);
-  const oecdValues = oecdPoints.flatMap(pt => [pt.min, pt.max, pt.oecdAverage]).map(v => v / 100);
+  const oecdValues = curve ? [...curve.min, ...curve.max, ...curve.oecdAverage].map(v => v / 100) : [];
   const minY = Math.min(-0.1, Math.floor(Math.min(...valid, ...oecdValues) * 10) / 10);
   const maxY = Math.max(0.4, Math.ceil(Math.max(...valid, ...oecdValues) * 10) / 10);
   const tickStep = Math.max(0.1, Math.ceil((maxY - minY) / 8 * 10) / 10);
@@ -40,6 +43,11 @@ export function CurveChart({ state, params, consumption, oecd, onIncomeChange }:
       return `${command}${x(p.income).toFixed(2)},${y(rate).toFixed(2)}`;
     }).join(' ');
   };
+  const oecdX = (i: number) => x(curve!.averageWageJpy * curve!.awRatio[i]);
+  const linePath = (values: (number | null)[]) => values.map((v, i) => v === null ? '' : `${i === 0 || values[i - 1] === null ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ');
+  const bandPath = curve ? `${curve.max.map((v, i) => `${i === 0 ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} ${[...curve.min].reverse().map((v, j) => `L${oecdX(curve.min.length - 1 - j).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} Z` : '';
+  const householdLabel = HOUSEHOLDS.find(h => h.id === state.household)!.label;
+  const nearestOecd = curve ? curve.awRatio.reduce((best, r, i) => Math.abs(curve.averageWageJpy * r - state.income) < Math.abs(curve.averageWageJpy * curve.awRatio[best] - state.income) ? i : best, 0) : -1;
   return (
     <div>
       <p className="mb-2 text-xs text-mirai-text-secondary">縦軸：純負担率（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ 世帯年収</p>
@@ -53,7 +61,7 @@ export function CurveChart({ state, params, consumption, oecd, onIncomeChange }:
           onIncomeChange(Math.max(0, Math.min(20000000, Math.round((px - left) / width * 20000000 / 10000) * 10000)));
         }}>
         <title id={`${id}-title`}>世帯年収別の純負担率・試作</title>
-        <desc id={`${id}-desc`}>線の種類と色で世帯類型を区別します。薄い線はモデル適用範囲外です。OECDの定点は縦線が最小〜最大、ひし形が平均、丸がOECD計算の日本値です。数値は下の負担内訳表でも確認できます。</desc>
+        <desc id={`${id}-desc`}>線の種類と色で世帯類型を区別します。薄い線はモデル適用範囲外です。OECD比較では、青い帯がOECD加盟国の最小〜最大、青い破線がOECD平均、細い橙の線がOECD計算の日本値です。数値は下の負担内訳表でも確認できます。</desc>
         <defs><clipPath id={`${id}-clip`}><rect x={left} y={top} width={width} height={height} /></clipPath></defs>
         {ticks.map(rate => (
           <g key={rate}>
@@ -67,24 +75,18 @@ export function CurveChart({ state, params, consumption, oecd, onIncomeChange }:
         ))}
         <text x={left + width} y={350} textAnchor="end" fontSize="12" fill="var(--mirai-text-secondary)">世帯年収（万円）</text>
         <g clipPath={`url(#${id}-clip)`} fill="none">
+          {curve && <>
+            <path d={bandPath} fill={OECD_BAND} stroke="none" />
+            <path d={linePath(curve.oecdAverage)} stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" />
+            <path d={linePath(curve.japan)} stroke={OECD_JAPAN} strokeWidth="1.5" />
+            {[0.5, 1, 1.5, 2, 2.5].map(r => <text key={r} x={x(curve.averageWageJpy * r)} y={top + 12} textAnchor="middle" fontSize="10" fill={OECD_LINE}>AW{Math.round(r * 100)}%</text>)}
+          </>}
           {series.map(({ household, points, index }) => <g key={household.id} stroke={COLORS[index]} strokeDasharray={DASHES[index]}>
             <path d={path(points, true)} strokeWidth="2" opacity="0.2" />
             <path d={path(points, false)} strokeWidth={household.id === state.household ? 3.5 : 1.8} opacity={household.id === state.household ? 1 : 0.7} />
           </g>)}
           {reform && <><path d={path(reform, false)} stroke="var(--primary-accent)" strokeDasharray="9 5" strokeWidth="4" />
             <path d={path(reform, true)} stroke="var(--primary-accent)" strokeDasharray="9 5" strokeWidth="3" opacity="0.2" /></>}
-          {oecdPoints.map(pt => {
-            const color = COLORS[HOUSEHOLDS.findIndex(h => h.id === pt.household)];
-            const cx = x(pt.income);
-            return <g key={`${pt.household}-${pt.awRatioTotal}`} stroke={color} fill={color}>
-              <line x1={cx} x2={cx} y1={y(pt.max / 100)} y2={y(pt.min / 100)} strokeWidth="2" opacity="0.6" />
-              <line x1={cx - 6} x2={cx + 6} y1={y(pt.max / 100)} y2={y(pt.max / 100)} strokeWidth="2" opacity="0.6" />
-              <line x1={cx - 6} x2={cx + 6} y1={y(pt.min / 100)} y2={y(pt.min / 100)} strokeWidth="2" opacity="0.6" />
-              <path d={`M${cx},${y(pt.oecdAverage / 100) - 7} l7,7 l-7,7 l-7,-7 z`} />
-              {pt.japan !== null && <circle cx={cx} cy={y(pt.japan / 100)} r="5" fill="var(--card)" strokeWidth="2" />}
-              <title>{`${HOUSEHOLDS.find(h => h.id === pt.household)!.label}・平均賃金比${Math.round(pt.awRatioTotal * 100)}%：OECD平均${pt.oecdAverage.toFixed(1)}%、最小${pt.min.toFixed(1)}%（${pt.minCountry}）、最大${pt.max.toFixed(1)}%（${pt.maxCountry}）、日本${pt.japan?.toFixed(1)}%`}</title>
-            </g>;
-          })}
           <line x1={x(state.income)} x2={x(state.income)} y1={top} y2={top + height} stroke="var(--mirai-text)" strokeDasharray="4 4" />
         </g>
       </svg>
@@ -92,14 +94,23 @@ export function CurveChart({ state, params, consumption, oecd, onIncomeChange }:
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-mirai-text-secondary">
         {series.map(({ household, index }) => <span key={household.id} className="inline-flex items-center gap-2">
           <svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={COLORS[index]} strokeWidth="3" strokeDasharray={DASHES[index]} /></svg>
-          {household.label}
+          {household.label}{curve ? '（本試作の計算）' : ''}
         </span>)}
         {reform && <span className="font-bold text-primary-accent">太い破線：選択世帯の改革案</span>}
-        {oecdPoints.length > 0 && <span>縦線：OECD加盟{oecdPoints[0].countries}か国の最小〜最大、◆平均、○OECD計算の日本（2025、消費税を含まない）</span>}
+        {curve && <>
+          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="10"><rect x="0" y="0" width="24" height="10" fill={OECD_BAND} /></svg>OECD加盟{curve.countries[0]}か国の最小〜最大</span>
+          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" /></svg>OECD平均</span>
+          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_JAPAN} strokeWidth="1.5" /></svg>日本（OECD計算）</span>
+        </>}
       </div>
-      {oecdPoints.length > 0 && <div className="mt-3 overflow-x-auto"><table className="w-full text-xs tabular-nums"><thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left">OECD定点</th><th scope="col" className="text-right">世帯年収</th><th scope="col" className="text-right">日本</th><th scope="col" className="text-right">OECD平均</th><th scope="col" className="text-right">最小</th><th scope="col" className="text-right">最大</th></tr></thead>
-        <tbody>{oecdPoints.map(pt => <tr key={`${pt.household}-${pt.awRatioTotal}`} className="border-t border-mirai-border/30"><th scope="row" className="py-1 text-left font-normal">{HOUSEHOLDS.find(h => h.id === pt.household)!.label}・AW{Math.round(pt.awRatioTotal * 100)}%</th><td className="text-right">{Math.round(pt.income / 10000).toLocaleString('ja-JP')}万円</td><td className="text-right">{pt.japan?.toFixed(1)}%</td><td className="text-right">{pt.oecdAverage.toFixed(1)}%</td><td className="text-right">{pt.min.toFixed(1)}%（{pt.minCountry}）</td><td className="text-right">{pt.max.toFixed(1)}%（{pt.maxCountry}）</td></tr>)}</tbody></table></div>}
-      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与がフルタイム下限未満の参考計算です。縦軸の範囲を超える参考値は図の外に出ます。{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
+      {curve && nearestOecd >= 0 && <div className="mt-3 grid gap-2 rounded-xl bg-mirai-surface p-3 text-xs sm:grid-cols-4">
+        <div><span className="block text-mirai-text-secondary">選択年収に最も近いOECD点</span><span className="font-bold tabular-nums">AW{Math.round(curve.awRatio[nearestOecd] * 100)}%＝{Math.round(curve.averageWageJpy * curve.awRatio[nearestOecd] / 10000).toLocaleString('ja-JP')}万円</span></div>
+        <div><span className="block text-mirai-text-secondary">日本（OECD計算）</span><span className="font-bold tabular-nums">{curve.japan[nearestOecd]?.toFixed(1)}%</span></div>
+        <div><span className="block text-mirai-text-secondary">OECD平均</span><span className="font-bold tabular-nums">{curve.oecdAverage[nearestOecd].toFixed(1)}%</span></div>
+        <div><span className="block text-mirai-text-secondary">最小〜最大</span><span className="font-bold tabular-nums">{curve.min[nearestOecd].toFixed(1)}%（{curve.minCountry[nearestOecd]}）〜{curve.max[nearestOecd].toFixed(1)}%（{curve.maxCountry[nearestOecd]}）</span></div>
+      </div>}
+      {oecdMissing && <p role="status" className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs">「{householdLabel}」の連続系列はOECDに公開されていません（連続カーブは単身・片働きの4類型のみ）。家族構成を単身または片働き夫婦に変えるとOECD比較を表示します。</p>}
+      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与がフルタイム下限未満の参考計算です。縦軸の範囲を超える参考値は図の外に出ます。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
     </div>
   );
 }
