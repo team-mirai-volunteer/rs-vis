@@ -80,6 +80,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
       </>}
 
       {policy && <section className="space-y-3" aria-label="税・給付の条件">
+        <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
         <p className="text-xs leading-relaxed text-mirai-text-secondary">{state.view === 'curve' ? '動かすと、基準制度のカーブに改革案のカーブ（太い破線）が重なります。'
           : state.view === 'age' ? '動かすと、基準制度の線（細い灰色）に改革案の線（破線）が重なります。'
           : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
@@ -106,7 +107,6 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
             <option value="gross-fixed">税込支出を固定（実質消費が動く）</option>
           </select></label>
         <p className="text-xs leading-relaxed text-mirai-text-secondary">所得税は累進なので税率ではなく基礎控除で動かします。保険料率は本人負担分で、国民健康保険・後期高齢者医療・第1号介護保険料にも同じ比率で反映します（住民税の均等割と森林環境税は定額なので動きません）。給付付き控除は世帯単位の追加給付として試算し、世帯給与年収で逓減します。消費税率を動かすと消費税推計が自動で有効になります。</p>
-        <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
       </section>}
 
       {!policy && state.view !== 'heatmap' && <div className="border-t border-mirai-border pt-4">
