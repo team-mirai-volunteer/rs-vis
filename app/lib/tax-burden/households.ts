@@ -23,6 +23,7 @@ export const TAX_ITEMS: { id: TaxItem; label: string }[] = [
   { id: 'singleParentBenefit', label: '児童扶養手当（差し引き）' },
   { id: 'pensionSupport', label: '年金生活者支援給付金（差し引き）' },
   { id: 'reformCredit', label: '改革案の追加給付（差し引き）' },
+  { id: 'corporateTax', label: '法人税の転嫁（仮定）' },
   { id: 'pensionReceipt', label: '公的年金の受給（差し引き）' },
 ];
 export const BASE_REFORM: Reform = {
@@ -34,5 +35,5 @@ export function initialTaxState(): TaxState {
   return { view: 'curve', fy: 2025, household: 'one-earner-children', age: 40,
     income: 5000000, share: 67, bonus: false, showAll: true,
     consumptionAssumption: 'net-fixed', reform: { ...BASE_REFORM },
-    continuation: 0.7, workUntil: 65, taxItem: 'net', includeConsumption: false, showOecd: false };
+    continuation: 0.7, workUntil: 65, taxItem: 'net', includeConsumption: false, showOecd: false, corporateShare: 0 };
 }

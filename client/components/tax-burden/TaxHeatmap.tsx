@@ -18,14 +18,16 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item
   return <div className={compact ? 'rounded-xl border border-mirai-border bg-card p-3' : ''}>
     {compact && <p className="mb-2 text-xs font-bold">{label}<span className="ml-2 font-normal text-mirai-text-secondary">最大 {(max * 100).toFixed(1)}%</span></p>}
     <div className="overflow-x-auto"><table className={`w-full border-separate border-spacing-0.5 tabular-nums ${compact ? 'text-[10px]' : 'text-xs'}`} aria-label={`${label}の年齢×年収ヒートマップ`}>
-      <thead><tr><th scope="col" className="text-left font-normal text-mirai-text-secondary">{compact ? '年収＼年齢' : '現役期年収＼年齢'}</th>{ages.map(a => <th key={a} scope="col" className="px-1 font-normal text-mirai-text-secondary">{a}</th>)}</tr></thead>
+      <thead><tr><th scope="col" className="text-left font-normal">{compact ? '年収＼年齢' : '現役期年収＼年齢'}</th>{ages.map(a => <th key={a} scope="col" className="px-1 font-normal">{a}</th>)}</tr></thead>
       <tbody>{rows.map(row => <tr key={row.income}>
         <th scope="row" className="whitespace-nowrap text-left font-medium">{(row.income / 10000).toLocaleString('ja-JP')}万</th>
         {row.cells.filter(c => ages.includes(c.ageAt as typeof ages[number])).map(c => {
           const v = cellRate(c, item);
           const alpha = v === null ? 0 : Math.min(1, Math.abs(v) / max);
-          const bg = v === null ? 'transparent' : v < 0 ? `rgba(217, 119, 87, ${0.12 + alpha * 0.75})` : `rgba(30, 150, 140, ${0.06 + alpha * 0.85})`;
-          return <td key={c.ageAt} className={`rounded px-1 text-center ${compact ? 'py-1' : 'py-2'} ${c.outOfScope ? 'opacity-40' : ''} ${alpha > 0.6 ? 'text-white' : ''}`} style={{ backgroundColor: bg }}
+          // Only the fill carries meaning: the text stays one colour so a pale or white number never reads as a value of its own.
+          const fill = (v === null ? 0 : 0.08 + alpha * 0.5) * (c.outOfScope ? 0.35 : 1);
+          const bg = v === null ? 'transparent' : v < 0 ? `rgba(217, 119, 87, ${fill})` : `rgba(30, 150, 140, ${fill})`;
+          return <td key={c.ageAt} className={`rounded px-1 text-center ${compact ? 'py-1' : 'py-2'}`} style={{ backgroundColor: bg }}
             title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円（うち年金${Math.round(c.pensionIncome / 10000).toLocaleString('ja-JP')}万円）、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * c.careerIncome).toLocaleString('ja-JP')}円、現役期年収比）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
             {v === null ? '—' : (v * 100).toFixed(1)}
           </td>;
@@ -58,6 +60,7 @@ export function TaxHeatmap({ grid, item, hasConsumption }: { grid: HeatmapGrid; 
         <li>医療・介護保険料は65歳以降も続く。介護保険料（第1号）は所得段階別の定額（全国平均基準額 年7.5万円×段階倍率）を夫婦それぞれが払うため、年金収入250〜340万円の夫婦で年9〜17万円。家計調査の無職世帯（65歳以上）の実測平均は年8〜9万円で、現役期より明らかに重い。</li>
         <li>消費税（推計）は年収が低いほど負担率が高い（逆進）。</li>
         <li><strong>現金給付として計算するのは、児童手当・児童扶養手当・年金生活者支援給付金と、改革案でつくった追加給付だけです。</strong>生活保護・住宅手当・就学援助・医療や介護の現物給付は含みません。{paying.length ? `この世帯で支給されるのは${paying.join('・')}のみのため、内訳の表もそれだけを出しています。` : 'この世帯ではいずれも支給されないため、現金給付の表は出していません。'}年金生活者支援給付金は、本モデルが40年納付の満額基礎年金（83.2万円）を前提とし所得要件（78.9万円以下）を超えるため、常に0になります（補足的給付は未実装）。</li>
+        {items.some(t => t.id === 'corporateTax') && <li>法人税の転嫁は、左パネルで置いた仮定です。全国の法人所得課税のうち賃金に転嫁される分を、賃金に比例して配分しています。給与のある年齢には所得に関わらずほぼ一定の率でかかり、年金期には出ません。</li>}
         <li>公的年金の受給は65歳以降に現役期年収の40〜80%相当の受け取りとなり、純負担は負に転じる。現役期年収が高いほど年金の対年収比は小さい（基礎年金が定額、報酬比例に上限があるため）。</li>
       </ul>
     </div>

@@ -7,10 +7,13 @@ Inputs (data/raw/tax-burden/, fetched by scripts/fetch-tax-burden-sources.mjs):
   oecd-taxing-wages-npatr-all-2023-2025.csv    OECD Taxing Wages, net personal average tax rate, all countries (stylised points)
   oecd-taxing-wages-decomp-jpn-2024-2025.csv   OECD Taxing Wages decompositions, Japan, 50-250% AW in 1% steps, all measures
   oecd-taxing-wages-decomp-npatr-all-2024-2025.csv  same flow, NPATR for all countries and the OECD_REP aggregate
+  oecd-revenue-jpn.csv                         OECD Revenue Statistics, Japan (corporate income tax, national + local)
+  oecd-sna-jpn-income.csv                      OECD national accounts, Japan (wages and salaries, compensation of employees)
 Outputs:
   public/data/tax-burden-consumption-2024.json(.gz)   十分位別の税込消費支出（課税区分別）・直接税・社会保険料
   public/data/tax-burden-age-2024.json(.gz)           世帯主年齢階級別（勤労者世帯・無職世帯）の同項目。年間収入は非公表のため実収入を分母にする
   public/data/tax-burden-oecd-2025.json(.gz)          OECD 定点比較と日本の参照値（R8）
+  public/data/tax-burden-incidence.json(.gz)          法人所得課税と賃金総額（転嫁の仮定を率に直すための分母）
 CSV/Excel processing only; no UI or API logic here.
 """
 from __future__ import annotations
@@ -291,6 +294,43 @@ def build_oecd(retrieved: str) -> dict:
     }
 
 
+def build_incidence(retrieved: str) -> dict:
+    """Totals needed to turn a corporate-tax incidence assumption into a rate on wages. No incidence share is chosen here."""
+    rev = [r for r in csv.DictReader(open(RAW / 'oecd-revenue-jpn.csv', encoding='utf-8'))
+           if r['STANDARD_REVENUE'] == 'T_1200' and r['CTRY_SPECIFIC_REVENUE'] == '_T' and r['SECTOR'] == 'S13' and r['OBS_VALUE']]
+    sna = [r for r in csv.DictReader(open(RAW / 'oecd-sna-jpn-income.csv', encoding='utf-8'))
+           if r['UNIT_MEASURE'] == 'XDC' and r['ACTIVITY'] == '_T' and r['PRICE_BASE'] == 'V' and r['OBS_VALUE']]
+    years = sorted({r['TIME_PERIOD'] for r in rev} & {r['TIME_PERIOD'] for r in sna})
+    if not years:
+        raise SystemExit('no year has both corporate tax revenue and national accounts')
+    year = years[-1]
+    amount = lambda rows, pick: next(round(float(r['OBS_VALUE']) * 10 ** int(r['UNIT_MULT']))
+                                     for r in rows if r['TIME_PERIOD'] == year and pick(r))
+    return {
+        'metadata': {
+            'year': year,
+            'sources': [
+                'OECD Revenue Statistics（DSD_REV_OECD@DF_REVJPN 2.0）区分1200＝法人の所得・利潤・キャピタルゲイン課税。国税と地方税（法人住民税・法人事業税）の合計。',
+                'OECD National Accounts（DSD_NAMAIN10@DF_TABLE1_INCOME 2.0）D11＝賃金・俸給、D1＝雇用者報酬。暦年・名目。',
+            ],
+            'retrievedOn': retrieved,
+            'notes': [
+                '法人税は法律上は企業が納めるが、その一部は賃金の抑制を通じて労働者が負担しているという実証研究がある（税の帰着）。',
+                '労働への帰着シェアは確立した値が無く、公的機関の分配分析では米国CBO・JCTが25%、米国財務省が18%を置いている。学術研究には50%前後の推計も、ほぼ0とする推計もある。',
+                '本画面はシェアを利用者が選ぶ仮定として扱い、既定は0%（表示しない）。賃金に比例して配分するため、給与のある年齢・世帯にのみ現れる。',
+                '日本を対象にした帰着研究に基づく値ではない。分母は日本全体の賃金・俸給で、世帯の給与に一律の率として当てている。',
+            ],
+        },
+        'corporateTaxTotal': amount(rev, lambda r: True),
+        'wagesAndSalaries': amount(sna, lambda r: r['TRANSACTION'] == 'D11'),
+        'compensationOfEmployees': amount(sna, lambda r: r['TRANSACTION'] == 'D1'),
+        'referenceShares': [
+            {'label': '米国CBO・JCT', 'share': 0.25},
+            {'label': '米国財務省', 'share': 0.18},
+        ],
+    }
+
+
 CURVE_TYPES = [('S_C0', 'single'), ('S_C2', 'single-children'), ('C_C0', 'one-earner'), ('C_C2', 'one-earner-children')]
 
 
@@ -337,13 +377,18 @@ def build_oecd_curves() -> dict:
 def main() -> None:
     retrieved = date.today().isoformat()
     for f in ('kakei-2024-table3-quintile-decile.xlsx', 'kakei-2024-table3-2-age.xlsx', 'oecd-taxing-wages-jpn-2024-2025.csv', 'oecd-taxing-wages-npatr-all-2023-2025.csv',
-              'oecd-taxing-wages-decomp-jpn-2024-2025.csv', 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv'):
+              'oecd-taxing-wages-decomp-jpn-2024-2025.csv', 'oecd-taxing-wages-decomp-npatr-all-2024-2025.csv',
+              'oecd-revenue-jpn.csv', 'oecd-sna-jpn-income.csv'):
         if not (RAW / f).exists():
             sys.exit(f'missing {RAW / f}; run `node scripts/fetch-tax-burden-sources.mjs` first')
     consumption = build_consumption(retrieved)
     write_json(OUT / 'tax-burden-consumption-2024.json', consumption)
     age = build_age(retrieved)
     write_json(OUT / 'tax-burden-age-2024.json', age)
+    incidence = build_incidence(retrieved)
+    write_json(OUT / 'tax-burden-incidence.json', incidence)
+    print(f"incidence {incidence['metadata']['year']}: 法人所得課税 {incidence['corporateTaxTotal'] / 1e12:.1f}兆円 / 賃金・俸給 {incidence['wagesAndSalaries'] / 1e12:.1f}兆円 "
+          f"→ 25%帰着なら賃金の {incidence['corporateTaxTotal'] * 0.25 / incidence['wagesAndSalaries'] * 100:.2f}%")
     oecd = build_oecd(retrieved)
     write_json(OUT / 'tax-burden-oecd-2025.json', oecd)
     print(f"age: { {g['population']: len(g['classes']) for g in age['groups']} }")

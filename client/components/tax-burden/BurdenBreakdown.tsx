@@ -15,18 +15,21 @@ export function BurdenBreakdown({ before, after, impact, includeConsumption, pen
     ['介護保険料・本人負担', before.care, after?.care],
     ['雇用保険・本人負担', before.employment, after?.employment],
     ...(includeConsumption ? [['消費税（推計）', before.consumptionTax, after?.consumptionTax] as const] : []),
+    ...(before.corporateTax > 0 ? [['法人税の転嫁（仮定）', before.corporateTax, after?.corporateTax] as const] : []),
     ['児童手当（差し引く）', -before.childBenefit, after ? -after.childBenefit : undefined],
     ['児童扶養手当（差し引く）', -before.singleParentBenefit, after ? -after.singleParentBenefit : undefined],
     ['改革案の追加給付（差し引く）', -before.reformCredit, after ? -after.reformCredit : undefined],
     ...(pensionIncome !== undefined ? [['公的年金の受給（差し引く）', -pensionIncome, undefined] as const] : []),
   ];
   const total = (r: BurdenResult) => r.netBurden + (includeConsumption ? r.consumptionTax : 0) - (pensionIncome ?? 0);
+  const qualifiers = [includeConsumption && '消費税込み', before.corporateTax > 0 && '法人税の転嫁込み',
+    pensionIncome !== undefined && '年金差し引き'].filter((q): q is string => typeof q === 'string');
   return <div className="grid gap-5 xl:grid-cols-2">
     <Card><CardHeader><h2 className="font-bold">{title ?? '選んだ年収の負担内訳'}</h2><p className="text-xs text-mirai-text-secondary">総収入 {yen(before.income)}{pensionIncome ? `（うち公的年金 ${yen(pensionIncome)}）` : ''} ／ 年額・世帯単位{pensionIncome !== undefined ? '。年金は負担のマイナスとして差し引く' : ''}</p></CardHeader>
       <CardContent><div className="overflow-x-auto"><table className="w-full text-sm tabular-nums">
         <thead><tr className="border-b border-mirai-border text-xs text-mirai-text-secondary"><th className="py-2 text-left" scope="col">項目</th><th className="text-right" scope="col">基準制度</th>{after && <th className="text-right" scope="col">改革案</th>}</tr></thead>
         <tbody>{rows.map(([label, base, updated]) => <tr key={label} className="border-b border-mirai-border/30"><th scope="row" className="py-2 pr-3 text-left text-xs font-normal">{label}</th><td className="whitespace-nowrap text-right">{yen(base)}</td>{after && <td className="whitespace-nowrap pl-3 text-right">{yen(updated ?? 0)}</td>}</tr>)}</tbody>
-        <tfoot><tr className="font-bold"><th scope="row" className="pt-3 text-left">純負担額{includeConsumption ? '（消費税込み' : ''}{pensionIncome !== undefined ? (includeConsumption ? '・年金差し引き）' : '（年金差し引き）') : includeConsumption ? '）' : ''}</th><td className="pt-3 text-right">{yen(total(before))}</td>{after && <td className="pl-3 pt-3 text-right">{yen(total(after))}</td>}</tr></tfoot>
+        <tfoot><tr className="font-bold"><th scope="row" className="pt-3 text-left">純負担額{qualifiers.length ? `（${qualifiers.join('・')}）` : ''}</th><td className="pt-3 text-right">{yen(total(before))}</td>{after && <td className="pl-3 pt-3 text-right">{yen(total(after))}</td>}</tr></tfoot>
       </table></div></CardContent>
     </Card>
     <Card><CardHeader><h2 className="font-bold">{impact ? '財政収支への影響' : 'この数字の読み方'}</h2><p className="text-xs text-mirai-text-secondary">{impact ? '選択世帯1件あたり・年額' : 'マクロの国民負担率とは分母が異なります'}</p></CardHeader>

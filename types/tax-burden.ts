@@ -3,7 +3,7 @@ export type TaxView = 'curve' | 'revenue' | 'stats' | 'reform' | 'age' | 'heatma
 export type ConsumptionAssumption = 'net-fixed' | 'gross-fixed';
 /** Tax items the heat-map can colour by. */
 export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption'
-  | 'benefits' | 'childBenefit' | 'singleParentBenefit' | 'pensionSupport' | 'reformCredit' | 'pensionReceipt' | 'net';
+  | 'benefits' | 'childBenefit' | 'singleParentBenefit' | 'pensionSupport' | 'reformCredit' | 'pensionReceipt' | 'corporateTax' | 'net';
 
 export interface HouseholdDefinition {
   id: HouseholdId;
@@ -46,6 +46,8 @@ export interface TaxState {
   includeConsumption: boolean;
   /** Overlay OECD average / min / max at the stylised earnings points. */
   showOecd: boolean;
+  /** Assumed share of corporate income tax passed on to wages (0 = do not show it). */
+  corporateShare: number;
 }
 
 /** Rules for pension income, retiree insurance and lifecycle assumptions (annual yen unless stated). */
@@ -151,6 +153,8 @@ export interface BurdenResult {
   consumptionTax: number;
   /** Rate including the consumption-tax estimate; null when income is 0. */
   netRateWithConsumption: number | null;
+  /** Corporate tax assumed to be passed on to this household's wages (0 unless the assumption is switched on). */
+  corporateTax: number;
 }
 
 export type LifecyclePhase = 'work' | 'reemployed' | 'work-pension' | 'pension';
@@ -187,6 +191,15 @@ export interface FiscalImpact {
   directBalance: number;
   totalBalance: number | null;
   outOfScope: boolean;
+}
+
+/** Japan-wide totals that turn a corporate-tax incidence assumption into a rate on wages. */
+export interface IncidenceDataset {
+  metadata: { year: string; sources: string[]; retrievedOn: string; notes: string[] };
+  corporateTaxTotal: number;
+  wagesAndSalaries: number;
+  compensationOfEmployees: number;
+  referenceShares: { label: string; share: number }[];
 }
 
 export interface TaxRevenue {

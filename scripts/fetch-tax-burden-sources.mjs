@@ -34,6 +34,16 @@ const SOURCES = [
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_DECOMP@DF_TW_DECOMP,2.1/.NPATR.....?startPeriod=2024&dimensionAtObservation=AllDimensions&format=csvfile',
   },
   {
+    // Revenue Statistics for Japan: category 1200 is corporate income tax, national and local combined
+    file: 'oecd-revenue-jpn.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_REV_OECD@DF_REVJPN,2.0/all?startPeriod=2022&format=csvfile',
+  },
+  {
+    // National accounts, income approach: D11 wages and salaries, D1 compensation of employees (denominators for tax incidence)
+    file: 'oecd-sna-jpn-income.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE1_INCOME,2.0/A.JPN...........?startPeriod=2022&format=csvfile',
+  },
+  {
     file: 'oecd-taxing-wages-npatr-all-2023-2025.csv',
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/.NPATR.....A?startPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfile',
   },

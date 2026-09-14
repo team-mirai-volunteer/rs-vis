@@ -5,7 +5,8 @@ import { SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { HOUSEHOLDS, BASE_REFORM, TAX_ITEMS } from '@/app/lib/tax-burden/households';
-import type { TaxItem, TaxState } from '@/types/tax-burden';
+import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
+import type { IncidenceDataset, TaxItem, TaxState } from '@/types/tax-burden';
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
@@ -26,8 +27,9 @@ function Toggle({ label, note, checked, onChange, disabled = false }: { label: s
   </label>;
 }
 
-export function TaxControls({ state, setState, hasConsumption, hasOecd, taxItems, taxItem }: {
+export function TaxControls({ state, setState, hasConsumption, hasOecd, incidence, taxItems, taxItem }: {
   state: TaxState; setState: Dispatch<SetStateAction<TaxState>>; hasConsumption: boolean; hasOecd: boolean;
+  incidence?: IncidenceDataset | null;
   /** Heat-map only: the items this grid can actually colour, and the one in effect (a stored item that is always zero falls back). */
   taxItems?: { id: TaxItem; label: string }[]; taxItem?: TaxItem;
 }) {
@@ -62,6 +64,14 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, taxItems
         <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
         <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
         <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
+      </section>}
+      {incidence && <section className="space-y-2 border-t border-mirai-border pt-4" aria-label="法人税の転嫁">
+        <h2 className="font-bold text-primary-accent">法人税の転嫁（仮定）</h2>
+        <RangeField label="賃金へ転嫁される割合" value={Math.round(state.corporateShare * 100)} min={0} max={100} step={1} suffix="%" onChange={v => set('corporateShare', v / 100)} />
+        <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.corporateShare > 0
+          ? `法人所得課税${(incidence.corporateTaxTotal / 1e12).toFixed(1)}兆円（国税＋地方税・${incidence.metadata.year}年）の${Math.round(state.corporateShare * 100)}%を全国の賃金・俸給${(incidence.wagesAndSalaries / 1e12).toFixed(0)}兆円で割り、給与の${(wageIncidenceRate(incidence, state.corporateShare) * 100).toFixed(2)}%として上乗せしています。`
+          : '法人税は企業が納めますが、一部は賃金の抑制を通じて働き手が負担しているという実証研究があります。0%のままなら計算に入れません。'}
+          確立した値は無く、参考として{incidence.referenceShares.map(r => `${r.label}${Math.round(r.share * 100)}%`).join('、')}。日本を対象にした研究に基づく値ではありません。</p>
       </section>}
       {state.view === 'heatmap' && <label className="block space-y-2 border-t border-mirai-border pt-4 text-sm"><span>色にする税目</span>
         <select className={inputClass} value={taxItem ?? state.taxItem} onChange={e => set('taxItem', e.target.value as TaxState['taxItem'])}>
