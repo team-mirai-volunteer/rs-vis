@@ -677,11 +677,17 @@ def build_unified_system(anchors, tax, detail_by_pid):
         '   産業政策・エネルギー・供給網強靱化・食料など「供給力」を買う事業では、件数より先に次を探す:\n'
         '   - 獲得する生産能力（枚/月・GW・トン/年など）\n'
         '   - 自給率・国産化率の変化（%ポイント）、輸入代替額・貿易赤字削減額（億円/年）\n'
+        '   - 国内生産企業の売上高目標・世界シェア目標（兆円・%）。目標年が先でも構わない\n'
         '   - エネルギー自給への寄与（kWh・原油換算）、創出雇用・誘発される国内投資額\n'
         '   これらが概要文または成果指標に**数値で**示されていれば、それを分母にして単価換算する\n'
-        '   （例「4713.9億円÷生産能力〇万枚/月＝〇億円/千枚」）。件数単価が巨額であること自体では下げない。\n'
+        '   （例「4713.9億円÷2030年売上目標1.5兆円＝投資額は年間売上の約3割」）。\n'
+        '   成果指標（アウトカム）に載っている目標値も必ず見ること。概要文に無くても指標にあることが多い。\n'
+        '   件数単価が巨額であること自体では下げない。\n'
         '   数値が無く「重要産業」「経済安全保障上不可欠」としか書かれていない場合は、この扱いをせず\n'
         '   件数単価と配分の粗さで判定する。重要性は分母にならない。\n'
+        '   **供給力の数値が見つからないこと自体を新たな減点材料にしてはならない。**\n'
+        '   その場合は従来どおり件数単価と支出先の妥当性だけで判定する。\n'
+        '   finding に「供給力不明」と書いて下げるのは誤り。\n'
         '2. 金額をその数量で割り、単価に換算する。金額は次の順で選ぶ:\n'
         '   - budgetOku（当初予算）があればそれを使う。\n'
         '   - budgetOku が 0 または「—」でも execOku（執行額）があれば execOku を使う。\n'
@@ -802,7 +808,7 @@ def build_unified_system(anchors, tax, detail_by_pid):
 
 
 def unified_key(d):
-    """段階採点のキャッシュキー。'U9:' = unified v15（国富増強を国民便益に明記、費用対内容の分母に供給力を追加。'U8:' は v14）。"""
+    """段階採点のキャッシュキー。'U10:' = unified v16（供給力の分母に売上高・シェア目標を追加、数値が無いこと自体は減点しない。'U9:' は v15）。"""
     tops = '|'.join(f"{r['name']}:{r.get('amount') or 0}:{r.get('depth') or 0}"
                     for r in (d.get('topRecipients') or []))
     c = d.get('indicatorCounts') or {}
@@ -814,7 +820,7 @@ def unified_key(d):
         f"{c.get('total', 0)}:{c.get('withActual', 0)}:{c.get('outcomeWithActual', 0)}:{c.get('withSource', 0)}",
         normalize(rv.get('expertOpinion', ''))[:200], normalize(rv.get('teamOpinion', ''))[:200],
     ])
-    return 'U9:' + hashlib.sha1(raw.encode('utf-8')).hexdigest()
+    return 'U10:' + hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
 
 def heuristic_unified(d):
