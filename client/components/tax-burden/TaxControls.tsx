@@ -52,12 +52,13 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd }: {
       {(state.view === 'curve' || state.view === 'reform') && <Toggle label="6つの家族構成を重ねる" checked={state.showAll} onChange={v => set('showAll', v)} />}
       <div className="space-y-3 border-t border-mirai-border pt-4">
         <Toggle label="消費税（推計）を含める" note={hasConsumption ? '家計調査2024年の年収十分位別支出から推計' : '消費支出データ未読込'} checked={state.includeConsumption} disabled={!hasConsumption} onChange={v => set('includeConsumption', v)} />
-        {(state.view === 'curve' || state.view === 'reform') && <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025 の定点（平均賃金比67・100・167%）' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />}
+        {(state.view === 'curve' || state.view === 'reform') && <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025（平均賃金比50〜250%の連続系列。単身・片働きの4類型）' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />}
       </div>
-      {state.view === 'age' && <section className="space-y-4 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
+      {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-4 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
         <h2 className="font-bold text-primary-accent">働き方の前提</h2>
-        <RangeField label="60〜64歳の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
-        <Toggle label="65〜69歳も同じ条件で働く" note="在職老齢年金の支給停止を適用" checked={state.workTo69} onChange={v => set('workTo69', v)} />
+        <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
+        <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
+        <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
       </section>}
       {state.view === 'heatmap' && <label className="block space-y-2 border-t border-mirai-border pt-4 text-sm"><span>色にする税目</span>
         <select className={inputClass} value={state.taxItem} onChange={e => set('taxItem', e.target.value as TaxState['taxItem'])}>

@@ -156,9 +156,12 @@ test('lifecycle: phases, retiree insurance and pension timing', () => {
   assert(at(70).health > 0 && at(70).care > 0, 'national health + first-category care at 70');
   assert(at(80).health > 0, 'latter-stage medical at 80');
   assert(at(70).netRate! < at(50).netRate!, 'pension years carry a lower burden rate');
-  const working = lifecycleSeries({ ...initialTaxState(), household: 'single', income: 8000000, workTo69: true }, p);
-  assert.equal(working.find(y => y.ageAt === 67)!.phase, 'work-pension');
-  assert(working.find(y => y.ageAt === 67)!.pensionIncome < years.find(y => y.ageAt === 67)!.pensionIncome + 1 || true);
+  const working = lifecycleSeries({ ...initialTaxState(), household: 'single', income: 8000000, workUntil: 72 }, p);
+  const w67 = working.find(y => y.ageAt === 67)!, w71 = working.find(y => y.ageAt === 71)!, w72 = working.find(y => y.ageAt === 72)!;
+  assert.equal(w67.phase, 'work-pension'); assert.equal(w71.phase, 'work-pension'); assert.equal(w72.phase, 'pension');
+  assert(w67.salaryTotal > 0 && w67.pensionIncome > 0, 'salary and pension together while working after 65');
+  assert(w67.pension > 0 && w71.pension === 0, 'employees pension contributions stop at 70');
+  assert(w67.pensionIncome < w72.pensionIncome, 'in-work reduction lowers the pension while working');
 });
 test('heat-map grid covers all incomes and ages with consistent totals', () => {
   const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);
@@ -179,7 +182,7 @@ test('OECD dataset has Japan reference values at eight stylised points for 2025'
 });
 test('URL round trips every calculation and display condition', () => {
   const state = { ...initialTaxState(), age: 55, share: 45, bonus: true, showAll: false, consumptionAssumption: 'gross-fixed' as const,
-    continuation: 0.5, workTo69: true, taxItem: 'health' as const, includeConsumption: true, showOecd: true, view: 'age' as const };
+    continuation: 0.5, workUntil: 70, taxItem: 'health' as const, includeConsumption: true, showOecd: true, view: 'age' as const };
   state.reform.creditAnnual = 250000;
   assert.deepEqual(decodeTaxState(encodeTaxState(state)), { state, warning: null });
 });

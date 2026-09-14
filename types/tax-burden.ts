@@ -2,7 +2,7 @@ export type HouseholdId = 'single' | 'single-children' | 'one-earner' | 'one-ear
 export type TaxView = 'curve' | 'revenue' | 'stats' | 'reform' | 'age' | 'heatmap';
 export type ConsumptionAssumption = 'net-fixed' | 'gross-fixed';
 /** Tax items the heat-map can colour by. */
-export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption' | 'net';
+export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption' | 'benefits' | 'net';
 
 export interface HouseholdDefinition {
   id: HouseholdId;
@@ -37,8 +37,8 @@ export interface TaxState {
   reform: Reform;
   /** Life-cycle view: wage ratio kept while re-employed at 60–64 (0–1). */
   continuation: number;
-  /** Life-cycle view: keep working at 65–69 with the in-work pension reduction applied. */
-  workTo69: boolean;
+  /** Life-cycle view: age at which paid work stops (65 = retire when the pension starts; up to 75). Work after 65 applies the in-work pension reduction. */
+  workUntil: number;
   /** Heat-map view: tax item to colour by. */
   taxItem: TaxItem;
   /** Add the estimated consumption tax (家計調査の十分位別支出構成から推計) to the burden. */
