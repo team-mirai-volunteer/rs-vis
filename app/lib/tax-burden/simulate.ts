@@ -5,32 +5,37 @@ import { estimatedConsumptionTax } from './consumption-tax';
 import { corporateTaxOnWages } from './incidence';
 
 export type SimulateState = Pick<TaxState, 'income' | 'household' | 'share' | 'age' | 'bonus'> &
-  Partial<Pick<TaxState, 'includeConsumption' | 'consumptionAssumption' | 'corporateShare' | 'firstBirthAge'>>;
+  Partial<Pick<TaxState, 'includeConsumption' | 'consumptionAssumption' | 'corporateShare' | 'firstBirthAge' | 'secondBirthAge'>>;
 
 export { salaryIncome, incomeTaxFromBase, standardMonthlyRemuneration, pensionIncome } from './household-tax';
 
 /** Children's ages at the adult's age: born when the adult turned childBirthAges[i], leave at childLeavesAt. */
-/**
- * Ages of the children living at home when the adult is `adultAge`. The spacing between children is the parameter
- * file's; `firstBirthAge` shifts the whole set, because the age at which child benefit and the dependant deduction
- * stop is a property of the assumed birth year, not of the rules.
- */
-export function childAgesAt(adultAge: number, count: number, p: TaxParameters, firstBirthAge?: number): number[] {
-  const births = p.lifecycle.childBirthAges;
-  const shift = firstBirthAge === undefined ? 0 : firstBirthAge - births[0];
-  return births.slice(0, count).map(birth => adultAge - birth - shift).filter(a => a >= 0 && a < p.lifecycle.childLeavesAt);
+/** Adult age at each birth, either as the caller set it or as the parameter file assumes. */
+export function birthAgesOf(state: BirthAges, p: TaxParameters): number[] {
+  const defaults = p.lifecycle.childBirthAges;
+  return [state.firstBirthAge ?? defaults[0], state.secondBirthAge ?? defaults[1]];
 }
 
-/** Range the first-birth slider offers; the state is rejected outside it. */
+/**
+ * Ages of the children living at home when the adult is `adultAge`. Each child has its own birth age, because the
+ * age at which child benefit and the dependant deduction stop is a property of the assumed birth year, not of the rules.
+ */
+export function childAgesAt(adultAge: number, count: number, p: TaxParameters, state: BirthAges = {}): number[] {
+  return birthAgesOf(state, p).slice(0, count).map(birth => adultAge - birth).filter(a => a >= 0 && a < p.lifecycle.childLeavesAt);
+}
+
+type BirthAges = Partial<Pick<TaxState, 'firstBirthAge' | 'secondBirthAge'>>;
+
+/** Range the birth-age sliders offer; the state is rejected outside it. */
 export const BIRTH_AGE_RANGE = [18, 45] as const;
 
-export function validateState(state: Pick<TaxState, 'income' | 'household' | 'share' | 'age'> & Partial<Pick<TaxState, 'firstBirthAge'>>, reform: Reform) {
+export function validateState(state: Pick<TaxState, 'income' | 'household' | 'share' | 'age'> & BirthAges, reform: Reform) {
   const household = HOUSEHOLDS.find(h => h.id === state.household);
   if (!household || !Number.isFinite(state.income) || state.income < 0 || state.income > 20000000 ||
       !Number.isFinite(state.share) || state.share < 1 || state.share > 99 ||
       !Number.isInteger(state.age) || state.age < 20 || state.age > 64 ||
-      (state.firstBirthAge !== undefined && (!Number.isInteger(state.firstBirthAge) ||
-        state.firstBirthAge < BIRTH_AGE_RANGE[0] || state.firstBirthAge > BIRTH_AGE_RANGE[1])) ||
+      [state.firstBirthAge, state.secondBirthAge].some(age => age !== undefined &&
+        (!Number.isInteger(age) || age < BIRTH_AGE_RANGE[0] || age > BIRTH_AGE_RANGE[1])) ||
       (Object.keys(REFORM_LIMITS) as (keyof Reform)[]).some(k =>
         !Number.isFinite(reform[k]) || reform[k] < REFORM_LIMITS[k][0] || reform[k] > REFORM_LIMITS[k][1])) {
     throw new Error('計算条件が有効な範囲にありません');
@@ -56,7 +61,7 @@ export function simulate(state: SimulateState, p: TaxParameters,
   const adults: AdultInput[] = Array.from({ length: household.adults }, (_, i) => ({
     age: state.age, salary: salaries[i] ?? 0, pension: 0, employeeInsured: (salaries[i] ?? 0) >= p.employeeInsuranceThreshold,
   }));
-  const taxes = computeHousehold({ adults, childAges: childAgesAt(state.age, household.children, p, state.firstBirthAge),
+  const taxes = computeHousehold({ adults, childAges: childAgesAt(state.age, household.children, p, state),
     loneParent: household.adults === 1 && household.children > 0, bonus: state.bonus }, p, reform);
   const income = Math.round(state.income);
   const consumptionTax = state.includeConsumption && consumption

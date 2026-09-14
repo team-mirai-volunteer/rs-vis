@@ -57,5 +57,5 @@ export function initialTaxState(): TaxState {
     // long-run share at 78-90% and the one-year share at 27-60%; the distributional conventions of public bodies put it
     // at 18-25%. 50% sits between them and is the user's to change.
     continuation: 0.7, workUntil: 65, includeConsumption: false, showOecd: false, corporateShare: 0.5,
-    firstBirthAge: 32 };
+    firstBirthAge: 32, secondBirthAge: 34 };
 }
