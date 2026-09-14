@@ -13,6 +13,7 @@ import { decodeTaxState, encodeTaxState } from '@/app/lib/tax-burden/reform-url'
 import { CurveChart } from '@/client/components/tax-burden/CurveChart';
 import { LifecycleChart, PHASE_LABEL } from '@/client/components/tax-burden/LifecycleChart';
 import { TaxHeatmap } from '@/client/components/tax-burden/TaxHeatmap';
+import { availableTaxItems } from '@/app/lib/tax-burden/heatmap-items';
 import { StatsPanel } from '@/client/components/tax-burden/StatsPanel';
 import { TaxControls } from '@/client/components/tax-burden/TaxControls';
 import { BurdenBreakdown, yen } from '@/client/components/tax-burden/BurdenBreakdown';
@@ -79,6 +80,9 @@ export default function TaxBurdenPage() {
   const impact = before && after ? fiscalImpact(before, after, state, consumption) : null;
   const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, undefined, consumption) : null, [state, params, consumption]);
   const grid = useMemo(() => params && state.view === 'heatmap' ? heatmapGrid(state, params, consumption) : null, [state, params, consumption]);
+  const heatmapItems = useMemo(() => grid ? availableTaxItems(grid, !!consumption) : null, [grid, consumption]);
+  // A stored tax item that never pays for this household (児童扶養手当 on a couple, say) falls back to the net burden.
+  const taxItem = heatmapItems && !heatmapItems.some(t => t.id === state.taxItem) ? 'net' : state.taxItem;
   const selected = state.view === 'reform' ? after : before;
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const setView = (view: TaxView) => setState(s => ({ ...s, view }));
@@ -115,7 +119,7 @@ export default function TaxBurdenPage() {
       </nav>
 
       {modelViews && <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} />
+        <TaxControls state={state} setState={setState} hasConsumption={!!consumption} hasOecd={!!oecd} taxItems={heatmapItems ?? undefined} taxItem={taxItem} />
         <div className="min-w-0 space-y-5">
           {error ? errorCard(error) : !params || !before || !selected ? loading : <>
             {(state.view === 'curve' || state.view === 'reform') && <>
@@ -153,7 +157,7 @@ export default function TaxBurdenPage() {
               {ageRow && <BurdenBreakdown before={ageRow} includeConsumption={state.includeConsumption} pensionIncome={ageRow.pensionIncome} title={`${selectedAge}歳の負担内訳`} />}
             </>}
             {state.view === 'heatmap' && grid && <Card><CardHeader><h2 className="text-lg font-bold">この税は、どの年齢・どの所得階層に重いか</h2><p className="mt-2 text-xs text-mirai-text-secondary">{household.label}。制度モデルで年齢×現役期年収の各セルを計算。</p></CardHeader>
-              <CardContent><TaxHeatmap grid={grid} item={state.taxItem} hasConsumption={!!consumption} /></CardContent></Card>}
+              <CardContent><TaxHeatmap grid={grid} item={taxItem} hasConsumption={!!consumption} /></CardContent></Card>}
           </>}
         </div>
       </div>}

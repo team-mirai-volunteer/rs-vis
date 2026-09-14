@@ -4,7 +4,8 @@ import raw from '../scripts/data/tax-burden-params-2025.json';
 import consumptionRaw from '../public/data/tax-burden-consumption-2024.json';
 import oecdRaw from '../public/data/tax-burden-oecd-2025.json';
 import type { ConsumptionDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
-import { initialTaxState, MODEL_VERSION } from '../app/lib/tax-burden/households';
+import { initialTaxState, MODEL_VERSION, TAX_ITEMS } from '../app/lib/tax-burden/households';
+import { availableTaxItems, cellRate } from '../app/lib/tax-burden/heatmap-items';
 import { simulate, incomeTaxFromBase, standardMonthlyRemuneration, pensionIncome } from '../app/lib/tax-burden/simulate';
 import { annualPension, inWorkPension, lifecycleSeries, heatmapGrid } from '../app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax, estimatedConsumptionTax } from '../app/lib/tax-burden/consumption-tax';
@@ -171,6 +172,25 @@ test('heat-map grid covers all incomes and ages with consistent totals', () => {
   const grid = heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption);
   assert.equal(grid.length, 10);
   assert(grid.every(r => r.cells.length === 12 && r.cells.every(c => c.consumptionTax >= 0 && c.netRateWithConsumption !== null)));
+});
+test('cash benefits are split per programme; panels appear only for the ones a household receives', () => {
+  const couple = heatmapGrid({ ...initialTaxState(), household: 'one-earner-children' }, p, consumption);
+  const coupleItems = availableTaxItems(couple, true).map(t => t.id);
+  assert(coupleItems.includes('childBenefit'));
+  assert(!coupleItems.includes('singleParentBenefit'), '夫婦世帯に児童扶養手当は出ない');
+  assert(!coupleItems.includes('pensionSupport'), '満額基礎年金は所得要件を超えるため常に0');
+  assert(!coupleItems.includes('reformCredit'), '改革案の給付はヒートマップでは常に0');
+  assert(!coupleItems.includes('benefits'), '支給が1種類だけなら合計の表は出さない');
+  const lone = availableTaxItems(heatmapGrid({ ...initialTaxState(), household: 'single-children' }, p, consumption), true).map(t => t.id);
+  for (const id of ['childBenefit', 'singleParentBenefit', 'benefits']) assert(lone.includes(id as never), `ひとり親世帯には${id}の表が出る`);
+  const childless = availableTaxItems(heatmapGrid({ ...initialTaxState(), household: 'single' }, p, consumption), true).map(t => t.id);
+  assert(!childless.some(id => ['childBenefit', 'singleParentBenefit', 'benefits'].includes(id)), '子なし単身に現金給付の表は出ない');
+  assert(!availableTaxItems(couple, false).includes(TAX_ITEMS.find(t => t.id === 'consumption')!), '消費支出データが無ければ消費税の表も出ない');
+  // Benefits are negative and measured against the fixed career income, not the income of that year.
+  const cell = couple.find(r => r.income === 5000000)!.cells.find(c => c.ageAt === 40)!;
+  assert.equal(cellRate(cell, 'childBenefit'), -cell.childBenefit / 5000000);
+  assert(cellRate(cell, 'childBenefit')! < 0);
+  assert.equal(cellRate(cell, 'benefits'), cellRate(cell, 'childBenefit'));
 });
 test('OECD dataset has Japan reference values at eight stylised points for 2025', () => {
   const points = oecd.years['2025'].points;

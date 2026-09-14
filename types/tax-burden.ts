@@ -2,7 +2,8 @@ export type HouseholdId = 'single' | 'single-children' | 'one-earner' | 'one-ear
 export type TaxView = 'curve' | 'revenue' | 'stats' | 'reform' | 'age' | 'heatmap';
 export type ConsumptionAssumption = 'net-fixed' | 'gross-fixed';
 /** Tax items the heat-map can colour by. */
-export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption' | 'benefits' | 'pensionReceipt' | 'net';
+export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption'
+  | 'benefits' | 'childBenefit' | 'singleParentBenefit' | 'pensionSupport' | 'reformCredit' | 'pensionReceipt' | 'net';
 
 export interface HouseholdDefinition {
   id: HouseholdId;
