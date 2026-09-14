@@ -5,7 +5,9 @@ import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, T
 import { HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
 
-const COLORS = ['var(--primary-accent)', 'var(--stance-neutral)', 'var(--mirai-text)',
+// One colour per household. 単身 used to take --primary-accent (#0f8472), which reads the same as the
+// --primary (#2aa693) of 片働き夫婦・子2人 when both are solid lines, so it gets a violet of its own.
+const COLORS = ['rgb(126, 87, 194)', 'var(--stance-neutral)', 'var(--mirai-text)',
   'var(--primary)', 'var(--mirai-reaction-active)', 'var(--mirai-text-subtle)'];
 const DASHES = ['', '7 3', '2 3', '', '10 3 2 3', '5 4'];
 const OECD_BAND = 'rgba(80, 120, 200, 0.16)';
@@ -141,7 +143,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
           </tr>)}</tbody></table></div>
       </div>}
       {oecdMissing && <p role="status" className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs">「{householdLabel}」に対応するOECDの公表値がありません。家族構成を変えるとOECD比較を表示します。</p>}
-      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与がフルタイム下限未満の参考計算です。縦軸の範囲を超える参考値は図の外に出ます。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。消費税・事業主負担を含まない。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
+      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与がフルタイム下限（年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）未満の参考計算です。年収が低いほど負担率が跳ね上がり縦軸の外に出るのは計算の破綻ではなく、厚生年金の標準報酬月額に下限（{Math.round(params.pensionMinimum / 10000)}万円）があり健康保険にも最低等級があるため、年収が下がっても保険料が下げ止まるからです。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。消費税・事業主負担を含まない。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
     </div>
   );
 }
