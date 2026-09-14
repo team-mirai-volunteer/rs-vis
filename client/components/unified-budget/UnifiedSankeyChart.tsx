@@ -31,6 +31,7 @@ import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-rea
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
+import { FactRow } from './RsBudgetFacts';
 import type { WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -769,7 +770,6 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
   if (details.purposeCode) rows.push(['使途別分類', PURPOSE_NAMES[details.purposeCode] ?? `コード ${details.purposeCode}`]);
   if (details.rsMinistry) rows.push(['RS府省庁', details.rsMinistry]);
   if (details.projectId !== undefined) rows.push(['予算事業ID', String(details.projectId)]);
-  const b = details.budgetSummary;
   return (
     <div className="text-xs text-mirai-text-secondary">
       {rows.length > 0 && (
@@ -787,32 +787,10 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
       {details.kind === 'unmatched' && (
         <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
       )}
-      {b && (
-        <div className="mt-2 border-t border-border pt-2">
-          <div className="mb-1 text-[11px] text-mirai-text-muted">RS 予算・執行（{b.fiscalYear}年度）</div>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-            <FactRow k="当初予算" v={formatBudgetFromYen(b.initialBudget)} />
-            <FactRow k="補正予算" v={formatBudgetFromYen(b.supplementaryBudget)} />
-            <FactRow k="前年度繰越" v={formatBudgetFromYen(b.carryoverBudget)} />
-            <FactRow k="予備費等" v={formatBudgetFromYen(b.reserveFund)} />
-            <FactRow k="歳出予算現額" v={formatBudgetFromYen(b.totalBudget)} />
-            <FactRow k="執行額" v={`${formatBudgetFromYen(b.executedAmount)}${b.executionRate !== null ? `（${b.executionRate.toFixed(1)}%）` : ''}`} />
-            <FactRow k="翌年度要求" v={formatBudgetFromYen(b.nextYearRequest)} />
-          </dl>
-        </div>
-      )}
     </div>
   );
 }
 
-function FactRow({ k, v }: { k: string; v: string }) {
-  return (
-    <>
-      <dt className="text-mirai-text-muted">{k}</dt>
-      <dd className="break-all">{v}</dd>
-    </>
-  );
-}
 
 function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: string; onClick: () => void }) {
   return (
