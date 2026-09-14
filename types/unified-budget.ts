@@ -189,6 +189,7 @@ export const UNIFIED_BASIS_MOF_BUDGET_TYPE: Record<UnifiedBasis, MOFBudgetType> 
 
 /** 年度ごとに生成済みの基準。決算は年度終了後、補正は補正予算成立後に増える */
 export const UNIFIED_BASES_BY_YEAR: Record<number, readonly UnifiedBasis[]> = {
+  2023: ['initial', 'supplementary', 'settlement'],
   2024: ['initial', 'supplementary', 'settlement'],
   2025: ['initial', 'supplementary'],
   2026: ['initial'],

@@ -46,6 +46,9 @@ decompress_if_needed "rs2024-project-outcomes.json" optional
 decompress_if_needed "project-map-2025.json" optional
 decompress_if_needed "project-map-2024.json" optional
 # 統合ビュー（/budget-sankey）がブラウザから直接 fetch する統合グラフ
+decompress_if_needed "unified-budget-2023-initial-graph.json" optional
+decompress_if_needed "unified-budget-2023-supplementary-graph.json" optional
+decompress_if_needed "unified-budget-2023-settlement-graph.json" optional
 decompress_if_needed "unified-budget-2024-initial-graph.json" optional
 decompress_if_needed "unified-budget-2024-supplementary-graph.json" optional
 decompress_if_needed "unified-budget-2024-settlement-graph.json" optional

@@ -43,7 +43,7 @@ import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBa
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
-const AVAILABLE_YEARS = [2026, 2025, 2024] as const;
+const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
 const DEFAULT_YEAR = 2024;
 const DEFAULT_BASIS: UnifiedBasis = 'initial';
 const basesOf = (year: number): readonly UnifiedBasis[] => UNIFIED_BASES_BY_YEAR[year] ?? ['initial'];
