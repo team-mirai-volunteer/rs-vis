@@ -8,7 +8,8 @@
  *   2. 中間列（所管・組織/勘定・項・目）は流入 = 流出（1円単位）
  *   3. 会計列は流出 = ノード値、目列も流出 = ノード値（残余は必ずどこかに落ちている）
  *   4. RS事業ノードは 流入 = ノード値（outside で釣り合わせている）
- *   5. 会計列合計 = MOF目（基準予算種別）の正の金額合計
+ *   5. 会計列合計 = MOF目（基準予算種別）の正の金額合計。
+ *      補正基準は「当初予算 ＋ 補正が載せた項の差し替え」なので、同じ合体をしてから比べる
  *   6. 未突合の比率が閾値以下（既定: 予算モード 3%・要求モード 6%。設計 5.2 の置き換え判定基準）
  * いずれか失敗で非0終了。
  */
@@ -16,7 +17,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import type { MOFKouMokuData } from '@/types/mof-kou-moku';
+import type { MOFKouMokuData, MOFKouMokuItem } from '@/types/mof-kou-moku';
 import type { UnifiedGraph, UnifiedNode } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS, unifiedGraphFileName, type UnifiedBasis } from '@/types/unified-budget';
 
@@ -123,10 +124,24 @@ console.log('\n[4] RS事業ノードの流入 = ノード値');
 console.log('\n[5] 会計列合計 = MOF目合計');
 {
   const basis = graph.metadata.basisBudgetType;
-  const mofTotal = kouMoku.items
+  const inScope = (it: MOFKouMokuItem) => it.accountType === 'general' || it.accountType === 'special';
+  // 補正基準は生成側と同じく「当初予算の目 ＋ 補正が載せた項の差し替え」で合体してから比べる
+  const norm = (t: string) => (t ?? '').normalize('NFKC').replace(/\s+/g, '');
+  const orgOf = (it: MOFKouMokuItem) => (it.accountType === 'special' ? it.specialAccount : it.organization);
+  const sectionIdentity = (it: MOFKouMokuItem) =>
+    [it.accountType, norm(it.ministry), norm(orgOf(it) ?? ''), norm(it.subAccount ?? ''), it.sectionCode].join('|');
+  let basisItems: MOFKouMokuItem[];
+  if (graph.metadata.basis === 'supplementary') {
+    const sup = kouMoku.items.filter(it => inScope(it) && it.budgetType === basis);
+    const touched = new Set(sup.map(sectionIdentity));
+    basisItems = [...kouMoku.items.filter(it => inScope(it) && it.budgetType === '当初予算' && !touched.has(sectionIdentity(it))), ...sup];
+  } else {
+    basisItems = kouMoku.items.filter(it => inScope(it) && it.budgetType === basis);
+  }
+  const mofTotal = basisItems
     // 生成側と同じ流量（決算は支出済歳出額、それ以外は目金額）で合計する
     .map(it => ({ ...it, flow: graph.metadata.basis === 'settlement' ? it.spent ?? 0 : it.amount }))
-    .filter(it => (it.accountType === 'general' || it.accountType === 'special') && it.budgetType === basis && it.flow > 0)
+    .filter(it => it.flow > 0)
     .reduce((s, it) => s + it.flow, 0);
   const gross = graph.nodes.filter(n => n.col === 'account').reduce((s, n) => s + n.value, 0);
   gross === mofTotal

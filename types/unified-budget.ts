@@ -212,7 +212,7 @@ export const UNIFIED_BASES_BY_YEAR: Record<number, readonly UnifiedBasis[]> = {
   2023: ['initial', 'supplementary', 'settlement', 'ministry'],
   2024: ['initial', 'supplementary', 'settlement', 'ministry'],
   2025: ['initial', 'supplementary', 'ministry'],
-  2026: ['initial', 'ministry'],
+  2026: ['initial', 'supplementary', 'ministry'],
 };
 
 export const unifiedGraphFileName = (budgetYear: number, basis: UnifiedBasis) => `unified-budget-${budgetYear}-${unifiedFileBasis(basis)}-graph.json`;

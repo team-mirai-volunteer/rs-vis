@@ -191,10 +191,10 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(columnHeader(page, '事業_2024')).toHaveCount(0);
     await expect(page).toHaveURL(/[?&]year=2026/);
 
-    // 2026 には決算が無いので当初予算へ戻り、決算の選択肢は disabled
+    // 2026 には決算が無いので当初予算へ戻り、決算の選択肢は disabled（補正は第1号が出ているので選べる）
     await expect(basisSelect).toHaveValue('initial');
     await expect(basisSelect.locator('option[value="settlement"]')).toBeDisabled();
-    await expect(basisSelect.locator('option[value="supplementary"]')).toBeDisabled();
+    await expect(basisSelect.locator('option[value="supplementary"]')).toBeEnabled();
     await expect(page).not.toHaveURL(/[?&]b=/);
   });
 

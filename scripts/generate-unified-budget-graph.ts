@@ -18,7 +18,9 @@
  * 出力: public/data/unified-budget-{予算年度}-graph.json（.gz で Git 管理、prebuild で展開）
  *
  * 金額の基準（types/unified-budget.ts の冒頭コメント参照）:
- *   会計〜目〜事業区分は MOF目の basis（既定 initial=当初予算。supplementary=補正予算（第1号）の改予算額、settlement=決算の支出済額）。
+ *   会計〜目〜事業区分は MOF目の basis（既定 initial=当初予算。supplementary=補正後、settlement=決算の支出済額）。
+ *   補正基準は「当初予算の目 ＋ 補正予算書が載せた項の差し替え」。補正予算書は増減のあった項しか載せないため
+ *   （2026年度は 2 所管のみ）、当初と合体しないと触れていない省庁が丸ごと欠ける。
  *   RS事業ノードは basis に応じて 当初予算 / 当初＋補正 / 執行額（執行年度以外は 2-2 の合計）。
  *   加えて基準に依らない歳出予算現額を rsCurrentBudget に持たせる（府省庁基準が使う）。
  *   当初予算 0 円（補正・繰越のみ）の事業は value 0 のまま出力し、予算書の基準では表示側が落とす。
@@ -112,6 +114,26 @@ const orgOf = (it: MOFKouMokuItem) => (it.accountType === 'special' ? it.special
 const orgId = (it: MOFKouMokuItem) => `org-${it.accountType}|${it.ministry}|${orgOf(it)}|${it.subAccount}`;
 const sectionId = (it: MOFKouMokuItem) => `sec-${it.accountType}|${it.ministry}|${orgOf(it)}|${it.subAccount}|${it.sectionCode}|${it.sectionName}`;
 const koumokuId = (it: MOFKouMokuItem) => `km-${it.key}`;
+/** 全角・空白をならして識別子に使う */
+const norm = (t: string) => t.normalize('NFKC').replace(/\s+/g, '');
+/** 項の識別子（予算種別を含まない）。補正予算の差し替え単位 */
+const sectionIdentity = (it: MOFKouMokuItem) =>
+  [it.accountType, norm(it.ministry), norm(orgOf(it) ?? ''), norm(it.subAccount ?? ''), it.sectionCode].join('|');
+
+/**
+ * 補正基準の目一覧 = 当初予算の目 に 補正予算書の目を項単位で差し替えたもの。
+ *
+ * 補正予算書は増減のあった項だけを「改予算額」で載せ、触れていない項は当初予算のまま据え置く。
+ * 目単位では補正側が「…外N目」に束ねられていて当初と 1:1 対応しないため、項単位で入れ替える
+ * （目単位で足すと束ね分が二重計上になり、2023年度で 86 兆円ほど過大になる）。
+ */
+function mergeSupplementaryItems(all: MOFKouMokuItem[], inScope: (it: MOFKouMokuItem) => boolean): MOFKouMokuItem[] {
+  const supplementary = all.filter(it => inScope(it) && it.budgetType === '補正予算（第1号）');
+  if (supplementary.length === 0) return [];
+  const touched = new Set(supplementary.map(sectionIdentity));
+  const untouched = all.filter(it => inScope(it) && it.budgetType === '当初予算' && !touched.has(sectionIdentity(it)));
+  return [...untouched, ...supplementary];
+}
 const programId = (pid: number) => `project-budget-${pid}`;
 const kindNodeId = (kind: UnifiedProgramKind) => `np-${kind}`;
 
@@ -163,11 +185,22 @@ function main() {
   const overview = readJsonMaybeGz<{ totals?: { net?: number } }>(OVERVIEW_FILE);
   console.log(`  MOF目: ${kouMoku.items.length.toLocaleString()} 件 / 紐づけ: ${linkage.links.length.toLocaleString()} 件 (${linkage.metadata.rsAmountKind}) / sankey-svg: ${svgGraph ? `${svgGraph.nodes.length.toLocaleString()} ノード` : '無し（事業ノードは紐づけ表から作成）'}`);
 
-  const items = kouMoku.items.filter(
-    (it): it is MOFKouMokuItem & { accountType: 'general' | 'special' } =>
-      (it.accountType === 'general' || it.accountType === 'special') && it.budgetType === BASIS
-  );
-  const agencyTotal = kouMoku.items.filter(it => it.accountType === 'agency' && it.budgetType === BASIS).reduce((s, it) => s + flowAmount(it), 0);
+  const inGeneralOrSpecial = (it: MOFKouMokuItem) => it.accountType === 'general' || it.accountType === 'special';
+  const inAgency = (it: MOFKouMokuItem) => it.accountType === 'agency';
+  const items = (
+    BASIS_KEY === 'supplementary'
+      ? mergeSupplementaryItems(kouMoku.items, inGeneralOrSpecial)
+      : kouMoku.items.filter(it => inGeneralOrSpecial(it) && it.budgetType === BASIS)
+  ) as (MOFKouMokuItem & { accountType: 'general' | 'special' })[];
+  const agencyItems =
+    BASIS_KEY === 'supplementary'
+      ? mergeSupplementaryItems(kouMoku.items, inAgency)
+      : kouMoku.items.filter(it => inAgency(it) && it.budgetType === BASIS);
+  const agencyTotal = agencyItems.reduce((s, it) => s + flowAmount(it), 0);
+  if (BASIS_KEY === 'supplementary') {
+    const sup = items.filter(it => it.budgetType === '補正予算（第1号）');
+    console.log(`  補正の目 ${sup.length.toLocaleString()} 件（${new Set(sup.map(sectionIdentity)).size.toLocaleString()} 項）で当初予算の項を差し替え、残り ${(items.length - sup.length).toLocaleString()} 件は当初予算のまま`);
+  }
   if (items.length === 0) {
     console.error(`❌ 予算種別「${BASIS}」の目がありません（収録: ${kouMoku.metadata.budgetTypes.join(', ')}）`);
     process.exit(1);
@@ -324,8 +357,11 @@ function main() {
   // 4. 目 → 事業 / 事業区分
   console.log('\n[4/5] 目 → RS事業 / 非事業区分');
   const linksByKouMoku = new Map<string, { pid: number; amount: number }[]>();
+  // 補正基準では当初予算のままの目も残るので、当初・補正の両方のリンクを取り込む
+  // （kouMokuKey は予算種別を含むので、目ごとに自分の種別のリンクだけが引ける）
+  const linkBudgetTypes = BASIS_KEY === 'supplementary' ? new Set<string>([BASIS, '当初予算']) : new Set<string>([BASIS]);
   for (const l of linkage.links) {
-    if (l.mofBudgetType !== BASIS || l.rsAmount <= 0) continue;
+    if (!linkBudgetTypes.has(l.mofBudgetType) || l.rsAmount <= 0) continue;
     const list = linksByKouMoku.get(l.kouMokuKey) ?? [];
     list.push({ pid: l.projectId, amount: l.rsAmount });
     linksByKouMoku.set(l.kouMokuKey, list);
@@ -333,7 +369,6 @@ function main() {
   // 補正基準: 補正予算書の目額は「改予算額」（当初＋補正の総額）だが、RS 2-2 の補正行は補正増減分しか
   // 持たない。同じ目（予算種別を除いた識別子が一致するもの）の当初予算リンクを足して総額に合わせる。
   // 「…外N目」に束ねられた補正目は当初側に対応が無く、残余は未突合として残る
-  const norm = (t: string) => t.normalize('NFKC').replace(/\s+/g, '');
   const identityOfLink = (l: (typeof linkage.links)[number]) =>
     [l.mofAccountType, norm(l.mofMinistry), norm(l.mofOrganization), norm(l.mofSubAccount ?? ''), l.sectionCode, l.subItemCode, norm(l.subItemName)].join('|');
   const identityOfItem = (it: MOFKouMokuItem) =>
@@ -349,6 +384,8 @@ function main() {
       initialByIdentity.set(id, list);
     }
     for (const it of items) {
+      // 当初予算のまま残した目は自分の当初リンクを既に持っているので足さない（足すと二重計上になる）
+      if (it.budgetType !== BASIS) continue;
       const extra = initialByIdentity.get(identityOfItem(it));
       if (!extra) continue;
       const list = linksByKouMoku.get(it.key) ?? [];
@@ -359,6 +396,45 @@ function main() {
     }
     console.log(`  補正目へ当初予算リンクを合流: ${mergedInitialLinks.toLocaleString()} 件`);
   }
+  /**
+   * 補正予算書の「…外N目」に束ねられた目は使途別分類・主要経費のコードを持たず、そのままでは未突合に落ちる
+   * （2026年度は国債整理基金特別会計への繰入 31 兆円が丸ごと未突合になっていた）。
+   * 当初予算の同じ項で最も金額の大きい区分を引き継ぐ
+   */
+  const kindBySection = new Map<string, [UnifiedProgramKind, number][]>();
+  if (BASIS_KEY === 'supplementary') {
+    const perSection = new Map<string, Map<UnifiedProgramKind, number>>();
+    for (const it of kouMoku.items) {
+      if (it.budgetType !== '当初予算' || !(it.amount > 0)) continue;
+      const id = sectionIdentity(it);
+      const m = perSection.get(id) ?? new Map<UnifiedProgramKind, number>();
+      const k = classifyResidual(it);
+      m.set(k, (m.get(k) ?? 0) + it.amount);
+      perSection.set(id, m);
+    }
+    for (const [id, m] of perSection) {
+      const total = [...m.values()].reduce((a, b) => a + b, 0);
+      if (total > 0) kindBySection.set(id, [...m].map(([kind, v]) => [kind, v / total] as [UnifiedProgramKind, number]).sort((a, b) => b[1] - a[1]));
+    }
+  }
+  /**
+   * 残余を区分へ割り振る。コードで分かればそれ 1 本、分からない補正の束ね目だけ
+   * 当初予算の同じ項の構成比で按分する（最大の区分に寄せると人件費などが極端に膨らむ）
+   */
+  const splitResidual = (it: MOFKouMokuItem, residual: number): [UnifiedProgramKind, number][] => {
+    const k = classifyResidual(it);
+    if (k !== 'unmatched') return [[k, residual]];
+    const mix = BASIS_KEY === 'supplementary' ? kindBySection.get(sectionIdentity(it)) : undefined;
+    if (!mix) return [['unmatched', residual]];
+    const out: [UnifiedProgramKind, number][] = [];
+    let rest = residual;
+    mix.forEach(([kind, share], i) => {
+      const v = i === mix.length - 1 ? rest : Math.min(rest, Math.floor(residual * share));
+      if (v > 0) out.push([kind, v]);
+      rest -= v;
+    });
+    return out;
+  };
   const byKind: Record<UnifiedProgramKind, number> = { rs: 0, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, unmatched: 0, outside: 0 };
   const linkedIn = new Map<number, number>(); // pid → 目からの流入合計
   let scaledDown = 0;
@@ -383,10 +459,11 @@ function main() {
     }
     const residual = itAmount - flowed;
     if (residual > 0) {
-      const kind = classifyResidual(it);
-      byKind[kind] += residual;
-      ensure({ id: kindNodeId(kind), col: 'program', name: UNIFIED_PROGRAM_KIND_LABELS[kind], value: residual, kind });
-      addEdge(kmId, kindNodeId(kind), residual);
+      for (const [kind, v] of splitResidual(it, residual)) {
+        byKind[kind] += v;
+        ensure({ id: kindNodeId(kind), col: 'program', name: UNIFIED_PROGRAM_KIND_LABELS[kind], value: v, kind });
+        addEdge(kmId, kindNodeId(kind), v);
+      }
     }
   }
   // 事業ノードの登録と outside 流入
