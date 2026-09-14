@@ -7,6 +7,7 @@ import { simulate } from '@/app/lib/tax-burden/simulate';
 import { lifecycleSeries, annualPension } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { basketForIncome, consumptionTax } from '@/app/lib/tax-burden/consumption-tax';
 import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
+import { japanOverlayRates, oecdOverlayRates, overlayAddOn } from '@/app/lib/tax-burden/oecd-overlay';
 import { taxRevenueFromOverview } from '@/app/lib/tax-burden/revenue';
 import type { AgeDataset, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxRevenue } from '@/types/tax-burden';
 import type { MOFBudgetOverview } from '@/types/mof-budget-overview';
@@ -139,6 +140,28 @@ assert(incidence.referenceShares.length > 0 && incidence.referenceShares.every(r
 assert.equal(wageIncidenceRate(incidence, 0), 0);
 const quarterRate = wageIncidenceRate(incidence, 0.25);
 assert(quarterRate > 0.01 && quarterRate < 0.1, `25%帰着の賃金比 ${quarterRate}`);
+
+// 5c. Cross-country inputs that let the same assumptions move the OECD comparison lines.
+const oecdIncidence = incidence.oecd;
+assert(oecdIncidence.countries >= 30, `OECD法人税比の国数 ${oecdIncidence.countries}`);
+assert(oecdIncidence.minRatio <= oecdIncidence.medianRatio && oecdIncidence.medianRatio <= oecdIncidence.maxRatio);
+assert(oecdIncidence.averageRatio > 0.02 && oecdIncidence.averageRatio < 0.3, `OECD平均の法人所得課税÷賃金 ${oecdIncidence.averageRatio}`);
+assert(oecdIncidence.japanRatio > 0.02 && oecdIncidence.japanRatio < 0.3, `日本の法人所得課税÷賃金 ${oecdIncidence.japanRatio}`);
+const vat = oecd.vat;
+assert.equal(vat.japanStandard, 0.1, '日本の標準税率');
+assert(vat.minStandard <= vat.averageStandard && vat.averageStandard <= vat.maxStandard, 'VAT標準税率の順序');
+assert(vat.averageStandard > 0.15 && vat.averageStandard < 0.25, `OECD平均の標準税率 ${vat.averageStandard}`);
+// The overlay must be inert while both assumptions are off, and must raise the rate once either is on.
+const overlayOptions = { consumption, includeConsumption: false, assumption: 'net-fixed' as const, corporateShare: 0 };
+const jpRates = japanOverlayRates(vat, incidence);
+const oecdRates = oecdOverlayRates(vat, incidence);
+assert.equal(overlayAddOn(5000000, jpRates, overlayOptions), 0);
+const withConsumption = overlayAddOn(5000000, jpRates, { ...overlayOptions, includeConsumption: true });
+const oecdConsumption = overlayAddOn(5000000, oecdRates, { ...overlayOptions, includeConsumption: true });
+assert(withConsumption > 1 && withConsumption < 8, `日本の消費税加算 ${withConsumption}pt`);
+assert(oecdConsumption > withConsumption, 'OECD平均の税率のほうが高い');
+const withCorporate = overlayAddOn(5000000, jpRates, { ...overlayOptions, corporateShare: 0.25 });
+assert(Math.abs(withCorporate - quarterRate * 100) < 0.01, `法人税の加算が世帯カーブと一致 ${withCorporate}`);
 
 // 6. Revenue files unchanged.
 for (let year = 2017; year <= 2026; year++) {

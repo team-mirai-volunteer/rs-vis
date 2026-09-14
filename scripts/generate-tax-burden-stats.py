@@ -279,6 +279,7 @@ def build_oecd(retrieved: str) -> dict:
     curves = build_oecd_curves()
     return {
         'curves': curves,
+        'vat': OECD_VAT,
         'metadata': {
             'source': 'OECD Taxing Wages – country tables (DSD_TAX_WAGES_COU@DF_TW_COU 2.1) と tax wedge decompositions (DF_TW_DECOMP 2.1)。NPATR = 所得税＋本人社会保険料−現金給付 ÷ 総給与',
             'sourceUrl': 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/',
@@ -292,6 +293,32 @@ def build_oecd(retrieved: str) -> dict:
         },
         'years': out_years,
     }
+
+
+def build_oecd_incidence() -> dict:
+    """Corporate income tax over wages and salaries for every OECD member, so the incidence assumption can be
+    applied to the OECD comparison lines as well. XDC values in the comparative revenue table are billions
+    regardless of UNIT_MULT (checked against Japan, Germany and the United States), the national accounts carry
+    their own multiplier."""
+    rev = [r for r in csv.DictReader(open(RAW / 'oecd-revenue-comparative.csv', encoding='utf-8'))
+           if r['OBS_VALUE'] and r['STANDARD_REVENUE'] == 'T_1200' and r['CTRY_SPECIFIC_REVENUE'] == '_T'
+           and r['SECTOR'] == 'S13' and r['UNIT_MEASURE'] == 'XDC']
+    sna = [r for r in csv.DictReader(open(RAW / 'oecd-sna-income-all.csv', encoding='utf-8'))
+           if r['OBS_VALUE'] and r['SECTOR'] == 'S1' and r['ACTIVITY'] == '_T' and r['TRANSACTION'] == 'D11']
+    for year in sorted({r['TIME_PERIOD'] for r in rev}, reverse=True):
+        wages = {r['REF_AREA']: float(r['OBS_VALUE']) * 10 ** int(r['UNIT_MULT']) for r in sna if r['TIME_PERIOD'] == year}
+        corporate = {r['REF_AREA']: float(r['OBS_VALUE']) * 1e9 for r in rev if r['TIME_PERIOD'] == year}
+        ratios = {c: corporate[c] / wages[c] for c in sorted(set(wages) & set(corporate) & set(OECD_MEMBERS)) if wages[c] > 0}
+        if len(ratios) >= 30:
+            lo = min(ratios, key=ratios.get)
+            hi = max(ratios, key=ratios.get)
+            return {'year': year, 'countries': len(ratios),
+                    'averageRatio': round(statistics.fmean(ratios.values()), 5),
+                    'medianRatio': round(statistics.median(ratios.values()), 5),
+                    'japanRatio': round(ratios['JPN'], 5),
+                    'minRatio': round(ratios[lo], 5), 'minCountry': lo,
+                    'maxRatio': round(ratios[hi], 5), 'maxCountry': hi}
+    raise SystemExit('no year has corporate tax and wages for at least 30 OECD members')
 
 
 def build_incidence(retrieved: str) -> dict:
@@ -318,9 +345,11 @@ def build_incidence(retrieved: str) -> dict:
                 '法人税は法律上は企業が納めるが、その一部は賃金の抑制を通じて労働者が負担しているという実証研究がある（税の帰着）。',
                 '労働への帰着シェアは確立した値が無く、公的機関の分配分析では米国CBO・JCTが25%、米国財務省が18%を置いている。学術研究には50%前後の推計も、ほぼ0とする推計もある。',
                 '本画面はシェアを利用者が選ぶ仮定として扱い、既定は0%（表示しない）。賃金に比例して配分するため、給与のある年齢・世帯にのみ現れる。',
+                'OECD比較の線にも同じ仮定を当てられるよう、加盟国の法人所得課税÷賃金・俸給を oecd に入れている（Revenue Statistics 比較表と国民経済計算。日本の年度とは年が違う場合がある）。',
                 '日本を対象にした帰着研究に基づく値ではない。分母は日本全体の賃金・俸給で、世帯の給与に一律の率として当てている。',
             ],
         },
+        'oecd': build_oecd_incidence(),
         'corporateTaxTotal': amount(rev, lambda r: True),
         'wagesAndSalaries': amount(sna, lambda r: r['TRANSACTION'] == 'D11'),
         'compensationOfEmployees': amount(sna, lambda r: r['TRANSACTION'] == 'D1'),
@@ -329,6 +358,27 @@ def build_incidence(retrieved: str) -> dict:
             {'label': '米国財務省', 'share': 0.18},
         ],
     }
+
+
+# 付加価値税の標準税率（2024年1月1日時点）。SDMX には税率の系列が無く、OECD Consumption Tax Trends 2024 の
+# 表2.A.1（各国の標準税率と加盟38か国の単純平均）から転記した固定値。軽減税率は国ごとに対象も税率も違うため、
+# 日本の8/10と同じ比率（標準税率の0.8倍）を当てる仮定を置く。
+OECD_VAT = {
+    'asOf': '2024-01-01',
+    'source': 'OECD (2024), Consumption Tax Trends 2024, Table 2.A.1 – VAT/GST rates in OECD member countries',
+    'sourceUrl': 'https://www.oecd.org/en/publications/consumption-tax-trends-2024_dcd4dd36-en.html',
+    'averageStandard': 0.193,
+    'minStandard': 0.05,
+    'minCountry': 'CAN',
+    'maxStandard': 0.27,
+    'maxCountry': 'HUN',
+    'japanStandard': 0.10,
+    'reducedFactor': 0.8,
+    'notes': [
+        'カナダの5%は連邦GSTのみで、州の売上税・HSTを含まない（OECDの表も連邦分で記載）。',
+        '軽減税率・非課税の範囲は国ごとに大きく違う。ここでは日本の家計調査から取った支出構成をそのまま使い、税率だけを置き換えている。',
+    ],
+}
 
 
 CURVE_TYPES = [('S_C0', 'single'), ('S_C2', 'single-children'), ('C_C0', 'one-earner'), ('C_C2', 'one-earner-children')]

@@ -4,6 +4,7 @@ import { useId, useMemo } from 'react';
 import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
 import { HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
+import { japanOverlayRates, oecdOverlayRates, overlayAddOn } from '@/app/lib/tax-burden/oecd-overlay';
 
 // One colour per household. 単身 used to take --primary-accent (#0f8472), which reads the same as the
 // --primary (#2aa693) of 片働き夫婦・子2人 when both are solid lines, so it gets a violet of its own.
@@ -33,8 +34,41 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
     ? oecdYear.points.filter(pt => pt.household === state.household).map(pt => ({ ...pt, income: oecdYear.averageWageJpy! * pt.awRatioTotal }))
     : [];
   const oecdMissing = state.showOecd && oecd && !curve && points.length === 0;
+  // OECD publishes income tax, employee contributions and cash benefits only. When the consumption tax or the
+  // corporate-tax incidence is switched on, the same two items are added to the OECD lines as well, so that the
+  // comparison keeps comparing like with like. Japan's lines move on Japanese rates, the OECD lines on OECD ones.
+  const overlay = useMemo(() => {
+    const options = { consumption, includeConsumption: state.includeConsumption,
+      assumption: state.consumptionAssumption, corporateShare: state.corporateShare };
+    const japan = japanOverlayRates(oecd?.vat, incidence);
+    const average = oecdOverlayRates(oecd?.vat, incidence);
+    const active = (state.includeConsumption && !!consumption) || state.corporateShare > 0;
+    return {
+      active,
+      japanAt: (income: number) => overlayAddOn(income, japan, options),
+      oecdAt: (income: number) => overlayAddOn(income, average, options),
+    };
+  }, [consumption, incidence, oecd, state.includeConsumption, state.consumptionAssumption, state.corporateShare]);
+  const shownCurve = useMemo(() => {
+    if (!curve) return null;
+    const income = (i: number) => curve.averageWageJpy * curve.awRatio[i];
+    return {
+      japan: curve.japan.map((v, i) => v === null ? null : v + overlay.japanAt(income(i))),
+      oecdAverage: curve.oecdAverage.map((v, i) => v + overlay.oecdAt(income(i))),
+      min: curve.min.map((v, i) => v + overlay.oecdAt(income(i))),
+      max: curve.max.map((v, i) => v + overlay.oecdAt(income(i))),
+    };
+  }, [curve, overlay]);
+  const shownPoints = useMemo(() => points.map(pt => ({
+    ...pt,
+    japan: pt.japan === null ? null : pt.japan + overlay.japanAt(pt.income),
+    oecdAverage: pt.oecdAverage + overlay.oecdAt(pt.income),
+    min: pt.min + overlay.oecdAt(pt.income),
+    max: pt.max + overlay.oecdAt(pt.income),
+  })), [points, overlay]);
   const valid = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope && rateOf(p) !== null).map(p => rateOf(p)!);
-  const oecdValues = (curve ? [...curve.min, ...curve.max, ...curve.oecdAverage] : points.flatMap(pt => [pt.min, pt.max, pt.oecdAverage])).map(v => v / 100);
+  const oecdValues = (shownCurve ? [...shownCurve.min, ...shownCurve.max, ...shownCurve.oecdAverage]
+    : shownPoints.flatMap(pt => [pt.min, pt.max, pt.oecdAverage])).map(v => v / 100);
   // One deeply negative household (ひとり親 just above the wage requirement) would otherwise squash the whole chart,
   // so the axis stops at -50% and anything beyond is clipped, as the note says.
   const minY = Math.max(-0.5, Math.min(-0.1, Math.floor(Math.min(...valid, ...oecdValues) * 10) / 10));
@@ -64,8 +98,19 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   };
   const oecdX = (i: number) => x(curve!.averageWageJpy * curve!.awRatio[i]);
   const linePath = (values: (number | null)[]) => values.map((v, i) => v === null ? '' : `${i === 0 || values[i - 1] === null ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ');
-  const bandPath = curve ? `${curve.max.map((v, i) => `${i === 0 ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} ${[...curve.min].reverse().map((v, j) => `L${oecdX(curve.min.length - 1 - j).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} Z` : '';
+  const bandPath = shownCurve ? `${shownCurve.max.map((v, i) => `${i === 0 ? 'M' : 'L'}${oecdX(i).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} ${[...shownCurve.min].reverse().map((v, j) => `L${oecdX(shownCurve.min.length - 1 - j).toFixed(2)},${y(v / 100).toFixed(2)}`).join(' ')} Z` : '';
   const householdLabel = HOUSEHOLDS.find(h => h.id === state.household)!.label;
+  const vat = oecd?.vat;
+  const oecdIncidence = incidence?.oecd;
+  const pct = (v: number) => `${Math.round(v * 1000) / 10}%`;
+  const overlayItems = [state.includeConsumption && consumption ? '消費税' : '', state.corporateShare > 0 ? '法人税の転嫁' : ''].filter(Boolean);
+  const overlayLabel = overlay.active ? `（${overlayItems.join('・')}を加算）` : '';
+  const overlayNote = !overlay.active
+    ? 'OECDの値は所得税・本人社会保険料−現金給付のみで、消費税も事業主負担も含みません。'
+    : `OECDの値はもともと所得税・本人社会保険料−現金給付だけなので、${overlayItems.join('と')}を入れている間は同じ項目をOECD側にも足しています。`
+      + `${state.includeConsumption && consumption && vat ? `消費税は、日本の線には日本の税率（標準${pct(vat.japanStandard)}）、OECDの帯と平均には加盟国の標準税率の平均（${pct(vat.averageStandard)}、${vat.asOf}時点。軽減税率は標準の${vat.reducedFactor}倍と仮定）を当て、支出構成はどちらも家計調査の日本のものを使っています。` : ''}`
+      + `${state.corporateShare > 0 && oecdIncidence ? `法人税の転嫁は、日本の線には日本の法人所得課税÷賃金・俸給（${incidence ? pct(incidence.corporateTaxTotal / incidence.wagesAndSalaries) : ''}、${incidence?.metadata.year}年）、OECDの帯と平均には加盟${oecdIncidence.countries}か国の平均（${pct(oecdIncidence.averageRatio)}、${oecdIncidence.year}年。中央値は${pct(oecdIncidence.medianRatio)}で、ノルウェーの石油課税が平均を押し上げています）を当てています。` : ''}`
+      + '国ごとの消費税率・法人税の違いは帯の幅には反映していません。事業主負担はどちらにも含みません。';
   const nearestOecd = curve ? curve.awRatio.reduce((best, r, i) => Math.abs(curve.averageWageJpy * r - state.income) < Math.abs(curve.averageWageJpy * curve.awRatio[best] - state.income) ? i : best, 0) : -1;
   return (
     <div>
@@ -96,11 +141,11 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
         <g clipPath={`url(#${id}-clip)`} fill="none">
           {curve && <>
             <path d={bandPath} fill={OECD_BAND} stroke="none" />
-            <path d={linePath(curve.oecdAverage)} stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" />
-            <path d={linePath(curve.japan)} stroke={OECD_JAPAN} strokeWidth="1.5" />
+            <path d={linePath(shownCurve!.oecdAverage)} stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" />
+            <path d={linePath(shownCurve!.japan)} stroke={OECD_JAPAN} strokeWidth="1.5" />
             {[0.5, 1, 1.5, 2, 2.5].map(r => <text key={r} x={x(curve.averageWageJpy * r)} y={top + 12} textAnchor="middle" fontSize="10" fill={OECD_LINE}>AW{Math.round(r * 100)}%</text>)}
           </>}
-          {points.map(pt => {
+          {shownPoints.map(pt => {
             const cx = x(pt.income);
             return <g key={pt.awRatioTotal}>
               <g stroke={OECD_LINE} fill={OECD_LINE}>
@@ -132,21 +177,21 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
         {reform && <span className="font-bold text-primary-accent">太い破線：選択世帯の改革案</span>}
         {curve && <>
           <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="10"><rect x="0" y="0" width="24" height="10" fill={OECD_BAND} /></svg>OECD加盟{curve.countries[0]}か国の最小〜最大</span>
-          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" /></svg>OECD平均</span>
-          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_JAPAN} strokeWidth="1.5" /></svg>日本（OECD計算）</span>
+          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_LINE} strokeWidth="3" strokeDasharray="8 4" /></svg>OECD平均{overlayLabel}</span>
+          <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke={OECD_JAPAN} strokeWidth="1.5" /></svg>日本（OECD計算）{overlayLabel}</span>
         </>}
-        {points.length > 0 && <span>縦線：OECD加盟{points[0].countries}か国の最小〜最大、◆OECD平均、○OECD計算の日本（共働きは定点のみ）</span>}
+        {shownPoints.length > 0 && <span>縦線：OECD加盟{points[0].countries}か国の最小〜最大、◆OECD平均、○OECD計算の日本（共働きは定点のみ）</span>}
       </div>
       {curve && nearestOecd >= 0 && <div className="mt-3 grid gap-2 rounded-xl bg-mirai-surface p-3 text-xs sm:grid-cols-4">
         <div><span className="block text-mirai-text-secondary">選択年収に最も近いOECD点</span><span className="font-bold tabular-nums">AW{Math.round(curve.awRatio[nearestOecd] * 100)}%＝{Math.round(curve.averageWageJpy * curve.awRatio[nearestOecd] / 10000).toLocaleString('ja-JP')}万円</span></div>
-        <div><span className="block text-mirai-text-secondary">日本（OECD計算）</span><span className="font-bold tabular-nums">{curve.japan[nearestOecd]?.toFixed(1)}%</span></div>
-        <div><span className="block text-mirai-text-secondary">OECD平均</span><span className="font-bold tabular-nums">{curve.oecdAverage[nearestOecd].toFixed(1)}%</span></div>
-        <div><span className="block text-mirai-text-secondary">最小〜最大</span><span className="font-bold tabular-nums">{curve.min[nearestOecd].toFixed(1)}%（{curve.minCountry[nearestOecd]}）〜{curve.max[nearestOecd].toFixed(1)}%（{curve.maxCountry[nearestOecd]}）</span></div>
+        <div><span className="block text-mirai-text-secondary">日本（OECD計算）</span><span className="font-bold tabular-nums">{shownCurve!.japan[nearestOecd]?.toFixed(1)}%</span></div>
+        <div><span className="block text-mirai-text-secondary">OECD平均</span><span className="font-bold tabular-nums">{shownCurve!.oecdAverage[nearestOecd].toFixed(1)}%</span></div>
+        <div><span className="block text-mirai-text-secondary">最小〜最大</span><span className="font-bold tabular-nums">{shownCurve!.min[nearestOecd].toFixed(1)}%（{curve.minCountry[nearestOecd]}）〜{shownCurve!.max[nearestOecd].toFixed(1)}%（{curve.maxCountry[nearestOecd]}）</span></div>
       </div>}
       {points.length > 0 && <div className="mt-3 rounded-xl bg-mirai-surface p-3">
         <p className="mb-2 text-xs leading-relaxed text-mirai-text-secondary"><strong>共働きはOECDに連続系列が無く、公表されている定点だけを表示しています。</strong>括弧内はOECDが置いている夫婦の収入按分です。本試作のカーブは左パネルの按分（{state.share}:{100 - state.share}）で計算しているので、按分を合わせると同じ条件の比較になります。</p>
-        <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums"><thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left">OECDの定点</th><th scope="col" className="text-right">世帯年収</th><th scope="col" className="text-right">日本</th><th scope="col" className="text-right">OECD平均</th><th scope="col" className="text-right">最小</th><th scope="col" className="text-right">最大</th></tr></thead>
-          <tbody>{points.map(pt => <tr key={pt.awRatioTotal} className="border-t border-mirai-border/30">
+        <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums"><thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left">OECDの定点{overlayLabel}</th><th scope="col" className="text-right">世帯年収</th><th scope="col" className="text-right">日本</th><th scope="col" className="text-right">OECD平均</th><th scope="col" className="text-right">最小</th><th scope="col" className="text-right">最大</th></tr></thead>
+          <tbody>{shownPoints.map(pt => <tr key={pt.awRatioTotal} className="border-t border-mirai-border/30">
             <th scope="row" className="py-1 text-left font-normal">平均賃金比 {pt.principal.replace('AW', '')}％＋{pt.spouse.replace('AW', '')}％{pt.suggestedShare !== null && `（按分${pt.suggestedShare}:${100 - pt.suggestedShare}）`}</th>
             <td className="text-right">{Math.round(pt.income / 10000).toLocaleString('ja-JP')}万円</td>
             <td className="text-right font-bold">{pt.japan?.toFixed(1)}%</td><td className="text-right">{pt.oecdAverage.toFixed(1)}%</td>
@@ -154,7 +199,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
           </tr>)}</tbody></table></div>
       </div>}
       {oecdMissing && <p role="status" className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs">「{householdLabel}」に対応するOECDの公表値がありません。家族構成を変えるとOECD比較を表示します。</p>}
-      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円、フルタイムの最低賃金なら年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）に届かない帯です。ここでは厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算しますが、生活保護・無保険・被扶養者のどれになるかで実際の負担は大きく変わるため参考値として薄く描いています。これより上は被用者保険に入るので計算が確定します。縦軸の範囲を超える値は図の外に出ます。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。消費税・事業主負担を含まない。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。消費税・事業主負担を含まない。`}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
+      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円、フルタイムの最低賃金なら年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）に届かない帯です。ここでは厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算しますが、生活保護・無保険・被扶養者のどれになるかで実際の負担は大きく変わるため参考値として薄く描いています。これより上は被用者保険に入るので計算が確定します。縦軸の範囲を超える値は図の外に出ます。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。`}{state.showOecd && oecd && overlayNote}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
     </div>
   );
 }

@@ -212,6 +212,11 @@ export interface FiscalImpact {
 /** Japan-wide totals that turn a corporate-tax incidence assumption into a rate on wages. */
 export interface IncidenceDataset {
   metadata: { year: string; sources: string[]; retrievedOn: string; notes: string[] };
+  /** Corporate income tax over wages and salaries across OECD members, so the same assumption can move the OECD lines. */
+  oecd: {
+    year: string; countries: number; averageRatio: number; medianRatio: number; japanRatio: number;
+    minRatio: number; minCountry: string; maxRatio: number; maxCountry: string;
+  };
   corporateTaxTotal: number;
   wagesAndSalaries: number;
   compensationOfEmployees: number;
@@ -309,8 +314,25 @@ export interface OecdCurve {
   japanDetail: Record<'GWE' | 'IT_CG' | 'IT_LG' | 'EESSC' | 'CB', (number | null)[]>;
 }
 
+/** Standard VAT/GST rates, transcribed from Consumption Tax Trends: the SDMX API publishes no rate series. */
+export interface OecdVatRates {
+  asOf: string;
+  source: string;
+  sourceUrl: string;
+  averageStandard: number;
+  minStandard: number;
+  minCountry: string;
+  maxStandard: number;
+  maxCountry: string;
+  japanStandard: number;
+  /** Reduced rate assumed for other countries as this multiple of their standard rate (Japan's 8/10). */
+  reducedFactor: number;
+  notes: string[];
+}
+
 export interface OecdDataset {
   metadata: { source: string; sourceUrl: string; retrievedOn: string; notes: string[] };
+  vat: OecdVatRates;
   years: Record<string, { averageWageJpy: number | null; points: OecdPoint[] }>;
   /** Keyed by our household id; two-earner households have no continuous series. */
   curves: Partial<Record<HouseholdId, OecdCurve>>;

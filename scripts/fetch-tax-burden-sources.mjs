@@ -44,6 +44,16 @@ const SOURCES = [
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE1_INCOME,2.0/A.JPN...........?startPeriod=2022&format=csvfile',
   },
   {
+    // Revenue Statistics comparative table: category 1200 for every OECD member, national currency (XDC values are in billions)
+    file: 'oecd-revenue-comparative.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_REV_COMP_OECD@DF_RSOECD,1.0/all?startPeriod=2020&format=csvfile',
+  },
+  {
+    // National accounts D11 wages and salaries for every country (denominator of the cross-country incidence ratio)
+    file: 'oecd-sna-income-all.csv',
+    url: 'https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE1_INCOME,2.0/A....D11....XDC.V...?startPeriod=2020&format=csvfile',
+  },
+  {
     file: 'oecd-taxing-wages-npatr-all-2023-2025.csv',
     url: 'https://sdmx.oecd.org/public/rest/data/OECD.CTP.TPS,DSD_TAX_WAGES_COU@DF_TW_COU,2.1/.NPATR.....A?startPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfile',
   },

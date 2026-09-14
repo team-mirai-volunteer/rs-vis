@@ -12,6 +12,7 @@ import { annualPension, inWorkPension, lifecycleSeries, heatmapGrid } from '../a
 import { basketForIncome, consumptionTax, estimatedConsumptionTax } from '../app/lib/tax-burden/consumption-tax';
 import { corporateTaxOnWages, wageIncidenceRate } from '../app/lib/tax-burden/incidence';
 import { fiscalImpact } from '../app/lib/tax-burden/fiscal-impact';
+import { japanOverlayRates, oecdOverlayRates, overlayAddOn } from '../app/lib/tax-burden/oecd-overlay';
 import { encodeTaxState, decodeTaxState } from '../app/lib/tax-burden/reform-url';
 
 const p = raw as unknown as TaxParameters;
@@ -312,4 +313,26 @@ test('unknown model and invalid numbers fail safely with a visible warning; empt
   assert(decoded.warning);
   assert.deepEqual(decoded.state, initialTaxState());
   assert.deepEqual(decodeTaxState(''), { state: initialTaxState(), warning: null });
+});
+
+test('the OECD comparison moves with the same assumptions as our own curve, at the rates of each side', () => {
+  const japan = japanOverlayRates(oecd.vat, incidence);
+  const average = oecdOverlayRates(oecd.vat, incidence);
+  const off = { consumption, includeConsumption: false, assumption: 'net-fixed' as const, corporateShare: 0 };
+  // Published OECD values are shown untouched while both assumptions are off.
+  assert.equal(overlayAddOn(5000000, japan, off), 0);
+  assert.equal(overlayAddOn(5000000, average, off), 0);
+  assert.equal(overlayAddOn(0, japan, { ...off, includeConsumption: true }), 0);
+  // Consumption: the Japan line uses 10%, the OECD lines the higher OECD average standard rate.
+  const on = { ...off, includeConsumption: true };
+  const jp = overlayAddOn(5000000, japan, on);
+  const oe = overlayAddOn(5000000, average, on);
+  assert.equal(jp, estimatedConsumptionTax(consumption, 5000000) / 5000000 * 100);
+  assert(oe > jp * 1.5, `OECD平均税率${oecd.vat.averageStandard} の加算 ${oe} が日本 ${jp} を上回る`);
+  assert(Math.abs(japan.reducedVat - 0.08) < 1e-12, '日本の軽減税率 8%');
+  // Corporate incidence: identical to the rate the household curve adds, and applied to both sides.
+  const share = 0.25;
+  assert(Math.abs(overlayAddOn(5000000, japan, { ...off, corporateShare: share }) - wageIncidenceRate(incidence, share) * 100) < 1e-9);
+  assert(Math.abs(overlayAddOn(5000000, average, { ...off, corporateShare: share }) - incidence.oecd.averageRatio * share * 100) < 1e-9);
+  assert.throws(() => overlayAddOn(5000000, japan, { ...off, corporateShare: 1.5 }), /帰着シェア/);
 });
