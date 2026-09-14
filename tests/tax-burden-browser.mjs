@@ -99,7 +99,9 @@ try {
   await page.getByLabel('OECD平均・最小・最大を重ねる').check();
   await expect(page.getByText('OECD平均', { exact: true }).first()).toBeVisible();
   await page.getByRole('combobox', { name: /^家族構成/ }).selectOption('two-earners-children');
-  await expect(page.getByText(/連続系列はOECDに公開されていません/)).toBeVisible();
+  await expect(page.getByText(/共働きはOECDに連続系列が無く/)).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: /平均賃金比 100％＋67％/ })).toBeVisible();
+  await page.screenshot({ path: resolve(output, 'curve-oecd-two-earners.png'), fullPage: true });
   await page.getByRole('combobox', { name: /^家族構成/ }).selectOption('one-earner-children');
   await page.screenshot({ path: resolve(output, 'curve-oecd.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -110,6 +112,6 @@ try {
   await page.getByLabel('世帯年収を万円で入力').fill('0');
   await expect(page.getByText('未定義', { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
-  writeFileSync(resolve(output, 'result.json'), JSON.stringify({ passed: true, pageErrors: errors, integration: 'offline React page; Next Link/Image adapted; actual generated data', screenshots: ['desktop.png', 'mobile.png', 'revenue.png', 'age.png', 'heatmap.png', 'curve-oecd.png'] }, null, 2));
+  writeFileSync(resolve(output, 'result.json'), JSON.stringify({ passed: true, pageErrors: errors, integration: 'offline React page; Next Link/Image adapted; actual generated data', screenshots: ['desktop.png', 'mobile.png', 'revenue.png', 'age.png', 'heatmap.png', 'curve-oecd.png', 'curve-oecd-two-earners.png', 'stats-age.png'] }, null, 2));
   console.log(`PASS: offline browser smoke test; desktop/mobile screenshots in ${output}`);
 } finally { await browser.close(); }

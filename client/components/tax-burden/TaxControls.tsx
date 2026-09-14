@@ -54,7 +54,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, taxItems
       {(state.view === 'curve' || state.view === 'reform') && <Toggle label="6つの家族構成を重ねる" checked={state.showAll} onChange={v => set('showAll', v)} />}
       <div className="space-y-3 border-t border-mirai-border pt-4">
         <Toggle label="消費税（推計）を含める" note={hasConsumption ? '家計調査2024年の年収十分位別支出から推計' : '消費支出データ未読込'} checked={state.includeConsumption} disabled={!hasConsumption} onChange={v => set('includeConsumption', v)} />
-        {(state.view === 'curve' || state.view === 'reform') && <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025（平均賃金比50〜250%の連続系列。単身・片働きの4類型）' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />}
+        {(state.view === 'curve' || state.view === 'reform') && <Toggle label="OECD平均・最小・最大を重ねる" note={hasOecd ? 'OECD Taxing Wages 2025。単身・片働きは平均賃金比50〜250%の連続系列、共働きは定点のみ' : 'OECDデータ未読込'} checked={state.showOecd} disabled={!hasOecd} onChange={v => set('showOecd', v)} />}
       </div>
       {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-4 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
         <h2 className="font-bold text-primary-accent">働き方の前提</h2>
