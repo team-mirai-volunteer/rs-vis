@@ -164,11 +164,14 @@ export function RangeWindowRow({
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignSelf: 'stretch' }}>
         {ARROWS.map(([delta, Icon, title]) => {
-          const step = () => { markReplace(); setTopN(prev => clampTop(prev + delta)); };
+          // 押し続けの回数で刻みを大きくする（1 回の更新に図の再計算が伴い、間隔では加速できないため）
+          // 更新は 1 秒に 4 回程度なので、1 秒ごとに段を上げる（1 → 2 → 5 → 10 → 20）
+          const magnitude = (tick: number) => (tick < 4 ? 1 : tick < 8 ? 2 : tick < 12 ? 5 : tick < 18 ? 10 : 20);
+          const step = (tick = 0) => { markReplace(); setTopN(prev => clampTop(prev + delta * magnitude(tick))); };
           return (
             <Button key={delta} variant="ghost" title={`件数を${title}`} aria-label={`${label}の件数を${title}`}
               {...repeat(step)}
-              onClick={(e) => { if (e.detail === 0) step(); }}
+              onClick={(e) => { if (e.detail === 0) step(0); }}
               className={STEP_BUTTON_CLASS}
               style={{ WebkitTouchCallout: 'none' }}
             >
