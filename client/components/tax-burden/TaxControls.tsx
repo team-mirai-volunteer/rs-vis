@@ -80,10 +80,10 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
       </>}
 
       {policy && <section className="space-y-3" aria-label="税・給付の条件">
-        <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
         <p className="text-xs leading-relaxed text-mirai-text-secondary">{state.view === 'curve' ? '動かすと、基準制度のカーブに改革案のカーブ（太い破線）が重なります。'
           : state.view === 'age' ? '動かすと、基準制度の線（細い灰色）に改革案の線（破線）が重なります。'
           : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
+        <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
         <h3 className="pt-1 text-xs font-bold text-primary-accent">定率のものは料率で</h3>
         <RangeField label="住民税・所得割の税率" value={state.reform.localRate * 100} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
         <RangeField label="年金保険料率（本人）" value={state.reform.pensionRate * 100} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
