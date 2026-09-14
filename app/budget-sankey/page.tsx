@@ -20,11 +20,17 @@ import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
+  UNIFIED_FILTER_DEFAULT,
   UNIFIED_PRESET_COLUMNS,
+  UNIFIED_SCORE_RANGE_EMPTY,
+  hasScoreRange,
   type UnifiedOffset,
+  type UnifiedPolicyScores,
+  type UnifiedScoreRange,
   type UnifiedTopN,
   type UnifiedViewFilter,
 } from '@/types/unified-budget-view';
+import { usePolicySummary } from '@/client/components/unified-budget/policy-summary-cache';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toViewGraph } from '@/app/lib/unified-budget/transform';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -78,14 +84,76 @@ function parsePerColumn(params: URLSearchParams, prefix: 't' | 'o'): Partial<Rec
   return out;
 }
 
+/** スコア範囲の URL 表現 "min-max"（片方だけなら "60-" / "-40"） */
+function parseScoreRange(v: string | null): UnifiedScoreRange {
+  if (!v) return UNIFIED_SCORE_RANGE_EMPTY;
+  const i = v.indexOf('-');
+  return i < 0 ? { min: v, max: '' } : { min: v.slice(0, i), max: v.slice(i + 1) };
+}
+const serializeScoreRange = (r: UnifiedScoreRange): string | null => (r.min || r.max ? `${r.min}-${r.max}` : null);
+
+/**
+ * 絞り込みの URL パラメータ。
+ *   fbig=1 巨大特会を含める / fnrs=0 非事業ノードを隠す / fmi 所管（複数）/ fac 会計区分（複数）/ fq 名前
+ *   fbmin・fbmax 予算額の下限・上限 / fsmin・fsmax 支出額の下限・上限
+ *   fpq 事業名・fpr=1 正規表現 / frq 支出先名・frr=1 正規表現・frs=1 再委託先を含む
+ *   fsub=has|none 再委託の有無・fsd 階層の下限 / fso・fsx・fsn スコア範囲 "lo-hi"
+ */
 function parseFilter(params: URLSearchParams): UnifiedViewFilter {
+  const fsub = params.get('fsub');
+  const fsd = Number(params.get('fsd'));
   return {
     includeCollapsedAccounts: params.get('fbig') === '1',
     showNonRs: params.get('fnrs') !== '0',
     ministries: params.getAll('fmi'),
     accountTypes: params.getAll('fac').filter((v): v is 'general' | 'special' => v === 'general' || v === 'special'),
     nameQuery: params.get('fq') ?? '',
+    budgetMin: params.get('fbmin') ?? '',
+    budgetMax: params.get('fbmax') ?? '',
+    spendingMin: params.get('fsmin') ?? '',
+    spendingMax: params.get('fsmax') ?? '',
+    projectQuery: params.get('fpq') ?? '',
+    projectRegex: params.get('fpr') === '1',
+    recipientQuery: params.get('frq') ?? '',
+    recipientRegex: params.get('frr') === '1',
+    recipientIncludeSub: params.get('frs') === '1',
+    subcontract: fsub === 'has' || fsub === 'none' ? fsub : 'any',
+    subcontractMinDepth: Number.isInteger(fsd) && fsd >= 2 ? fsd : UNIFIED_FILTER_DEFAULT.subcontractMinDepth,
+    scoreO: parseScoreRange(params.get('fso')),
+    scoreX: parseScoreRange(params.get('fsx')),
+    scoreN: parseScoreRange(params.get('fsn')),
   };
+}
+
+function serializeFilter(params: URLSearchParams, filter: UnifiedViewFilter): void {
+  if (filter.includeCollapsedAccounts) params.set('fbig', '1');
+  if (!filter.showNonRs) params.set('fnrs', '0');
+  for (const m of filter.ministries) params.append('fmi', m);
+  for (const a of filter.accountTypes) params.append('fac', a);
+  if (filter.nameQuery.trim()) params.set('fq', filter.nameQuery.trim());
+  if (filter.budgetMin.trim()) params.set('fbmin', filter.budgetMin.trim());
+  if (filter.budgetMax.trim()) params.set('fbmax', filter.budgetMax.trim());
+  if (filter.spendingMin.trim()) params.set('fsmin', filter.spendingMin.trim());
+  if (filter.spendingMax.trim()) params.set('fsmax', filter.spendingMax.trim());
+  if (filter.projectQuery.trim()) {
+    params.set('fpq', filter.projectQuery.trim());
+    if (filter.projectRegex) params.set('fpr', '1');
+  }
+  if (filter.recipientQuery.trim()) {
+    params.set('frq', filter.recipientQuery.trim());
+    if (filter.recipientRegex) params.set('frr', '1');
+    if (filter.recipientIncludeSub) params.set('frs', '1');
+  }
+  if (filter.subcontract !== 'any') {
+    params.set('fsub', filter.subcontract);
+    if (filter.subcontract === 'has' && filter.subcontractMinDepth !== UNIFIED_FILTER_DEFAULT.subcontractMinDepth) params.set('fsd', String(filter.subcontractMinDepth));
+  }
+  const fso = serializeScoreRange(filter.scoreO);
+  const fsx = serializeScoreRange(filter.scoreX);
+  const fsn = serializeScoreRange(filter.scoreN);
+  if (fso) params.set('fso', fso);
+  if (fsx) params.set('fsx', fsx);
+  if (fsn) params.set('fsn', fsn);
 }
 
 export default function UnifiedBudgetSankeyPage() {
@@ -169,7 +237,18 @@ function UnifiedBudgetSankeyContent() {
 
   // 変換パイプライン。絞り込み・畳み込みまでは browse（サイドパネル用・全件）、TopN 後が図用
   const base = useMemo(() => (graph ? toViewGraph(graph) : null), [graph]);
-  const filtered = useMemo(() => (base ? applyFilter(base, filter) : null), [base, filter]);
+  // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
+  // 取得前（undefined）・取得失敗（null）のときは ctx.policy を渡さず、スコアの絞り込みは効かせない
+  const scoreFilterActive = hasScoreRange(filter.scoreO) || hasScoreRange(filter.scoreX) || hasScoreRange(filter.scoreN);
+  const policySummary = usePolicySummary(scoreFilterActive && graph ? graph.metadata.rsSheetYear : null);
+  const policyScores = useMemo<UnifiedPolicyScores | undefined>(() => {
+    if (!policySummary) return undefined;
+    const out: UnifiedPolicyScores = {};
+    for (const [pid, e] of Object.entries(policySummary.items)) out[pid] = { o: e.o, x: e.x, n: e.n };
+    return out;
+  }, [policySummary]);
+  const filterCtx = useMemo(() => ({ policy: policyScores }), [policyScores]);
+  const filtered = useMemo(() => (base ? applyFilter(base, filter, filterCtx) : null), [base, filter, filterCtx]);
   const collapsed = useMemo(() => (filtered ? collapseColumns(filtered, effectiveColumns) : null), [filtered, effectiveColumns]);
   const columnCounts = useMemo(() => (collapsed ? countByColumn(collapsed) : {}), [collapsed]);
   const display = useMemo(() => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset)) : null), [collapsed, topN, offset]);
@@ -198,11 +277,7 @@ function UnifiedBudgetSankeyContent() {
     if (focusRelated) params.set('fr', '1');
     if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
     if (labelDensity !== 'all') params.set('ld', labelDensity);
-    if (filter.includeCollapsedAccounts) params.set('fbig', '1');
-    if (!filter.showNonRs) params.set('fnrs', '0');
-    for (const m of filter.ministries) params.append('fmi', m);
-    for (const a of filter.accountTypes) params.append('fac', a);
-    if (filter.nameQuery.trim()) params.set('fq', filter.nameQuery.trim());
+    serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
@@ -284,6 +359,8 @@ function UnifiedBudgetSankeyContent() {
         rsMeasureLabel={metadata.rsMeasureLabel}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
+        hasSpending={metadata.hasSpending}
+        scoreStatus={!scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
         bottomLeftExtra={
           <UnifiedSettings
             fontPx={fontPx}

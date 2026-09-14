@@ -116,6 +116,14 @@ export interface UnifiedNode {
   budgetSummary?: BudgetSummary;
   /** 事業列のRS事業のみ。会計区分・歳出項目ごとの予算内訳（サイドパネルの予算・執行アコーディオン用） */
   budgetBreakdown?: BudgetBreakdownItem[];
+  /**
+   * 再委託ブロック階層数（事業列のRS事業のみ・2以上＝再委託ありの場合のみ）。
+   * sankey-svg の project-budget ノード（subcontracts-{年度}.json の maxDepth）から引き継ぐ。
+   * 未設定 = 再委託の記載なし。絞り込み（filter.subcontract）が使う
+   */
+  subcontractDepth?: number;
+  /** 再委託ブロックの支出先名一覧（事業列のRS事業・再委託ありのみ）。支出先名の絞り込み「再委託先を含む」が使う */
+  subcontractRecipients?: string[];
   /** 支出先ノード（sankey-svg から引き継ぎ） */
   representativeCorporateNumber?: string;
   corporateNumberCount?: number;

@@ -21,7 +21,7 @@ import type { SankeyLink } from '@/types/sankey';
 import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { UnifiedSearch } from './UnifiedSearch';
-import { UnifiedFilterFields } from './UnifiedFilterFields';
+import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
 import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
@@ -85,6 +85,8 @@ export function UnifiedSankeyChart({
   rsSheetYear,
   rsAmountKind,
   bottomLeftExtra,
+  hasSpending = true,
+  scoreStatus = 'idle',
 }: {
   nodes: UnifiedViewNode[];
   links: SankeyLink[];
@@ -110,6 +112,10 @@ export function UnifiedSankeyChart({
   rsAmountKind: MofRsAmountKind;
   /** 左下・ミニマップの右隣に置くもの（表示設定の歯車） */
   bottomLeftExtra?: React.ReactNode;
+  /** 事業(支出)・支出先の列がある年度か（無ければ支出額・支出先名・再委託の絞り込みを出さない） */
+  hasSpending?: boolean;
+  /** 政策評価スコアの取得状況（絞り込み欄の補足表示用） */
+  scoreStatus?: UnifiedScoreStatus;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 1900, height: 900 });
@@ -520,7 +526,7 @@ export function UnifiedSankeyChart({
           onSelect={onSelect}
           filterOpen={filterOpen}
           onToggleFilter={onToggleFilterOpen}
-          filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} />}
+          filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} hasSpending={hasSpending} scoreStatus={scoreStatus} />}
         />
         <HierarchyFilterClearButton active={hasActiveUnifiedFilter(filter)} onClear={() => onFilterChange(UNIFIED_FILTER_DEFAULT)} />
       </div>

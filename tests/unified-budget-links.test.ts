@@ -55,6 +55,7 @@ test('旧 /sankey-svg のクエリを統合ビューへ写す', () => {
   assert.equal(q.get('fso'), '60-80');
   assert.equal(q.get('fsub'), 'has');
   assert.equal(q.get('fsd'), '3');
+  assert.equal(new URLSearchParams(sankeySvgSearchToUnified('fnr=NEDO&fnrs=1')).get('frs'), '1');
   assert.equal(q.get('ffp'), '1');
   assert.equal(q.get('z'), null);
   assert.equal(q.get('q'), null);

@@ -105,6 +105,7 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   if (p.get('fnpr') === '1') out.set('fpr', '1');
   copyText('fnr', 'frq');
   if (p.get('fnrr') === '1') out.set('frr', '1');
+  if (p.get('fnrs') === '1') out.set('frs', '1');
   copyText('fmb', 'fbmin');
   copyText('fxb', 'fbmax');
   copyText('fms', 'fsmin');
