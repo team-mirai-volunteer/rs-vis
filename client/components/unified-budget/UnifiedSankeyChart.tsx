@@ -31,7 +31,7 @@ import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-rea
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
-import { FactRow } from './RsBudgetFacts';
+import { FactRow } from './FactRow';
 import type { WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

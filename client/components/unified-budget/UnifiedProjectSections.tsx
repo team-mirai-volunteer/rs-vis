@@ -4,7 +4,7 @@
  * 統合ビューのサイドパネルに出す「RS事業の詳細」群。
  * /sankey-svg のサイドパネルが事業ノードに対して出している情報を、同じ共有コンポーネントで揃える:
  *   みんなの意見（ProjectComments）→ 政策評価（PolicyEvaluationBlock）→ 事業概要（ProjectOverviewSection）
- *   → RS 予算・執行（RsBudgetFacts）→ 再委託サマリ → 予算・執行の内訳（BudgetExecutionSection）
+ *   → 予算・執行（BudgetExecutionSection: 会計区分別の額、開くと当初・補正・執行と内訳）→ 再委託サマリ
  * 各 API（/api/policy-summary, /api/project-details, /api/subcontracts, /api/quality-scores）は
  * RSシート年度で問い合わせる（統合ビューの year は MOF 予算年度で、RS のシート年度 = 予算年度+1）。
  * 取得結果はモジュール内キャッシュに持ち、ノードを行き来しても再取得しない。
@@ -22,7 +22,6 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { TagChip } from '@/client/components/TagChip';
-import { RsBudgetFacts } from './RsBudgetFacts';
 import { useCached, usePolicySummary } from './policy-summary-cache';
 
 /** 再委託サマリ（/api/subcontracts の全グラフから件数だけ抜く。/sankey-svg と同じ形） */
@@ -102,7 +101,7 @@ export function UnifiedProjectSections({
 
   return (
     <div className="-mx-4 mt-3 border-t border-border">
-      {/* 順番: みんなの意見 → 政策評価 → 事業概要 → RS 予算・執行 → 再委託 → 予算・執行の内訳（意見は見てもらいやすいよう最上段） */}
+      {/* 順番: みんなの意見 → 政策評価 → 事業概要 → 予算・執行 → 再委託（意見は見てもらいやすいよう最上段） */}
       <ProjectComments context={{ pid: String(pid), year, projectName, detail: detail ?? undefined }} scaleFont={scaleFont} />
       <PolicyEvaluationBlock
         pid={pid}
@@ -143,7 +142,17 @@ export function UnifiedProjectSections({
         isLoading={overviewExpanded && detail === undefined}
       />
 
-      {budgetSummary && <RsBudgetFacts summary={budgetSummary} className="shrink-0 border-b border-mirai-surface-light px-4 pb-2.5 pt-2" />}
+      {budgetSummary && (
+        <BudgetExecutionSection
+          budgetSummary={budgetSummary}
+          budgetBreakdown={budgetBreakdown ?? []}
+          scaleFont={scaleFont}
+          expanded={budgetExpanded}
+          onToggleExpanded={() => setBudgetExpanded(v => !v)}
+          listHeight={BUDGET_LIST_HEIGHT}
+        />
+      )}
+
 
 
       {subcontract && subcontract.totalBlockCount > 0 && (
@@ -174,16 +183,6 @@ export function UnifiedProjectSections({
         </div>
       )}
 
-      {budgetSummary && (
-        <BudgetExecutionSection
-          budgetSummary={budgetSummary}
-          budgetBreakdown={budgetBreakdown ?? []}
-          scaleFont={scaleFont}
-          expanded={budgetExpanded}
-          onToggleExpanded={() => setBudgetExpanded(v => !v)}
-          listHeight={BUDGET_LIST_HEIGHT}
-        />
-      )}
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
     </div>
