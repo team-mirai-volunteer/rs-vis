@@ -16,7 +16,8 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -0.489ポイント');
   await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('269.54兆円');
   await expect(result.locator('[data-metric="名目GDP"]')).toContainText('805.63兆円');
-  const budget = page.getByTestId('general-account-budget');
+  const budget = page.getByTestId('input-overview').getByTestId('general-account-budget');
+  await budget.getByText('一般会計の歳入・歳出内訳', { exact: true }).click();
   await expect(budget).toContainText('125.42兆円');
   await expect(budget).toContainText('一般歳出');
   await expect(budget).toContainText('73.27兆円');
@@ -24,16 +25,31 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(budget).toContainText('32.70兆円');
   await expect(budget).toContainText('2026年度・国の一般会計（補正後）');
   const headings = await page.locator('main h2').allTextContents();
-  expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('国の一般会計予算と内訳'));
-  expect(headings.indexOf('国の一般会計予算と内訳')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
+  expect(headings.indexOf('追加予算と国の一般会計予算')).toBeLessThan(headings.indexOf('5年目の結果（試算）'));
+  expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
   const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
   await expect(projectionTable.getByRole('row').last()).toContainText('33.46%');
   await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.01兆円');
   await expect(page.getByTestId('recommended-envelope')).toHaveText('13.61兆円');
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('35.60兆円');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('54.30兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('28.48兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('43.44兆円');
+});
+
+test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  const input = page.getByLabel('社会保険料減税・数値で入力', { exact: true });
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await input.fill('100');
+  await expect(input).toHaveValue('78.7');
+  await expect(page.getByTestId('input-overview')).toContainText('78.70兆円 / 年');
+  await expect(page.locator('[data-policy="social-insurance"]')).toHaveCount(0);
+  await page.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
+  await page.getByLabel('社会保険料軽減の本人配分・数値で入力', { exact: true }).fill('100');
+  await expect(input).toHaveValue('43.6');
+  await expect(page.getByTestId('annual-total')).toHaveText('43.6兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('43.60兆円 / 年');
 });
 
 test('neutral input, editable amounts, model conditions and shared URL restore the same result', async ({ page }) => {

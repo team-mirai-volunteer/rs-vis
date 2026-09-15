@@ -1,22 +1,9 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { EconomyState, ModelParameters, ProductionResult, ProjectionStep, Simulation } from '@/types/fiscal-space';
+import type { ModelParameters, ProjectionStep, Simulation } from '@/types/fiscal-space';
 import { money, percent, points } from './format';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { FiscalVintageBadge } from './ResultAssumptions';
 import { fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
-
-export function CapacityComparison({ initial, production }: { initial: EconomyState; production: ProductionResult }) {
-  const rows = [
-    ['実質GDP', initial.macro.realGdp, '年0の実質生産'], ['潜在GDP', initial.macro.potentialGdp, '通常運転の持続可能生産'],
-    ['レオンチェフの最大GDP', production.leontief, '固定投入比率のモデル'],
-    ['CESの最大GDP', production.ces, '設備・労働・エネルギー・中間財を代替できるモデル'],
-    ['コブ＝ダグラスの最大GDP', production.cobbDouglas, '設備・労働・エネルギーを代替できるモデル'],
-  ] as const;
-  const max = Math.max(...rows.map(r => r[1]));
-  return <Card><CardHeader><h2 className="text-lg font-bold">生産能力を3つのモデルで見る</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">年0の同じ投入量を、別の生産関数で比較します。時間による自動切替はありません。年次の条件付き試算は下の図表に分けて表示します。</p></CardHeader><CardContent className="space-y-4">
-    {rows.map(([label, value, note]) => <div key={label}><div className="flex flex-wrap justify-between gap-1 text-sm"><span>{label}</span><strong className="tabular-nums">{money(value, 1)}</strong></div><div aria-hidden="true" className="my-1 h-2 rounded-full bg-mirai-surface-warm"><div className="h-2 rounded-full bg-primary" style={{ width: `${value / max * 100}%` }} /></div><p className="text-xs text-mirai-text-subtle">{note}</p></div>)}
-  </CardContent></Card>;
-}
 
 export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false }: { step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean }) {
   const s = step.state;

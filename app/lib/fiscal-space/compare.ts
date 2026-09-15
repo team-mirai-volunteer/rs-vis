@@ -1,7 +1,8 @@
 import type { EconomyState, ModelParameters, Policy, PolicyComparison, Shock, Thresholds } from '@/types/fiscal-space';
 import { NO_SHOCK, PARAMETERS, POLICIES, SECTOR_LABELS, THRESHOLDS, TRILLION } from './assumptions';
 import { simulate } from './simulate';
-import { REFERENCES, consumptionTaxLimit } from './calibration';
+import { REFERENCES } from './calibration';
+import { policyReliefLimit } from './policy-limits';
 import { hasCommercialSupply, SUPPLY_CASES, SUPPLY_UNAVAILABLE } from './supply';
 import { investmentAtCommissioning } from './investment';
 import { loadCoverage } from './policy-load';
@@ -10,8 +11,8 @@ import { loadCoverage } from './policy-load';
 export function compareNextTrillion(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK, thresholds: Thresholds = THRESHOLDS, candidates: Policy[] = POLICIES) {
   const horizon = REFERENCES[p.referenceModel].years;
   const baseline = simulate(initial, current, horizon, p, shock);
-  // A full extra trillion is outside the tax-rate domain near a zero tax rate.
-  return candidates.filter(policy => policy.id !== 'consumption-tax' || current.filter(x => x.id === policy.id).reduce((sum, x) => sum + x.annualCost, 0) + TRILLION <= consumptionTaxLimit(p)).map(policy => {
+  // Omit a full extra trillion when it would exceed the remaining revenue base.
+  return candidates.filter(policy => current.filter(x => x.id === policy.id).reduce((sum, x) => sum + x.annualCost, 0) + TRILLION <= policyReliefLimit(policy.id, p)).map(policy => {
     const incremental: Policy = { ...policy, annualCost: TRILLION, duration: 1, kind: policy.kind === 'growth' ? 'growth' : 'temporary' };
     const projection = simulate(initial, [...current, incremental], horizon, p, shock);
     const first = projection.steps[0], baseFirst = baseline.steps[0], last = projection.steps[horizon - 1], baseLast = baseline.steps[horizon - 1];
