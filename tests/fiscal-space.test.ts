@@ -971,8 +971,8 @@ test('resident tax uses the income-tax proxy, aggregates personal relief and exp
   assert(supply.hours > 1); assert(supply.participation > 1);
   near(taxLabourSupply(initial, [resident, income], 2, p).employeeCut, 0);
   const path = simulate(initial, [resident, income], 2, p);
-  near(path.steps[0].state.fiscal.taxRevenue, initial.fiscal.taxRevenue / initial.macro.nominalGdp * path.steps[0].state.macro.nominalGdp - 3 * T);
-  near(path.steps[1].state.fiscal.taxRevenue, initial.fiscal.taxRevenue / initial.macro.nominalGdp * path.steps[1].state.macro.nominalGdp);
+  near(path.steps[0].state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (path.steps[0].state.macro.nominalGdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity - 3 * T);
+  near(path.steps[1].state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (path.steps[1].state.macro.nominalGdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity);
   const row = compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [resident])[0];
   assert(row.supplyEffectConfigured);
   assert(row.periods[0].potentialGdpEffect > 0);
@@ -985,7 +985,7 @@ test('social-insurance relief is split once between employee and employer; incom
   near(supply.employeeCut, 4 * T); near(supply.employerCut, 2 * T);
   near(supply.employeeCut + supply.employerCut, 6 * T);
   const withRelief = simulate(initial, policies, 1).steps[0];
-  near(withRelief.state.fiscal.taxRevenue, initial.fiscal.taxRevenue / initial.macro.nominalGdp * withRelief.state.macro.nominalGdp - 6 * T);
+  near(withRelief.state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (withRelief.state.macro.nominalGdp / initial.macro.nominalGdp) ** P.taxRevenueElasticity - 6 * T);
   const onlyEmployer = { ...P, employeeReliefShare: 0, hoursElasticity: .3, employerDemandElasticity: .3 };
   const employer = taxLabourSupply(initial, [policies[0]], 1, onlyEmployer);
   near(employer.hours, 1); assert(employer.employerDemand > 1);

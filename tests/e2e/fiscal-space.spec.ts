@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
+  await expect(page.getByText('税収弾性値 1.7・徴収ラグ 0年を仮定。', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
