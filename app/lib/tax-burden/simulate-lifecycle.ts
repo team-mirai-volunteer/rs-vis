@@ -6,6 +6,9 @@ import { estimatedConsumptionTax } from './consumption-tax';
 import { corporateTaxOnWages } from './incidence';
 
 export const LIFECYCLE_START = 20;
+/** Latest age the "何歳まで働くか" slider offers. Past 70 no pension contribution is due, past 75 the latter-stage
+ * medical scheme replaces health insurance, so the model still computes; the図 ends at 85. */
+export const WORK_UNTIL_MAX = 80;
 export const LIFECYCLE_END = 85;
 
 /** Annual old-age pension for one adult who earned `careerSalary` every year for the full contribution period. */
@@ -37,7 +40,7 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
   consumption?: ConsumptionDataset | null, incidence?: IncidenceDataset | null): LifecycleYear[] {
   const household = validateState({ ...state, age: 40 }, reform);
   if (!Number.isFinite(state.continuation) || state.continuation < 0 || state.continuation > 1) throw new Error('継続雇用係数が有効な範囲にありません');
-  if (!Number.isInteger(state.workUntil) || state.workUntil < p.lifecycle.pensionStartAge || state.workUntil > 75) throw new Error('就労終了年齢が有効な範囲にありません');
+  if (!Number.isInteger(state.workUntil) || state.workUntil < p.lifecycle.pensionStartAge || state.workUntil > WORK_UNTIL_MAX) throw new Error('就労終了年齢が有効な範囲にありません');
   const careerSalaries = splitSalaries(state.income, household.earners, state.share);
   const pensions = Array.from({ length: household.adults }, (_, i) => annualPension(careerSalaries[i] ?? 0, state.bonus, p));
   const scopeReasons = careerSalaries.flatMap((salary, i) => salary < p.employeeInsuranceThreshold

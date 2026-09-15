@@ -5,6 +5,7 @@ import { SlidersHorizontal, RotateCcw, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { BIRTH_AGE_RANGE } from '@/app/lib/tax-burden/simulate';
+import { WORK_UNTIL_MAX } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { HOUSEHOLDS, BASE_REFORM, isReformed } from '@/app/lib/tax-burden/households';
 import { wageIncidenceRate } from '@/app/lib/tax-burden/incidence';
 import type { IncidenceDataset, TaxState } from '@/types/tax-burden';
@@ -114,8 +115,8 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
           <h3 className="font-bold text-primary-accent">働き方の前提</h3>
           <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
-          <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={75} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
-          <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止、70歳まで厚生年金保険料、75歳まで健康保険を適用）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
+          <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={WORK_UNTIL_MAX} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
+          <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止。厚生年金保険料は70歳まで、健康保険は75歳までで、75歳以降は給与も含めた所得で後期高齢者医療の保険料がかかる。雇用保険は年齢の上限なし）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
         </section>}
         <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。{household.children > 0 && `子どもは大人${birthAges.join('歳・')}歳時に生まれ${lifecycle?.childLeavesAt ?? 23}歳で独立、`}大人は同年齢です。本人負担を計算します。</div>
       </>}
