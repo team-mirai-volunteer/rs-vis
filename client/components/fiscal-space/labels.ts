@@ -3,6 +3,7 @@ import { INPUT_LABELS, SECTOR_LABELS } from '@/app/lib/fiscal-space/assumptions'
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 
 const LABELS: Record<string, string> = {
+  serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率',
   taxRevenueElasticity: '名目GDPに対する税収弾性値', taxCollectionLag: '税収への反映ラグ',
   gapDemandSensitivity: 'GDPギャップの需要感度', gapPriceSensitivity: 'GDPギャップの物価感度', gapInflationSlope: '基準インフレのギャップ係数',
   consumptionTax: '消費税率変更', revenuePerPoint: '税率1ポイントの減収額', cpiShare: '対象品目のCPI比率', baseRate: '対象品目の基準税率', passThrough: '価格転嫁率',

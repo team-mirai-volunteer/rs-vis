@@ -127,6 +127,7 @@ export interface FiscalMetrics {
   effectiveRate: number; stabilizingPrimaryBalance: number; stockFlowAdjustmentGdp: number;
 }
 export interface ProjectionStep {
+  publicCapital?: { stock: number; potentialBenefit: number; realizedBenefit: number; demandEffect: number };
   resourcePower?: ReturnType<typeof import('@/app/lib/fiscal-space/resource-estimate').resourcePowerBalance>;
   estimatedLoads?: boolean;
   importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
