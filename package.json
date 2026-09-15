@@ -51,7 +51,7 @@
     "test:tax-burden:browser": "node tests/tax-burden-browser.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
+    "@anthropic-ai/sdk": "^0.125.0",
     "@dagrejs/dagre": "^2.0.4",
     "@nivo/sankey": "^0.99.0",
     "@radix-ui/react-slot": "^1.3.3",
