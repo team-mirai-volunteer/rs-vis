@@ -12,6 +12,7 @@
 import type { MOFJikouItem } from '@/types/mof-jikou';
 import type { MOFHierarchyFilter, MOFHierarchyNameFilter } from '@/types/mof-hierarchy';
 import { ACCOUNT_LABELS, levelsOf } from './mof-hierarchy-sankey';
+import { compileSearchPattern } from './search-pattern';
 
 /** 何か1つでも条件が指定されているか。空配列・空文字・null は「条件無し」に数える */
 export function hasActiveMOFHierarchyFilter(filter: MOFHierarchyFilter): boolean {
@@ -26,20 +27,13 @@ export function hasActiveMOFHierarchyFilter(filter: MOFHierarchyFilter): boolean
 }
 
 /**
- * 名前の照合関数を作る。不正な正規表現は「何も除外しない」側に倒す
- * （/sankey-svg の buildMatcher と同じ思想。フィルタの不備で図が
- * 全滅するより、効かないだけの方が実害が小さい）。
+ * 名前の照合関数。不正・非対応の正規表現は例外にし、APIが400を返す。
  */
 function buildMatcher(filter: MOFHierarchyNameFilter | undefined): ((name: string) => boolean) | null {
   const query = filter?.query.trim();
   if (!query) return null;
   if (filter?.regex) {
-    try {
-      const re = new RegExp(query, 'i');
-      return name => re.test(name);
-    } catch {
-      return () => true;
-    }
+    return compileSearchPattern(query);
   }
   const q = query.toLocaleLowerCase();
   return name => name.toLocaleLowerCase().includes(q);

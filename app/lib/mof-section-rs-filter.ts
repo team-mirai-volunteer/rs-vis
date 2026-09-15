@@ -10,6 +10,7 @@ import type { MOFAccountType } from '@/types/mof-jikou';
 import type { MOFSectionRsFilter, MOFSectionRsNameFilter } from '@/types/mof-section-rs-sankey';
 import { ACCOUNT_LABELS } from './mof-hierarchy-sankey';
 import type { MOFSectionRsSourceRow } from './mof-section-rs-sankey';
+import { compileSearchPattern } from './search-pattern';
 
 export function hasActiveMOFSectionRsFilter(filter: MOFSectionRsFilter): boolean {
   return (
@@ -25,12 +26,7 @@ function buildMatcher(filter: MOFSectionRsNameFilter | undefined): ((name: strin
   const query = filter?.query.trim();
   if (!query) return null;
   if (filter?.regex) {
-    try {
-      const re = new RegExp(query, 'i');
-      return name => re.test(name);
-    } catch {
-      return () => true;
-    }
+    return compileSearchPattern(query);
   }
   const q = query.toLocaleLowerCase();
   return name => name.toLocaleLowerCase().includes(q);
