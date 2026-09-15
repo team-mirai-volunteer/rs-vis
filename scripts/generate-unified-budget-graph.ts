@@ -14,7 +14,7 @@
  *   public/data/mof-rs-kou-moku-linkage-{予算年度}.json  … 目↔RS事業（generate-mof-rs-kou-moku-linkage.ts）
  *   public/data/sankey-svg-{シート年度}-graph.json        … 事業・支出先（執行年度のみ。無ければ事業ノードは紐づけ表から作る）
  *   public/data/mof-budget-overview-{予算年度}.json       … 参考値（純計）。無くてもよい
- *   data/download/mof_{予算年度}/DL{予算年度}{11001|12001}.zip … 当初予算の歳入CSV（initialのみ必須）
+ *   data/download/mof_{予算年度}/DL{予算年度}{11001|12001|21001|22001|77001|78001}.zip … 基準に対応する歳入CSV
  *
  * 出力: public/data/unified-budget-{予算年度}-graph.json（.gz で Git 管理、prebuild で展開）
  *
@@ -544,14 +544,14 @@ function main() {
     console.log('  執行年度ではないため無し');
   }
 
-  // 歳入は同年度・同基準が揃う当初予算のみ。補正・決算へ当初額を流用しない。
-  const revenue = BASIS_KEY === 'initial' ? readUnifiedRevenue(BUDGET_YEAR as number) : null;
+  const revenue = BASIS_KEY === 'ministry' ? null : readUnifiedRevenue(BUDGET_YEAR as number, BASIS_KEY);
   if (revenue) {
     for (const n of revenue.nodes) nodes.set(n.id, n);
     for (const e of revenue.edges) {
       const account = nodes.get(e.target);
       if (!account || account.col !== 'account') throw new Error(`歳入の接続先がありません: ${e.target}`);
       account.revenueAmount = (account.revenueAmount ?? 0) + e.value;
+      account.revenueBasis = BASIS_KEY;
       addEdge(e.source, e.target, e.value);
     }
   }
@@ -591,7 +591,7 @@ function main() {
       counts: { ...counts, edges: edgeList.length, scaledEdges },
       collapsedAccounts: nodeList.filter(n => n.collapsedByDefault).map(n => n.id),
       notes: [
-        ...(revenue ? ['歳入は同年度の当初予算CSVを会計別・税目別に集計。会計・勘定間の受入は区別して表示し、純計財源とは扱わない。会計以降の按分は税目別の充当実績ではない。歳入と歳出の差額で歳出予算額を上書きしない。'] : []),
+        ...(revenue ? [`歳入は同年度の${BASIS_KEY === 'settlement' ? '決算CSVの収納済歳入額（円）' : BASIS_KEY === 'supplementary' ? '当初予算に補正第1号の改予算額を項単位で差し替えた補正後額（2026年度の特別会計は補正なし）' : '当初予算CSV'}を会計別・税目別に集計。会計・勘定間の受入は区別し、純計財源とは扱わない。会計以降の按分は税目別の充当実績ではない。歳入と歳出の差額で歳出額を上書きしない。`] : []),
         `会計〜目〜事業区分の流量は MOF ${BUDGET_YEAR}年度「${BASIS}」の目金額${BASIS_KEY === 'settlement' ? '（支出済歳出額）' : BASIS_KEY === 'supplementary' ? '（改予算額。補正予算書に載る目のみ）' : ''}。予算種別間で目の識別子が一致しないため基準をまたいだ合算はしない`,
         isRequest
           ? `RS事業ノードの値は RSシート${SHEET_YEAR}の翌年度（${BUDGET_YEAR}年度）要求額の合計。目→事業の流量は目単位の要求額で、MOF当初予算との差が査定結果`

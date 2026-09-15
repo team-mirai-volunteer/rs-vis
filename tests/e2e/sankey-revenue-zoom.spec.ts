@@ -4,16 +4,23 @@ test('thickness changes amounts independently of font size and survives sharing 
   await page.goto('/budget-sankey?year=2024');
   const nodes = page.getByTestId('unified-node').locator('rect');
   await expect(nodes.first()).toBeVisible();
+  await expect(page.locator('[data-testid="unified-node"][data-column="revenue"]').first()).toBeVisible();
   const geometry = () => nodes.evaluateAll(rs => rs.map(r => ({ height: Number(r.getAttribute('height')), width: r.getAttribute('width') })));
   const before = await geometry();
   await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
   const slider = page.getByRole('slider', { name: '帯・ノードの太さ', exact: true });
-  await expect(slider).toHaveValue('1.25');
+  await expect(slider).toHaveValue('1');
   await expect(slider).toHaveCSS('appearance', 'none');
   await expect(page.getByRole('slider', { name: '基準フォントサイズ', exact: true })).toHaveCSS('appearance', 'none');
-  for (let i = 0; i < 5; i++) await slider.press('ArrowRight');
-  await expect(slider).toHaveValue('2.5');
-  await expect(page).toHaveURL(/th=2.5/);
+  await slider.press('ArrowRight');
+  await expect(slider).toHaveValue('1.1');
+  await page.getByRole('button', { name: '帯・ノードの太さを大きく', exact: true }).click();
+  await expect(slider).toHaveValue('1.2');
+  await page.getByRole('button', { name: '帯・ノードの太さ編集を開始', exact: true }).click();
+  await page.getByRole('spinbutton', { name: '帯・ノードの太さ(数値)', exact: true }).fill('2');
+  await page.getByRole('spinbutton', { name: '帯・ノードの太さ(数値)', exact: true }).press('Enter');
+  await expect(slider).toHaveValue('2');
+  await expect(page).toHaveURL(/th=1(?:&|$)/);
   const after = await geometry();
   before.forEach((r, i) => {
     if (r.height > 1) expect(after[i].height).toBeCloseTo(r.height * 2, 6);
@@ -24,9 +31,9 @@ test('thickness changes amounts independently of font size and survives sharing 
   await expect(nodes.first()).toBeVisible();
   expect(await geometry()).toEqual(after);
   await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
-  await expect(slider).toHaveValue('2.5');
-  await page.getByRole('button', { name: '初期値', exact: true }).click();
-  await expect(slider).toHaveValue('1.25');
+  await expect(slider).toHaveValue('2');
+  await page.getByRole('button', { name: '帯・ノードの太さを既定値に戻す', exact: true }).click();
+  await expect(slider).toHaveValue('1');
   expect(await geometry()).toEqual(before);
 });
 
@@ -69,7 +76,15 @@ test('tax receipts open with provenance and retain their account when columns ch
   await expect(page.getByRole('button', { name: '会計', exact: true })).toBeDisabled();
   await page.keyboard.press('Escape');
   await page.getByRole('combobox', { name: '基準', exact: true }).selectOption('supplementary');
-  await expect(page.locator('[data-testid="unified-node"][data-column="revenue"]')).toHaveCount(0);
+  await expect(page.locator('[data-testid="unified-node"][data-column="revenue"]').first()).toBeVisible();
+  await expect(panel).toContainText('歳入予算額（補正後）（全額）');
+  await expect(panel.getByRole('link', { name: '予算書の出典', exact: true })).toHaveAttribute('href', 'https://www.bb.mof.go.jp/server/2024/csv/DL202421001.zip');
+  await page.getByRole('combobox', { name: '基準', exact: true }).selectOption('settlement');
+  await expect(page.locator('[data-testid="unified-node"][data-column="revenue"]').first()).toBeVisible();
+  await expect(panel).toContainText('収納済歳入額（全額）');
+  await expect(panel.getByRole('link', { name: '予算書の出典', exact: true })).toHaveAttribute('href', 'https://www.bb.mof.go.jp/server/2024/csv/DL202477001.zip');
+  await page.reload();
+  await expect(panel).toContainText('収納済歳入額（全額）');
 });
 
 test('zoom scales both axes around the pointer; larger labels get space without changing flow thickness', async ({ page }) => {

@@ -1,7 +1,7 @@
 /**
  * 統合ビュー（/budget-sankey）用の統合グラフ。
  *
- * 当初予算では税目・款別の歳入を会計へ接続する。国の歳出予算（一般会計＋特別会計）は
+ * 当初・補正・決算の同じ基準の税目・款別歳入を会計へ接続する。国の歳出予算（一般会計＋特別会計）は
  * MOF予算書の階層（会計→所管→組織/勘定→項→目）で流し、
  * 目から RS事業（→ 支出）へ、RS事業が無い分は非事業支出の区分または「未突合」へ落とす。
  * 設計: docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md（3章）
@@ -99,6 +99,7 @@ export interface UnifiedNode {
   revenueCategory?: string;
   /** 元予算書の歳入額。表示の絞り込み・按分とは別に保持する */
   revenueAmount?: number;
+  revenueBasis?: UnifiedBasis;
   /** 事業列のみ。RS事業は 'rs'、擬似ノードは 'outside' */
   kind?: UnifiedProgramKind;
   /** account〜koumoku 列 */
@@ -259,7 +260,7 @@ export interface UnifiedGraphMetadata {
   eraLabel: string;
   unit: 'yen';
   generatedAt: string;
-  /** 当初歳入の科目別CSVを収録したZIPの出典・ハッシュ */
+  /** 接続した歳入の科目別CSVを収録したZIPの出典・ハッシュ */
   revenueSources?: Array<{ url: string; sha256: string; retrievedOn: string }>;
   totals: {
     /** 会計列の合計（一般＋特別。会計間の繰入を含む重複込み） */

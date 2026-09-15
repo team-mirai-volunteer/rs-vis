@@ -162,5 +162,15 @@ console.log('\n[6] 未突合比率');
   ratio <= MAX_UNMATCHED_RATIO ? ok(msg) : fail(msg);
 }
 
+console.log('\n[7] 歳入と会計の接続');
+for (const n of graph.nodes.filter(n => n.col === 'revenue')) {
+  const outgoing = graph.edges.filter(e => e.source === n.id);
+  if (outgoing.length !== 1 || outgoing[0].value !== n.revenueAmount || nodeById.get(outgoing[0].target)?.col !== 'account') fail(`歳入の接続が不正: ${n.id}`);
+  if (n.revenueBasis && n.revenueBasis !== graph.metadata.basis) fail(`歳入の基準が不一致: ${n.id}`);
+}
+for (const n of graph.nodes.filter(n => n.col === 'account' && n.revenueAmount !== undefined)) {
+  if ((inflow.get(n.id) ?? 0) !== n.revenueAmount) fail(`会計の歳入額が不一致: ${n.id}`);
+}
+
 console.log(failures ? `\n❌ ${failures} 件の検査に失敗` : '\n✅ 全検査に合格');
 process.exit(failures ? 1 : 0);
