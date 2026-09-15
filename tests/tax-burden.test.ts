@@ -220,9 +220,9 @@ test('elderly resident tax: pension deduction, the non-taxable limit and the old
   assert.equal(at('one-earner-children', 5000000, 70).residentTax, 0);
   assert.equal(at('single', 3000000, 70).residentTax, 0);
 });
-test('corporate tax incidence is an explicit assumption: 50% by default, flat on wages, none in retirement', () => {
+test('corporate tax incidence is an explicit assumption: 25% by default, flat on wages, none in retirement', () => {
   const base = initialTaxState();
-  assert.equal(base.corporateShare, 0.5, '既定は日本の推計と分配分析の慣行の間を取った50%');
+  assert.equal(base.corporateShare, 0.25, '既定は土居2017の1年の帰着と分配分析の慣行に合わせた25%');
   const none = { ...base, corporateShare: 0 };
   assert.equal(simulate(none, p, undefined, null, incidence).corporateTax, 0);
   assert(incidence.referenceShares.some(r => r.label.startsWith('土居')), '日本を対象にした参考値がある');
