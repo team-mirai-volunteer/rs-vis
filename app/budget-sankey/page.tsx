@@ -44,6 +44,7 @@ import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSetti
 import { Button } from '@/components/ui/button';
 import { SlidersHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT, parseFlowScale } from '@/client/lib/unified-flow-scale';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
@@ -194,10 +195,7 @@ function UnifiedBudgetSankeyContent() {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
   const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
-  const [flowScale, setFlowScale] = useState(() => {
-    const value = Number(searchParams.get('th'));
-    return Number.isFinite(value) && value > 0 ? Math.min(8, Math.max(0.25, Math.round(value * 4) / 4)) : 1.25;
-  });
+  const [flowScale, setFlowScale] = useState(() => parseFlowScale(searchParams.get('th')));
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
   /** sm 未満で表示数・設定を開いているか */
@@ -299,7 +297,7 @@ function UnifiedBudgetSankeyContent() {
     if (selectedId) params.set('sel', selectedId);
     if (focusRelated) params.set('fr', '1');
     if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
-    if (flowScale !== 1.25) params.set('th', String(flowScale));
+    if (flowScale !== FLOW_SCALE_DEFAULT) params.set('th', String(Number((flowScale * FLOW_SCALE_BASE).toFixed(8))));
     params.set('ld', labelDensity);
     serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
@@ -318,8 +316,7 @@ function UnifiedBudgetSankeyContent() {
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
       setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
-      const thickness = Number(params.get('th'));
-      setFlowScale(Number.isFinite(thickness) && thickness > 0 ? Math.min(8, Math.max(0.25, Math.round(thickness * 4) / 4)) : 1.25);
+      setFlowScale(parseFlowScale(params.get('th')));
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
       setFilterOpen(params.get('ffp') === '1');

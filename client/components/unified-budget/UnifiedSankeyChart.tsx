@@ -20,6 +20,7 @@ import type { LabelDensity } from '@/types/mof-hierarchy';
 import type { SankeyLink } from '@/types/sankey';
 import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT } from '@/client/lib/unified-flow-scale';
 import { UnifiedSearch } from './UnifiedSearch';
 import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
 import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
@@ -62,7 +63,7 @@ export function UnifiedSankeyChart({
   filterOpen,
   onToggleFilterOpen,
   fontPx = LABEL_FONT_PX_DEFAULT,
-  flowScale = 1.25,
+  flowScale = FLOW_SCALE_DEFAULT,
   labelDensity = 'all',
   budgetYear,
   basisMeasureLabel,
@@ -167,7 +168,7 @@ export function UnifiedSankeyChart({
           ...UNIFIED_LAYOUT,
           margin: { ...UNIFIED_LAYOUT.margin, top: viewport.width < 1200 ? UNIFIED_LAYOUT.margin.top + 40 : UNIFIED_LAYOUT.margin.top },
           // 金額用の高さを確保し、ラベルの行間は別に足す。図の高さはパンで移動できる。
-          flowScale,
+          flowScale: flowScale * FLOW_SCALE_BASE,
           minNodeSlot: labelDensity === 'all' ? labelSlot(fontPx) : 0,
           gapBefore: node => (node.id.startsWith('__others__') || node.id.startsWith('np-') ? AGGREGATE_GAP : 0),
           columnOf: node => displayColumnIndex.get(node.type as UnifiedColumn) ?? 0,
@@ -803,11 +804,14 @@ export function UnifiedSankeyChart({
 }
 
 /** ノード固有の事実（予算書の科目・分類、RS事業の予算執行サマリ） */
+function revenueAmountLabel(details: UnifiedViewDetails) {
+  return details.revenueBasis === 'settlement' ? '収納済歳入額' : details.revenueBasis === 'supplementary' ? '歳入予算額（補正後）' : '歳入予算額';
+}
 function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amountLabel: string }) {
   const rows: Array<[string, string]> = [];
   if (details.revenueCategory) rows.push(['歳入区分', details.revenueCategory]);
-  if (details.column === 'revenue' && details.revenueAmount !== undefined) rows.push(['歳入予算額（全額）', formatBudgetFromYen(details.revenueAmount)]);
-  if (details.column === 'account' && details.revenueAmount !== undefined) rows.push(['歳入予算額', formatBudgetFromYen(details.revenueAmount)]);
+  if (details.column === 'revenue' && details.revenueAmount !== undefined) rows.push([`${revenueAmountLabel(details)}（全額）`, formatBudgetFromYen(details.revenueAmount)]);
+  if (details.column === 'account' && details.revenueAmount !== undefined) rows.push([revenueAmountLabel(details), formatBudgetFromYen(details.revenueAmount)]);
   if (details.ministry) rows.push(['所管', details.ministry]);
   if (details.organization) rows.push([details.accountType === 'special' ? '特別会計' : '組織', details.organization]);
   if (details.subAccount) rows.push(['勘定', details.subAccount]);
@@ -832,13 +836,13 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
         </p>
       )}
       {details.column === 'revenue' && <p className="mt-2 text-[11px] text-mirai-text-muted">
-        この会計に入る歳入予算です。会計から先の表示・関連額は構成比による按分であり、この税目・収入が個別事業に充てられた額を示しません。
+        この会計の{revenueAmountLabel(details)}です。会計から先の表示・関連額は構成比による按分であり、この税目・収入が個別事業に充てられた額を示しません。
       </p>}
       {details.revenueKind === 'internal-transfer' && <p className="mt-2 text-[11px] text-mirai-text-muted">
         他の会計・勘定からの受入です。新たな税収ではなく、国全体で単純に足すと重複する分を含みます。
       </p>}
       {details.column === 'account' && details.revenueAmount !== undefined && <p className="mt-2 text-[11px] text-mirai-text-muted">
-        会計の表示額は歳出予算です。歳入と歳出が異なる場合も、金額を合わせる補正はしていません。帯の太さは両方を収めるための値です。
+        会計の表示額は{details.revenueBasis === 'settlement' ? '支出済歳出額' : '歳出予算額'}です。歳入と歳出が異なる場合も、金額を合わせる補正はしていません。帯の太さは両方を収めるための値です。
       </p>}
       {details.kind === 'unmatched' && (
         <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
@@ -856,6 +860,8 @@ function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: s
   );
 }
 
+const ACCOUNT_TYPE_LABELS = { general: '一般会計', special: '特別会計' };
+
 function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<UnifiedViewDetails>; x: number; y: number; amountLabel: string }) {
   const d = node.details;
   return (
@@ -867,8 +873,9 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
         </div>
       )}
       <div className="font-semibold text-mirai-text">{node.name}</div>
+      {d?.accountType && <div className="text-xs text-mirai-text-subtle">会計区分：{ACCOUNT_TYPE_LABELS[d.accountType]}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
-      {d?.column === 'revenue' && <div className="mt-1 text-xs text-mirai-text-subtle">歳入予算。個別事業への充当額を示すものではありません。</div>}
+      {d?.column === 'revenue' && <div className="mt-1 text-xs text-mirai-text-subtle">{revenueAmountLabel(d)}。個別事業への充当額を示すものではありません。</div>}
       {d?.revenueKind === 'internal-transfer' && <div className="mt-1 text-xs text-mirai-text-subtle">会計・勘定間の受入（国全体の単純合計では重複）</div>}
       {d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
@@ -879,11 +886,13 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
 }
 
 function UnifiedLinkTooltip({ link, x, y }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number }) {
+  const accountTypes = [...new Set([link.source.details?.accountType, link.target.details?.accountType].filter((type): type is 'general' | 'special' => !!type))];
   return (
     <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
+      {accountTypes.length > 0 && <div className="text-xs text-mirai-text-subtle">会計区分：{accountTypes.map(type => ACCOUNT_TYPE_LABELS[type]).join(' → ')}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
     </div>
   );

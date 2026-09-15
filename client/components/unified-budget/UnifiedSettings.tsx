@@ -5,13 +5,14 @@
  * 文字サイズ・ラベル表示・関連フォーカス・表示する列。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import type { UnifiedColumn } from '@/types/unified-budget';
 import { UnifiedColumnToggles } from './UnifiedViewSelect';
+import { FLOW_SCALE_DEFAULT, FLOW_SCALE_MIN, FLOW_SCALE_MAX } from '@/client/lib/unified-flow-scale';
 
 const FONT_MIN = 8;
 const FONT_MAX = 20;
@@ -36,7 +37,7 @@ export function UnifiedSettings({
   onFontPxChange: (value: number) => void;
   defaultFontPx: number;
   flowScale: number;
-  onFlowScaleChange: (value: number) => void;
+  onFlowScaleChange: Dispatch<SetStateAction<number>>;
   labelDensity: LabelDensity;
   onLabelDensityChange: (value: LabelDensity) => void;
   focusRelated: boolean;
@@ -114,13 +115,12 @@ export function UnifiedSettings({
             />
           </div>
           <div>
-            <label htmlFor="flow-thickness" className="block font-semibold">帯・ノードの太さ</label>
-            <span className="mt-1 flex items-center gap-2">
-              <input id="flow-thickness" type="range" aria-label="帯・ノードの太さ" min={0.25} max={8} step={0.25} value={flowScale}
-                onChange={e => onFlowScaleChange(Number(e.target.value))} className="policy-range min-w-0 flex-1" />
-              <output className="w-10 text-right tabular-nums">{flowScale}倍</output>
-              <Button variant="ghost" size="xs" onClick={() => onFlowScaleChange(1.25)}>初期値</Button>
-            </span>
+            <div className="mb-1 font-semibold">帯・ノードの太さ</div>
+            <FontSizeControls baseFontPx={flowScale}
+              setBaseFontPx={onFlowScaleChange}
+              markReplace={() => {}} isCompactWidth={false}
+              min={FLOW_SCALE_MIN} max={FLOW_SCALE_MAX} defaultValue={FLOW_SCALE_DEFAULT}
+              stepSize={.1} label="帯・ノードの太さ" suffix="倍" controlSmallFontPx={12} numberFontPx={12} />
             <p className="mt-1 leading-relaxed text-mirai-text-subtle">金額比を保って太くします。下にはみ出した部分は図をドラッグして表示できます。</p>
           </div>
           <label className="flex cursor-pointer items-center gap-2">

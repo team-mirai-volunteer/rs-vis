@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import zlib from 'node:zlib';
-import { aggregateRevenueRows } from '../scripts/unified-budget-revenue';
+import { aggregateRevenueRows, mergeRevenueRevision } from '../scripts/unified-budget-revenue';
 import { applyFilter, applyTopN, collapseColumns, recomputeValues, toRsMinistryGraph, toViewGraph } from '../app/lib/unified-budget/transform';
 import { UNIFIED_FILTER_DEFAULT, type UnifiedViewGraph, type UnifiedViewNode } from '../types/unified-budget-view';
 import type { UnifiedGraph } from '../types/unified-budget';
@@ -66,6 +66,43 @@ test('hiding revenues preserves spending and empty filtered accounts do not leav
 });
 
 const readData = <T,>(name: string): T => JSON.parse(zlib.gunzipSync(fs.readFileSync(`public/data/${name}.json.gz`)).toString());
+
+test('settlement uses collected yen, never budget or assessed revenue, and does not multiply by 1000', () => {
+  const result = aggregateRevenueRows([{ 款名: '租税', 目名: '消費税', '歳入予算額(円)': '9000', '徴収決定済額(円)': '8500', '収納済歳入額(円)': '8123' }], 'general', 'settlement.zip');
+  assert.equal(result.nodes[0].value, 8123);
+});
+
+test('supplementary replaces complete revised sections, keeps omitted and unchanged detailed sections, and rejects wrong baselines', () => {
+  const row = (section: string, item: string, yen: number) => ({ 主管: '財務省', 部コード: '1', 款コード: '1', 項コード: section, 目コード: item, 款名: '租税', 目名: item, '接続歳入額(円)': String(yen) });
+  const base = [row('1', '01', 1000), row('1', '02', 2000), row('2', '01', 4000), row('3', '01', 5000)];
+  const revision = (section: string, item: string, before: string, after: string) => ({ ...row(section, item, 0), '令和6年度成立予算額(千円)': before, '改令和6年度予算額(千円)': after });
+  const result = mergeRevenueRevision(base, [revision('1', '00', '3', '3'), revision('2', '01', '4', '6'), revision('4', '01', '0', '2')]);
+  assert.deepEqual(result.filter(r => r['項コード'] === '1'), base.slice(0, 2));
+  assert.equal(result.find(r => r['項コード'] === '2')?.['接続歳入額(円)'], '6000');
+  assert.equal(result.find(r => r['項コード'] === '3')?.['接続歳入額(円)'], '5000');
+  assert.equal(result.reduce((s, r) => s + Number(r['接続歳入額(円)']), 0), 16000);
+  assert.throws(() => mergeRevenueRevision(base, [revision('2', '01', '99', '6')]), /一致しません/);
+});
+
+for (const [year, basis, general, special] of [
+  [2023, 'supplementary', 127580399831000, 435226419067000], [2023, 'settlement', 140201616142040, 428265414639771],
+  [2024, 'supplementary', 126514973726000, 436794237136000], [2024, 'settlement', 135980878488286, 425698606544813],
+  [2025, 'supplementary', 133501219827000, 438329694542000], [2026, 'supplementary', 125422751660000, 445481498539000],
+] as const) test(`${year} ${basis} receipts reconcile by account and retain same-basis sources`, () => {
+  // Frozen totals from the official CSV: initial + supplementary differences, or collected yen.
+  const graph = readData<UnifiedGraph>(`unified-budget-${year}-${basis}-graph`);
+  const nodes = graph.nodes.filter(n => n.col === 'revenue');
+  for (const [type, total] of [['general', general], ['special', special]] as const) assert.equal(nodes.filter(n => n.accountType === type).reduce((s, n) => s + n.value, 0), total);
+  assert(nodes.every(n => n.revenueBasis === basis && Number.isSafeInteger(n.value) && n.value > 0));
+  const sources = graph.metadata.revenueSources!;
+  assert(sources.length === (basis === 'settlement' ? 2 : year === 2026 ? 3 : 4));
+  assert(sources.every(s => s.url.includes(`/${year}/csv/`) && /^[a-f0-9]{64}$/.test(s.sha256)));
+  for (const account of graph.nodes.filter(n => n.col === 'account')) {
+    const incoming = graph.edges.filter(e => e.target === account.id && e.source.startsWith('revenue-'));
+    assert.equal(incoming.reduce((s, e) => s + e.value, 0), account.revenueAmount ?? 0);
+    assert.equal(graph.edges.filter(e => e.source === account.id).reduce((s, e) => s + e.value, 0), account.value);
+  }
+});
 for (const year of [2023, 2024, 2025, 2026]) {
   test(`${year} published revenue agrees with the independently generated MOF overview`, () => {
     const graph = readData<UnifiedGraph>(`unified-budget-${year}-initial-graph`);
