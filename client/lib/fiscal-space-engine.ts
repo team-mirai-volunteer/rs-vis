@@ -1,5 +1,6 @@
 import { initialEconomy, POLICIES, TRILLION, assumptionRecords } from '@/app/lib/fiscal-space/assumptions';
-import { REFERENCES, consumptionTaxLimit, referenceRecords } from '@/app/lib/fiscal-space/calibration';
+import { REFERENCES, referenceRecords } from '@/app/lib/fiscal-space/calibration';
+import { insuranceRevenueRecords, policyReliefLimit } from '@/app/lib/fiscal-space/policy-limits';
 import { simulate } from '@/app/lib/fiscal-space/simulate';
 import { estimateFiscalSpace } from '@/app/lib/fiscal-space/search';
 import { evaluateConstraints, peakConstraints, constraintInflation } from '@/app/lib/fiscal-space/constraints';
@@ -65,7 +66,7 @@ export function createFiscalEngine() {
     const probePolicies = totalYen > 0 ? allocated.map(policy => ({ ...policy,
       annualCost: policy.annualCost * (totalYen + TRILLION) / totalYen })) : [];
     const canProbe = probePolicies.length > 0 && probePolicies.every(policy =>
-      policy.id !== 'consumption-tax' || policy.annualCost <= consumptionTaxLimit(p));
+      policy.annualCost <= policyReliefLimit(policy.id, p));
     const sensitivity = constraintSensitivity({ ...projection, steps: projection.steps.slice(0, horizon) },
       canProbe ? simulate(initial, probePolicies, horizon, p, shock) : undefined, form.thresholds);
     const key = JSON.stringify([initial, policyConfigs, form.thresholds, horizon, p, shock]);
@@ -109,7 +110,7 @@ export function createFiscalEngine() {
     const records = [
       ...assumptionRecords({ initial, parameters: p, policies, thresholds: form.thresholds,
         shock, annualCost: totalYen, longRun: form.longRun }, '', form.dataset),
-      ...referenceRecords(p.referenceModel), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
+      ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
       ...burdenRecords(form.dataset === 'latest', form.corporateShare), ...externalStressRecords(),
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
     ];

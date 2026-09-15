@@ -3,7 +3,8 @@ import { NO_SHOCK, PARAMETERS, SECTORS } from './assumptions';
 import { allocateDemand } from './demand';
 import { financeDebt, fiscalMetrics, rollover } from './debt';
 import { positive, productionCapacity } from './production';
-import { REFERENCES, taxLabourSupply, consumptionTaxLimit } from './calibration';
+import { REFERENCES, taxLabourSupply } from './calibration';
+import { policyReliefLimit } from './policy-limits';
 import { policyLoads } from './policy-load';
 import { projectResponses } from './project-response';
 import { policyProduction } from './policy-production';
@@ -49,7 +50,10 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
   positive(p.consumptionTax.revenuePerPoint, 'tax revenue per point');
   positive(p.consumptionTax.baseRate, 'base consumption tax rate');
   for (const n of [p.consumptionTax.cpiShare, p.consumptionTax.passThrough]) if (n < 0 || n > 1) throw new RangeError('Invalid tax price assumptions');
-  if (policies.filter(x => x.id === 'consumption-tax').reduce((sum, x) => sum + x.annualCost, 0) > consumptionTaxLimit(p) + 1) throw new RangeError('Consumption tax cut exceeds the configured tax base');
+  for (const id of ['consumption-tax', 'social-insurance']) {
+    if (policies.filter(x => x.id === id).reduce((sum, x) => sum + x.annualCost, 0) > policyReliefLimit(id, p) + 1)
+      throw new RangeError(`${id} relief exceeds the revenue base`);
+  }
   if (Math.abs(initial.debtPortfolio.reduce((s, b) => s + b.principal, 0) - initial.fiscal.grossDebt) > 1) throw new RangeError('Debt portfolio must reconcile to gross debt');
   for (const value of [...Object.values(p).filter(v => typeof v === 'number'), ...Object.values(shock)]) {
     if (!Number.isFinite(value)) throw new RangeError('Parameters must be finite');

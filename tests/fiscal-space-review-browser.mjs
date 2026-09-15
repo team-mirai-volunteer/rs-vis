@@ -21,7 +21,7 @@ try {
   await expect(page.getByTestId('input-overview')).toContainText('0.00兆円');
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円');
-  await expect(page.getByTestId('input-overview')).toContainText('この配分の参考上限');
+  await expect(page.getByTestId('input-overview').getByRole('link', { name: '配分を拡大した場合の参考上限・生産能力を見る' })).toHaveAttribute('href', '#fiscal-envelope');
   await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(0);
   await expect(page.getByRole('meter', { name: '電力供給能力の閾値利用率' })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/fiscal-space/review-desktop.png' });

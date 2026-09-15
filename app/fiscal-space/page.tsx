@@ -1,13 +1,13 @@
 'use client';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
+import { policyCostYen, policyInputLimitYen, totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
 import { CalculationOverview } from '@/client/components/fiscal-space/CalculationOverview';
 import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
 import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
 import { decodeScenario } from '@/client/lib/fiscal-space-url';
-import { ModelSensitivity, LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
+import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, X } from 'lucide-react';
@@ -35,7 +35,6 @@ const MemoComparison = memo(Comparison);
 const MemoProjection = memo(Projection);
 const MemoControls = memo(Controls);
 const MemoSummary = memo(Summary);
-const MemoModelSensitivity = memo(ModelSensitivity);
 const MemoLongRun = memo(LongRun);
 const MemoDurationSensitivity = memo(DurationSensitivity);
 const MemoJapanBaseline = memo(JapanBaseline);
@@ -75,7 +74,8 @@ export default function FiscalSpacePage() {
     threshold: (id: keyof Thresholds, n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } })),
     cpiLimit: (n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, inflation: n } })),
     inputs: (v: FiscalForm['inputs']) => update('inputs', v), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
-    calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: Math.min(f.horizon, REFERENCES[v.referenceModel].years) })),
+    calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: Math.min(f.horizon, REFERENCES[v.referenceModel].years),
+      amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
     trade: (v: FiscalForm['trade']) => update('trade', v),
@@ -119,6 +119,7 @@ export default function FiscalSpacePage() {
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
+          socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
           policies={policies}
           horizon={Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
@@ -134,8 +135,8 @@ export default function FiscalSpacePage() {
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       </div>
       {result && <>
-      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} />
-      <MemoModelSensitivity rows={result.modelSensitivity} horizon={result.horizon}
+      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit}
+        rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
         onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />

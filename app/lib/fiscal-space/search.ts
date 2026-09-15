@@ -3,7 +3,7 @@ import { NO_SHOCK, PARAMETERS } from './assumptions';
 import { peakConstraints } from './constraints';
 import { simulate } from './simulate';
 import { positive } from './production';
-import { consumptionTaxLimit } from './calibration';
+import { policyReliefLimit } from './policy-limits';
 
 export function allocateMix(mix: PolicyShare[], amount: number) {
   if (!Number.isFinite(amount) || amount < 0 || mix.some(x => !Number.isFinite(x.weight) || x.weight < 0)) throw new RangeError('Invalid policy allocation');
@@ -19,8 +19,13 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
   if (p.reserveShare < 0 || p.reserveShare > 1) throw new RangeError('Reserve share must be 0–1');
   allocateMix(policyMix, 0);
   const weight = policyMix.reduce((sum, x) => sum + x.weight, 0);
-  const taxWeight = policyMix.filter(x => x.policy.id === 'consumption-tax').reduce((sum, x) => sum + x.weight, 0);
-  const searchCap = Math.min(p.searchCap, taxWeight > 0 ? consumptionTaxLimit(p) * weight / taxWeight : p.searchCap);
+  let searchCap = p.searchCap;
+  let limitingPolicy: string | undefined;
+  for (const id of ['consumption-tax', 'social-insurance']) {
+    const policyWeight = policyMix.filter(x => x.policy.id === id).reduce((sum, x) => sum + x.weight, 0);
+    const cap = policyWeight > 0 ? policyReliefLimit(id, p) * weight / policyWeight : Infinity;
+    if (cap <= searchCap) { searchCap = cap; limitingPolicy = id; }
+  }
   let evaluations = 0;
   const evaluate = (amount: number) => {
     evaluations++;
@@ -29,7 +34,8 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
   const base = evaluate(0);
   const result = (amount: number, status: FiscalSpaceEstimate['status'], peaks: FiscalSpaceEstimate['constraints']): FiscalSpaceEstimate => ({
     theoreticalMaximum: amount, emergencyReserve: amount * p.reserveShare, recommendedEnvelope: amount * (1 - p.reserveShare),
-    status, constraints: peaks, evaluations, tolerance: p.searchTolerance, reserveRule: { method: 'fixed-share', share: p.reserveShare },
+    status, limitingPolicy: status === 'revenue-cap' ? limitingPolicy : undefined,
+    constraints: peaks, evaluations, tolerance: p.searchTolerance, reserveRule: { method: 'fixed-share', share: p.reserveShare },
   });
   if (base.some(c => c.status === 'violated')) return result(0, 'baseline-violated', base);
   if (!policyMix.some(x => x.weight > 0)) return result(0, 'empty-mix', base);
@@ -38,7 +44,7 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
     const peaks = evaluate(high);
     if (peaks.some(c => c.status === 'violated')) break;
     low = high; safe = peaks;
-    if (high === searchCap) return result(low, 'search-cap', safe);
+    if (high === searchCap) return result(low, limitingPolicy ? 'revenue-cap' : 'search-cap', safe);
     high = Math.min(searchCap, high + p.searchStep);
   }
   while (high - low > p.searchTolerance) {

@@ -15,7 +15,7 @@ export function ConstraintMeters({ constraints, baseline = [], sensitivity, late
   return <Card><CardHeader>
     <h2 className="text-lg font-bold">次の1兆円で、どの制約が動く？</h2>
     <p className="text-sm">同じ配分・期間で年額を1兆円増やしたときの、期間内ピーク利用率の変化が大きい順です。境界までの金額や厳密な微分ではありません。バーは現在の水準、縦線100%は設定上限で、危険確率ではありません。</p>
-    <p className="text-xs">年0がピークの制約は、将来年が変化しても差が0になる場合があります。配分未入力・消費税減税限度にかかる場合は感応度を計算できません。</p>
+    <p className="text-xs">年0がピークの制約は、将来年が変化しても差が0になる場合があります。配分未入力・消費税や社会保険料の軽減限度にかかる場合は感応度を計算できません。</p>
   </CardHeader><CardContent className="space-y-4">
     {evaluated.map(r => {
       const label = r.status === 'violated' ? '閾値違反' : r.utilization >= .8 ? '上限に近い・設定内' : '設定内';
