@@ -1,5 +1,47 @@
 import { test, expect } from '@playwright/test';
 
+test('individual tax resets preserve other reforms and household conditions, including after reload', async ({ page }) => {
+  await page.goto('/tax-burden');
+  await page.getByLabel('世帯年収を万円で入力', { exact: true }).fill('800');
+  await page.getByRole('button', { name: /^税・給付/ }).click();
+  const input = (name: string) => page.getByLabel(`${name}・数値で入力`, { exact: true });
+  await input('給付付き控除（年額）').fill('30');
+  await input('逓減の開始年収').fill('500');
+  await input('逓減率').fill('20');
+  for (const [name, changed] of [
+    ['住民税（所得割）', '5'], ['年金保険料率', '4'], ['医療保険料率', '3'],
+    ['介護保険料率', '1'], ['雇用保険料率', '1'], ['所得税の基礎控除', '150'], ['児童手当（月額）', '30000'],
+  ]) {
+    const before = await input(name).inputValue();
+    const reset = page.getByRole('button', { name: `${name}をリセット`, exact: true });
+    await expect(reset).toBeDisabled();
+    await input(name).fill(changed);
+    await expect(reset).toBeEnabled();
+    await reset.click();
+    await expect(input(name)).toHaveValue(before);
+    await expect(reset).toBeDisabled();
+    await expect(input('給付付き控除（年額）')).toHaveValue('30');
+  }
+  await input('消費税・標準税率').fill('5');
+  await input('消費税・軽減税率').fill('3');
+  await page.getByRole('button', { name: '消費税をリセット', exact: true }).click();
+  await expect(input('消費税・標準税率')).toHaveValue('10');
+  await expect(input('消費税・軽減税率')).toHaveValue('8');
+  await expect(input('給付付き控除（年額）')).toHaveValue('30');
+  await input('住民税（所得割）').fill('7');
+  await page.getByRole('button', { name: '給付付き控除をリセット', exact: true }).click();
+  await expect(input('給付付き控除（年額）')).toHaveValue('0');
+  await expect(input('逓減の開始年収')).toHaveValue('300');
+  await expect(input('逓減率')).toHaveValue('10');
+  await expect.poll(() => new URL(page.url()).searchParams.get('creditAnnual')).toBe('0');
+  await page.reload();
+  await expect(page.getByLabel('世帯年収を万円で入力', { exact: true })).toHaveValue('800');
+  await page.getByRole('button', { name: /^税・給付/ }).click();
+  await expect(input('住民税（所得割）')).toHaveValue('7');
+  await expect(input('給付付き控除（年額）')).toHaveValue('0');
+  await expect(input('消費税・軽減税率')).toHaveValue('8');
+});
+
 test('corporate incidence leaves cash disposable income unchanged at fixed salary', async ({ page }) => {
   await page.goto('/tax-burden');
   await page.getByLabel('世帯年収を万円で入力').fill('500');

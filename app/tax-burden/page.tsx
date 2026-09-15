@@ -108,10 +108,6 @@ export default function TaxBurdenPage() {
         <div><p className="mb-2 text-xs font-bold tracking-normal">歳入・国民負担を考える</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">誰が、どれだけ負担している？</h1><p className="mt-3 max-w-2xl text-sm leading-relaxed">年収・家族構成・年齢から税・保険料・給付を眺め、制度を変えたときの違いを確かめます。</p></div>
         <Button variant="outline" onClick={share} disabled={!ready}><Share2 />この条件を共有する</Button>
       </section>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs leading-relaxed">
-        <span className="rounded-full bg-mirai-surface-teal px-3 py-1 font-bold text-primary-accent">試作</span>
-        <p>制度説明書に基づく参考計算です。OECD Taxing Wages の日本値と定点で照合済み（差は保険料の簡略化で説明可能）。実際の納税額を確定する計算ではありません。</p>
-      </div>
       {warning && <p role="alert" className="rounded-xl bg-card p-4 text-sm">{warning}</p>}
       <div role="status" className={notice ? 'rounded-xl bg-mirai-surface-teal p-3 text-sm' : 'sr-only'}>{notice}</div>
       {shareUrl && <label className="block text-sm">共有URL<input ref={shareInput} value={shareUrl} readOnly onFocus={e => e.target.select()} className="mt-2 w-full rounded-xl border border-mirai-border bg-card p-3" /></label>}
@@ -174,7 +170,7 @@ export default function TaxBurdenPage() {
     </main>
     <dialog ref={dialog} aria-labelledby="tax-data-title" className="max-h-[85vh] w-full max-w-2xl rounded-3xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="flex items-center justify-between gap-3 border-b border-mirai-border p-6"><h2 id="tax-data-title" className="flex items-center gap-2 text-lg font-bold"><ClipboardCheck className="size-5 text-primary-accent" />データと計算条件</h2><Button variant="ghost" size="icon" aria-label="計算条件を閉じる" onClick={() => dialog.current?.close()}><X /></Button></div>
-      <div className="space-y-5 p-6 text-sm leading-relaxed"><p className="font-bold text-primary-accent">試作・制度説明書ベースの参考計算です</p>
+      <div className="space-y-5 p-6 text-sm leading-relaxed"><p className="font-bold text-primary-accent">試作・制度説明書ベースの参考計算です。実際の納税額を確定する計算ではありません。</p>
         <p>選択世帯：{household.label}。大人{state.age}歳、収入按分{household.earners === 2 ? `${state.share}:${100 - state.share}` : '100:0'}。賞与{state.bonus ? '年2回、各1か月分' : 'なし'}。</p>
         {params ? <><dl className="grid grid-cols-2 gap-2"><dt>資料</dt><dd>OECD Japan 2025</dd><dt>資料記載の制度基準日</dt><dd>{params.metadata.referenceDate}</dd><dt>資料改訂</dt><dd>{params.metadata.documentRevision}</dd><dt>原本の版固定</dt><dd>PDF保存・ハッシュ未取得</dd>{oecd && <><dt>OECD比較</dt><dd>Taxing Wages（{oecd.metadata.retrievedOn}取得）</dd></>}{consumption && <><dt>消費支出</dt><dd>{consumption.metadata.survey}（{consumption.metadata.retrievedOn}取得）</dd></>}</dl>
           <ul className="list-disc space-y-3 pl-5">{params.metadata.notes.map(note => <li key={note}>{note}</li>)}</ul></> : <p>計算条件の詳細はデータ読み込み後に表示します。</p>}

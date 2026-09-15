@@ -17,12 +17,13 @@ const pct = (fraction: number) => Number((fraction * 100).toFixed(2));
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
-export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false, editable = false, note }: {
+export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false, editable = false, note, onReset, resetDisabled }: {
   label: string; value: number; min: number; max: number; step?: number; suffix?: string;
   onChange: (value: number) => void; disabled?: boolean; editable?: boolean; note?: string;
+  onReset?: () => void; resetDisabled?: boolean;
 }) {
   const clamp = (n: number) => Math.max(min, Math.min(max, n));
-  return <label className="block space-y-1 text-sm">
+  return <div className="space-y-1"><label className="block space-y-1 text-sm">
     <span className="flex items-center justify-between gap-2"><span>{label}</span>
       {editable
         ? <span className="flex shrink-0 items-center gap-1 font-bold tabular-nums">
@@ -35,7 +36,7 @@ export function RangeField({ label, value, min, max, step = 1, suffix = '', onCh
     <input aria-label={label} type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={e => onChange(Number(e.target.value))}
       className="policy-range w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40" />
     {note && <span className="block text-xs text-mirai-text-subtle">{note}</span>}
-  </label>;
+  </label>{onReset && <div className="flex justify-end"><Button type="button" variant="ghost" size="sm" aria-label={`${label}をリセット`} disabled={disabled || resetDisabled} onClick={onReset}><RotateCcw aria-hidden="true" />リセット</Button></div>}</div>;
 }
 
 function Toggle({ label, note, checked, onChange, disabled = false }: { label: string; note?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
@@ -57,6 +58,13 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
   const [tab, setTab] = useState<'household' | 'policy'>('household');
   const set = <K extends keyof TaxState>(key: K, value: TaxState[K]) => setState(s => ({ ...s, [key]: value }));
   const reform = <K extends keyof TaxState['reform']>(key: K, value: TaxState['reform'][K]) => setState(s => ({ ...s, reform: { ...s.reform, [key]: value } }));
+  const resetFields = (keys: (keyof TaxState['reform'])[]) => setState(s => {
+    const next = { ...s.reform };
+    for (const key of keys) next[key] = BASE_REFORM[key];
+    return { ...s, reform: next };
+  });
+  const resetProps = (key: keyof TaxState['reform']) => ({ onReset: () => resetFields([key]), resetDisabled: state.reform[key] === BASE_REFORM[key] });
+  const resetGroup = (label: string, keys: (keyof TaxState['reform'])[]) => <div className="flex justify-end"><Button type="button" variant="ghost" size="sm" aria-label={`${label}をリセット`} disabled={keys.every(key => state.reform[key] === BASE_REFORM[key])} onClick={() => resetFields(keys)}><RotateCcw aria-hidden="true" />{label}をリセット</Button></div>;
   const household = HOUSEHOLDS.find(h => h.id === state.household)!;
   const swappable = state.view === 'curve' || state.view === 'age' || state.view === 'heatmap';
   const birthAges = [state.firstBirthAge, state.secondBirthAge].slice(0, household.children);
@@ -127,24 +135,26 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           : '動かすと、税目ごとの表がその場で再計算されます。'}世帯の条件は「世帯」タブで変えられます。</p>
         <Button variant="outline" size="sm" className="w-full" disabled={!reformed} onClick={() => set('reform', { ...BASE_REFORM })}><RotateCcw />基準制度に戻す</Button>
         <h3 className="pt-1 text-xs font-bold text-primary-accent">定率のものは料率で</h3>
-        <RangeField editable label="住民税（所得割）" value={pct(state.reform.localRate)} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
-        <RangeField editable label="年金保険料率" value={pct(state.reform.pensionRate)} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
-        <RangeField editable label="医療保険料率" value={pct(state.reform.healthRate)} min={0} max={20} step={0.05} suffix="%" onChange={v => reform('healthRate', rate(v))} />
-        <RangeField editable label="介護保険料率" value={pct(state.reform.careRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('careRate', rate(v))} />
-        <RangeField editable label="雇用保険料率" value={pct(state.reform.employmentRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('employmentRate', rate(v))} />
+        <RangeField editable {...resetProps('localRate')} label="住民税（所得割）" value={pct(state.reform.localRate)} min={0} max={20} step={0.5} suffix="%" onChange={v => reform('localRate', rate(v))} />
+        <RangeField editable {...resetProps('pensionRate')} label="年金保険料率" value={pct(state.reform.pensionRate)} min={0} max={30} step={0.05} suffix="%" onChange={v => reform('pensionRate', rate(v))} />
+        <RangeField editable {...resetProps('healthRate')} label="医療保険料率" value={pct(state.reform.healthRate)} min={0} max={20} step={0.05} suffix="%" onChange={v => reform('healthRate', rate(v))} />
+        <RangeField editable {...resetProps('careRate')} label="介護保険料率" value={pct(state.reform.careRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('careRate', rate(v))} />
+        <RangeField editable {...resetProps('employmentRate')} label="雇用保険料率" value={pct(state.reform.employmentRate)} min={0} max={5} step={0.05} suffix="%" onChange={v => reform('employmentRate', rate(v))} />
         <RangeField editable label="消費税・標準税率" value={pct(state.reform.standardVat)} min={0} max={25} step={0.5} suffix="%" disabled={!hasConsumption}
           onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, standardVat: rate(v) } }))} />
         <RangeField editable label="消費税・軽減税率" value={pct(state.reform.reducedVat)} min={0} max={25} step={0.5} suffix="%" disabled={!hasConsumption}
           onChange={v => setState(s => ({ ...s, includeConsumption: true, reform: { ...s.reform, reducedVat: rate(v) } }))} />
+        {resetGroup('消費税', ['standardVat', 'reducedVat'])}
         <h3 className="pt-2 text-xs font-bold text-primary-accent">累進の所得税は控除で</h3>
-        <RangeField editable label="所得税の基礎控除" value={(allowance + state.reform.basicAllowanceExtra) / 10000} min={0} max={(allowance + 2000000) / 10000} step={1} suffix="万円"
+        <RangeField editable {...resetProps('basicAllowanceExtra')} label="所得税の基礎控除" value={(allowance + state.reform.basicAllowanceExtra) / 10000} min={0} max={(allowance + 2000000) / 10000} step={1} suffix="万円"
           note={`現行は所得に応じて58〜95万円（この年収では${(allowance / 10000).toLocaleString('ja-JP')}万円）。差額を全ての所得階層に足し引きします。`}
           onChange={v => reform('basicAllowanceExtra', Math.round(v * 10000) - allowance)} />
         <h3 className="pt-2 text-xs font-bold text-primary-accent">給付を変える</h3>
-        <RangeField editable label="児童手当（月額）" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', Math.round(v))} />
+        <RangeField editable {...resetProps('childMonthly')} label="児童手当（月額）" value={state.reform.childMonthly} min={0} max={50000} step={1000} suffix="円" onChange={v => reform('childMonthly', Math.round(v))} />
         <RangeField editable label="給付付き控除（年額）" value={state.reform.creditAnnual / 10000} min={0} max={100} step={5} suffix="万円" onChange={v => reform('creditAnnual', Math.round(v * 10000))} />
         <RangeField editable label="逓減の開始年収" value={state.reform.creditPhaseoutStart / 10000} min={0} max={1000} step={50} suffix="万円" onChange={v => reform('creditPhaseoutStart', Math.round(v * 10000))} />
         <RangeField editable label="逓減率" value={pct(state.reform.creditPhaseoutRate)} min={0} max={100} step={5} suffix="%" onChange={v => reform('creditPhaseoutRate', rate(v))} />
+        {resetGroup('給付付き控除', ['creditAnnual', 'creditPhaseoutStart', 'creditPhaseoutRate'])}
         <label className="block space-y-1 text-sm"><span>消費税を変えたときの前提</span>
           <select className={inputClass} value={state.consumptionAssumption} disabled={!hasConsumption} onChange={e => set('consumptionAssumption', e.target.value as TaxState['consumptionAssumption'])}>
             <option value="net-fixed">税抜の数量・価格を固定（税込支出が動く）</option>

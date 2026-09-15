@@ -133,9 +133,12 @@ try {
   const cpi = page.getByLabel('CPI総合・初期インフレ率（年0）', { exact: true });
   await expect(gap).toHaveValue('0.7');
   await expect(cpi).toHaveValue('1.9');
+  await page.keyboard.press('Escape');
   await page.getByLabel('社会保険料減税・数値で入力').fill('15');
+  await page.getByText('経済状態・評価条件を変える', { exact: true }).click();
   await cpi.fill('4');
   await gap.fill('2');
+  await page.keyboard.press('Escape');
 
   const cpiSource = page.getByRole('region', { name: '入力値の出典一覧' }).getByRole('row').filter({ has: page.getByRole('rowheader', { name: '初期状態 / 経済全体 / インフレ率', exact: true }) });
   const inspectSources = async check => {
@@ -172,7 +175,6 @@ try {
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByRole('radio', { name: '2024年で揃える' })).toBeChecked();
-  await page.getByText('経済状態・評価条件を変える', { exact: true }).click();
   await expect(page.getByRole('link', { name: '名目GDPの出典', exact: true })).toHaveAttribute('href', /imf\.org/);
   await expect(page.getByRole('meter')).toHaveCount(8);
   const comparison = page.getByRole('region', { name: '次の1兆円の政策比較表' });
@@ -219,10 +221,13 @@ try {
   await page.getByText('経済状態・評価条件を変える', { exact: true }).click();
   await expect(page.getByLabel('潜在GDPギャップ（年0）', { exact: true })).toHaveValue('0');
   await page.getByLabel('潜在GDPギャップ（年0）', { exact: true }).fill('2');
+  await page.keyboard.press('Escape');
   const sources = page.getByRole('region', { name: '入力値の出典一覧' });
   const potential = sources.getByRole('row').filter({ has: page.getByRole('rowheader', { name: '初期状態 / 経済全体 / 潜在GDP', exact: true }) });
   await inspectSources(() => expect(potential).toContainText('仮定・設定'));
+  await page.getByText('経済状態・評価条件を変える', { exact: true }).click();
   await page.getByLabel('債務経路 上限（%）').fill('100');
+  await page.keyboard.press('Escape');
   await expect(page.getByText('政策なしでも設定した上限を超えます。', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();

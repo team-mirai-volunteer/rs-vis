@@ -37,6 +37,7 @@ try {
   await expect.poll(() => result.innerText()).not.toEqual(slack);
   await expect(result).toContainText('消費税直接効果を除くCPI');
   await expect(result).toContainText('借換・新発金利');
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   const models = page.getByRole('region', { name: '参考上限の感度' });
