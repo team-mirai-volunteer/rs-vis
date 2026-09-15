@@ -10,7 +10,7 @@ export function RevenuePanel({ data, onCompareIncomeTax }: { data: TaxRevenue; o
   const max = Math.max(...rows.map(r => r.amount));
   return <div className="space-y-5">
     <Card className="bg-mirai-surface-teal"><CardHeader><div className="flex items-center gap-2 text-primary-accent"><Landmark className="size-5" /><h2 className="font-bold">一般会計の租税・印紙収入</h2></div></CardHeader>
-      <CardContent><p className="text-4xl font-bold tabular-nums">{formatBudgetFromYen(data.total)}</p><p className="mt-3 text-sm">{data.metadata.fiscalYear}年度・{data.metadata.budgetType}。地方税・社会保険料は含めません。</p></CardContent>
+      <CardContent><p className="font-lexend text-4xl font-medium tabular-nums">{formatBudgetFromYen(data.total)}</p><p className="mt-3 text-sm">{data.metadata.fiscalYear}年度・{data.metadata.budgetType}。地方税・社会保険料は含めません。</p></CardContent>
     </Card>
     <Card><CardHeader><h2 className="font-bold">どの税が、どれだけを占めるか</h2><p className="text-xs text-mirai-text-secondary">所得税は源泉・申告を分け、予算書の項名をそのまま表示しています。</p></CardHeader>
       <CardContent><table className="w-full text-sm"><thead><tr className="text-xs text-mirai-text-secondary"><th scope="col" className="pb-3 text-left">税目</th><th scope="col" className="pb-3 text-right">予算額</th></tr></thead>
