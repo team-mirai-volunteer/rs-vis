@@ -41,6 +41,12 @@ const url = `https://rssystem.go.jp/download-csv/${year}`;
 console.log(`open ${url}`);
 await page.goto(url, { waitUntil: 'networkidle', timeout: 90_000 });
 
+// 一覧はクライアント側で描画されるため networkidle だけでは間に合わないことがある。
+// ファイル名の行（「1-1_…ZIP」形式）が現れるまで待ってから本文を読む。
+await page.locator('tr, li').filter({ hasText: /^\d-\d_.*ZIP$/ }).first()
+  .waitFor({ state: 'attached', timeout: 60_000 })
+  .catch(() => {});
+
 // ページに載っている全ファイル名（「1-1_基本情報_組織情報」形式）を拾う
 const bodyText = await page.textContent('body');
 const listed = [...(bodyText ?? '').matchAll(/(\d-\d)_([^\sZ]+?)ZIP/g)].map(m => ({ prefix: m[1], label: `${m[1]}_${m[2]}` }));
