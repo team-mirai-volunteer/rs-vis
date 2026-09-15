@@ -27,8 +27,9 @@ export function financeDebt(buckets: DebtBucket[], netBorrowing: number, year: n
 }
 export function fiscalMetrics(state: EconomyState, maturingDebt: number, previousDebt: number, previousGdp: number, sfa = 0): FiscalMetrics {
   const f = state.fiscal, gdp = state.macro.nominalGdp;
-  const effectiveRate = previousDebt > 0 ? f.interestPayments / previousDebt : 0;
-  const grossFinancingNeeds = -f.primaryBalance + f.interestPayments + maturingDebt;
+  // Debt identity uses net interest, while burden ratios report gross interest paid.
+  const effectiveRate = previousDebt > 0 ? (f.interestPayments - f.interestRevenue) / previousDebt : 0;
+  const grossFinancingNeeds = -f.primaryBalance + f.interestPayments - f.interestRevenue + maturingDebt;
   return { grossDebtGdp: f.grossDebt / gdp, netDebtGdp: f.netDebt / gdp,
     liquidityAdjustedNetDebtGdp: f.liquidityAdjustedNetDebt / gdp, primaryBalanceGdp: f.primaryBalance / gdp,
     interestGdp: f.interestPayments / gdp, interestTax: f.taxRevenue > 0 ? f.interestPayments / f.taxRevenue : Infinity,

@@ -1,34 +1,107 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ModelParameters, Policy, ProjectionStep, SourceValue } from '@/types/fiscal-space';
 import { money, percent } from './format';
+import { inputLabel } from './labels';
+import { initialEconomy, PARAMETERS } from '@/app/lib/fiscal-space/assumptions';
+import { productionCapacity } from '@/app/lib/fiscal-space/production';
+import { CONTEXT_CHECKED, japanContext, OECD_DEBT_RECORDS, OECD_DEBT_SOURCE, FERTILIZER_SOURCE } from '@/app/lib/fiscal-space/japan-context';
+import { JAPAN_DATA_CHECKED, JAPAN_DATASET_LABELS, japanSources, SOURCE_STATUS_LABELS, type JapanDataset } from '@/app/lib/fiscal-space/japan-data';
+
+export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; onDataset: (value: JapanDataset) => void }) {
+  const s = initialEconomy(dataset), sources = japanSources(dataset), latest = dataset === 'latest';
+  const context = japanContext(dataset);
+  const maximum = productionCapacity(s, PARAMETERS, 1).maximum;
+  const rows = [
+    ['名目GDP', money(s.macro.nominalGdp, 1), 'macro.nominalGdp'],
+    ['総債務（一般政府）', money(s.fiscal.grossDebt, 1), 'fiscal.grossDebt'],
+    ['純債務（一般政府）', money(s.fiscal.netDebt, 1), 'fiscal.netDebt'],
+    ['基礎的財政収支（一般政府）', money(s.fiscal.primaryBalance, 1), 'fiscal.primaryBalance'],
+    ['利払い（一般政府）', money(s.fiscal.interestPayments, 1), 'fiscal.interestPayments'],
+    ['GDPギャップ（プラス＝需要超過）', percent(s.macro.realGdp / s.macro.potentialGdp - 1), 'macro.potentialGdp'],
+    ['CPI総合', percent(s.macro.inflation), 'macro.inflation'],
+    ['CPI・生鮮食品を除く総合', percent(s.macro.coreInflation), 'macro.coreInflation'],
+    ['コアコアCPI', percent(context['context.coreCoreCpi'].value), 'context.coreCoreCpi'],
+    ['食品CPI（統計の「食料」）', percent(context['context.foodCpi'].value), 'context.foodCpi'],
+    ['エネルギーCPI', percent(context['context.energyCpi'].value), 'context.energyCpi'],
+    ['就業者数', `${(s.labour.employment / 1e4).toLocaleString('ja-JP')}万人`, 'labour.employment'],
+    ['財・サービス輸入', money(s.external.imports, 1), 'external.imports'],
+    ['財・サービス輸出', money(s.external.exports, 1), 'external.exports'],
+    ['エネルギー自給率', percent(s.energy.domesticSupply / s.energy.primaryDemand), 'energy.domesticSupply'],
+    ['食料自給率（カロリーベース）', percent(context['context.calorieSelfSufficiency'].value, 0), 'context.calorieSelfSufficiency'],
+    ['食料自給率（生産額・金額ベース）', percent(context['context.valueSelfSufficiency'].value, 0), 'context.valueSelfSufficiency'],
+    ['肥料自給率の参考：尿素の国産割合', percent(context['context.ureaDomesticShare'].value, 0), 'context.ureaDomesticShare'],
+    ['対外純資産', money(s.external.niip, 1), 'external.niip'],
+  ];
+  return <Card><CardHeader><h2 className="text-lg font-bold">日本のデータを選ぶ</h2>
+    <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
+      {(Object.entries(JAPAN_DATASET_LABELS) as [JapanDataset, string][]).map(([id, label]) => <label key={id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold ${dataset === id ? 'border-primary bg-primary/10' : 'border-mirai-border'}`}>
+        <input type="radio" name="japan-dataset" value={id} checked={dataset === id} onChange={() => onDataset(id)} className="accent-primary" />{label}
+      </label>)}
+    </fieldset>
+    <p className="text-sm leading-relaxed">{latest
+      ? '2026年9月15日までに確認した公表値を採用。GDP・GDPギャップ・CPI・雇用・対外純資産を更新し、食料自給率は2025年度概算。財政と国民経済計算の対外収支は2024年の一式を継続採用しています。異なる対象期間を組み合わせた試算です。'
+      : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
+    <p className="text-xs leading-relaxed">以下は操作前の基準値です。切り替えると経済状態の操作を初期化し、政策・ショック・閾値は引き継ぎます。年0は選択した初期状態、年1以降は試算の経過年です。</p>
+    <p className="text-xs text-mirai-text-subtle">GDPは国内総生産、CPIは消費者物価指数、IMFは国際通貨基金を指します。</p>
+    <p className="text-xs leading-relaxed">コアコア・食品・エネルギーCPI、食料自給率・肥料原料の国産割合は参考観測値です。各指標の政策実施後の経路は未推計。追加統計・OECD比較の確認：{CONTEXT_CHECKED}。OECD比較は2024年の公表集計を使用します。</p>
+  </CardHeader><CardContent><dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label, value, key]) => {
+    const source = context[key] ?? sources[`initial.${key}`];
+    const debt = key === 'fiscal.grossDebt' || key === 'fiscal.netDebt';
+    const ratio = debt || key === 'fiscal.primaryBalance' || key === 'fiscal.interestPayments';
+    return <div key={key} data-observation-key={key}><dt className="text-xs">{label}</dt><dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+      {debt && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent((key === 'fiscal.grossDebt' ? s.fiscal.grossDebt : s.fiscal.netDebt) / s.macro.nominalGdp)}</dd>}
+      {key === 'fiscal.primaryBalance' && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent(s.fiscal.primaryBalance / s.macro.nominalGdp)}<p className="text-xs">利子の受払を除く収支。黒字がプラス、赤字がマイナス。</p></dd>}
+      {key === 'fiscal.interestPayments' && <dd className="mt-1 text-sm tabular-nums">利払いGDP比 {percent(s.fiscal.interestPayments / s.macro.nominalGdp)}<p className="text-xs">受取利子を控除する前の支払利子。</p></dd>}
+      <dd className="mt-1 text-xs text-mirai-text-subtle">{source.referenceYear}・{ratio ? '公表額から換算' : SOURCE_STATUS_LABELS[source.status]} <a className="text-primary-accent underline" href={source.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${label}の出典`}>出典</a></dd>
+      {source.publishedAt && <dd className="mt-1 text-xs text-mirai-text-subtle">公表：{source.publishedAt}</dd>}
+      {latest && ratio && <dd className="mt-1 text-xs">分母：2026年4〜6月期GDP（季調年率）。同一時点の実績比率ではありません。</dd>}
+      {latest && key === 'macro.nominalGdp' && <dd className="mt-1 text-xs">2次速報・季節調整済み年率</dd>}
+      {key === 'macro.inflation' && <dd className="mt-1 text-xs">{latest ? '全国・前年同月比' : '全国・年平均の前年比'}</dd>}
+      {key === 'macro.potentialGdp' && <dd className="mt-2 text-xs leading-relaxed">試作の最大GDP基準：<strong className="tabular-nums">{percent(s.macro.realGdp / maximum - 1)}</strong><br />最大GDP {money(maximum, 1)}。（実際−最大）÷最大。公表値と符号を揃え、マイナスが余力。短期の投入量を仮定した計算値です。</dd>}
+      {key === 'context.coreCoreCpi' && <dd className="mt-1 text-xs">生鮮食品・エネルギーを除く総合。加工食品は含みます。</dd>}
+      {key === 'context.foodCpi' && <dd className="mt-1 text-xs">生鮮食品・酒類・外食を含む全国平均。家計ごとの負担感は購入内容で異なります。</dd>}
+      {key === 'context.energyCpi' && <dd className="mt-1 text-xs">電気・ガス・灯油・ガソリン。補助金・税制の影響を含む家計向け価格で、輸入価格とは異なります。</dd>}
+      {key === 'context.ureaDomesticShare' && <dd className="mt-1 space-y-1 text-xs"><p>りん安・塩化加里：ほぼ全量を輸入（国産割合はほぼ0%）。<a href={FERTILIZER_SOURCE} className="underline" target="_blank" rel="noreferrer">農水省</a></p><p>主要3原料の参考値。堆肥・硫安等を含む肥料全体や、窒素・りん酸・加里の成分全体の自給率ではありません。国内製造でも原料・燃料を輸入する場合があります。</p><p>OECD平均：同じ対象原料・期間の値は未取得。</p></dd>}
+      {key === 'context.valueSelfSufficiency' && <dd className="mt-1 text-xs">国内価格の上昇でも高まるため、供給量の増加とは限りません。</dd>}
+      {key === 'fiscal.grossDebt' && <dd className="mt-2 text-xs leading-relaxed">OECD平均：<strong>{percent(OECD_DEBT_RECORDS[0].value, 1)}</strong>（2024年・公表集計）。同じOECD定義の日本：{percent(OECD_DEBT_RECORDS[1].value, 1)}。時価等の定義差がある参考比較。<a href={OECD_DEBT_SOURCE} target="_blank" rel="noreferrer" className="text-primary-accent underline">比較出典</a></dd>}
+      {key === 'fiscal.netDebt' && <dd className="mt-2 text-xs">OECD平均：同じ資産控除範囲の値は未取得。総金融資産を控除する「純金融負債」とは区別します。</dd>}
+      {(key === 'energy.domesticSupply' || key === 'context.calorieSelfSufficiency' || key === 'context.valueSelfSufficiency') && <dd className="mt-2 text-xs">OECD平均：同一定義・対象年の加盟国全体の値は未取得。</dd>}
+    </div>;
+  })}</dl><p className="mt-3 text-xs leading-relaxed">総債務・純債務は地方・社会保障基金を含む一般政府の2024年値です。純債務は総債務から定義上の控除対象となる金融資産を差し引いた額です。</p>{latest && <details className="mt-4 text-xs leading-relaxed"><summary className="cursor-pointer font-bold">2024年を継続採用する項目と理由</summary><ul className="mt-2 list-disc space-y-1 pl-5">
+    <li>財政：歳入・歳出・利子・債務・資産を同じ年次資料で揃えています。最新の四半期債務のみを組み込むと、資産や利子との時点がずれるため一式を維持しています。</li>
+    <li>国民経済計算の対外収支：輸出入・第一次所得・経常移転の会計関係を揃えるため2024年の勘定体系を維持。対外純資産は独立して更新します。</li>
+    <li>エネルギー：需給実績の最新確報は2024年度。エネルギー輸入費は2024年の概算を維持しています。</li>
+  </ul></details>}<p className="mt-4 text-xs leading-relaxed">政策乗数、将来の成長率・物価・金利、産業別の供給能力、債務の満期構成、許容閾値は仮定です。表示する財政余力は、これらの設定に依存する試算です。出典確認：{JAPAN_DATA_CHECKED}。データは確認時点の固定値で、自動更新ではありません。</p></CardContent></Card>;
+}
 
 export function Explanations({ step, parameters, policies, records }: { step: ProjectionStep; parameters: ModelParameters; policies: Policy[]; records: SourceValue[] }) {
   const s = step.state;
-  return <Card id="model-notes"><CardHeader><h2 className="text-lg font-bold">計算根拠・データ・レジリエンス</h2><p className="text-sm leading-relaxed">このMVPは日本の実測データで校正していません。すべての入力水準・乗数・需要係数・閾値は<strong>仮定・試作値・未検証</strong>です。現在の日本政府の支出可能額を示すものではありません。</p></CardHeader><CardContent className="space-y-5 text-sm leading-relaxed">
+  return <Card id="model-notes"><CardHeader><h2 className="text-lg font-bold">計算根拠・データ・レジリエンス</h2><p className="text-sm leading-relaxed">選択した日本の公表データを初期状態に取り込み、換算値・推計・仮定を区別しています。政策の効果や将来経路は<strong>仮定に基づく試算</strong>です。表示額は現在の日本政府の支出可能額を確定するものではありません。</p></CardHeader><CardContent className="space-y-5 text-sm leading-relaxed">
+    <p className="text-xs">財政は地方・社会保障基金を含む一般政府。総債務は連結・額面ベース、純債務の控除対象資産は株式等を除く範囲です。税・社会負担収入とその他の非利子収入を分け、基礎的財政収支から利子の受払を除外します。基準年の支払利子は{money(initialEconomy().fiscal.interestPayments)}、受取利子は{money(initialEconomy().fiscal.interestRevenue)}です。受取利子・その他収入の将来額は基準の名目成長率で延長する仮定です。</p>
     <details open><summary className="cursor-pointer font-bold">追加需要はどこへ向かう？（年{step.state.year}）</summary><div className="mt-3 space-y-3">
-      <p>追加需要 {money(step.demand.additionalDemand)} ＝ 国内実質生産 {money(step.demand.realOutput)} ＋ 輸入漏出 {money(step.demand.imports)} ＋ 価格圧力相当 {money(step.demand.prices)}。ここはすべて基準年価格。価格圧力相当額はGDPに直接加算しません。</p>
-      <p className="text-xs">実効乗数 ＝ base multiplier × slack factor × capacity factor × domestic retention factor。国内維持率 = 1 − 輸入性向。slack factor = 1 + {parameters.gapMultiplierSensitivity} × 潜在gap + {parameters.slackMultiplierSensitivity} × 最大gap（負の最大余力は0）。capacity factorは全国余力/{percent(parameters.supplySlackReference)}と産業余力/{percent(parameters.sectorSlackReference)}の小さい方を使い、全国の最大GDPを超える要求は比例縮小します。残りの国内需要の{percent(parameters.overflowImportShare, 0)}を輸入、残余を物価へ割り当てます。</p>
-      <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-right text-xs tabular-nums"><caption className="text-left">当年稼働中の政策の乗数分解</caption><thead><tr>{['政策', '基礎乗数', '余力係数', '能力係数', '国内維持率', '実効乗数'].map(h => <th key={h} scope="col" className="p-2">{h}</th>)}</tr></thead><tbody>{step.demand.details.map((d, i) => <tr key={i}><th scope="row" className="p-2 text-left">{policies.find(p => p.id === d.policyId)?.name ?? d.policyId}</th>{[d.baseMultiplier, d.slackFactor, d.capacityFactor, d.domesticRetentionFactor, d.effectiveMultiplier].map((v, j) => <td key={j} className="p-2">{v.toFixed(3)}</td>)}</tr>)}</tbody></table></div>
+      <p>国内実質生産の変化 {money(step.demand.realOutput)}、実質輸入の変化 {money(step.demand.imports)}、供給上限を超えた価格圧力相当 {money(step.demand.prices)}。ここは基準年価格です。GDPへの反応と輸入への反応は別々に計算し、公表GDP乗数から輸入を再び差し引きません。</p>
+      <p className="text-xs">年次の継続効果の差分を、その年までの支出に重ね合わせます。支出終了後の反動も残します。実質生産が仮定した供給上限に届く場合だけ縮小し、超過分の{percent(parameters.overflowImportShare, 0)}を輸入、残余を物価圧力へ配分します。これは上限付近の追加仮定です。公表の物価水準の変化率は前年との差からインフレ率に直し、GDPデフレーターと消費者物価を分けます。</p>
+      <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-right text-xs tabular-nums"><caption className="text-left">政策の実質GDPへの反応</caption><thead><tr>{['政策', '初年度の参照乗数', '供給上限による調整', '当年の実効乗数'].map(h => <th key={h} scope="col" className="p-2">{h}</th>)}</tr></thead><tbody>{step.demand.details.map((d, i) => <tr key={i}><th scope="row" className="p-2 text-left">{policies.find(p => p.id === d.policyId)?.name ?? d.policyId}</th>{[d.baseMultiplier, d.capacityFactor, d.effectiveMultiplier].map((v, j) => <td key={j} className="p-2">{v.toFixed(3)}</td>)}</tr>)}</tbody></table></div>
     </div></details>
     <details><summary className="cursor-pointer font-bold">実物輸入と金融的な対外収支を分けて見る</summary><dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
-      ['貿易収支', money(s.external.tradeBalance)], ['財の収支', money(s.external.goodsBalance)], ['サービス収支', money(s.external.servicesBalance)],
-      ['第一次所得収支', money(s.external.primaryIncomeBalance)], ['経常収支', money(s.external.currentAccount)], ['対外純資産（NIIP）', money(s.external.niip)],
+      ['財・サービス収支（国民経済計算）', money(s.external.tradeBalance)], ['財の収支', money(s.external.goodsBalance)], ['サービス収支', money(s.external.servicesBalance)],
+      ['第一次所得収支（国民経済計算）', money(s.external.primaryIncomeBalance)], ['経常対外収支（国民経済計算）', money(s.external.currentAccount)], ['対外純資産', money(s.external.niip)],
       ['エネルギー輸入費', money(s.energy.importBill)], ['エネルギー輸入費 / GDP', percent(s.energy.importBill / s.macro.nominalGdp)],
-      ['必需輸入費（エネルギー含む）', money(s.external.essentialImports)], ['一次エネルギー自給率', percent(s.energy.domesticSupply / s.energy.primaryDemand)],
-      ['化石燃料輸入依存率（固定仮定）', percent(s.energy.fossilFuelImportDependency)], ['電力予備率', percent(s.energy.reserveMargin)],
+      ['必需輸入費（年0は仮定）', money(s.external.essentialImports)], ['一次エネルギー自給率', percent(s.energy.domesticSupply / s.energy.primaryDemand)],
+      ['化石燃料輸入依存率（固定仮定）', percent(s.energy.fossilFuelImportDependency)], ['電力予備率（年0は仮定）', percent(s.energy.reserveMargin)],
       ['再エネ設備容量（固定仮定）', `${s.energy.renewableInstalledCapacity.toFixed(1)}GW`], ['再エネ確実供給寄与（固定仮定）', `${s.energy.renewableFirmContribution.toFixed(1)}GW`],
       ['流動性調整純債務 / GDP', percent(step.metrics.liquidityAdjustedNetDebtGdp)],
-    ].map(([label, value]) => <div key={label}><dt className="text-xs text-mirai-text-subtle">{label}</dt><dd className="font-bold tabular-nums">{value}</dd></div>)}</dl><p className="mt-3 text-xs">経常収支の所得黒字はエネルギー・食料の供給能力へ加算しません。追加エネルギー費は需要分解の輸入とは別の資源費として貿易収支へ計上します。発電投資の確実供給増は仮定係数で指定し、電源種別・再エネ導入構成は未モデル化です。</p></details>
-    <details><summary className="cursor-pointer font-bold">国家レジリエンス（財政制約とは別枠）</summary><p className="mt-3">エネルギー輸入先集中、食料カロリー・蛋白自給率、飼料・肥料・農業エネルギー依存、重要鉱物、備蓄日数、地政学的集中：<strong>すべて未検証・未取得</strong>。型は拡張可能ですが、このMVPでは数値も警戒判定も作りません。</p></details>
+    ].map(([label, value]) => <div key={label}><dt className="text-xs text-mirai-text-subtle">{label}</dt><dd className="font-bold tabular-nums">{value}</dd></div>)}</dl><p className="mt-3 text-xs">経常収支の所得黒字はエネルギー・食料の供給能力へ加算しません。電力需要・非化石発電量の共通経路から火力燃料輸入を計算し、全政策に計上します。発電・送電網の輸入代替は一度だけ差し引き、一般輸入の成長経路に含まれる火力燃料の伸びは置き換えます。電源別の事業条件・ミックスは入力可能ですが、一次エネルギーの物量指数への換算や時間帯別の確実供給は未校正です。</p></details>
+    <details><summary className="cursor-pointer font-bold">国家レジリエンス（財政制約とは別枠）</summary><p className="mt-3">食料のカロリー・生産額ベース自給率は冒頭に公表値を掲載しています。輸入先の集中、蛋白自給率、飼料・肥料・農業エネルギー依存、重要鉱物、備蓄日数、供給途絶への耐性は未評価です。自給率から財政枠や有事の供給量を直接算出しません。</p></details>
     <details><summary className="cursor-pointer font-bold">数式・探索の限界と緊急時留保</summary><div className="mt-3 space-y-2 text-xs">
-      <p>Cobb–Douglas: A K^α L^β E^γ。CES: A(Σw x^ρ)^(1/ρ)、ρ=1−1/σ、σ={parameters.cesSigma}。σ=1は幾何平均。Leontief: min(K/aK, L/aL, E/aE, M/aM)。投入は基準投入量を1とする指数で、共通の潜在GDPを掛けて円へ戻します。</p>
+      <p>コブ＝ダグラス型: A K^α L^β E^γ。代替弾力性一定型: A(Σw x^ρ)^(1/ρ)、ρ=1−1/σ、σ={parameters.cesSigma}。σ=1は幾何平均。レオンチェフ型: min(K/aK, L/aL, E/aE, M/aM)。投入は基準投入量を1とする指数で、共通の潜在GDPを掛けて円へ戻します。</p>
       <p>探索上限{money(parameters.searchCap)}、走査間隔{money(parameters.searchStep)}、境界区間の分解能{money(parameters.searchTolerance)}。成長投資では安全性が単調とは限らないため、ゼロから最初に観測した違反まで走査し、その区間を二分探索します。走査間隔より狭い違反領域を見逃す可能性があり、離れた許容領域の最大値は保証しません。</p>
-      <p>推奨財政枠 = 理論上限 × (1 − 留保率)。留保はストレスから推定した額ではなく設定した割合です。今後、景気後退・金利・エネルギー・災害シナリオから導く設計へ拡張します。実データ校正、金融政策反応、為替、IO、Monte Carlo、民間投資の押し出しはMVP対象外です。</p>
-      <p>所得税・消費税・保険料減税は一般政府に相当する集計税収を減らす簡略化です。中央政府会計やRS予算の外挿ではありません。恒久費用は名目年額固定、基準歳出は外生経路で増加します。成長投資は{percent(parameters.investmentDepreciation, 0)}減耗し、実施ラグ後に供給・税源を増やします。</p>
-      <p>債務・GFN定義の参考：<a className="text-primary-accent underline" href="https://www.imf.org/en/publications/tnm/issues/2025/01/24/a-guide-and-tool-for-projecting-public-gross-financing-needs-555913" target="_blank" rel="noreferrer">IMF, A Guide and Tool for Projecting Public Gross Financing Needs (2025)</a>（2026-09-14確認）。この文献は入力数値・政策係数の出典ではありません。</p>
+      <p>限界財政枠 = 理論上限 × (1 − 留保率)。留保率は設定上の控除で、安全性を実証した割合ではありません。限界財政枠も支出を推奨する額ではなく、設定に依存する参考上限です。公表モデルの反応には各モデルの金融政策・民間投資等の経路が含まれますが、この試算は原モデル全体の再推定・再現ではありません。GDPギャップや金利を変更しても、それに対応する新たな政策反応は推定し直しません。モデル間の差は統計的な信頼区間ではありません。</p>
+      <p>減税は一般政府の税・社会負担収入を減らします。社会保険料の本人分・事業主分は配分を分けますが、賃金への転嫁、所得階層・年収の壁、給付変更を含む制度別の推計は未実施です。恒久費用は名目年額固定、基準歳出は外生経路で増加します。公共資本・研究・教育・保育・送電網には供給シナリオを、半導体・発電には事業条件を適用します。医療・防衛等は未推計。分野別の資源制約は別途必要で、産業別利用率は初期値を保持します。</p>
+      <p>債務・資金調達需要の定義の参考：<a className="text-primary-accent underline" href="https://www.imf.org/en/publications/tnm/issues/2025/01/24/a-guide-and-tool-for-projecting-public-gross-financing-needs-555913" target="_blank" rel="noreferrer">国際通貨基金：政府の総資金調達需要の推計ガイド（2025年・英語資料）</a>（2026-09-14確認）。この文献は入力数値・政策係数の出典ではありません。</p>
     </div></details>
-    <details><summary className="cursor-pointer font-bold">全入力値の出典・単位を見る（{records.length}項目）</summary><p className="my-3 text-xs">参照年はすべて「試作年0」、出典は「モデル仮定（未検証）」、出典URL・信頼区間はありません。フィールド名は共通型と対応します。政策係数の効果は費用1円あたり、資源増加係数は費用/GDPあたりの正規化指数です。</p>
-      <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="試作入力値の出典一覧"><table className="w-full min-w-[650px] text-left text-xs"><caption className="sr-only">入力値・単位・参照年・出典・不確実性</caption><thead><tr>{['入力', '値', '単位', '参照年・出典', '不確実性'].map(h => <th key={h} scope="col" className="p-2">{h}</th>)}</tr></thead><tbody>{records.map(r => <tr key={r.key} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{r.key}</th><td className="p-2 tabular-nums">{r.value.toLocaleString('ja-JP', { maximumFractionDigits: 6 })}</td><td className="p-2">{r.unit}</td><td className="p-2">{r.referenceYear} / {r.sourceName}</td><td className="p-2">{r.uncertaintyNote}</td></tr>)}</tbody></table></div>
+    <details><summary className="cursor-pointer font-bold">全入力値の出典・単位を見る（{records.length}項目）</summary><p className="my-3 text-xs">公表実績、実績からの換算、推計、仮定・設定を項目ごとに表示します。操作で基準値から変更した入力は「仮定・設定」になります。統計の改定・公表桁・対象期間は出典と注記を参照してください。政策係数の効果は費用1円あたり、資源増加係数は費用/GDPあたりの正規化指数です。</p>
+      <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="入力値の出典一覧"><table className="w-full min-w-[750px] text-left text-xs"><caption className="sr-only">入力値・区分・単位・参照年・出典・不確実性</caption><thead><tr>{['入力', '値', '区分', '単位', '参照年・出典', '不確実性'].map(h => <th key={h} scope="col" className="p-2">{h}</th>)}</tr></thead><tbody>{records.map(r => <tr key={r.key} data-source-key={r.key} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{inputLabel(r.key, policies)}</th><td className="p-2 tabular-nums">{r.value.toLocaleString('ja-JP', { maximumFractionDigits: 6 })}</td><td className="p-2 whitespace-nowrap">{SOURCE_STATUS_LABELS[r.status]}</td><td className="p-2">{r.unit}</td><td className="p-2">{r.referenceYear}{r.publishedAt && ` (${r.publishedAt})`} / {r.sourceUrl ? <a className="text-primary-accent underline" href={r.sourceUrl} target="_blank" rel="noreferrer">{r.sourceName}</a> : r.sourceName}</td><td className="p-2">{r.uncertaintyNote}{r.retainedReason && <p className="mt-1 font-medium">{r.retainedReason}</p>}</td></tr>)}</tbody></table></div>
     </details>
   </CardContent></Card>;
 }

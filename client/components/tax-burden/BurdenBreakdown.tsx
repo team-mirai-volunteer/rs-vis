@@ -45,7 +45,7 @@ export function BurdenBreakdown({ before, after, impact, includeConsumption, pen
           <p className="text-xs text-mirai-text-secondary">{impact.consumption.status === 'computed' ? '消費税差額は家計調査の十分位別支出構成からの推計。' : '消費税：未計算（消費支出データ未読込）。'}全国総額：未提供（対応する復元世帯数未確認）。行動変化・事業主負担は含めません。</p>
         </> : <>
           <p>純負担率は、世帯の税・本人保険料から現金給付を引き、総収入で割った値です。負の値は、負担より給付が多いことを表します。</p>
-          <p>財務省の国民負担率は、国・地方の税と事業主負担を含む社会保障負担を、国民所得で割った指標です。この曲線とは直接比較できません。</p>
+          <p>国全体の負担は、国・地方の税と事業主負担を含む社会保障負担をGDPで割った指標で比較します。この曲線は世帯所得や労働費用に対する割合なので、国全体のGDP比とは直接比較できません。</p>
           <div className="rounded-xl bg-mirai-surface-teal p-4"><p className="font-bold text-primary-accent">制度の違いを、条件を揃えて見る</p><p className="mt-2 text-xs">左パネルを「税・給付」に切り替えると、控除・給付・消費税率を動かしながら同じ図で改革案のカーブと財政収支への影響を確認できます。「年齢で見る」では年金受給後の負担率の変化を追えます。</p></div>
           <p className="text-xs text-mirai-text-secondary">本画面は試作です。OECD Taxing Wages の日本値との照合では、差はOECD側の保険料簡略化で説明できる範囲でした（詳細は「データについて」）。</p>
         </>}
