@@ -49,6 +49,8 @@ export interface MOFSankeyLayout<D = unknown> {
 }
 
 export interface LayoutOptions {
+  /** 帯の縮尺計算に使う固定の行間。表示用minNodeSlotを変えても帯の太さを保つ。 */
+  scaleNodeSlot?: number;
   width: number;
   height: number;
   margin: { top: number; right: number; bottom: number; left: number };
@@ -177,7 +179,7 @@ export function computeMOFSankeyLayout<D>(
   // ラベル1行分の場所（minNodeSlot）は固定 px なので、単純に「合計 ÷ 使える高さ」で
   // 割ると、小さいノードがスロットまで膨らんだ分だけ列が指定より高くなる。
   // スロットに達するノードを固定分として除きながら数回繰り返して収束させる。
-  const slot = options.minNodeSlot ?? 0;
+  const slot = options.scaleNodeSlot ?? options.minNodeSlot ?? 0;
   let scale = Infinity;
   for (const [, list] of byColumn) {
     const rows = list.filter(

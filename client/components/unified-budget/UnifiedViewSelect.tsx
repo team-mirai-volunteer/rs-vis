@@ -87,9 +87,9 @@ export function UnifiedColumnToggles({
               key={col}
               variant="outline"
               size="xs"
-              disabled={!available}
+              disabled={!available || (col === 'account' && visibleColumns.includes('revenue'))}
               aria-pressed={on}
-              title={available ? undefined : 'この年度にはありません'}
+              title={!available ? 'この年度・予算基準にはありません' : col === 'account' && visibleColumns.includes('revenue') ? '歳入の接続先として会計を表示します' : undefined}
               onClick={() => toggle(col)}
               className={cn(
                 'h-6 px-2 text-[11px] font-medium',
@@ -101,6 +101,7 @@ export function UnifiedColumnToggles({
           );
         })}
       </div>
+      <p className="text-[11px] text-mirai-text-muted">歳入は当初予算に収録。歳入を表示すると、接続先の会計も表示します。</p>
     </div>
   );
 }

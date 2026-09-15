@@ -87,5 +87,8 @@ export function ancestorsByColumn(nodes: UnifiedViewNode[], links: SankeyLink[],
  * 上流: 選択ノードの値を祖先へ比例配分で遡らせる。下流: 集約ノードの流出を流入に合わせて縮める。
  */
 export function focusGraph(nodes: UnifiedViewNode[], links: SankeyLink[], selectedId: string): { nodes: UnifiedViewNode[]; links: SankeyLink[] } {
-  return focusSankey(nodes, links, selectedId, { columnIndex: column => columnIndex(column as UnifiedColumn), downstream: 'all' });
+  const focused = focusSankey(nodes, links, selectedId, { columnIndex: column => columnIndex(column as UnifiedColumn), downstream: 'all' });
+  const original = new Map(nodes.map(n => [n.id, n]));
+  return { ...focused, nodes: focused.nodes.map(n => n.details.column === 'account'
+    ? { ...n, value: Math.min(n.value, original.get(n.id)?.value ?? n.value) } : n) };
 }

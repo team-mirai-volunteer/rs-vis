@@ -10,6 +10,7 @@ import type { UnifiedColumn, UnifiedProgramKind } from '@/types/unified-budget';
 import type { UnifiedViewDetails } from '@/types/unified-budget-view';
 
 export const UNIFIED_COLUMN_COLORS: Record<UnifiedColumn, string> = {
+  revenue: 'var(--primary)',
   account: '#2d7d46',
   ministry: '#3a9a5c',
   organization: '#4db870',
@@ -36,6 +37,7 @@ export const AGGREGATED_COLOR = '#999999';
 export function unifiedNodeColor(details: UnifiedViewDetails | undefined): string {
   if (!details) return AGGREGATED_COLOR;
   if (details.aggregated) return AGGREGATED_COLOR;
+  if (details.revenueKind === 'internal-transfer') return UNIFIED_KIND_COLORS.transfer;
   if (details.kind && details.kind !== 'rs') return UNIFIED_KIND_COLORS[details.kind];
   return UNIFIED_COLUMN_COLORS[details.column];
 }

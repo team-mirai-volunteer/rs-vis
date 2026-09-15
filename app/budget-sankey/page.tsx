@@ -58,6 +58,7 @@ const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${unifiedFileBa
 
 /** 列 → URL パラメータ名の短縮（t=TopN, o=表示位置） */
 const COL_KEY: Record<UnifiedColumn, string> = {
+  revenue: 'rv',
   account: 'ac',
   ministry: 'mi',
   organization: 'or',
@@ -251,6 +252,8 @@ function UnifiedBudgetSankeyContent() {
   }, [base]);
   const effectiveColumns = useMemo(() => {
     const cols = visibleColumns.filter(c => availableColumns.includes(c));
+    // 税目から事業への架空の直接充当を作らないよう、歳入の接続先の会計は残す。
+    if (cols.includes('revenue') && !cols.includes('account')) return UNIFIED_COLUMNS.filter(c => c === 'account' || cols.includes(c));
     return cols.length > 0 ? cols : availableColumns.filter(c => c === 'ministry' || c === 'section' || c === 'program');
   }, [visibleColumns, availableColumns]);
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
@@ -399,7 +402,7 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>
-      <div className={cn('absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div className={cn('absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:max-w-[calc(100%-320px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         <UnifiedSettings
           fontPx={fontPx}
