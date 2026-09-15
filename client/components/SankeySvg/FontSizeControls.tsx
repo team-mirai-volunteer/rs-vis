@@ -58,7 +58,7 @@ export function FontSizeControls({
         type="range" min={min} max={max} step={1}
         value={baseFontPx}
         onChange={e => { markReplace(); setBaseFontPx(Number(e.target.value)); }}
-        className="accent-primary"
+        className="policy-range"
         style={isCompactWidth ? { flex: 1, minWidth: 0, boxSizing: 'border-box', margin: 0 } : { width: 60, boxSizing: 'border-box', margin: 0 }}
         data-pan-disabled
         aria-label="基準フォントサイズ"

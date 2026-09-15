@@ -20,6 +20,8 @@ export function UnifiedSettings({
   fontPx,
   onFontPxChange,
   defaultFontPx,
+  flowScale,
+  onFlowScaleChange,
   labelDensity,
   onLabelDensityChange,
   focusRelated,
@@ -33,6 +35,8 @@ export function UnifiedSettings({
   fontPx: number;
   onFontPxChange: (value: number) => void;
   defaultFontPx: number;
+  flowScale: number;
+  onFlowScaleChange: (value: number) => void;
   labelDensity: LabelDensity;
   onLabelDensityChange: (value: LabelDensity) => void;
   focusRelated: boolean;
@@ -65,7 +69,7 @@ export function UnifiedSettings({
   }, [open]);
 
   return (
-    <div ref={rootRef} data-pan-disabled="true" className={`relative flex ${placement === 'top-right' ? 'items-start' : 'items-end'}`}>
+    <div ref={rootRef} data-pan-disabled="true" className={`pointer-events-auto relative flex ${placement === 'top-right' ? 'items-start' : 'items-end'}`}>
       <Button
         variant="outline"
         size="icon"
@@ -108,6 +112,16 @@ export function UnifiedSettings({
               controlSmallFontPx={12}
               numberFontPx={12}
             />
+          </div>
+          <div>
+            <label htmlFor="flow-thickness" className="block font-semibold">帯・ノードの太さ</label>
+            <span className="mt-1 flex items-center gap-2">
+              <input id="flow-thickness" type="range" aria-label="帯・ノードの太さ" min={0.25} max={8} step={0.25} value={flowScale}
+                onChange={e => onFlowScaleChange(Number(e.target.value))} className="policy-range min-w-0 flex-1" />
+              <output className="w-10 text-right tabular-nums">{flowScale}倍</output>
+              <Button variant="ghost" size="xs" onClick={() => onFlowScaleChange(1.25)}>初期値</Button>
+            </span>
+            <p className="mt-1 leading-relaxed text-mirai-text-subtle">金額比を保って太くします。下にはみ出した部分は図をドラッグして表示できます。</p>
           </div>
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" checked={labelDensity === 'all'} onChange={e => onLabelDensityChange(e.target.checked ? 'all' : 'major')} className="h-3.5 w-3.5 cursor-pointer accent-primary" />

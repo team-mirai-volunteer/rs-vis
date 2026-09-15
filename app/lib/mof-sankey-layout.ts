@@ -49,6 +49,8 @@ export interface MOFSankeyLayout<D = unknown> {
 }
 
 export interface LayoutOptions {
+  /** 金額用の高さを行間と分離し、この倍率で拡大する。はみ出した行はパンで見る。 */
+  flowScale?: number;
   /** 帯の縮尺計算に使う固定の行間。表示用minNodeSlotを変えても帯の太さを保つ。 */
   scaleNodeSlot?: number;
   width: number;
@@ -186,6 +188,10 @@ export function computeMOFSankeyLayout<D>(
       n => !(n.details as { passThrough?: boolean } | undefined)?.passThrough
     );
     const total = list.reduce((s, n) => s + (n.layoutValue ?? n.value ?? 0), 0);
+    if (options.flowScale !== undefined) {
+      if (total > 0) scale = Math.min(scale, Math.max(1, innerH) / total * options.flowScale);
+      continue;
+    }
     const gaps =
       nodePadding * Math.max(rows.length - 1, 0) +
       rows.reduce((s, n) => s + (options.gapBefore?.({ id: n.id, type: n.type }) ?? 0), 0);

@@ -62,6 +62,7 @@ export function UnifiedSankeyChart({
   filterOpen,
   onToggleFilterOpen,
   fontPx = LABEL_FONT_PX_DEFAULT,
+  flowScale = 1.25,
   labelDensity = 'all',
   budgetYear,
   basisMeasureLabel,
@@ -86,6 +87,7 @@ export function UnifiedSankeyChart({
   filterOpen: boolean;
   onToggleFilterOpen: () => void;
   fontPx?: number;
+  flowScale?: number;
   labelDensity?: LabelDensity;
   budgetYear: number;
   /** 列見出しに添える基準名（当初予算 / 補正後（改予算額） / 支出済額）。無ければ当初予算 */
@@ -164,14 +166,14 @@ export function UnifiedSankeyChart({
           height: viewport.height,
           ...UNIFIED_LAYOUT,
           margin: { ...UNIFIED_LAYOUT.margin, top: viewport.width < 1200 ? UNIFIED_LAYOUT.margin.top + 40 : UNIFIED_LAYOUT.margin.top },
-          // ラベルの間隔は文字に合わせて広げ、帯の縮尺は既定の行間で固定する。
+          // 金額用の高さを確保し、ラベルの行間は別に足す。図の高さはパンで移動できる。
+          flowScale,
           minNodeSlot: labelDensity === 'all' ? labelSlot(fontPx) : 0,
-          scaleNodeSlot: labelDensity === 'all' ? labelSlot(LABEL_FONT_PX_DEFAULT) : 0,
           gapBefore: node => (node.id.startsWith('__others__') || node.id.startsWith('np-') ? AGGREGATE_GAP : 0),
           columnOf: node => displayColumnIndex.get(node.type as UnifiedColumn) ?? 0,
         }
       ),
-    [visible, width, viewport.height, viewport.width, fontPx, labelDensity, displayColumnIndex]
+    [visible, width, viewport.height, viewport.width, fontPx, flowScale, labelDensity, displayColumnIndex]
   );
 
   const minimapH = Math.round(MINIMAP_W * (layout.contentHeight / (width || 1)));

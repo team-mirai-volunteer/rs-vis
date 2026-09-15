@@ -65,7 +65,7 @@ export function TopNSliderRow({
         onTouchEnd={e => { commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
         onKeyUp={e => { commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
         onBlur={e => { if (local === null) return; commit(Number((e.target as HTMLInputElement).value)); setLocal(null); }}
-        className="accent-primary"
+        className="policy-range"
         style={{ flex: 1, minWidth: 0, width: 0 }}
       />
       {isEditing ? (

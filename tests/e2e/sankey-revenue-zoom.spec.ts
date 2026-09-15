@@ -1,5 +1,35 @@
 import { expect, test } from '@playwright/test';
 
+test('thickness changes amounts independently of font size and survives sharing and reset', async ({ page }) => {
+  await page.goto('/budget-sankey?year=2024');
+  const nodes = page.getByTestId('unified-node').locator('rect');
+  await expect(nodes.first()).toBeVisible();
+  const geometry = () => nodes.evaluateAll(rs => rs.map(r => ({ height: Number(r.getAttribute('height')), width: r.getAttribute('width') })));
+  const before = await geometry();
+  await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+  const slider = page.getByRole('slider', { name: '帯・ノードの太さ', exact: true });
+  await expect(slider).toHaveValue('1.25');
+  await expect(slider).toHaveCSS('appearance', 'none');
+  await expect(page.getByRole('slider', { name: '基準フォントサイズ', exact: true })).toHaveCSS('appearance', 'none');
+  for (let i = 0; i < 5; i++) await slider.press('ArrowRight');
+  await expect(slider).toHaveValue('2.5');
+  await expect(page).toHaveURL(/th=2.5/);
+  const after = await geometry();
+  before.forEach((r, i) => {
+    if (r.height > 1) expect(after[i].height).toBeCloseTo(r.height * 2, 6);
+    expect(after[i].width).toBe(r.width);
+  });
+  await expect(page.getByTestId('unified-label').first()).toHaveAttribute('font-size', '13');
+  await page.reload();
+  await expect(nodes.first()).toBeVisible();
+  expect(await geometry()).toEqual(after);
+  await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+  await expect(slider).toHaveValue('2.5');
+  await page.getByRole('button', { name: '初期値', exact: true }).click();
+  await expect(slider).toHaveValue('1.25');
+  expect(await geometry()).toEqual(before);
+});
+
 test('mobile pinch scales both axes around the two-finger midpoint', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
