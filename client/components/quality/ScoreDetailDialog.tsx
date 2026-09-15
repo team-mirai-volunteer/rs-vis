@@ -16,6 +16,7 @@ import { externalCorporateLinks } from '@/app/lib/api/links';
 import { useScoreDetailData } from '@/client/hooks/useScoreDetailData';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
+import { ProjectDetailShare } from './ProjectDetailShare';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
   RecommendationBadge, ActionBadge, fmtRaw,
@@ -166,7 +167,10 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
         {/* Header */}
         <div className="px-6 py-3 border-b border-mirai-border flex items-start justify-between gap-3 shrink-0 bg-mirai-surface-gray rounded-t-3xl">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold text-mirai-text leading-snug">{item.name}</div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <div className="text-sm font-bold text-mirai-text leading-snug">{item.name}</div>
+              <ProjectDetailShare pid={item.pid} year={year} />
+            </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
               <span className="font-mono bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
               {[item.ministry, item.bureau, item.division, item.section, item.office, item.team, item.unit].filter(Boolean).map((org, i) => (

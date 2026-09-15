@@ -14,6 +14,7 @@ import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
 import type { ProjectDetail } from '@/types/project-details';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
+import { useQualityLocation } from '@/client/hooks/useQualityLocation';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, TONE_CLS, ACTION_CLS, COL_WIDTHS,
@@ -164,31 +165,12 @@ const EMPTY_SCORE_FILTERS = (): Record<PolicyMetric, { min: string; max: string 
   ) as Record<PolicyMetric, { min: string; max: string }>;
 
 export default function QualityPage() {
-  // ?year= を初期年度に反映する。サンキー図・再委託ビューの「一覧で見る →」や
-  // /api/quality-scores/[pid] が返す qualityWeb が year 付きで来るため、
-  // 読まないと 2024 を見ていたのに 2025 の一覧が開いてしまう。
-  const [year, setYear] = useState<QualityYear>(() => {
-    if (typeof window === 'undefined') return '2025';
-    const y = new URLSearchParams(window.location.search).get('year');
-    return y === '2024' || y === '2025' || y === '2026' ? y : '2025';
-  });
-  /** 表示単位。'project' = 事業ごと（既定）、'section' = 予算書の項ごと（配下事業の金額加重平均） */
-  const [mode, setMode] = useState<'project' | 'section'>(() => {
-    if (typeof window === 'undefined') return 'project';
-    return new URLSearchParams(window.location.search).get('mode') === 'section' ? 'section' : 'project';
-  });
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (mode === 'section') params.set('mode', 'section');
-    else params.delete('mode');
-    params.set('year', year);
-    const next = `?${params.toString()}`;
-    if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [mode, year]);
+  const { year, setYear, mode, setMode, detailPid, openDetail, closeDetail, ready } = useQualityLocation();
   /** 2026 は要求ベースの仮想年度（採点はシート 2025、予算額は翌年度要求額）。執行系 API はシート年度で叩く */
   const sourceYear = year === '2026' ? '2025' : year;
   const isRequestYear = year === '2026';
-  const [data, setData] = useState<QualityScoresResponse | null>(null);
+  const [loadedData, setData] = useState<{ year: QualityYear; value: QualityScoresResponse } | null>(null);
+  const data = loadedData?.year === year ? loadedData.value : null;
   const [history, setHistory] = useState<ExecutionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -229,28 +211,34 @@ export default function QualityPage() {
     tableScrollRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [dialogItem, setDialogItem] = useState<QualityScoreItem | null>(null);
+  const dialogItem = detailPid ? data?.items.find(item => item.pid === detailPid) : null;
 
   useEffect(() => {
+    if (!ready) return;
+    const controller = new AbortController();
     setData(null);
     setLoading(true);
     setError(null);
     setSelectedMinistry('');
-    fetch(`/api/quality-scores?year=${year}`)
+    fetch(`/api/quality-scores?year=${year}`, { signal: controller.signal })
       .then(res => res.ok ? res.json() : Promise.reject(res.status))
-      .then((json: QualityScoresResponse) => setData(json))
-      .catch(e => setError(String(e)))
-      .finally(() => setLoading(false));
-  }, [year]);
+      .then((json: QualityScoresResponse) => { if (!controller.signal.aborted) setData({ year, value: json }); })
+      .catch(e => { if (!controller.signal.aborted) setError(String(e)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [year, ready]);
 
   // 前年度の執行率（pid → 執行率 のみ）。縮小判定で単年度の不用と2年連続の不用を区別するために使う
   useEffect(() => {
+    if (!ready) return;
+    const controller = new AbortController();
     setHistory(null);
-    fetch(`/api/execution-history?year=${sourceYear}`)
+    fetch(`/api/execution-history?year=${sourceYear}`, { signal: controller.signal })
       .then(res => res.ok ? res.json() : Promise.reject())
-      .then((json: ExecutionHistoryResponse) => setHistory(json))
-      .catch(() => setHistory(null));
-  }, [sourceYear]);
+      .then((json: ExecutionHistoryResponse) => { if (!controller.signal.aborted) setHistory(json); })
+      .catch(() => { if (!controller.signal.aborted) setHistory(null); });
+    return () => controller.abort();
+  }, [sourceYear, ready]);
 
   /**
    * 全事業の政策評価。AI が全事業に付与した4観点と品質スコアの支出先系軸を統合する。
@@ -413,7 +401,7 @@ export default function QualityPage() {
     return <span className="text-primary ml-0.5">{sortDir === 'desc' ? '↓' : '↑'}</span>;
   }
 
-  if (loading) return <LoadingSpinner />;
+  if (!ready || loading || (!error && !data)) return <LoadingSpinner />;
 
   if (error || !data) return (
     <div className="p-8 text-destructive">
@@ -466,7 +454,11 @@ export default function QualityPage() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </AppHeader>
-      {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={() => setDialogItem(null)} year={year} />}
+      {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={closeDetail} year={year} />}
+      {detailPid && data && !dialogItem && <div role="status" className="border-b border-mirai-border bg-card px-4 py-3 text-sm">
+        {year}年度に指定された事業（PID {detailPid}）は見つかりませんでした。
+        <Button variant="link" size="sm" onClick={closeDetail}>一覧に戻る</Button>
+      </div>}
       {mode === 'section' && (
         <>
           <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
@@ -903,7 +895,7 @@ ${a.desc}`}
                       <Button
                         variant="outline"
                         size="xs"
-                        onClick={e => { e.stopPropagation(); setDialogItem(item); }}
+                        onClick={e => { e.stopPropagation(); openDetail(item.pid); }}
                         className="h-6 border-primary px-2 text-[11px] font-medium text-primary-accent shadow-none hover:bg-mirai-surface-teal/60"
                         title="支出先一覧・スコア計算根拠を表示"
                       >
