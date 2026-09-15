@@ -418,7 +418,7 @@ function UnifiedBudgetSankeyContent() {
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}
       {metadata.rsAmountKind === 'request' && (
         <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded bg-stance-neutral-badge-bg px-3 py-1 text-[11px] text-stance-neutral shadow-xs">
-          {metadata.budgetYear}年度は「要求→査定」ビュー: RS事業の値は前年度シートの翌年度要求額、目の値はMOF当初予算（査定後）です
+          {metadata.budgetYear}年度は「要求→査定」ビュー: RS事業の値は前年度シートの翌年度要求額、目の値はMOF{UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}{effectiveBasis === 'initial' ? '（査定後）' : ''}です
         </div>
       )}
     </div>
