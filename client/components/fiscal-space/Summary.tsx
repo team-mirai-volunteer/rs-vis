@@ -12,7 +12,7 @@ export function Summary({ estimate, horizon, riskAudit }: {
   return <section aria-label="財政余力の探索結果" className="space-y-3">
     <Card><CardContent className="space-y-4 pt-5">
       <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限</h2>
-      <p className="text-sm">入力額に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
+      <p className="text-sm">追加予算に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
       <div className="grid gap-4 sm:grid-cols-3">
         <div><p>設定した制約内での探索上限（年額）</p><p data-testid="theoretical-maximum" className="text-2xl font-bold">{estimate.status === 'search-cap' ? '≥ ' : ''}{money(estimate.theoreticalMaximum)}</p></div>
         <div><p>留保後の参考上限</p><p data-testid="recommended-envelope" className="text-2xl font-bold">{money(estimate.recommendedEnvelope)}</p></div>

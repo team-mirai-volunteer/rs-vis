@@ -112,7 +112,7 @@ export default function FiscalSpacePage() {
         {result && <p>下の結果は直前に計算できた条件です。</p>}
         <Button variant="outline" onClick={retry} className="mt-2">計算を再試行</Button>
       </div>}
-      {result && <p role="status" aria-live="polite" className="sr-only">年間追加総額{result.totalYen / TRILLION}兆円。追加1兆円への感応度は制約の一覧を参照してください。</p>}
+      {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{result.totalYen / TRILLION}兆円。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <MemoControls

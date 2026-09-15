@@ -21,23 +21,45 @@ export function CapacityComparison({ initial, production }: { initial: EconomySt
 export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false }: { step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean }) {
   const s = step.state;
   const longRun = s.year > publishedYears;
+  const burden = s.fiscal.taxRevenue / s.macro.nominalGdp;
+  const baselineBurden = baseline.state.fiscal.taxRevenue / baseline.state.macro.nominalGdp;
   const rows = [
     ['実質GDP', money(s.macro.realGdp), `政策なしとの差 ${money(s.macro.realGdp - baseline.state.macro.realGdp)}`],
+    ['名目GDP', money(s.macro.nominalGdp), `政策なしとの差 ${money(s.macro.nominalGdp - baseline.state.macro.nominalGdp)}`],
+    ['インフレ率', longRun ? '未推計' : percent(s.macro.inflation), longRun ? '公表モデルの期間外' : `政策なしとの差 ${points(s.macro.inflation - baseline.state.macro.inflation)}`],
+    ['国民負担（GDP比）', percent(burden), `税・社会保険料 ÷ 名目GDP。政策なし ${percent(baselineBurden)}、差 ${points(burden - baselineBurden)}。国民所得比ではありません。`],
+    ['歳出（利払いを含む）', money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments), `政策なしとの差 ${money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments - baseline.state.fiscal.primaryExpenditure - baseline.state.fiscal.interestPayments)}。元本の借換を除く。`],
+    ['税・社会保険料収入', money(s.fiscal.taxRevenue), `政策なしとの差 ${money(s.fiscal.taxRevenue - baseline.state.fiscal.taxRevenue)}`],
+    ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
+    ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
+  ];
+  const detailedRows = [
     ['GDPギャップ', percent(step.outputGap), '(実際 − 潜在) ÷ 潜在'],
     ['最大GDPギャップ（仮定）', percent(step.maximumGap), '(実際 − 最大) ÷ 最大。労働時間・参加可能人口・設備稼働率からの実測推計は未実装'],
     ['稼働率による価格水準補正', points(step.demand.capacityPriceAdjustment), '政策による混雑の増分から参照条件の増分を控除。公表反応とは別の感度仮定'],
     ['輸入価格による実質所得変化（近似）', money(step.importPriceEffects?.tradingIncomeChange ?? 0), '数量固定・国内価格基準。所得から消費・生産への二次波及は未推計'],
-    ['インフレ率', longRun ? '未推計' : percent(s.macro.inflation), longRun ? '公表モデルの期間外。長期の金融政策・価格調整を特定できないため非表示' : `政策なしとの差 ${points(s.macro.inflation - baseline.state.macro.inflation)}`],
     ['消費税直接効果を除くCPI', longRun ? '未推計' : percent(step.taxAdjustedInflation ?? s.macro.inflation), '総合CPIと両方を制約判定に使用。分離は仮定'],
     ['借換・新発金利', percent(step.refinancingRate ?? 0), `うち公表政策反応 ${points(step.referenceRateEffect ?? 0)}`],
     ['輸入', longRun ? '未推計' : money(s.external.imports), longRun ? '事業の直接寄与は政策比較の詳細へ' : `政策なしとの差 ${money(s.external.imports - baseline.state.external.imports)}`],
     ['輸出', longRun ? '未推計' : money(s.external.exports), '公表モデルの輸出反応を反映。期間外の総合予測は非表示'],
-    ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
-    ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
     ['利払い / GDP', percent(step.metrics.interestGdp), '利払い / 税・社会負担収入 ' + percent(step.metrics.interestTax)],
     ['資金調達需要', money(step.metrics.grossFinancingNeeds), 'GDP比 ' + percent(step.metrics.gfnGdp)],
   ];
-  return <Card><CardHeader><h2 className="text-lg font-bold">年{s.year}の結果（試算）</h2><p className="text-xs text-mirai-text-subtle">GDPギャップは負が需要不足、正が需要超過です。最大GDP基準も同じ符号で、負の値が供給余力を示します。{longRun && '公表期間後のGDP・財政は、成長率・物価の基準経路と供給効果の実現を仮定した条件付き計算です。'}</p></CardHeader><CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label, value, note]) => <div key={label}><p className="text-xs">{label}</p><p className="mt-1 text-lg font-medium tabular-nums">{value}</p>{["総債務 / GDP", "基礎的財政収支", "利払い / GDP", "資金調達需要"].includes(label) && <FiscalVintageBadge latest={latest} projected />}<p className="mt-1 text-xs text-mirai-text-subtle">{note}</p></div>)}</CardContent></Card>;
+  const renderRows = (items: string[][]) => items.map(([label, value, note]) => <div key={label} data-metric={label}>
+    <p className="text-xs">{label}</p><p className="mt-1 text-lg font-medium tabular-nums">{value}</p>
+    {["国民負担（GDP比）", "総債務 / GDP", "基礎的財政収支", "利払い / GDP", "資金調達需要"].includes(label) && <FiscalVintageBadge latest={latest} projected />}
+    <p className="mt-1 text-xs text-mirai-text-subtle">{note}</p>
+  </div>);
+  return <Card data-testid="horizon-results"><CardHeader><h2 className="text-xl font-bold">{s.year}年目の結果（試算）</h2>
+    <p className="text-sm">設定した追加予算を実施した場合。差額は同じ経済条件の「政策なし」との比較です。</p>
+    <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
+  </CardHeader><CardContent className="space-y-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>
+    <details><summary className="cursor-pointer text-sm font-bold">GDPギャップ・輸出入・資金調達などの詳細</summary>
+      <p className="my-3 text-xs text-mirai-text-subtle">GDPギャップは負が需要不足、正が需要超過です。最大GDP基準も同じ符号で、負の値が供給余力を示します。{longRun && '公表期間後のGDP・財政は、成長率・物価の基準経路と供給効果の実現を仮定した条件付き計算です。'}</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(detailedRows)}</div>
+    </details>
+  </CardContent></Card>;
 }
 
 export function Projection({ simulation, baseline, peaksByYear, shocks, parameters, latest = false }: {
@@ -69,14 +91,14 @@ export function Projection({ simulation, baseline, peaksByYear, shocks, paramete
     </div>
     <p className="text-sm">債務経路の仮定：名目GDPへの税収弾性値 {parameters.taxRevenueElasticity}、徴収ラグ {parameters.taxCollectionLag}年。債務/GDPの低下は分母の名目成長でも起こり、政策が自己財源化することを意味しません。</p>
     <p className="text-xs">実線：実質GDP / 破線：潜在GDP / 点線：選択モデルの最大GDP（兆円）</p>
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${years}年間の推計表`}><table className="w-full min-w-[1440px] text-right text-xs tabular-nums"><caption className="mb-2 text-left">← 横にスクロールできます → 金額は兆円、率は%。GDPは基準年価格（名目GDPを除く）、輸出入は各年価格。</caption><thead><tr className="border-b border-mirai-border">{['年', '名目GDP', '実質GDP', '潜在GDP', '最大GDP', 'GDPギャップ', '最大GDPギャップ', 'CPI', '税直接効果を除くCPI', '借換金利', '輸出', '輸入', '債務/GDP', '利払/GDP', '資金調達/GDP', '基礎的収支/GDP', '債務安定に必要な収支/GDP', '水準で最も近い制約'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}>{h}</th>)}</tr></thead><tbody>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${years}年間の推計表`}><table className="w-full min-w-[1440px] text-right text-xs tabular-nums"><caption className="mb-2 text-left">← 横にスクロールできます → 金額は兆円、率は%。GDPは基準年価格（名目GDPを除く）、輸出入は各年価格。国民負担は税・社会保険料の名目GDP比。</caption><thead><tr className="border-b border-mirai-border">{['年', '名目GDP', '実質GDP', '潜在GDP', '最大GDP', 'GDPギャップ', '最大GDPギャップ', 'CPI', '税直接効果を除くCPI', '借換金利', '輸出', '輸入', '債務/GDP', '利払/GDP', '資金調達/GDP', '基礎的収支/GDP', '債務安定に必要な収支/GDP', '国民負担/GDP', '水準で最も近い制約'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}>{h}</th>)}</tr></thead><tbody>
       {simulation.steps.map((s, i) => <tr key={s.state.year} className="border-b border-mirai-border last:border-0 hover:bg-mirai-surface-teal/60"><th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-card p-2">{s.state.year}年</th>{[
         money(s.state.macro.nominalGdp, 1), money(s.state.macro.realGdp, 1), money(s.state.macro.potentialGdp, 1), money(s.production.maximum, 1),
         percent(s.outputGap), percent(s.maximumGap), s.state.year <= publishedYears ? percent(s.state.macro.inflation) : '—',
         percent(s.taxAdjustedInflation ?? s.state.macro.inflation), percent(s.refinancingRate ?? 0),
         s.state.year <= publishedYears ? money(s.state.external.exports, 1) : '—', s.state.year <= publishedYears ? money(s.state.external.imports, 1) : '—',
-        percent(s.metrics.grossDebtGdp), percent(s.metrics.interestGdp), percent(s.metrics.gfnGdp), percent(s.metrics.primaryBalanceGdp), percent(s.metrics.stabilizingPrimaryBalance), peaksByYear[i],
-      ].map((v, j) => <td key={j} className="p-2">{v}{j >= 11 && j <= 15 && <FiscalVintageBadge latest={latest} projected />}</td>)}</tr>)}
+        percent(s.metrics.grossDebtGdp), percent(s.metrics.interestGdp), percent(s.metrics.gfnGdp), percent(s.metrics.primaryBalanceGdp), percent(s.metrics.stabilizingPrimaryBalance), percent(s.state.fiscal.taxRevenue / s.state.macro.nominalGdp), peaksByYear[i],
+      ].map((v, j) => <td key={j} className="p-2">{v}{j >= 11 && j <= 16 && <FiscalVintageBadge latest={latest} projected />}</td>)}</tr>)}
     </tbody></table></div>
     <details><summary className="cursor-pointer text-sm font-bold">借換と利払いの根拠を見る</summary><div className="mt-3 space-y-3 text-xs leading-relaxed">
       <p>期首の満期分を当年市場金利で借換。既発債の表面利率は固定、純増発行分の利払いは翌年から。新発債は{parameters.newDebtMaturity}年満期です。以下は入力中の政策配分を固定し、ショックなしの金利経路との利払い差を示します（エネルギーショックなし）。</p>

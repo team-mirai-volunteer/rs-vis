@@ -50,7 +50,7 @@ export function Controls({ consumptionTaxMax = 35, policies, amounts, total, hor
   const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
-      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">年間追加総額</p><output data-testid="annual-total" aria-label="年間追加総額" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">各政策の年額の合計。実際の年別費用は継続方法・期間に従います。</p></div>
+      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.filter(policy => primaryIds.includes(policy.id)).map(policyField)}
