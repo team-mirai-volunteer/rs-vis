@@ -11,11 +11,11 @@ const notoSansJP = Noto_Sans_JP({
   display: "swap",
 });
 
-// 英数字の見出し強調用（任意）
+// 数字・ロゴ周辺のアクセント英字（デザインシステム 2.2.4）。大きい数字は 500 を使うので 500 も読む
 const lexendGiga = Lexend_Giga({
   variable: "--font-lexend-giga",
   subsets: ["latin"],
-  weight: ["400", "700"],
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
