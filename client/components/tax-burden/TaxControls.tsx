@@ -33,7 +33,7 @@ export function RangeField({ label, value, min, max, step = 1, suffix = '', onCh
         : <span className="font-bold tabular-nums">{Number(value.toFixed(2)).toLocaleString('ja-JP')}{suffix}</span>}
     </span>
     <input aria-label={label} type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={e => onChange(Number(e.target.value))}
-      className="w-full accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40" />
+      className="policy-range w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40" />
     {note && <span className="block text-xs text-mirai-text-subtle">{note}</span>}
   </label>;
 }
