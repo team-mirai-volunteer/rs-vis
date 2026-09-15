@@ -6,10 +6,58 @@ import { policyLoads } from '../app/lib/fiscal-space/policy-load';
 import { createFiscalEngine } from '../client/lib/fiscal-space-engine';
 import { defaults } from '../client/lib/fiscal-space-form';
 import { decodeScenario, encodeScenario } from '../client/lib/fiscal-space-url';
+import { simulate } from '../app/lib/fiscal-space/simulate';
+import { powerCase, policyTradeRecords } from '../app/lib/fiscal-space/policy-trade';
+import { configuredPower } from '../client/lib/fiscal-space-trade';
 
 const initial = initialEconomy('latest');
 const publicInvestment = { ...POLICIES.find(p => p.id === 'public-investment')!, annualCost: 1e12 };
 const close = (a: number, b: number) => assert(Math.abs(a - b) < 1e-8, `${a} != ${b}`);
+
+test('default generation investment adds firm supply after commissioning and relieves regional power constraints', () => {
+  for (const mode of ['estimated', 'manual'] as const) {
+    const resource = { ...RESOURCE_DEFAULTS, mode };
+    const parameters = { ...PARAMETERS, resourceModel: resource };
+    const baseline = simulate(initial, [], 12, parameters);
+    for (const technology of ['solar', 'nuclear', 'hydro'] as const) {
+      const assumptions = powerCase(technology);
+      const policy = { ...POLICIES.find(p => p.id === 'generation')!, annualCost: 1e12, duration: 1,
+        trade: { kind: 'power' as const, assumptions } };
+      const investment = { ...policy, load: estimatePolicyLoad(policy, initial, resource) };
+      const path = simulate(initial, [investment], 12, parameters);
+      close(path.steps[assumptions.lag - 1].state.energy.firmCapacity, baseline.steps[assumptions.lag - 1].state.energy.firmCapacity);
+      const commissioned = path.steps[assumptions.lag], base = baseline.steps[assumptions.lag];
+      assert(commissioned.state.energy.firmCapacity > base.state.energy.firmCapacity, `${mode}/${technology}`);
+      assert(commissioned.state.energy.reserveMargin > base.state.energy.reserveMargin);
+      if (mode === 'estimated') {
+        assert(path.steps[0].resourcePower!.utilization > baseline.steps[0].resourcePower!.utilization, 'construction uses electricity before commissioning');
+        assert(commissioned.resourcePower!.utilization < base.resourcePower!.utilization);
+      }
+      for (const firmShare of [0, null]) {
+        const withoutFirm = simulate(initial, [{ ...investment, trade: { kind: 'power', assumptions: { ...assumptions, firmShare } } }], 12, parameters);
+        close(withoutFirm.steps[assumptions.lag].state.energy.firmCapacity, base.state.energy.firmCapacity);
+      }
+      const record = policyTradeRecords({ industry: {}, power: assumptions }).find(r => r.key === 'policyTrade.power.firmShare')!;
+      assert.equal(record.status, 'assumption'); assert.equal(record.sourceUrl, null);
+    }
+  }
+});
+
+test('form defaults and mixed generation retain commissioned supply including after spending ends', () => {
+  const f = defaults();
+  f.trade.mix = { solar: .5, nuclear: .5, hydro: 0 };
+  const assumptions = configuredPower(f.trade);
+  const p = { ...PARAMETERS, resourceModel: f.resource };
+  const policy = { ...POLICIES.find(p => p.id === 'generation')!, annualCost: 1e12, duration: 1,
+    trade: { kind: 'power' as const, assumptions } };
+  const baseline = simulate(initial, [], 11, p), mix = simulate(initial, [policy], 11, p);
+  const solar = simulate(initial, [{ ...policy, annualCost: .5e12, trade: { kind: 'power', assumptions: powerCase('solar') } }], 11, p);
+  close(mix.steps[2].state.energy.firmCapacity, solar.steps[2].state.energy.firmCapacity);
+  assert(mix.steps[2].state.energy.firmCapacity > baseline.steps[2].state.energy.firmCapacity);
+  assert(mix.steps[10].state.energy.firmCapacity > solar.steps[10].state.energy.firmCapacity);
+  f.trade.power.firmShare = null;
+  assert.equal(decodeScenario(encodeScenario(f)).trade.power.firmShare, null, 'saved unknowns stay unknown');
+});
 
 test('official IO units and employment aggregation pin direct and upstream loads', () => {
   assert.equal(Object.values(RESOURCE_REFERENCE.sectorWorkers).reduce((a, b) => a + b, 0), 68_707_839);

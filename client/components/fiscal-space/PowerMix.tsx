@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { POWER_TECHNOLOGIES, POWER_DETAIL_SOURCE, powerCase, powerTrade, type PowerTechnology, type PowerCase } from '@/app/lib/fiscal-space/policy-trade';
+import { POWER_TECHNOLOGIES, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, POWER_CONSTRUCTION_SOURCE, SOLAR_LAG_NOTE, powerCase, powerTrade, type PowerTechnology, type PowerCase } from '@/app/lib/fiscal-space/policy-trade';
 import { fieldClass, money } from './format';
 import type { TradeForm } from './PolicyTrade';
 
@@ -26,14 +26,17 @@ export function PowerMix({ value, total, onChange }: { value: TradeForm; total: 
     <p className="text-xs leading-relaxed">発電投資総額は政策欄で入力し、ここでは電源別の配分を%で指定します。変更した電源の割合を優先し、残りを他の電源の比率に応じて調整して合計100%にします。他がともに0%なら残りを等分します。発電量の比率とは異なります。</p>
   </CardHeader><CardContent className="space-y-3 text-xs">
     <div className="flex flex-wrap gap-3" role="group" aria-label="発電投資の配分方式">{technologies.map(id => <label key={id} className="flex items-center gap-1"><input type="radio" name="power-allocation" checked={!value.mix && value.power.technology === id} onChange={() => onChange({ ...value, mix: undefined, powerCases: cases, power: cases[id] }, total)} />{names[id]}のみ</label>)}<label className="flex items-center gap-1"><input type="radio" name="power-allocation" checked={!!value.mix} onChange={() => onChange({ ...value, mix: weights, powerCases: cases }, total)} />組み合わせ</label></div>
-    <div className="overflow-x-auto" role="region" aria-label="電源別の配分と条件" tabIndex={0}><table className="w-full min-w-[850px] text-left"><thead><tr>{['電源', '投資配分（%）', '建設費（万円/kW）', '設備利用率（%）', '稼働まで（年）', '輸入費（円/kWh）', '効果期間'].map(label => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead><tbody>{technologies.map(id => <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2">{names[id]}</th>
+    <div className="overflow-x-auto" role="region" aria-label="電源別の配分と条件" tabIndex={0}><table className="w-full min-w-[950px] text-left"><thead><tr>{['電源', '投資配分（%）', '建設費（万円/kW）', '設備利用率（%）', '稼働まで（年）', '輸入費（円/kWh）', '確実供給への寄与率（%・仮定）', '効果期間'].map(label => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead><tbody>{technologies.map(id => <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2">{names[id]}</th>
       <td className="p-2"><input type="number" aria-label={`${names[id]}・投資配分`} className={fieldClass} min={0} max={100} step={.1} value={Number((weights[id] / sum * 100).toFixed(1))} onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) changeShare(id, Math.min(100, Math.max(0, e.target.valueAsNumber))); }} /><span className="mt-1 block tabular-nums text-mirai-text-subtle" data-power-amount={id}>{money(amounts[id] * 1e12, 3)}／年</span></td>
-      {([['capexPerKw', '建設費', 1e4, 1, 500], ['capacityFactor', '設備利用率', .01, 0, 100], ['lag', '稼働まで', 1, 0, 30], ['operatingImportYenPerKwh', '輸入費', 1, 0, 50]] as const).map(([key, label, scale, min, max]) => <td key={key} className="p-2"><input type="number" aria-label={`${names[id]}・${label}`} className={fieldClass} min={min} max={max} step={key === 'lag' ? 1 : .1} value={cases[id][key] === null ? '' : Number((cases[id][key]! / scale).toFixed(4))} placeholder="未推計" onChange={e => {
-        if (e.target.value === '' && key === 'operatingImportYenPerKwh') changeCase(id, key, null);
+      {([['capexPerKw', '建設費', 1e4, 1, 500], ['capacityFactor', '設備利用率', .01, 0, 100], ['lag', '稼働まで', 1, 0, 30], ['operatingImportYenPerKwh', '輸入費', 1, 0, 50], ['firmShare', '確実供給への寄与率', .01, 0, 100]] as const).map(([key, label, scale, min, max]) => <td key={key} className="p-2"><input type="number" aria-label={`${names[id]}・${label}`} className={fieldClass} min={min} max={max} step={key === 'lag' ? 1 : .1} value={cases[id][key] === null ? '' : Number((cases[id][key]! / scale).toFixed(4))} placeholder="未推計" onChange={e => {
+        if (e.target.value === '' && (key === 'operatingImportYenPerKwh' || key === 'firmShare')) changeCase(id, key, null);
         else if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) { const n = Math.min(max, Math.max(min, e.target.valueAsNumber)); changeCase(id, key, (key === 'lag' ? Math.round(n) : n) * scale); }
       }} /></td>)}<td className="p-2">{POWER_TECHNOLOGIES[id].lifetime}年</td>
     </tr>)}</tbody></table></div>
     <p>発電投資の合計：<strong data-testid="power-investment-total">{total.toFixed(1)}兆円／年</strong>。初回支出は年1で、稼働まで2年なら年3から効果を計上します。</p>
+    <p>{SOLAR_LAG_NOTE} <a href={POWER_CONSTRUCTION_SOURCE} className="underline" target="_blank" rel="noreferrer">建設期間の出典</a></p>
+    <p>{POWER_FIRM_NOTE} 建設中の電力需要は先に増えるため、稼働前や需要増が供給増を上回る期間は逼迫する場合があります。</p>
+    {total > 0 && technologies.some(id => weights[id] > 0 && cases[id].firmShare === null) && <p role="status" className="font-bold">確実供給への寄与率が空欄の電源があります。その電源への投資は電力供給能力の改善に反映されていません。上の寄与率を入力してください。</p>}
     <p>原子力は新設の条件です。<a href={POWER_DETAIL_SOURCE} className="underline" target="_blank" rel="noreferrer">公表の核燃料サイクル費1.9円/kWh</a>のうち海外支払50%と仮定し、輸入費を0.95円/kWhに設定。実測の輸入比率ではありません。70%の利用率・建設期間・燃料費を含めて比較し、再稼働案件とは区別します。火力置換率・出力制御・調達先は下の事業条件で変更できます。</p>
     <section className="space-y-2" aria-labelledby="power-fuel-heading">
       <h3 id="power-fuel-heading" className="font-bold">増強せず火力で賄う場合との比較</h3>

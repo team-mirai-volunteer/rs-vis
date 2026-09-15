@@ -52,6 +52,8 @@ export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
   const [shareError, setShareError] = useState('');
   const dataDialog = useRef<HTMLDialogElement>(null);
+  const powerDialog = useRef<HTMLDialogElement>(null);
+  const openPowerSettings = useCallback(() => powerDialog.current?.showModal(), []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { completed, error, pending, retry } = useFiscalCalculation(form);
   useEffect(() => {
@@ -123,7 +125,7 @@ export default function FiscalSpacePage() {
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
-          policies={policies}
+          policies={policies} onPowerSettings={openPowerSettings}
           horizon={Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
@@ -154,12 +156,23 @@ export default function FiscalSpacePage() {
       <MemoSupplyConditions value={form.supply} onChange={change.supply} />
       {result && <>
       <MemoElectricityBaseline value={form.calibration.electricity} onChange={change.electricity} baseline={result.baseline} projection={result.projection} />
-      <MemoPowerMix value={form.trade} total={form.amounts.generation ?? 0} onChange={change.power} />
       <MemoPolicyLoads policies={loadedPolicies} onChange={change.load} />
       <MemoPolicyTrade policies={result.policies} value={form.trade} onChange={change.trade} />
       <MemoProjection simulation={result.projection} baseline={result.baseline} peaksByYear={result.peaksByYear} shocks={result.shocks} parameters={result.p} latest={calculationForm?.dataset === 'latest'} />
       </>}
     </main>
+    <dialog ref={powerDialog} aria-labelledby="power-settings-title"
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id="power-settings-title" className="text-lg font-bold">発電設備投資の設定</h2>
+        <Button variant="ghost" size="icon" aria-label="電源設定を閉じる" onClick={() => powerDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-3 p-3 sm:p-5">
+        <p className="text-sm">変更はすぐに政策の計算へ反映されます。発電投資の総額は政策欄の入力と連動しています。</p>
+        <MemoPowerMix value={form.trade} total={form.amounts.generation ?? 0} onChange={change.power} />
+        <Button variant="outline" onClick={() => powerDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
     <dialog ref={dataDialog} aria-labelledby="fiscal-data-title" onClose={() => setDialogOpen(false)}
       className="max-h-[85vh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-3xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-6">

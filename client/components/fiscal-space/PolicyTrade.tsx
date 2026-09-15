@@ -1,6 +1,6 @@
 import type { Policy } from '@/types/fiscal-space';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { POLICY_TRADE_CHANNELS, POWER_TECHNOLOGIES, POWER_SOURCE, POWER_DETAIL_SOURCE, SEMICONDUCTOR_SOURCE,
+import { POLICY_TRADE_CHANNELS, POWER_TECHNOLOGIES, POWER_SOURCE, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, SEMICONDUCTOR_SOURCE,
   industryTrade, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
 import { fieldClass, money } from './format';
 import { PROJECT_POLICY_IDS } from '@/app/lib/fiscal-space/project-response';
@@ -58,6 +58,7 @@ export function PolicyTrade({ policies, value, onChange }: { policies: Policy[];
           <Numeric label="建設費の輸入割合" value={pctInput(power.capexImportShare)} unit="%" onChange={n => changePower('capexImportShare', n === null ? null : n / 100)} />
           <Numeric label="確実供給への寄与率" value={pctInput(power.firmShare)} unit="%" onChange={n => changePower('firmShare', n === null ? null : n / 100)} />
         </div>
+        <p>{POWER_FIRM_NOTE}</p>
         <p>建設費・設備利用率・寿命は2025年公表の2023年モデルプラントを参考に設定。太陽光17.6万円/kW・18.3%、原子力60.025万円/kW・70%、中水力66.5万円/kW・54.7%。現在の見積価格ではありません。<a className="underline" href={POWER_SOURCE} target="_blank" rel="noreferrer">諸元</a> / <a className="underline" href={POWER_DETAIL_SOURCE} target="_blank" rel="noreferrer">内訳</a></p>
         <p>稼働遅れ2・10・5年、火力置換80%、燃料単価9円/kWhは比較用仮定。太陽光・水力の燃料輸入は0、設備補修等の輸入は未算入。原子力は公表核燃料サイクル費1.9円/kWhの50%を海外支払と仮定し、輸入費0.95円/kWhで初期化します。輸入割合の実証値ではなく、空欄に戻すと稼働後効果は未推計になります。新設原子力の初回稼働は年11です。</p>
         <div className="overflow-x-auto" role="region" aria-label="発電方式の輸入代替試算" tabIndex={0}><table className="w-full min-w-[780px] text-right tabular-nums"><thead><tr>{['年', '稼働設備（GW）', '送電端発電量（TWh）', '燃料輸入削減', '運転時輸入', '建設時輸入', '収支差', '確実供給（GW）'].map(h => <th scope="col" key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{years.map(year => { const r = powerTrade(selected, year, configuredPower(value)); return <tr key={year} className="border-t border-mirai-border"><th className="p-2" scope="row">{year}</th><td>{r.capacityGw.toFixed(2)}</td><td>{r.generationTwh.toFixed(2)}</td><td>{tradeMoney(r.substitution)}</td><td>{tradeMoney(r.operatingImports)}</td><td>{tradeMoney(r.capexImports)}</td><td>{tradeMoney(r.tradeBalance)}</td><td>{r.firmGw === null ? '未推計' : r.firmGw.toFixed(2)}</td></tr>; })}</tbody></table></div>

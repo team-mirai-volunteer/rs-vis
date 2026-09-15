@@ -1,11 +1,11 @@
 import { initialEconomy, POLICIES, TRILLION, assumptionRecords } from '@/app/lib/fiscal-space/assumptions';
 import { REFERENCES, referenceRecords } from '@/app/lib/fiscal-space/calibration';
-import { insuranceRevenueRecords, policyReliefLimit } from '@/app/lib/fiscal-space/policy-limits';
+import { insuranceRevenueRecords, personalTaxRevenueRecords, policyReliefLimit } from '@/app/lib/fiscal-space/policy-limits';
 import { simulate } from '@/app/lib/fiscal-space/simulate';
 import { estimateFiscalSpace } from '@/app/lib/fiscal-space/search';
 import { evaluateConstraints, peakConstraints, constraintInflation } from '@/app/lib/fiscal-space/constraints';
 import { compareNextTrillion, rateShockComparison } from '@/app/lib/fiscal-space/compare';
-import { PROJECT_POLICY_IDS } from '@/app/lib/fiscal-space/project-response';
+import { PROJECT_POLICY_IDS, projectResponse } from '@/app/lib/fiscal-space/project-response';
 import { fiscalExternal } from '@/app/lib/fiscal-space/fiscal-external';
 import { auditFiscalSpace } from '@/app/lib/fiscal-space/risk-audit';
 import { longRunScenario } from '@/app/lib/fiscal-space/long-run';
@@ -62,6 +62,19 @@ export function createFiscalEngine() {
     const totalYen = allocated.reduce((sum, policy) => sum + policy.annualCost, 0);
     const projection = simulate(initial, allocated, publishedYears, p, shock);
     const baseline = simulate(initial, [], publishedYears, p, shock);
+    const generation = allocated.find(policy => policy.id === 'generation');
+    const powerTimeline = generation ? projection.steps.slice(0, horizon).map((step, i) => {
+      const base = baseline.steps[i];
+      const energy = evaluateConstraints(step, form.thresholds).find(c => c.id === 'energy')!;
+      const baseEnergy = evaluateConstraints(base, form.thresholds).find(c => c.id === 'energy')!;
+      return { year: i + 1,
+        generationSupplyGw: projectResponse(initial, generation, i + 1, p).firmGw,
+        extraDemandGw: step.state.energy.peakDemand - base.state.energy.peakDemand,
+        extraSupplyGw: step.state.energy.firmCapacity - base.state.energy.firmCapacity,
+        utilization: energy.currentValue, baselineUtilization: baseEnergy.currentValue,
+        region: step.resourcePower ? `${step.resourcePower.region}・${step.resourcePower.season}` : '全国',
+      };
+    }) : [];
     const inputExternal = fiscalExternal(initial, allocated, projection, baseline, p);
     const estimate = estimateFiscalSpace(initial, mix, form.thresholds, horizon, p, shock);
     const riskAudit = auditFiscalSpace(initial, mix, estimate, form.thresholds, horizon, p, shock);
@@ -143,12 +156,12 @@ export function createFiscalEngine() {
     const records = [
       ...assumptionRecords({ initial, parameters: p, policies, thresholds: form.thresholds,
         shock, annualCost: totalYen, longRun: form.longRun }, '', form.dataset),
-      ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
+      ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...personalTaxRevenueRecords(), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
       ...burdenRecords(form.dataset === 'latest', form.corporateShare), ...externalStressRecords(),
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
-      estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity,
+      estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity, powerTimeline,
       modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, durationSensitivity, records };
   };
 }

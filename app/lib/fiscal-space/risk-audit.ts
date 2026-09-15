@@ -32,6 +32,7 @@ export function auditFiscalSpace(initial: EconomyState, mix: PolicyShare[], esti
     baselineSensitivity: [...new Set([.01, .015, .018, .02, .022, .025, p.baselineInflation])].sort((a, b) => a - b).map(inflation => {
       const alternate = inflation === p.baselineInflation ? estimate : estimateFiscalSpace(initial, mix, thresholds, horizon, { ...p, baselineInflation: inflation }, shock);
       return { inflation, amount: alternate.theoreticalMaximum, status: alternate.status, current: inflation === p.baselineInflation,
+        limitingPolicy: alternate.limitingPolicy,
         binding: alternate.constraints.filter(c => c.status === 'violated').map(c => c.label) };
     }),
     amount: estimate.recommendedEnvelope,

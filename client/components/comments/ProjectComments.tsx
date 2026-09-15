@@ -46,7 +46,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
       <div className="mb-1.5 flex items-center gap-2">
         <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(13) }}>みんなの意見</span>
         <span className="text-mirai-text-muted" style={{ fontSize: META_PX }}>
-          {state.comments === undefined ? '…' : `${state.total}件`}
+          {state.error ? '件数を取得できません' : state.comments === undefined ? '…' : `${state.total}件`}
         </span>
         <span className="flex-1" />
         <Button
@@ -60,7 +60,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
         </Button>
       </div>
 
-      {state.error && <div className="text-destructive" style={{ fontSize: META_PX }}>{state.error}</div>}
+      {state.error && <div role="alert" className="text-destructive" style={{ fontSize: META_PX }}>{state.error} <button type="button" className="underline" onClick={() => void state.refresh()}>再読み込み</button></div>}
 
       {state.comments !== undefined && list.length === 0 && !state.error && (
         <div className="text-mirai-text-placeholder" style={{ fontSize: META_PX }}>まだ意見はありません。最初の意見を伝えてみませんか。</div>

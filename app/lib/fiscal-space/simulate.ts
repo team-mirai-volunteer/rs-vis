@@ -56,7 +56,7 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
   positive(p.consumptionTax.revenuePerPoint, 'tax revenue per point');
   positive(p.consumptionTax.baseRate, 'base consumption tax rate');
   for (const n of [p.consumptionTax.cpiShare, p.consumptionTax.passThrough]) if (n < 0 || n > 1) throw new RangeError('Invalid tax price assumptions');
-  for (const id of ['consumption-tax', 'social-insurance']) {
+  for (const id of new Set(policies.map(x => x.id))) {
     if (policies.filter(x => x.id === id).reduce((sum, x) => sum + x.annualCost, 0) > policyReliefLimit(id, p) + 1)
       throw new RangeError(`${id} relief exceeds the revenue base`);
   }

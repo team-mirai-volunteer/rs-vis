@@ -51,7 +51,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
 }) {
   // 取得はフックに閉じる（再利用可能UIから直接APIを叩かない）
   const data = useScoreDetailData(item.pid, year, policyProp != null);
-  const { recipients, recipientsError, projectInfo, policyError } = data;
+  const { recipients, recipientsError, recipientsAvailable, sourceYear, projectInfo, policyError } = data;
   const policy = policyProp ?? data.policy ?? undefined;
 
   const [recipientSearch, setRecipientSearch] = useState('');
@@ -209,12 +209,12 @@ ${a.desc}`}>
             <div className="flex-1 min-w-0 text-[10px] text-mirai-text-secondary space-y-0.5">
               <div className="flex flex-wrap gap-x-3">
                 <span><span className="text-mirai-text-muted">予算:</span><span className="font-mono">{formatAmount(item.budgetAmount)}</span></span>
-                <span><span className="text-mirai-text-muted">執行:</span><span className="font-mono">{formatAmount(item.execAmount ?? 0)}</span></span>
-                <span><span className="text-mirai-text-muted">実質支出:</span><span className="font-mono">{formatAmount(item.spendNetTotal)}</span></span>
+                <span><span className="text-mirai-text-muted">執行:</span><span className="font-mono">{recipientsAvailable ? formatAmount(item.execAmount ?? 0) : '未収録'}</span></span>
+                <span><span className="text-mirai-text-muted">実質支出:</span><span className="font-mono">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
                 <span><span className="text-mirai-text-muted">乖離率:</span><span className="font-mono">{pct(item.gapRatio)}</span></span>
               </div>
               <div className="flex flex-wrap gap-x-3">
-                <span><span className="text-mirai-text-muted">支出先数:</span><span className="font-mono">{recipients?.length ?? '...'}</span></span>
+                <span><span className="text-mirai-text-muted">支出先数:</span><span className="font-mono">{!recipientsAvailable ? '未収録' : recipientsError ? '取得できません' : recipients?.length ?? '...'}</span></span>
                 <span><span className="text-mirai-text-muted">ブロック:</span>{item.blockCount}件</span>
                 {item.hasRedelegation && <span><span className="text-mirai-text-muted">深度:</span><span className="text-orange-500">{item.redelegationDepth}</span></span>}
                 {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">不透明:</span><span className="text-amber-500">{pct(item.opaqueRatio)}</span></span>}
@@ -266,6 +266,7 @@ ${a.desc}`}>
           モーダル自身のスクロールと二重になり、どこを掴んでいるのか分からなくなっていた。
         */}
         <div className="flex-1 min-h-0 overflow-y-auto">
+          {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
 
         {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料 */}
         {showProjectInfo && (
@@ -303,7 +304,7 @@ ${a.desc}`}>
 
         {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
         <div className="px-6 py-3 border-b border-mirai-border empty:hidden">
-          <ProjectComments
+          {recipientsAvailable ? <ProjectComments
             bare
             context={{
               pid: item.pid,
@@ -314,7 +315,7 @@ ${a.desc}`}>
               budget: item.budgetAmount,
               execution: item.execAmount,
             }}
-          />
+          /> : <p className="text-xs text-mirai-text-muted">{year}年度は予算要求の表示です。この年度の意見投稿・一覧はまだ対応していません。</p>}
         </div>
 
         {/* 政策評価の取得に失敗したときは黙って消さず、失敗したと分かるようにする */}
@@ -629,12 +630,13 @@ ${a.desc}`}>
             </div>
           </div>
 
-          {recipientsError && (
+          {!recipientsAvailable && <div className="px-6 py-4 text-xs text-mirai-text-muted">{year}年度の支出先・執行実績は未収録です。予算要求の段階のため、この年度の支出先一覧は表示できません。事業概要と評価の元データは{sourceYear}年度のRSシートです。</div>}
+          {recipientsAvailable && recipientsError && (
             <div className="px-6 py-4 text-xs text-mirai-text-muted">
-              データを読み込めません（<code>python3 scripts/score-project-quality.py</code> を実行してください）
+              支出先を取得できませんでした。時間をおいて詳細を開き直してください。
             </div>
           )}
-          {!recipientsError && recipients === null && (
+          {recipientsAvailable && !recipientsError && recipients === null && (
             <div className="px-6 py-4 flex items-center gap-2 text-xs text-mirai-text-muted">
               <Loader2 className="size-3 animate-spin text-mirai-text-muted" aria-hidden="true" />
               読み込み中...

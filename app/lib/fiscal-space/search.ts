@@ -21,7 +21,7 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
   const weight = policyMix.reduce((sum, x) => sum + x.weight, 0);
   let searchCap = p.searchCap;
   let limitingPolicy: string | undefined;
-  for (const id of ['consumption-tax', 'social-insurance']) {
+  for (const id of new Set(policyMix.map(x => x.policy.id))) {
     const policyWeight = policyMix.filter(x => x.policy.id === id).reduce((sum, x) => sum + x.weight, 0);
     const cap = policyWeight > 0 ? policyReliefLimit(id, p) * weight / policyWeight : Infinity;
     if (cap <= searchCap) { searchCap = cap; limitingPolicy = id; }

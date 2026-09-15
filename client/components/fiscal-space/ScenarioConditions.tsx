@@ -5,7 +5,6 @@ import { RangeField } from './Controls';
 import { fieldClass, money, percent, points } from './format';
 import { constraintInflation } from '@/app/lib/fiscal-space/constraints';
 import { BudgetReference } from './BudgetReference';
-import { BaselineSensitivity } from './BaselineSensitivity';
 
 import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
 const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
@@ -42,7 +41,7 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   </section>;
 }
 
-export function InputOverview({ total, estimate, riskAudit, horizon, incomplete, projection, baseline, policies }: {
+export function InputOverview({ total, estimate, horizon, incomplete, projection, baseline, policies }: {
   riskAudit: FiscalCalculation['riskAudit'];
   estimate: FiscalSpaceEstimate;
   total: number; horizon: number; incomplete: boolean;
@@ -59,8 +58,6 @@ export function InputOverview({ total, estimate, riskAudit, horizon, incomplete,
           <div><h3 className="text-sm">同じ配分の探索上限（条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.theoreticalMaximum, 1)} / 年`}</p></div>
         </div>
         {estimate.status !== 'unevaluated' && total > estimate.theoreticalMaximum && <p className="text-xs">設定した追加予算は、探索上限を{money(total - estimate.theoreticalMaximum, 1)}上回ります。</p>}
-        <BaselineSensitivity rows={riskAudit.baselineSensitivity} />
-        <p className="text-xs">境界を決めた制約：{estimate.constraints.filter(c => c.status === 'violated').map(c => c.label).join('・') || '未特定'}。債務が境界を決めていない場合、債務の上限を見つけた結果ではありません。</p>
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong></p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>
