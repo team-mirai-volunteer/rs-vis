@@ -8,6 +8,7 @@ import { AppHeader } from '@/components/navigation/AppHeader';
 import { HOUSEHOLDS, initialTaxState, isReformed } from '@/app/lib/tax-burden/households';
 import { simulate, statutoryBasicAllowance } from '@/app/lib/tax-burden/simulate';
 import { heatmapGrid, lifecycleSeries } from '@/app/lib/tax-burden/simulate-lifecycle';
+import { yearRate } from '@/app/lib/tax-burden/heatmap-items';
 import { fiscalImpact } from '@/app/lib/tax-burden/fiscal-impact';
 import { decodeTaxState, encodeTaxState } from '@/app/lib/tax-burden/reform-url';
 import { CurveChart } from '@/client/components/tax-burden/CurveChart';
@@ -141,7 +142,10 @@ export default function TaxBurdenPage() {
             {state.view === 'age' && lifecycle && <>
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  { label: `${selectedAge}歳の純負担率`, value: rateText(ageRow ? (ageRow.careerRate === null ? null : (state.includeConsumption ? ageRow.careerRate : (ageRow.pensionAdjustedBurden - ageRow.consumptionTax) / ageRow.careerIncome)) : null), note: ageRow ? `${PHASE_LABEL[ageRow.phase]}・年金を差し引き、現役期年収 ${(state.income / 10000).toLocaleString('ja-JP')}万円で割った値${ageRow.pensionIncome > 0 ? '（負＝受け取り超過）' : ''}` : '' },
+                  { label: `${selectedAge}歳の純負担率`, value: rateText(ageRow ? yearRate(ageRow, state.denominator, state.includeConsumption) : null),
+                    note: ageRow ? (state.denominator === 'career'
+                      ? `${PHASE_LABEL[ageRow.phase]}・年金を差し引き、現役期年収 ${(state.income / 10000).toLocaleString('ja-JP')}万円で割った値${ageRow.pensionIncome > 0 ? '（負＝受け取り超過）' : ''}`
+                      : `${PHASE_LABEL[ageRow.phase]}・その年の総収入 ${Math.round(ageRow.income / 10000).toLocaleString('ja-JP')}万円で割った値`) : '' },
                   { label: `${selectedAge}歳の可処分所得`, value: yen(ageRow ? ageRow.disposable - (state.includeConsumption ? ageRow.consumptionTax : 0) : 0), note: '総収入 − 純負担' },
                   { label: '65歳以降の公的年金（世帯・年額）', value: yen(lifecycle.find(y => y.ageAt === 70)?.pensionIncome ?? 0), note: '基礎年金＋報酬比例。現役期年収から算出' },
                 ].map(item => <Card key={item.label}><CardContent className="pt-5"><p className="text-xs text-mirai-text-secondary">{item.label}</p><p className="mt-2 text-2xl font-bold tabular-nums text-primary-accent">{item.value}</p><p className="mt-2 text-xs text-mirai-text-secondary">{item.note}</p></CardContent></Card>)}
@@ -153,10 +157,11 @@ export default function TaxBurdenPage() {
                   <p className="mt-4 text-xs leading-relaxed text-mirai-text-secondary">年金は老齢基礎年金（満額）＋報酬比例部分（平均標準報酬額×5.481/1000×480か月）。65歳以降の医療保険は国民健康保険（東京都特別区の統一保険料・要照合）、75歳から後期高齢者医療（東京都広域連合）、介護保険第1号は国の標準段階×全国平均基準額。年金生活者支援給付金は所得要件を満たす場合のみ。住民税は前年所得課税で計算するため、就労初年度（20歳）は0、継続雇用で減収した60歳と年金生活に入った65歳には前年の給与に基づく重い住民税がかかります。</p>
                 </CardContent>
               </Card>
-              {ageRow && <BurdenBreakdown before={ageRow} includeConsumption={state.includeConsumption} pensionIncome={ageRow.pensionIncome} title={`${selectedAge}歳の負担内訳`} />}
+              {ageRow && <BurdenBreakdown before={ageRow} includeConsumption={state.includeConsumption}
+                pensionIncome={state.denominator === 'career' ? ageRow.pensionIncome : undefined} title={`${selectedAge}歳の負担内訳`} />}
             </>}
             {state.view === 'heatmap' && grid && <Card><CardHeader><h2 className="text-lg font-bold">この税は、どの年齢・どの所得階層に重いか</h2><p className="mt-2 text-xs text-mirai-text-secondary">{household.label}。制度モデルで年齢×現役期年収の各セルを計算。</p></CardHeader>
-              <CardContent><TaxHeatmap grid={grid} hasConsumption={!!consumption} reformed={reformed} /></CardContent></Card>}
+              <CardContent><TaxHeatmap grid={grid} hasConsumption={!!consumption} reformed={reformed} denominator={state.denominator} /></CardContent></Card>}
           </>}
         </div>
       </div>}

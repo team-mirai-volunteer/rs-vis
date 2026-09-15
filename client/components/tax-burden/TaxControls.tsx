@@ -101,6 +101,16 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
             onChange={v => set('secondBirthAge', v)} />}
           <p className="text-xs leading-relaxed text-mirai-text-subtle">児童手当も扶養控除も子の年齢で決まるので、年齢軸のどこで給付・控除が切れるかは出産年齢の置き方で決まります。児童手当は末子が18歳以下の間（親{lastBenefitAge}歳まで）、扶養控除は末子が独立する{lifecycle?.childLeavesAt ?? 23}歳まで（親{lastDependantAge}歳まで）です。</p>
         </section>}
+        {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="負担率の分母">
+          <h3 className="font-bold text-primary-accent">負担率の分母</h3>
+          <div role="group" aria-label="負担率の分母" className="flex gap-2">
+            <Button size="sm" variant={state.denominator === 'income' ? 'default' : 'outline'} aria-pressed={state.denominator === 'income'} onClick={() => set('denominator', 'income')}>その年の総収入</Button>
+            <Button size="sm" variant={state.denominator === 'career' ? 'default' : 'outline'} aria-pressed={state.denominator === 'career'} onClick={() => set('denominator', 'career')}>現役期の年収</Button>
+          </div>
+          <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.denominator === 'income'
+            ? 'その年に実際に受け取った額（給与＋年金）で割ります。ふつうの負担率の読み方ですが、年金が分母に入るので、受け取りが多いほど率は軽く見えます。'
+            : 'どの年齢も現役期の世帯年収で割り、公的年金の受給は負担のマイナスとして扱います。同じ所得階層の人が生涯でどれだけ払い、どれだけ受け取るかを1つの尺度で見るための置き方です。'}</p>
+        </section>}
         {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
           <h3 className="font-bold text-primary-accent">働き方の前提</h3>
           <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />

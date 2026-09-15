@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import type { LifecycleYear, TaxState } from '@/types/tax-burden';
 import { LIFECYCLE_END, LIFECYCLE_START } from '@/app/lib/tax-burden/simulate-lifecycle';
+import { DENOMINATOR_LABEL, yearRate } from '@/app/lib/tax-burden/heatmap-items';
 
 const PHASE_LABEL: Record<LifecycleYear['phase'], string> = { work: '現役', reemployed: '継続雇用', 'work-pension': '就労＋年金', pension: '年金' };
 
@@ -10,8 +11,7 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
   years: LifecycleYear[]; base?: LifecycleYear[] | null; state: TaxState; selectedAge: number; onSelectAge: (age: number) => void;
 }) {
   const id = useId().replace(/:/g, '');
-  // Denominator is the fixed working-age income class; pensions received enter with a negative sign.
-  const rateOf = (y: LifecycleYear) => y.careerRate === null ? null : (state.includeConsumption ? y.careerRate : (y.pensionAdjustedBurden - y.consumptionTax) / y.careerIncome);
+  const rateOf = (y: LifecycleYear) => yearRate(y, state.denominator, state.includeConsumption);
   const rates = [...years, ...(base ?? [])].map(rateOf).filter((v): v is number => v !== null && Number.isFinite(v));
   const minY = Math.min(-0.1, Math.floor(Math.min(...rates) * 10) / 10);
   const maxY = Math.max(0.4, Math.ceil(Math.max(...rates) * 10) / 10);
@@ -34,7 +34,9 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
   const totalHeight = top2 + height2 + 44;
   const ticks = Array.from({ length: Math.round((maxY - minY) / 0.1) + 1 }, (_, i) => minY + i * 0.1);
   return <div>
-    <p className="mb-2 text-xs text-mirai-text-secondary">上：（税・本人保険料{state.includeConsumption ? '・消費税推計' : ''} − 現金給付 − 公的年金の受給）÷ 現役期の世帯年収。年金は負担のマイナスとして扱うため、受給期は負の値（受け取り超過）になる。下：総収入と可処分所得（年額）。</p>
+    <p className="mb-2 text-xs text-mirai-text-secondary">上：{state.denominator === 'career'
+      ? `（税・本人保険料${state.includeConsumption ? '・消費税推計' : ''} − 現金給付 − 公的年金の受給）÷ 現役期の世帯年収。年金は負担のマイナスとして扱うため、受給期は負の値（受け取り超過）になる。`
+      : `（税・本人保険料${state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ その年の総収入（給与＋年金）。年金は分母に入る。`}下：総収入と可処分所得（年額）。</p>
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年齢別の負担率と可処分所得（左右にスクロール可能）">
       <svg viewBox={`0 0 830 ${totalHeight}`} className="w-full min-w-[640px]" role="img" aria-labelledby={`${id}-title`}
         onPointerDown={event => {
@@ -43,7 +45,7 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
           onSelectAge(Math.max(LIFECYCLE_START, Math.min(LIFECYCLE_END, Math.round(LIFECYCLE_START + (px - left) / width * (LIFECYCLE_END - LIFECYCLE_START)))));
         }}>
         <title id={`${id}-title`}>年齢別の純負担率と可処分所得・試作</title>
-        <text x={left} y={top - 12} fontSize="12" fill="var(--mirai-text)" fontWeight="bold">純負担率（現役期年収比・%）</text>
+        <text x={left} y={top - 12} fontSize="12" fill="var(--mirai-text)" fontWeight="bold">純負担率（{DENOMINATOR_LABEL[state.denominator]}・%）</text>
         <text x={left} y={top2 - 12} fontSize="12" fill="var(--mirai-text)" fontWeight="bold">金額（年額・万円）</text>
         {[[top, height], [top2, height2]].map(([t, h]) => <g key={t} stroke="var(--mirai-text-subtle)">
           <line x1={left} x2={left} y1={t} y2={t + h} />
@@ -74,7 +76,7 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
       </svg>
     </div>
     <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-mirai-text-secondary">
-      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" strokeDasharray={base ? '9 5' : undefined} /></svg>{base ? '改革案の' : ''}純負担率（年金差し引き・現役期年収比）</span>
+      <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary-accent)" strokeWidth="3" strokeDasharray={base ? '9 5' : undefined} /></svg>{base ? '改革案の' : ''}純負担率（{state.denominator === 'career' ? '年金差し引き・' : ''}{DENOMINATOR_LABEL[state.denominator]}）</span>
       {base && <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--mirai-text-subtle)" strokeWidth="2" /></svg>基準制度</span>}
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="6 3" /></svg>総収入（給与＋年金）</span>
       <span className="inline-flex items-center gap-2"><svg aria-hidden="true" width="24" height="8"><line x1="0" x2="24" y1="4" y2="4" stroke="var(--primary)" strokeWidth="3" /></svg>可処分所得</span>

@@ -57,5 +57,7 @@ export function initialTaxState(): TaxState {
     // and the distributional conventions of public bodies are 18-25%. The long-run shares in the same Japanese
     // analyses are much higher (78-90%), so this is the conservative end and the user's to change.
     continuation: 0.7, workUntil: 65, includeConsumption: false, showOecd: false, corporateShare: 0.25,
-    firstBirthAge: 32, secondBirthAge: 34 };
+    // Rates divide by the money actually received that year. Dividing by the working-age income class instead makes
+    // retirement read as a large negative burden, which hides how much a pensioner still pays.
+    firstBirthAge: 32, secondBirthAge: 34, denominator: 'income' };
 }

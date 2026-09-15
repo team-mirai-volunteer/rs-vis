@@ -1,16 +1,16 @@
 'use client';
 
-import type { TaxItem } from '@/types/tax-burden';
+import type { Denominator, TaxItem } from '@/types/tax-burden';
 import { HEATMAP_AGES } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { TAX_ITEMS } from '@/app/lib/tax-burden/households';
-import { availableTaxItems, BENEFIT_PARTS, cellRate, type HeatmapGrid } from '@/app/lib/tax-burden/heatmap-items';
+import { availableTaxItems, BENEFIT_PARTS, cellRate, DENOMINATOR_LABEL, type HeatmapGrid } from '@/app/lib/tax-burden/heatmap-items';
 
 const shortLabel = (item: TaxItem) => TAX_ITEMS.find(t => t.id === item)!.label.replace('（差し引き）', '');
 
 const PHASE = { work: '現役', reemployed: '継続雇用', 'work-pension': '就労＋年金', pension: '年金' } as const;
 
-function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item: TaxItem; compact: boolean; hasConsumption: boolean }) {
-  const values = grid.flatMap(r => r.cells.map(c => cellRate(c, item))).filter((v): v is number => v !== null);
+function Grid({ grid, item, compact, hasConsumption, denominator }: { grid: HeatmapGrid; item: TaxItem; compact: boolean; hasConsumption: boolean; denominator: Denominator }) {
+  const values = grid.flatMap(r => r.cells.map(c => cellRate(c, item, denominator))).filter((v): v is number => v !== null);
   const peak = Math.max(0, ...values.map(v => Math.abs(v)));
   // Teal and orange get their own scale, spread over the values actually present rather than over 0 to the largest.
   // The net-burden panel runs from about +12% to +44% while the pension years reach -93%: scaling both from zero to
@@ -38,27 +38,29 @@ function Grid({ grid, item, compact, hasConsumption }: { grid: HeatmapGrid; item
       <tbody>{rows.map(row => <tr key={row.income}>
         <th scope="row" className="whitespace-nowrap text-left font-medium">{(row.income / 10000).toLocaleString('ja-JP')}万</th>
         {row.cells.filter(c => ages.includes(c.ageAt as typeof ages[number])).map(c => {
-          const v = cellRate(c, item);
+          const v = cellRate(c, item, denominator);
           const alpha = v === null ? 0 : Math.min(1, shade(v));
           // Only the fill carries meaning: the text stays one colour so a pale or white number never reads as a value of its own.
           const fill = (v === null ? 0 : 0.05 + alpha * 0.63) * (c.outOfScope ? 0.35 : 1);
           const bg = v === null ? 'transparent' : v < 0 ? `rgba(217, 119, 87, ${fill})` : `rgba(30, 150, 140, ${fill})`;
           return <td key={c.ageAt} className={`rounded px-1 text-center ${compact ? 'py-1' : 'py-2'}`} style={{ backgroundColor: bg }}
-            title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円（うち年金${Math.round(c.pensionIncome / 10000).toLocaleString('ja-JP')}万円）、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * c.careerIncome).toLocaleString('ja-JP')}円、現役期年収比）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
+            title={`${(row.income / 10000).toLocaleString('ja-JP')}万円・${c.ageAt}歳（${PHASE[c.phase]}）：総収入${Math.round(c.income / 10000).toLocaleString('ja-JP')}万円（うち年金${Math.round(c.pensionIncome / 10000).toLocaleString('ja-JP')}万円）、${label} ${v === null ? '未定義' : `${(v * 100).toFixed(1)}%（${Math.round(v * (denominator === 'career' ? c.careerIncome : c.income)).toLocaleString('ja-JP')}円、${DENOMINATOR_LABEL[denominator]}）`}${c.outOfScope ? '（適用範囲外）' : ''}`}>
             {v === null ? '—' : (v * 100).toFixed(1)}
           </td>;
         })}
       </tr>)}</tbody>
     </table></div>
-    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。分母はすべての年齢で行の現役期年収。65歳以降の公的年金は負担のマイナス（受け取り）として扱い、年金額は現役期年収から算出。薄いセルは就労者の給与が被用者保険の賃金要件（年105.6万円）に届かず、国民年金・国保の扱いが前提次第で変わる帯。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
+    {!compact && <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">制度モデルの計算値です（統計の実測値ではありません）。{denominator === 'career'
+      ? '分母はすべての年齢で行の現役期年収。65歳以降の公的年金は負担のマイナス（受け取り）として扱い、年金額は現役期年収から算出。'
+      : '分母はその年に受け取った総収入（給与＋年金）。年金は分母に入るので、受給期の率は現役期より軽く出ます。年金額は行の現役期年収から算出。'}薄いセルは就労者の給与が被用者保険の賃金要件（年105.6万円）に届かず、国民年金・国保の扱いが前提次第で変わる帯。{item === 'net' && (hasConsumption ? '純負担には消費税推計を含みます。' : '消費税は消費支出データ未読込のため含まれません。')}</p>}
   </div>;
 }
 
-export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGrid; hasConsumption: boolean; reformed: boolean }) {
+export function TaxHeatmap({ grid, hasConsumption, reformed, denominator }: { grid: HeatmapGrid; hasConsumption: boolean; reformed: boolean; denominator: Denominator }) {
   const item: TaxItem = 'net';
   const label = TAX_ITEMS.find(t => t.id === item)!.label;
-  const available = availableTaxItems(grid, hasConsumption);
-  const items = available.filter(t => t.id !== 'net');
+  const available = availableTaxItems(grid, hasConsumption, denominator);
+  const items = available.filter(t => t.id !== 'net' && !(denominator === 'income' && t.id === 'pensionReceipt'));
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);
   // Child items switch off at an age that comes from the assumed birth years, not from the rules themselves.
   const cells = grid[0]?.cells ?? [];
@@ -70,13 +72,13 @@ export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGr
   const dependantSpan = span(c => c.childrenPresent > 0);
   return <div className="space-y-6">
     <div>
-      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ 現役期の世帯年収（行）。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。緑と橙はそれぞれに出てくる値の幅いっぱいに濃淡を割り当てています（0〜最大で塗ると、年金期の大きなマイナスに引きずられて現役期の差が見えなくなるため）。左パネルを「税・給付」に切り替えると、税目ごとのスライダーでこの表を動かせます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
-      <Grid grid={grid} item={item} compact={false} hasConsumption={hasConsumption} />
+      <p className="mb-2 text-xs text-mirai-text-secondary">大きい表＝{label} ÷ {denominator === 'career' ? '現役期の世帯年収（行）' : 'その年の総収入（給与＋年金）'}。列は年齢。濃いほど負担率が高く、橙は差し引き（現金給付・年金受給が負担を上回る）。緑と橙はそれぞれに出てくる値の幅いっぱいに濃淡を割り当てています（0〜最大で塗ると、年金期の大きなマイナスに引きずられて現役期の差が見えなくなるため）。左パネルを「税・給付」に切り替えると、税目ごとのスライダーでこの表を動かせます。{hasConsumption ? 'このビューは税目を分解するのが目的なので、消費税（推計）は常に含めて計算しています（家計調査2024年の年収十分位別支出から推計）。' : '消費支出データを読み込めていないため、消費税は含まれていません。'}</p>
+      <Grid grid={grid} item={item} compact={false} hasConsumption={hasConsumption} denominator={denominator} />
     </div>
     <div>
       <h3 className="mb-1 text-sm font-bold">税目ごとに分解する{reformed && <span className="ml-2 font-normal text-primary-accent">改革案で計算中</span>}</h3>
       <p className="mb-3 text-xs text-mirai-text-secondary">同じ格子を税目別に並べた小さな表（年収・年齢は間引き表示、値は%）。色の濃さは各表に出てくる値の最小〜最大に広げているので、表の間で濃さは比べず、形（どの年齢・所得に偏るか）を比べてください。この世帯で常に0になる項目は表を出していません。0.0%は制度上0のときと、現役期年収に対して0.05%未満のときの両方があります（金額はセルにカーソルを当てると出ます）。</p>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{items.map(t => <Grid key={t.id} grid={grid} item={t.id} compact hasConsumption={hasConsumption} />)}</div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{items.map(t => <Grid key={t.id} grid={grid} item={t.id} compact hasConsumption={hasConsumption} denominator={denominator} />)}</div>
       <ul className="mt-4 list-disc space-y-1 pl-5 text-xs leading-relaxed text-mirai-text-secondary">
         <li>所得税・住民税は年収が高いほど、また扶養控除が切れる年齢で濃くなる（累進）。</li>
         {benefitSpan && dependantSpan && <li><strong>子どもに紐づく項目が切り替わる年齢は、制度ではなく前提の置き方で決まります。</strong>本モデルは大人32歳・34歳のときに子が生まれ23歳で独立すると置いているので、児童手当は{benefitSpan.from}〜{benefitSpan.to}歳の列にだけ出て、扶養控除は{dependantSpan.to}歳の列で終わります。児童手当は子の年齢（18歳以下）で決まる給付で、親の年齢とは関係ありません。出産年齢が違えば、養子縁組があれば、この列はそのままずれます。ここで見えているのは「子が巣立って世帯が子なしに変わる」ことであって、年齢そのものの効果ではありません。</li>}
@@ -87,7 +89,9 @@ export function TaxHeatmap({ grid, hasConsumption, reformed }: { grid: HeatmapGr
         <li>消費税（推計）は年収が低いほど負担率が高い（逆進）。</li>
         <li><strong>現金給付として計算するのは、児童手当・児童扶養手当・年金生活者支援給付金と、改革案でつくった追加給付だけです。</strong>生活保護・住宅手当・就学援助・医療や介護の現物給付は含みません。{paying.length ? `この世帯で支給されるのは${paying.join('・')}のみのため、内訳の表もそれだけを出しています。` : 'この世帯ではいずれも支給されないため、現金給付の表は出していません。'}年金生活者支援給付金は、本モデルが40年納付の満額基礎年金（83.2万円）を前提とし所得要件（78.9万円以下）を超えるため、常に0になります（補足的給付は未実装）。</li>
         {items.some(t => t.id === 'corporateTax') && <li>法人税の転嫁は、左パネルで置いた仮定です。全国の法人所得課税のうち賃金に転嫁される分を、賃金に比例して配分しています。給与のある年齢には所得に関わらずほぼ一定の率でかかり、年金期には出ません。</li>}
-        <li>公的年金の受給は65歳以降に現役期年収の40〜80%相当の受け取りとなり、純負担は負に転じる。現役期年収が高いほど年金の対年収比は小さい（基礎年金が定額、報酬比例に上限があるため）。</li>
+        {denominator === 'career'
+          ? <li>公的年金の受給は65歳以降に現役期年収の40〜80%相当の受け取りとなり、純負担は負に転じる。現役期年収が高いほど年金の対年収比は小さい（基礎年金が定額、報酬比例に上限があるため）。</li>
+          : <li>年金だけの年でも純負担は正のままで、現役期の半分前後（本モデルでは10〜17%）。所得税・住民税はほぼ0でも、医療保険料と介護保険料が年金から引かれ続けるためです。分母を現役期年収に切り替えると、受け取る年金が負担を上回るので同じ年が大きな負のセルになります。どちらも同じ金額の別の見方です。</li>}
       </ul>
     </div>
   </div>;
