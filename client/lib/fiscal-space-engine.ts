@@ -108,7 +108,7 @@ export function createFiscalEngine() {
       return !rows[0] || Math.abs(rows[0].delta ?? 0) < 1e-10 ? 'この配分では動かない' :
         evaluateConstraints(step, form.thresholds).find(c => c.id === rows[0].id)!.label;
     });
-    const taxElasticitySensitivity = [...new Set([1, 1.1, 1.7, p.taxRevenueElasticity])].sort().map(elasticity => {
+    const taxElasticitySensitivity = [...new Set([1, 1.1, 1.2, 1.3, 1.7, p.taxRevenueElasticity])].sort().map(elasticity => {
       const path = simulate(initial, allocated, horizon, { ...p, taxRevenueElasticity: elasticity }, shock);
       return { elasticity, debtGdp: path.steps[horizon - 1].metrics.grossDebtGdp, taxRevenue: path.steps[horizon - 1].state.fiscal.taxRevenue };
     });

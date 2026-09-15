@@ -44,21 +44,25 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   </div>;
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
-  onPowerSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
+  onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   gap: number; inflation: number; construction: number; firmCapacity: number;
   onPowerSettings: () => void;
+  onCalibrationSettings: () => void;
+  onSupplySettings: () => void;
   onAmount: (id: string, n: number) => void; onPolicyDuration: (id: string, n: number) => void;
   onPolicyKind: (id: string, v: PolicyKind) => void; onHorizon: (n: number) => void; onRateShock: (n: number) => void; onEnergyShock: (n: number) => void;
   onReserve: (n: number) => void; onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
   const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
-  return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
+  return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="max-h-[45dvh] overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-2rem)]"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
+      <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
+      <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.map(policyField)}
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
@@ -70,7 +74,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準物価にはGDPギャップ感度も加わります。「乗数・労働反応の条件」で変更できます。</p>
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
-        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
+        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select aria-label="制約の評価期間" className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
         <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />

@@ -51,13 +51,16 @@ try {
   await taxDetails.click();
   await page.getByLabel('消費税減税・数値で入力', { exact: true }).fill('35');
   await expect(page.getByTestId('annual-total')).toHaveText('50.0兆円');
+  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
   await page.getByLabel('消費税1ポイントの減収額・数値で入力', { exact: true }).fill('1');
   await expect(page.getByTestId('annual-total')).toHaveText('25.0兆円');
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => scrollTo(0, 0));
+  await page.getByRole('button', { name: /^政策を調整/ }).click();
   const mobileY = await page.getByRole('region', { name: '政策の操作パネル' }).evaluate(el => el.getBoundingClientRect().top + scrollY);
   assert(mobileY < 600);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));

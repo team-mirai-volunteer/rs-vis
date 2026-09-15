@@ -87,6 +87,7 @@ try {
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   assert.equal(await page.getByRole('button', { name: '初期条件に戻す' }).evaluate(el => el.previousElementSibling?.querySelector('output')?.getAttribute('data-testid')), 'annual-total');
+  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
   await expect.poll(() => budgetTotal.innerText()).not.toEqual(efBudget);
   await page.getByLabel('参照するマクロモデル').selectOption('ef2026');
@@ -95,6 +96,7 @@ try {
   await expect(page.getByLabel('手取り賃金に対する労働時間の弾力性', { exact: true })).toHaveValue('0');
   await page.getByLabel('手取り賃金に対する労働時間の弾力性・数値で入力', { exact: true }).fill('0.2');
   await expect(page.getByLabel('手取り賃金に対する労働時間の弾力性', { exact: true })).toHaveValue('0.2');
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await page.getByLabel('社会保険料減税・数値で入力', { exact: true }).fill('7.5');

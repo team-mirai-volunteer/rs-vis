@@ -14,7 +14,8 @@ import { money, percent, points } from '../client/components/fiscal-space/format
 test('neutral defaults and complete shared scenarios round-trip both datasets and optional project settings', () => {
   for (const dataset of ['2024', 'latest'] as const) {
     const form = defaults(dataset);
-    assert.equal(form.calibration.taxRevenueElasticity, 1.1);
+    assert.equal(form.calibration.taxRevenueElasticity, 1.3);
+    assert.equal(form.calibration.multiplierScale, 1);
     assert(Object.values(form.amounts).every(v => v === 0));
     assert.equal(form.calibration.hoursElasticity, P.hoursElasticity);
     assert.deepEqual(decodeScenario(encodeScenario(form)), form);
@@ -24,7 +25,7 @@ test('neutral defaults and complete shared scenarios round-trip both datasets an
     form.trade.powerCases = { solar: powerCase('solar'), nuclear: powerCase('nuclear'), hydro: powerCase('hydro') };
     form.calibration.taxCollectionLag = 2;
     // 旧設定を含む共有URLの明示値は、新しい既定値で上書きしない。
-    form.calibration.taxRevenueElasticity = 1;
+    form.calibration.taxRevenueElasticity = 1.1;
     assert.deepEqual(decodeScenario(encodeScenario(form)), form);
   }
 });
