@@ -34,9 +34,9 @@ function Grid({ grid, item, compact, hasConsumption, denominator }: { grid: Heat
   return <div className={compact ? 'rounded-xl border border-mirai-border bg-card p-3' : ''}>
     {compact && <p className="mb-2 text-xs font-bold">{label}<span className="ml-2 font-normal text-mirai-text-secondary">最大 {(peak * 100).toFixed(1)}%</span></p>}
     <div className="overflow-x-auto"><table className={`w-full border-separate border-spacing-0.5 tabular-nums ${compact ? 'text-[10px]' : 'text-xs'}`} aria-label={`${label}の年齢×年収ヒートマップ`}>
-      <thead><tr><th scope="col" className="text-left font-normal">{compact ? '年収＼年齢' : '現役期年収＼年齢'}</th>{ages.map(a => <th key={a} scope="col" className="px-1 font-normal">{a}</th>)}</tr></thead>
+      <thead><tr><th scope="col" className="w-px whitespace-nowrap pr-2 text-left font-normal">{compact ? '年収＼年齢' : '現役期年収＼年齢'}</th>{ages.map(a => <th key={a} scope="col" className="px-1 font-normal">{a}</th>)}</tr></thead>
       <tbody>{rows.map(row => <tr key={row.income}>
-        <th scope="row" className="whitespace-nowrap text-left font-medium">{(row.income / 10000).toLocaleString('ja-JP')}万</th>
+        <th scope="row" className="w-px whitespace-nowrap pr-2 text-left font-medium">{(row.income / 10000).toLocaleString('ja-JP')}万</th>
         {row.cells.filter(c => ages.includes(c.ageAt as typeof ages[number])).map(c => {
           const v = cellRate(c, item, denominator);
           const alpha = v === null ? 0 : Math.min(1, shade(v));
