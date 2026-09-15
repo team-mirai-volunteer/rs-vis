@@ -490,7 +490,7 @@ function SubcontractsPageInner() {
       <th
         style={{ ...thStyle, textAlign: align }}
         className="sticky top-0 z-[2] overflow-hidden border-b border-border bg-mirai-surface py-2 pl-2 pr-3 text-xs font-bold text-mirai-text-subtle"
-        title={title}
+        title={title ?? (typeof children === 'string' ? children : undefined)}
         scope="col"
         aria-sort={sortAria(sort)}
       >
@@ -502,7 +502,7 @@ function SubcontractsPageInner() {
             align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start',
           )}
         >
-          <span className="min-w-0 whitespace-normal break-words text-balance leading-4" style={{ textAlign: align }}>{children}</span>
+          <span className="min-w-0 truncate leading-4" style={{ textAlign: align }}>{children}</span>
           <SortIndicator k={sort} />
         </Button>
         <Button
