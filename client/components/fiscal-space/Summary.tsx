@@ -15,10 +15,7 @@ export function Summary({ estimate, riskAudit, ...modelProps }: {
     <Card><CardContent className="space-y-4 pt-5">
       <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限</h2>
       <p className="text-sm">追加予算に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div><p>追加予算の参考上限（留保後・年額）</p><p data-testid="recommended-envelope" className="text-3xl font-bold">{money(estimate.recommendedEnvelope)}</p></div>
-        <div className="text-sm"><p>緊急時の留保：{percent(estimate.reserveRule.share, 0)}（年額{money(estimate.emergencyReserve)}）</p><p className="mt-2">評価期間：{horizon}年間</p></div>
-      </div>
+      <p className="text-sm">上段の参考上限は緊急時の留保{percent(estimate.reserveRule.share, 0)}（年額{money(estimate.emergencyReserve)}）を差し引いた額です。評価期間：{horizon}年間。</p>
       <details><summary className="cursor-pointer text-sm font-bold">留保前の探索額と計算方法</summary><p className="mt-2 text-sm">設定した制約内での探索額 <span data-testid="theoretical-maximum">{money(estimate.theoreticalMaximum)}</span> ×（1 − 留保率{percent(estimate.reserveRule.share, 0)}）＝ 参考上限 {money(estimate.recommendedEnvelope)}。留保率は仮定で、安全性を保証するものではありません。</p></details>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="CPI上限別の探索結果" data-testid="cpi-limit-sensitivity"><table className="w-full text-right text-sm">
         <caption className="mb-2 text-left font-bold">CPI許容上限による感度（同じ配分・期間、留保後の年額）</caption>
@@ -38,7 +35,7 @@ export function Summary({ estimate, riskAudit, ...modelProps }: {
         政策なしでも設定した上限を超えます。{binding.map(c => `${c.label}は年${c.year}に${percent(c.currentValue)}（上限${percent(c.threshold)}）`).join('、')}。
         インフレ率の上限は絶対値で、データ切替時にも維持します。例えば2024年の初期CPI 2.7%は既定上限2.5%を超えます。参考額0円は政府の支出能力が0という判定ではありません。
       </p>}
-      <p className="rounded-xl bg-stance-against-bg p-3 text-sm"><strong>安全性は未判定です。</strong> 未評価の産業・電力負荷、追加の為替ストレスは上限に十分反映できません。参考上限は政策の推奨額や便益の評価ではありません。</p>
+      <p className="rounded-xl bg-stance-against-bg p-3 text-sm"><strong>安全性は未判定です。</strong> 産業内の職種・設備の偏り、地域間の電力融通、追加の為替ストレスは上限に十分反映できません。手入力の空欄は未評価です。参考上限は政策の推奨額や便益の評価ではありません。</p>
       <ModelSensitivity {...modelProps} />
       <details><summary className="cursor-pointer text-sm font-bold">参考上限の前提とストレス感度</summary><div className="mt-3"><RiskAudit audit={riskAudit} /></div></details>
     </CardContent></Card>

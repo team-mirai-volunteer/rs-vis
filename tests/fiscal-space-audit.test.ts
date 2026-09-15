@@ -21,7 +21,8 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
   const calculate = createFiscalEngine(), form = example();
   // Yen/trillion and coefficients are pinned at the displayed 0.01-trillion resolution.
   // These are reproducible outputs, not an empirical validation of the model.
-  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 17.01, 13.61], [.03, 35.60, 28.48], [.035, 54.30, 43.44]]) {
+  // With IO loads, research staffing binds before the higher CPI ceilings.
+  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 17.01, 13.61], [.03, 27.45, 21.96], [.035, 27.45, 21.96]]) {
     form.thresholds.inflation = limit;
     const r = calculate(form);
     assert.equal(r.totalYen, 15_000_000_000_000);
@@ -36,8 +37,8 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
       assert(Math.abs(delta('labour') * 100 - .00806445) < .00001);
       assert(delta('inflation') > delta('interestGdp'));
       assert.equal(delta('debt'), 0);
-      assert.equal(r.constraints.find(c => c.id === 'sector')!.coverageComplete, false);
-      assert.equal(r.constraints.find(c => c.id === 'energy')!.coverageComplete, false);
+      assert.equal(r.constraints.find(c => c.id === 'sector')!.coverageComplete, true);
+      assert.equal(r.constraints.find(c => c.id === 'energy')!.coverageComplete, true);
     }
   }
 });

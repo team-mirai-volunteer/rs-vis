@@ -1,11 +1,12 @@
 import type { EconomyState, ModelParameters, Policy, PolicyComparison, Shock, Thresholds } from '@/types/fiscal-space';
-import { NO_SHOCK, PARAMETERS, POLICIES, SECTOR_LABELS, THRESHOLDS, TRILLION } from './assumptions';
+import { NO_SHOCK, PARAMETERS, POLICIES, SECTORS, SECTOR_LABELS, THRESHOLDS, TRILLION } from './assumptions';
 import { simulate } from './simulate';
 import { REFERENCES } from './calibration';
 import { policyReliefLimit } from './policy-limits';
 import { hasCommercialSupply, SUPPLY_CASES, SUPPLY_UNAVAILABLE } from './supply';
 import { investmentAtCommissioning } from './investment';
 import { loadCoverage } from './policy-load';
+import { CONSTRAINTS } from './constraints';
 
 /** Marginal one-year 1tn addition on top of the current mix; investment payoffs can arrive later. */
 export function compareNextTrillion(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK, thresholds: Thresholds = THRESHOLDS, candidates: Policy[] = POLICIES) {
@@ -18,9 +19,10 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
     const first = projection.steps[0], baseFirst = baseline.steps[0], last = projection.steps[horizon - 1], baseLast = baseline.steps[horizon - 1];
     // Compare additional physical resource use relative to each configured threshold.
     const coverage = loadCoverage(policy.load);
+    const sector = SECTORS.reduce((a, b) => first.sectorDemand[a] - baseFirst.sectorDemand[a] >= first.sectorDemand[b] - baseFirst.sectorDemand[b] ? a : b);
     const consumed = [
-      { label: `${SECTOR_LABELS[policy.sector]}の労働・能力`, known: coverage.sector, delta: (first.sectorDemand[policy.sector] - baseFirst.sectorDemand[policy.sector]) / thresholds.sector },
-      { label: '電力', known: coverage.energy, delta: (first.state.energy.peakDemand / first.state.energy.firmCapacity - baseFirst.state.energy.peakDemand / baseFirst.state.energy.firmCapacity) / thresholds.energy },
+      { label: `${SECTOR_LABELS[sector]}の労働・能力`, known: coverage.sector, delta: (first.sectorDemand[sector] - baseFirst.sectorDemand[sector]) / thresholds.sector },
+      { label: '電力', known: coverage.energy, delta: (CONSTRAINTS.find(c => c.id === 'energy')!.measure(first) - CONSTRAINTS.find(c => c.id === 'energy')!.measure(baseFirst)) / thresholds.energy },
       { label: '全体の生産能力', known: true, delta: (first.state.macro.realGdp / first.production.maximum - baseFirst.state.macro.realGdp / baseFirst.production.maximum) / thresholds.capacity },
     ].filter(resource => resource.known).sort((a, b) => b.delta - a.delta);
     const unknownLoads = [!coverage.sector && '産業', !coverage.energy && '電力'].filter(Boolean);

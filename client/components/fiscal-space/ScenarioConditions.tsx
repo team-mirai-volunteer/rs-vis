@@ -1,4 +1,4 @@
-import type { EconomyState, Inputs, ModelParameters, Policy, Simulation } from '@/types/fiscal-space';
+import type { EconomyState, FiscalSpaceEstimate, Inputs, ModelParameters, Policy, Simulation } from '@/types/fiscal-space';
 import { INPUT_LABELS } from '@/app/lib/fiscal-space/assumptions';
 import { type LongRunAssumptions } from '@/app/lib/fiscal-space/long-run';
 import { RangeField } from './Controls';
@@ -19,7 +19,7 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
     <h3 className="text-lg font-bold">生産能力とモデル別の参考上限</h3>
     <p className="text-sm">比較の基準：年0の実質GDP {money(initial.macro.realGdp)}、潜在GDP {money(initial.macro.potentialGdp)}。同じ投入条件を3つの生産モデルで比較します。</p>
     <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
-    <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。未評価の産業・電力負荷を含むため、政策額の推奨値ではありません。</p>
+    <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。産業・電力の概算に含まれない制約もあるため、政策額の推奨値ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
       <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。参考上限は同じ配分を拡大し、留保を差し引いた別の計算です。</caption>
       <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間参考上限（留保後）'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
@@ -41,7 +41,8 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   </section>;
 }
 
-export function InputOverview({ total, horizon, incomplete, projection, baseline, policies }: {
+export function InputOverview({ total, estimate, horizon, incomplete, projection, baseline, policies }: {
+  estimate: FiscalSpaceEstimate;
   total: number; horizon: number; incomplete: boolean;
   projection: Simulation; baseline: Simulation; policies: Policy[];
 }) {
@@ -51,8 +52,11 @@ export function InputOverview({ total, horizon, incomplete, projection, baseline
     <h2 className="mb-4 text-lg font-bold">追加予算と国の一般会計予算</h2>
     <div className="grid gap-5 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
-        <h3 className="text-sm">設定した追加予算</h3>
-        <p className="text-xl font-bold tabular-nums">{money(total)} / 年</p>
+        <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+          <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
+          <div><h3 className="text-sm">同じ配分の参考上限（留保後）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{money(estimate.recommendedEnvelope)} / 年</p></div>
+        </div>
+        {total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、留保後の参考上限を{money(total - estimate.recommendedEnvelope)}上回ります。</p>}
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong></p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>
@@ -63,8 +67,13 @@ export function InputOverview({ total, horizon, incomplete, projection, baseline
       <BudgetReference />
     </div>
     <p className="mt-3 text-sm font-bold">追加予算による{horizon}年目の実質GDP効果：{money(effect)}（政策なしとの差）。判定用CPIピーク：年{peak.state.year}・{percent(constraintInflation(peak))}。</p>
-    {effect < 0 && <p className="mt-2 text-sm">この条件では政策終了後の反動を含め、年{horizon}の実質GDPが政策なし経路を下回ります。公表反応を期間に応じて組み合わせた試算で、実績や確定した将来予測ではありません。</p>}
-    {incomplete && <p className="mt-3 text-xs">産業別・電力の追加負荷に未評価の項目があります。</p>}
+    <details className="mt-2"><summary className="cursor-pointer text-xs">計算上の注意</summary>
+      <div className="mt-2 space-y-2 text-xs">
+        {effect < 0 && <p>この条件では政策終了後の反動を含め、年{horizon}の実質GDPが政策なし経路を下回ります。</p>}
+        <p>公表反応を期間に応じて組み合わせた試算で、実績や確定した将来予測ではありません。</p>
+        {incomplete && <p>産業別・電力の追加負荷に未評価の項目があります。</p>}
+      </div>
+    </details>
     <a href="#fiscal-envelope" className="mt-3 inline-block text-sm text-primary-accent underline">配分を拡大した場合の参考上限・生産能力を見る</a>
   </section>;
 }

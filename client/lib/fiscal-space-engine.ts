@@ -19,6 +19,7 @@ import type { FiscalForm } from './fiscal-space-form';
 import { configuredPower } from './fiscal-space-trade';
 import { policyCostYen } from './fiscal-space-amounts';
 import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensitivity';
+import { estimatePolicyLoad, resourcePowerBalance, resourceRecords, validateResourceAssumptions } from '@/app/lib/fiscal-space/resource-estimate';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
 
@@ -26,14 +27,16 @@ export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDo
 export function createFiscalEngine() {
   let cache: { key: string; singleSpaces: Map<string, FiscalSpaceEstimate> } | undefined;
   return (form: FiscalForm) => {
+    validateResourceAssumptions(form.resource);
     const initial = initialEconomy(form.dataset);
     initial.production.inputs = { ...form.inputs };
     initial.macro.potentialGdp = initial.macro.realGdp / (1 + form.gap / 100);
     initial.macro.inflation = form.inflation / 100;
     initial.labour.sectorUtilization.construction = form.construction / 100;
     initial.energy.firmCapacity = form.firmCapacity;
+    if (form.resource.mode === 'estimated') initial.energy.peakDemand = resourcePowerBalance(0, 0, 0, form.resource).nationalDemandGw;
     initial.energy.reserveMargin = (form.firmCapacity - initial.energy.peakDemand) / initial.energy.peakDemand;
-    const p = { ...form.calibration, reserveShare: form.reserve / 100 };
+    const p = { ...form.calibration, reserveShare: form.reserve / 100, resourceModel: form.resource };
     const publishedYears = REFERENCES[p.referenceModel].years;
     const horizon = Math.min(form.horizon, publishedYears);
     const shock = {
@@ -49,6 +52,7 @@ export function createFiscalEngine() {
         : PROJECT_POLICY_IDS.includes(policy.id)
           ? { kind: 'industry' as const, assumptions: form.trade.industry[policy.id] } : undefined,
     }));
+    for (const policy of policyConfigs) policy.load ??= estimatePolicyLoad(policy, initial, form.resource);
     const policies = policyConfigs.map(policy => ({
       ...policy,
       annualCost: policyCostYen(policy.id, form.amounts[policy.id] ?? 0, p),
@@ -95,6 +99,15 @@ export function createFiscalEngine() {
         capacityPriceAdjustment: last.demand.capacityPriceAdjustment,
         space: estimateFiscalSpace(initial, mix, form.thresholds, horizon, parameters, shock) };
     });
+    const resourceSensitivity = form.resource.mode === 'estimated' ? [.5, 1, 1.5].map(loadScale => {
+      const c = { ...form.resource, loadScale };
+      const variants = policies.map(policy => ({ ...policy,
+        load: form.loads[policy.id] ?? estimatePolicyLoad(policy, initial, c) }));
+      const variantMix = variants.map(policy => ({ policy, weight: policy.annualCost }));
+      const space = loadScale === form.resource.loadScale ? estimate
+        : estimateFiscalSpace(initial, variantMix, form.thresholds, horizon, { ...p, resourceModel: c }, shock);
+      return { loadScale, space };
+    }) : [];
     const longRun = longRunScenario(initial, allocated, projection, baseline, p, form.longRun);
     const durationSensitivity = allocated.some(policy => policy.kind !== 'permanent')
       ? Array.from({ length: publishedYears }, (_, i) => i + 1).map(duration => {
@@ -110,13 +123,13 @@ export function createFiscalEngine() {
     const records = [
       ...assumptionRecords({ initial, parameters: p, policies, thresholds: form.thresholds,
         shock, annualCost: totalYen, longRun: form.longRun }, '', form.dataset),
-      ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
+      ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
       ...burdenRecords(form.dataset === 'latest', form.corporateShare), ...externalStressRecords(),
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear,
-      modelSensitivity, longRun, durationSensitivity, records };
+      modelSensitivity, resourceSensitivity, longRun, durationSensitivity, records };
   };
 }
 

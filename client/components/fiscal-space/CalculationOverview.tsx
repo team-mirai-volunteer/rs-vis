@@ -11,7 +11,7 @@ import { FiscalExternal } from './FiscalExternal';
 /** Only a completed calculation changes these views; editing a control must not redraw them. */
 export const CalculationOverview = memo(function CalculationOverview({ result, latest }: { result: FiscalCalculation; latest: boolean }) {
   return <>
-    <InputOverview total={result.totalYen} horizon={result.horizon} incomplete={result.constraints.some(x => x.coverageComplete === false)} projection={result.projection} baseline={result.baseline} policies={result.allocated} />
+    <InputOverview total={result.totalYen} estimate={result.estimate} horizon={result.horizon} incomplete={result.constraints.some(x => x.coverageComplete === false)} projection={result.projection} baseline={result.baseline} policies={result.allocated} />
     <CurrentMetrics step={result.projection.steps[result.horizon - 1]} baseline={result.baseline.steps[result.horizon - 1]} publishedYears={REFERENCES[result.p.referenceModel].years} latest={latest} />
     <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={latest} />
     <ResultAssumptions result={result} latest={latest} />

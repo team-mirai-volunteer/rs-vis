@@ -9,6 +9,7 @@ import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
 import { decodeScenario } from '@/client/lib/fiscal-space-url';
 import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
+import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -45,6 +46,7 @@ const MemoElectricityBaseline = memo(ElectricityBaseline);
 const MemoPowerMix = memo(PowerMix);
 const MemoPolicyLoads = memo(PolicyLoads);
 const MemoPolicyTrade = memo(PolicyTrade);
+const MemoResourceEstimation = memo(ResourceEstimation);
 
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
@@ -79,6 +81,7 @@ export default function FiscalSpacePage() {
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
     trade: (v: FiscalForm['trade']) => update('trade', v),
+    resource: (v: FiscalForm['resource']) => update('resource', v),
     power: (trade: FiscalForm['trade'], total: number) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } })),
     load: (id: string, load: FiscalForm['loads'][string]) => setForm(f => ({ ...f, loads: { ...f.loads, [id]: load } })),
     reset: () => setForm(f => defaults(f.dataset)),
@@ -90,7 +93,7 @@ export default function FiscalSpacePage() {
   const result = completed?.result;
   const calculationForm = completed?.form;
   const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
-  const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] })) ?? [], [result, form.loads]);
+  const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
   return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-6 [&_summary]:py-1">
     <AppHeader current="/fiscal-space">
@@ -139,6 +142,7 @@ export default function FiscalSpacePage() {
         rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
         onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
+      <MemoResourceEstimation result={result} value={form.resource} onChange={change.resource} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />
       <MemoLongRun rows={result.longRun} value={form.longRun} onChange={change.longRun} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />

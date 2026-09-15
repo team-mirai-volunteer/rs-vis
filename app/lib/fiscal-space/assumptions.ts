@@ -86,6 +86,9 @@ export const POLICIES: Policy[] = [
 
 /** Per-leaf provenance; numeric computation objects remain ergonomic and serializable. */
 export function assumptionRecords(data: unknown, prefix = '', dataset: JapanDataset = '2024'): SourceValue[] {
+  // Estimated vectors have explicit units and provenance in resourceRecords.
+  if (prefix === 'parameters.resourceModel' || (prefix.startsWith('policies.') && prefix.endsWith('.load') &&
+    data && typeof data === 'object' && 'estimated' in data && data.estimated)) return [];
   if (prefix === 'parameters.electricity') return electricityRecords(data as ModelParameters['electricity']);
   // Project fields have their own units and provenance in policyTradeRecords.
   if (prefix.startsWith('policies.') && prefix.endsWith('.trade')) return [];

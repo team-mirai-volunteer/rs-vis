@@ -31,10 +31,10 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
   await expect(projectionTable.getByRole('row').last()).toContainText('33.46%');
   await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.01兆円');
-  await expect(page.getByTestId('recommended-envelope')).toHaveText('13.61兆円');
+  await expect(page.getByTestId('input-overview').getByTestId('recommended-envelope')).toHaveText('13.61兆円 / 年');
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('28.48兆円');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('43.44兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('21.96兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('21.96兆円');
 });
 
 test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
@@ -68,8 +68,8 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await amount.fill('10');
   await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
   await expect(page.getByTestId('input-overview')).toContainText('政策なし経路を下回ります');
-  await expect(page.getByTestId('cpi-decomposition')).toBeVisible();
-  await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: '負荷推計の感度表' })).toBeVisible();
+  await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(1);
   // Consecutive edits must read immediate form state, not the debounced result.
   const planned = page.getByLabel('既定計画の非化石発電の年間追加量', { exact: true });
   const demand = page.getByLabel('共通の電力需要増加率', { exact: true });
@@ -178,6 +178,12 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   const energyMeter = page.getByRole('meter', { name: '電力供給能力の閾値利用率' });
   await expect(sectorMeter).toHaveCount(0);
   await expect(energyMeter).toHaveCount(0);
+  const notes = page.getByTestId('input-overview').locator('details').filter({ has: page.getByText('計算上の注意', { exact: true }) });
+  await expect(notes).not.toHaveAttribute('open', '');
+  await expect(notes.getByText('産業別・電力の追加負荷に未評価の項目があります。')).not.toBeVisible();
+  await notes.locator('summary').click();
+  await expect(notes.getByText('産業別・電力の追加負荷に未評価の項目があります。')).toBeVisible();
+  await notes.locator('summary').click();
   await loads.getByLabel(/公共投資・支出1兆円の産業稼働率増分/).fill('0');
   await expect(sectorMeter).toHaveCount(1);
   await expect(energyMeter).toHaveCount(0);

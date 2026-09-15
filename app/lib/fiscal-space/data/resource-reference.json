@@ -1,0 +1,527 @@
+{
+  "ioYear": 2020,
+  "powerStartYear": 2026,
+  "checkedAt": "2026-09-15",
+  "sources": {
+    "io-2020-108.xlsx": {
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040187026&fileKind=0",
+      "sha256": "8115f7f605e0c8dfa546bad1655a171b3c21a353a245a3af5e40c5924a2e5607"
+    },
+    "employment-2020-108.xlsx": {
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040187066&fileKind=0",
+      "sha256": "7120412e5e0694ea073c3af11d35d75534508ba64203e8cf6fc0ce1914faf863"
+    },
+    "occto-2026.pdf": {
+      "url": "https://www.occto.or.jp/assets/various/kyoukei/torimatome/260330_kyokyukeikaku_torimatome/260330_kyokei_torimatome.pdf",
+      "sha256": "e9c37c3f367de1dd6808701f80b09326056e99b5becd5cb87e51da23c33fc6ef"
+    }
+  },
+  "sectorWorkers": {
+    "general": 53580733.0,
+    "construction": 5128662.0,
+    "healthcare": 8484039.0,
+    "research": 901817.0,
+    "electronics": 470034.0,
+    "electricity": 142554.0
+  },
+  "profiles": {
+    "household": {
+      "workersPerTrillion": {
+        "general": 95481.37257,
+        "construction": 738.564341,
+        "healthcare": 6867.300948,
+        "research": 76.554146,
+        "electronics": 181.797383,
+        "electricity": 288.380076
+      },
+      "electricityYenPerTrillion": 40479698904.65,
+      "domesticOutputPerTrillion": 1477482170501.62
+    },
+    "public-investment": {
+      "workersPerTrillion": {
+        "general": 52256.593379,
+        "construction": 55107.172176,
+        "healthcare": 6.789443,
+        "research": 3409.593343,
+        "electronics": 376.904168,
+        "electricity": 120.281344
+      },
+      "electricityYenPerTrillion": 16883803714.03,
+      "domesticOutputPerTrillion": 1665250343355.02
+    },
+    "government": {
+      "workersPerTrillion": {
+        "general": 60159.407138,
+        "construction": 589.679328,
+        "healthcare": 67805.152806,
+        "research": 274.61419,
+        "electronics": 108.995481,
+        "electricity": 137.877145
+      },
+      "electricityYenPerTrillion": 19353713256.71,
+      "domesticOutputPerTrillion": 1522430085701.32
+    },
+    "healthcare": {
+      "workersPerTrillion": {
+        "general": 38645.931658,
+        "construction": 415.351864,
+        "healthcare": 98007.864068,
+        "research": 0.0,
+        "electronics": 84.891463,
+        "electricity": 131.074829
+      },
+      "electricityYenPerTrillion": 18398877176.39,
+      "domesticOutputPerTrillion": 1682515755809.99
+    },
+    "childcare": {
+      "workersPerTrillion": {
+        "general": 35755.701204,
+        "construction": 525.713865,
+        "healthcare": 163779.499356,
+        "research": 0.0,
+        "electronics": 76.170177,
+        "electricity": 193.612011
+      },
+      "electricityYenPerTrillion": 27177175383.71,
+      "domesticOutputPerTrillion": 1480158795829.94
+    },
+    "education": {
+      "workersPerTrillion": {
+        "general": 123252.696447,
+        "construction": 943.945198,
+        "healthcare": 3.99898,
+        "research": 0.0,
+        "electronics": 45.441075,
+        "electricity": 148.751752
+      },
+      "electricityYenPerTrillion": 20880173905.53,
+      "domesticOutputPerTrillion": 1326652957493.76
+    },
+    "rd": {
+      "workersPerTrillion": {
+        "general": 44150.75376,
+        "construction": 558.38549,
+        "healthcare": 7.134378,
+        "research": 40497.184763,
+        "electronics": 204.946358,
+        "electricity": 130.217853
+      },
+      "electricityYenPerTrillion": 18278584179.72,
+      "domesticOutputPerTrillion": 1519710010993.06
+    },
+    "grid": {
+      "workersPerTrillion": {
+        "general": 61385.052359,
+        "construction": 53483.775175,
+        "healthcare": 6.198771,
+        "research": 0.0,
+        "electronics": 671.798654,
+        "electricity": 135.43458
+      },
+      "electricityYenPerTrillion": 19010852318.81,
+      "domesticOutputPerTrillion": 1663292869455.45
+    },
+    "generation": {
+      "workersPerTrillion": {
+        "general": 67401.117782,
+        "construction": 35795.274132,
+        "healthcare": 6.117802,
+        "research": 0.0,
+        "electronics": 1044.147952,
+        "electricity": 144.361535
+      },
+      "electricityYenPerTrillion": 20263922310.78,
+      "domesticOutputPerTrillion": 1631258550427.31
+    },
+    "semiconductors": {
+      "workersPerTrillion": {
+        "general": 62542.521279,
+        "construction": 21166.020982,
+        "healthcare": 5.197022,
+        "research": 4049.718476,
+        "electronics": 346.792996,
+        "electricity": 153.011771
+      },
+      "electricityYenPerTrillion": 21478149633.64,
+      "domesticOutputPerTrillion": 1611444794747.73
+    },
+    "semiconductor-operation": {
+      "workersPerTrillion": {
+        "general": 13108.425977,
+        "construction": 192.62803,
+        "healthcare": 2.204986,
+        "research": 0.0,
+        "electronics": 12088.504434,
+        "electricity": 144.015056
+      },
+      "electricityYenPerTrillion": 20215287420.82,
+      "domesticOutputPerTrillion": 680570455436.2
+    }
+  },
+  "power": [
+    {
+      "region": "北海道",
+      "season": "8月",
+      "demandGw": [
+        4.22,
+        4.22,
+        4.25,
+        4.39,
+        4.59,
+        4.62,
+        4.64,
+        4.64,
+        4.62,
+        4.6
+      ],
+      "supplyGw": [
+        5.52,
+        5.22,
+        5.77,
+        6.12,
+        6.32,
+        7.36,
+        7.34,
+        7.34,
+        7.84,
+        7.85
+      ]
+    },
+    {
+      "region": "東北",
+      "season": "8月",
+      "demandGw": [
+        12.97,
+        13.02,
+        12.99,
+        13.07,
+        13.05,
+        13.0,
+        12.96,
+        12.91,
+        12.87,
+        12.83
+      ],
+      "supplyGw": [
+        16.62,
+        15.82,
+        14.31,
+        14.41,
+        14.93,
+        15.13,
+        15.37,
+        15.5,
+        15.25,
+        15.32
+      ]
+    },
+    {
+      "region": "東京",
+      "season": "8月",
+      "demandGw": [
+        55.01,
+        55.27,
+        55.77,
+        56.38,
+        56.99,
+        57.61,
+        58.09,
+        58.48,
+        58.71,
+        58.88
+      ],
+      "supplyGw": [
+        63.3,
+        64.58,
+        61.47,
+        62.17,
+        63.22,
+        65.15,
+        66.35,
+        66.6,
+        67.11,
+        67.31
+      ]
+    },
+    {
+      "region": "中部",
+      "season": "8月",
+      "demandGw": [
+        23.68,
+        23.7,
+        23.66,
+        23.68,
+        23.74,
+        23.8,
+        23.85,
+        23.87,
+        23.88,
+        23.87
+      ],
+      "supplyGw": [
+        27.35,
+        27.69,
+        26.07,
+        26.11,
+        26.33,
+        26.91,
+        27.24,
+        27.19,
+        27.3,
+        27.29
+      ]
+    },
+    {
+      "region": "北陸",
+      "season": "8月",
+      "demandGw": [
+        4.68,
+        4.67,
+        4.66,
+        4.65,
+        4.65,
+        4.64,
+        4.63,
+        4.62,
+        4.61,
+        4.6
+      ],
+      "supplyGw": [
+        5.41,
+        5.46,
+        5.14,
+        5.13,
+        5.16,
+        5.25,
+        5.29,
+        5.26,
+        5.27,
+        5.26
+      ]
+    },
+    {
+      "region": "関西",
+      "season": "8月",
+      "demandGw": [
+        26.88,
+        26.93,
+        26.96,
+        27.01,
+        27.1,
+        27.19,
+        27.3,
+        27.52,
+        27.63,
+        27.74
+      ],
+      "supplyGw": [
+        31.06,
+        31.47,
+        29.71,
+        29.78,
+        30.06,
+        30.75,
+        31.17,
+        31.34,
+        31.59,
+        31.71
+      ]
+    },
+    {
+      "region": "中国",
+      "season": "8月",
+      "demandGw": [
+        10.02,
+        10.02,
+        10.01,
+        10.08,
+        10.11,
+        10.08,
+        10.06,
+        10.09,
+        10.11,
+        10.13
+      ],
+      "supplyGw": [
+        11.58,
+        11.71,
+        11.03,
+        11.12,
+        11.21,
+        11.4,
+        11.49,
+        11.49,
+        11.56,
+        11.58
+      ]
+    },
+    {
+      "region": "四国",
+      "season": "8月",
+      "demandGw": [
+        4.69,
+        4.64,
+        4.6,
+        4.55,
+        4.5,
+        4.46,
+        4.41,
+        4.37,
+        4.32,
+        4.28
+      ],
+      "supplyGw": [
+        6.11,
+        6.14,
+        5.07,
+        5.07,
+        5.2,
+        5.2,
+        5.71,
+        5.7,
+        5.71,
+        5.72
+      ]
+    },
+    {
+      "region": "九州",
+      "season": "8月",
+      "demandGw": [
+        15.86,
+        15.91,
+        15.99,
+        16.01,
+        16.03,
+        16.03,
+        16.02,
+        16.01,
+        15.98,
+        15.96
+      ],
+      "supplyGw": [
+        18.32,
+        18.59,
+        17.62,
+        17.66,
+        17.78,
+        18.13,
+        18.3,
+        18.23,
+        18.27,
+        18.25
+      ]
+    },
+    {
+      "region": "沖縄",
+      "season": "8月",
+      "demandGw": [
+        1.61,
+        1.62,
+        1.64,
+        1.67,
+        1.68,
+        1.68,
+        1.69,
+        1.7,
+        1.71,
+        1.71
+      ],
+      "supplyGw": [
+        2.02,
+        2.05,
+        2.25,
+        2.28,
+        2.29,
+        2.29,
+        2.29,
+        2.3,
+        2.18,
+        2.19
+      ]
+    },
+    {
+      "region": "北海道",
+      "season": "1月",
+      "demandGw": [
+        5.06,
+        5.09,
+        5.17,
+        5.24,
+        5.39,
+        5.44,
+        5.43,
+        5.42,
+        5.39,
+        5.37
+      ],
+      "supplyGw": [
+        6.33,
+        6.11,
+        6.7,
+        6.79,
+        7.41,
+        8.03,
+        8.01,
+        8.0,
+        8.52,
+        8.52
+      ]
+    },
+    {
+      "region": "東北",
+      "season": "1月",
+      "demandGw": [
+        13.47,
+        13.45,
+        13.45,
+        13.49,
+        13.47,
+        13.42,
+        13.38,
+        13.33,
+        13.29,
+        13.24
+      ],
+      "supplyGw": [
+        20.39,
+        20.59,
+        21.05,
+        21.71,
+        22.28,
+        22.97,
+        23.24,
+        23.29,
+        23.33,
+        23.39
+      ]
+    },
+    {
+      "region": "北陸",
+      "season": "1月",
+      "demandGw": [
+        4.91,
+        4.9,
+        4.89,
+        4.88,
+        4.87,
+        4.86,
+        4.85,
+        4.85,
+        4.84,
+        4.83
+      ],
+      "supplyGw": [
+        5.36,
+        5.39,
+        5.93,
+        5.84,
+        5.9,
+        5.93,
+        5.93,
+        5.78,
+        6.37,
+        6.39
+      ]
+    }
+  ]
+}

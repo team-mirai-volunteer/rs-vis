@@ -8,7 +8,8 @@ import { policyReliefLimit } from './policy-limits';
 import { policyLoads } from './policy-load';
 import { projectResponses } from './project-response';
 import { policyProduction } from './policy-production';
-import { electricityBaseline } from './electricity-baseline';
+import { ELECTRICITY_BASELINE, electricityBaseline } from './electricity-baseline';
+import { resourcePowerBalance, validateResourceAssumptions } from './resource-estimate';
 
 const sectorZeros = () => Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
 const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0, capacityPriceAdjustment: 0,
@@ -18,7 +19,11 @@ const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imp
 
 export function snapshot(state: EconomyState, p: ModelParameters): ProjectionStep {
   const production = productionCapacity(state, p, 1);
+  const resourcePower = p.resourceModel?.mode === 'estimated'
+    ? resourcePowerBalance(0, 0, 0, p.resourceModel,
+      state.energy.firmCapacity / resourcePowerBalance(0, 0, 0, p.resourceModel).nationalSupplyGw) : undefined;
   return { state, production, demand: emptyDemand(), policyCost: 0,
+    resourcePower,
     metrics: fiscalMetrics(state, state.debtPortfolio.filter(b => b.maturityYear <= state.year + 1).reduce((s, b) => s + b.principal, 0), state.fiscal.grossDebt, state.macro.nominalGdp),
     outputGap: (state.macro.realGdp - state.macro.potentialGdp) / state.macro.potentialGdp,
     maximumGap: (state.macro.realGdp - production.maximum) / production.maximum,
@@ -26,6 +31,7 @@ export function snapshot(state: EconomyState, p: ModelParameters): ProjectionSte
 }
 
 function validate(initial: EconomyState, policies: Policy[], horizon: number, p: ModelParameters, shock: Shock) {
+  if (p.resourceModel) validateResourceAssumptions(p.resourceModel);
   if (!Number.isInteger(horizon) || horizon < 1 || horizon > 100) throw new RangeError('horizon must be 1–100 years');
   positive(initial.macro.realGdp, 'real GDP'); positive(initial.macro.nominalGdp, 'nominal GDP');
   positive(initial.macro.potentialGdp, 'potential GDP');
@@ -124,6 +130,15 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.energy.importedEnergy = Math.max(0, state.energy.primaryDemand - state.energy.domesticSupply);
     state.energy.firmCapacity = initial.energy.firmCapacity * (1 + energyAddition) + projects.reduce((sum, project) => sum + project.firmGw, 0);
     state.energy.peakDemand = initial.energy.peakDemand * (1 + p.electricity.peakGrowth) ** t * (1 + energyDemandIncrease / initial.energy.primaryDemand) + peakGw;
+    const resourcePower = p.resourceModel?.mode === 'estimated' ? resourcePowerBalance(t,
+      peakGw + initial.energy.peakDemand * energyDemandIncrease / initial.energy.primaryDemand,
+      state.energy.firmCapacity - initial.energy.firmCapacity, p.resourceModel,
+      initial.energy.firmCapacity / resourcePowerBalance(0, 0, 0, p.resourceModel).nationalSupplyGw,
+      ((1 + p.electricity.peakGrowth) / (1 + ELECTRICITY_BASELINE.peakGrowth)) ** t) : undefined;
+    if (resourcePower) {
+      state.energy.peakDemand = resourcePower.nationalDemandGw;
+      state.energy.firmCapacity = resourcePower.nationalSupplyGw;
+    }
     state.energy.reserveMargin = (state.energy.firmCapacity - state.energy.peakDemand) / state.energy.peakDemand;
     // Import prices follow the common external price path, not domestic value added.
     const baselineEnergyBill = initial.energy.importBill * commonPriceIndex;
@@ -214,6 +229,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
     steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+      resourcePower, estimatedLoads: policies.some(policy => policy.load?.estimated),
       importPriceEffects: { domesticPriceRecovery, gdpDeflatorLevelEffect: energyDeflatorEffect,
         tradingIncomeChange, realDomesticIncome: realGdp + tradingIncomeChange, expenditureIndex },
       taxAdjustedInflation, refinancingRate: marketRate, referenceRateEffect: demand.longRateEffect, coverage,

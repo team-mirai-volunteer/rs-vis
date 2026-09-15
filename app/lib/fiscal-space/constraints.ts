@@ -19,10 +19,10 @@ export const CONSTRAINTS: ConstraintDefinition[] = [
     explain: s => {
       const sector = (Object.keys(s.state.labour.sectorUtilization) as (keyof typeof SECTOR_LABELS)[]).sort((a, b) => s.state.labour.sectorUtilization[b] - s.state.labour.sectorUtilization[a])[0];
       const current = s.state.labour.sectorUtilization[sector], extra = s.sectorDemand[sector];
-      return `${SECTOR_LABELS[sector]}: 初期設定${pct(current - extra)}、設定した追加負荷${pct(extra)}。${s.coverage?.sector === false ? '負荷係数が未設定の政策があり未評価。参考上限にはこの不足を織り込めません。' : '追加負荷は政策別の原単位の仮定から計算。全国の産業連関による推計ではありません。'}`;
+      return `${SECTOR_LABELS[sector]}: 初期設定${pct(current - extra)}、追加負荷${pct(extra)}。${s.estimatedLoads ? '2020年産業連関表・雇用表からの6区分の人員負荷概算を含みます。初期の余力・価格換算は仮定で、設備能力の推計ではありません。' : '追加負荷は政策別の原単位の仮定から計算。'}${s.coverage?.sector === false ? '負荷係数が未設定の政策があり一部未評価。' : ''}`;
     } },
-  { id: 'energy', label: '電力供給能力', measure: s => s.state.energy.peakDemand / s.state.energy.firmCapacity,
-    explain: s => `ピーク${s.state.energy.peakDemand.toFixed(1)}GW÷確実供給${s.state.energy.firmCapacity.toFixed(1)}GW。予備率${pct(s.state.energy.reserveMargin)}。再エネ設備容量をそのまま供給能力に加えません。` },
+  { id: 'energy', label: '電力供給能力', measure: s => s.resourcePower?.utilization ?? s.state.energy.peakDemand / s.state.energy.firmCapacity,
+    explain: s => s.resourcePower ? `${s.resourcePower.referenceYear}年度見通し・${s.resourcePower.region}・${s.resourcePower.season}：需要${s.resourcePower.demandGw.toFixed(2)}GW÷供給${s.resourcePower.supplyGw.toFixed(2)}GW。地域・季節別の最大利用率。OCCTO公表の融通前供給力と追加負荷の概算。地域配分は仮定で、連系線融通・全月の最小余力は未評価。` : `ピーク${s.state.energy.peakDemand.toFixed(1)}GW÷確実供給${s.state.energy.firmCapacity.toFixed(1)}GW。予備率${pct(s.state.energy.reserveMargin)}。再エネ設備容量をそのまま供給能力に加えません。` },
   { id: 'external', label: '輸入圧力', measure: s => s.state.external.imports / s.state.macro.nominalGdp,
     explain: () => '財・サービス輸入費÷名目GDPを許容閾値と比較。第一次所得黒字で実物輸入制約を相殺しません。外貨調達可能性そのものの推定ではありません。' },
 ];

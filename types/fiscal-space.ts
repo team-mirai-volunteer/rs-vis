@@ -51,6 +51,17 @@ export interface PolicyLoad {
   operatingPeakGwPerTrillion: number | null;
   lag: number; lifetime: number; depreciation: number;
   basis?: ProjectLoadBasis;
+  /** Generated from the versioned IO reference, never accepted from shared URLs. */
+  estimated?: boolean;
+  sectorLoads?: Record<Sector, number>;
+  workerYears?: Record<Sector, number>;
+  priceIndex?: number;
+}
+export interface ResourceAssumptions {
+  mode: 'estimated' | 'manual'; loadScale: number; spendingShare: number;
+  priceIndex: number; electricityPrice: number; loadFactor: number; coincidence: number;
+  operatingOutputRatio: number;
+  region: 'demand-share' | '北海道' | '東北' | '東京' | '中部' | '北陸' | '関西' | '中国' | '四国' | '九州' | '沖縄';
 }
 export interface Policy {
   id: string; name: string; kind: PolicyKind; channel: 'tax' | 'expenditure'; sector: Sector;
@@ -65,6 +76,7 @@ export interface Policy {
 export interface PolicyShare { policy: Policy; weight: number }
 export interface Shock { marketRateDelta: number; energyPriceChange: number; realGrowthDelta: number }
 export interface ModelParameters {
+  resourceModel?: ResourceAssumptions;
   taxRevenueElasticity: number; taxCollectionLag: number;
   productionModel: 'leontief' | 'ces' | 'cobbDouglas';
   gapDemandSensitivity: number; gapPriceSensitivity: number; gapInflationSlope: number;
@@ -115,6 +127,8 @@ export interface FiscalMetrics {
   effectiveRate: number; stabilizingPrimaryBalance: number; stockFlowAdjustmentGdp: number;
 }
 export interface ProjectionStep {
+  resourcePower?: ReturnType<typeof import('@/app/lib/fiscal-space/resource-estimate').resourcePowerBalance>;
+  estimatedLoads?: boolean;
   importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
   taxAdjustedInflation?: number; refinancingRate?: number; referenceRateEffect?: number;
   coverage?: { sector: boolean; energy: boolean };
