@@ -40,6 +40,9 @@ export function decodeTaxState(query: string): { state: TaxState; warning: strin
   state.corporateShare = numeric('corporateShare', state.corporateShare, 0, 1);
   state.firstBirthAge = numeric('firstBirthAge', state.firstBirthAge, BIRTH_AGE_RANGE[0], BIRTH_AGE_RANGE[1], true);
   state.secondBirthAge = numeric('secondBirthAge', state.secondBirthAge, BIRTH_AGE_RANGE[0], BIRTH_AGE_RANGE[1], true);
+  const denominator = q.get('denominator');
+  if (denominator === 'career' || denominator === 'income') state.denominator = denominator;
+  else if (denominator !== null) invalid = true;
   for (const key of ['bonus', 'showAll', 'includeConsumption', 'showOecd'] as const) {
     if (q.has(key)) {
       if (q.get(key) === '1' || q.get(key) === '0') state[key] = q.get(key) === '1';
@@ -64,7 +67,7 @@ export function encodeTaxState(state: TaxState): string {
     household: state.household, age: String(state.age), income: String(state.income),
     share: String(state.share), bonus: state.bonus ? '1' : '0', showAll: state.showAll ? '1' : '0',
     consumption: state.consumptionAssumption, continuation: String(state.continuation),
-    workUntil: String(state.workUntil), corporateShare: String(state.corporateShare), firstBirthAge: String(state.firstBirthAge), secondBirthAge: String(state.secondBirthAge),
+    workUntil: String(state.workUntil), corporateShare: String(state.corporateShare), firstBirthAge: String(state.firstBirthAge), secondBirthAge: String(state.secondBirthAge), denominator: state.denominator,
     includeConsumption: state.includeConsumption ? '1' : '0', showOecd: state.showOecd ? '1' : '0' });
   for (const [key, value] of Object.entries(state.reform)) q.set(key, String(value));
   return q.toString();

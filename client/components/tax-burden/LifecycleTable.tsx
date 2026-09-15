@@ -1,4 +1,5 @@
 import type { LifecycleYear, TaxState } from '@/types/tax-burden';
+import { DENOMINATOR_LABEL, yearRate } from '@/app/lib/tax-burden/heatmap-items';
 import { PHASE_LABEL } from './LifecycleChart';
 import { yen } from './BurdenBreakdown';
 
@@ -16,24 +17,28 @@ export function LifecycleTable({ years, state, selectedAge }: { years: Lifecycle
   const consumption = (y: LifecycleYear) => state.includeConsumption ? y.consumptionTax : 0;
   const tax = (y: LifecycleYear) => y.incomeTax + y.residentTax + consumption(y) + y.corporateTax;
   const premiums = (y: LifecycleYear) => y.pension + y.health + y.care + y.employment;
-  const net = (y: LifecycleYear) => y.pensionAdjustedBurden - (state.includeConsumption ? 0 : y.consumptionTax);
-  const share = (y: LifecycleYear, amount: number) => y.careerIncome > 0 ? `${(amount / y.careerIncome * 100).toFixed(1)}%` : '未定義';
+  const base = (y: LifecycleYear) => state.denominator === 'career' ? y.careerIncome : y.income;
+  const share = (y: LifecycleYear, amount: number) => base(y) > 0 ? `${(amount / base(y) * 100).toFixed(1)}%` : '未定義';
+  const netRate = (y: LifecycleYear) => { const r = yearRate(y, state.denominator, state.includeConsumption); return r === null ? '未定義' : `${(r * 100).toFixed(1)}%`; };
   const head = 'whitespace-nowrap py-1 text-right font-normal';
   const rowHead = (y: LifecycleYear) => <th scope="row" className="whitespace-nowrap py-1 text-left font-normal">{y.ageAt}歳（{PHASE_LABEL[y.phase]}）</th>;
   const rowClass = (y: LifecycleYear) => `border-t border-mirai-border/30 ${y.ageAt === selectedAge ? 'font-bold' : ''}`;
   return <div className="mt-4 grid gap-5">
     <div>
-      <h3 className="mb-1 text-xs font-bold">現役期年収に対する割合（%）</h3>
+      <h3 className="mb-1 text-xs font-bold">{state.denominator === 'career' ? '現役期年収' : 'その年の総収入'}に対する割合（%）</h3>
       <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums" aria-label="年齢別の割合（現役期年収比）">
         <thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left font-normal">年齢</th>
           <th scope="col" className={head}>税</th><th scope="col" className={head}>保険料</th><th scope="col" className={head}>給付</th>
-          <th scope="col" className={head}>年金の受給</th><th scope="col" className={head}>純負担率</th></tr></thead>
+          {state.denominator === 'career' && <th scope="col" className={head}>年金の受給</th>}<th scope="col" className={head}>純負担率</th></tr></thead>
         <tbody>{rows.map(y => <tr key={y.ageAt} className={rowClass(y)}>{rowHead(y)}
           <td className="whitespace-nowrap text-right">{share(y, tax(y))}</td><td className="whitespace-nowrap text-right">{share(y, premiums(y))}</td>
-          <td className="whitespace-nowrap text-right">{share(y, -y.benefits)}</td><td className="whitespace-nowrap text-right">{share(y, -y.pensionIncome)}</td>
-          <td className="whitespace-nowrap text-right">{share(y, net(y))}</td></tr>)}</tbody>
+          <td className="whitespace-nowrap text-right">{share(y, -y.benefits)}</td>
+          {state.denominator === 'career' && <td className="whitespace-nowrap text-right">{share(y, -y.pensionIncome)}</td>}
+          <td className="whitespace-nowrap text-right">{netRate(y)}</td></tr>)}</tbody>
       </table></div>
-      <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">分母はどの年齢も現役期の世帯年収。給付と年金の受給は負の値で、税＋保険料＋給付＋年金の受給＝純負担率になります。税には{state.includeConsumption ? '消費税推計と' : ''}法人税の転嫁（仮定）を含みます。</p>
+      <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{state.denominator === 'career'
+        ? '分母はどの年齢も現役期の世帯年収。給付と年金の受給は負の値で、税＋保険料＋給付＋年金の受給＝純負担率になります。'
+        : '分母はその年に受け取った総収入（給与＋年金）。給付は負の値で、税＋保険料＋給付＝純負担率になります。年金は分母に入るので、受給期の率は現役期より軽く出ます。'}税には{state.includeConsumption ? '消費税推計と' : ''}法人税の転嫁（仮定）を含みます。</p>
     </div>
     <div>
       <h3 className="mb-1 text-xs font-bold">年額（円）</h3>

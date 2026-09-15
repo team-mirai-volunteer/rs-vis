@@ -1,6 +1,13 @@
 export type HouseholdId = 'single' | 'single-children' | 'one-earner' | 'one-earner-children' | 'two-earners' | 'two-earners-children';
 export type TaxView = 'curve' | 'revenue' | 'stats' | 'reform' | 'age' | 'heatmap';
 export type ConsumptionAssumption = 'net-fixed' | 'gross-fixed';
+/**
+ * What the age views divide by. 'career' keeps the working-age income class for every age and treats the pension as a
+ * negative burden, which is what makes the burden of one income class comparable across a life. 'income' divides by the
+ * money actually received that year, which is the ordinary reading of a burden rate but puts the pension in the
+ * denominator, so retirement looks light however much is paid in.
+ */
+export type Denominator = 'career' | 'income';
 /** Tax items the heat-map can colour by. */
 export type TaxItem = 'incomeTax' | 'residentTax' | 'pension' | 'health' | 'care' | 'employment' | 'consumption'
   | 'benefits' | 'childBenefit' | 'singleParentBenefit' | 'pensionSupport' | 'reformCredit' | 'pensionReceipt' | 'corporateTax' | 'net';
@@ -56,6 +63,8 @@ export interface TaxState {
   showOecd: boolean;
   /** Assumed share of corporate income tax passed on to wages (0 = do not show it). */
   corporateShare: number;
+  /** Denominator of the rates in the age views. */
+  denominator: Denominator;
   /** Adult age when the first child is born. */
   firstBirthAge: number;
   /** Adult age when the second child is born (ignored by households with fewer children). */

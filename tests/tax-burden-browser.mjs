@@ -95,8 +95,9 @@ try {
   await expect(page.getByText('70歳の純負担率', { exact: true })).toBeVisible();
   await page.screenshot({ path: resolve(output, 'age.png'), fullPage: true });
   await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
-  // 11 panels: the ten always-shown items plus 法人税の転嫁, which the default 50% incidence assumption turns on.
-  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(11);
+  // 10 panels: the nine always-shown items plus 法人税の転嫁 (the default incidence assumption turns it on).
+  // 公的年金の受給 is not among them: against the year's own income it would be a flat -100%.
+  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
   await expect(page.getByRole('heading', { name: /税目ごとに分解する/ })).toBeVisible();
   await page.getByRole('button', { name: /^税・給付/ }).click();
   await page.getByLabel('住民税（所得割）', { exact: true }).fill('0');
