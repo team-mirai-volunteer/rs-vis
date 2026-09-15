@@ -1,3 +1,5 @@
+import { compileSearchPattern } from '../search-pattern';
+
 /**
  * 統合グラフ → 表示グラフ の変換（純関数。React・DOM に依存しない）。
  *
@@ -232,8 +234,7 @@ export function buildNameMatcher(query: string, useRegex: boolean): ((name: stri
   const q = query.trim();
   if (useRegex) {
     try {
-      const re = new RegExp(q, 'i');
-      return name => re.test(name);
+      return compileSearchPattern(q);
     } catch {
       return null;
     }

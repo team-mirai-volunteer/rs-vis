@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { compileSearchPattern, SearchPatternError } from '@/app/lib/search-pattern';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { availableYears, loadYear } from '@/app/lib/api/mof-jikou-loader';
 import { buildMOFHierarchySankey, DEFAULT_TOP_N } from '@/app/lib/mof-hierarchy-sankey';
@@ -104,6 +105,10 @@ function parseTopN(raw: string | null, fallback: number | undefined): number | u
  */
 export async function GET(request: Request) {
   try {
+    const params = new URL(request.url).searchParams;
+    for (const name of ['filterSection', 'filterItem']) {
+      if (params.get(`${name}Regex`) === '1') compileSearchPattern(params.get(name) ?? '');
+    }
     const years = availableYears();
     if (years.length === 0) {
       return NextResponse.json(
@@ -112,7 +117,6 @@ export async function GET(request: Request) {
       );
     }
 
-    const params = new URL(request.url).searchParams;
     const rawYear = params.get('year');
     const year = rawYear ? Number(rawYear) : years[0];
     if (!years.includes(year)) {
@@ -169,6 +173,7 @@ export async function GET(request: Request) {
       headers: { 'Cache-Control': API_CACHE_CONTROL },
     });
   } catch (error) {
+    if (error instanceof SearchPatternError) return NextResponse.json({ error: error.message }, { status: 400 });
     return serverErrorResponse('MOF Hierarchy API', error);
   }
 }
