@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified-budget';
 
 /**
  * 統合ビュー（/budget-sankey）の E2E。
@@ -58,6 +59,30 @@ function urlParams(page: Page): URLSearchParams {
 }
 
 test.describe('budget-sankey (統合ビュー)', () => {
+  test('every enabled budget dataset is deployed as browser-readable JSON', async ({ request }) => {
+    const files = new Set(Object.entries(UNIFIED_BASES_BY_YEAR).flatMap(([year, bases]) =>
+      bases.map(basis => unifiedGraphFileName(Number(year), basis))));
+    for (const file of files) {
+      const response = await request.get(`/data/${file}`);
+      expect(response.status(), file).toBe(200);
+      expect(response.headers()['content-type'], file).toContain('application/json');
+      const graph = await response.json();
+      expect(graph.nodes.length, file).toBeGreaterThan(0);
+    }
+  });
+
+  test('2026 supplementary budget opens through the selector and a direct link', async ({ page }) => {
+    const errors = await openPage(page, 'year=2026');
+    await page.getByLabel('基準', { exact: true }).selectOption('supplementary');
+    await expect(columnHeader(page, '会計_2026').first()).toHaveText('会計_2026 補正後（改予算額）');
+    await expect(page.getByTestId('unified-label').filter({ hasText: /^一般会計/ })).toContainText('125.42兆円');
+    expect(urlParams(page).get('b')).toBe('supplementary');
+    await page.reload();
+    await expect(columnHeader(page, '会計_2026').first()).toHaveText('会計_2026 補正後（改予算額）');
+    await expect(page.getByTestId('unified-label').filter({ hasText: /^一般会計/ })).toContainText('125.42兆円');
+    expect(errors).toEqual([]);
+  });
+
   test('renders nodes and column headers without page errors', async ({ page }) => {
     const pageErrors = await openPage(page);
 
