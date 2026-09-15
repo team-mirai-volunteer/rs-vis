@@ -155,14 +155,15 @@ export const UNIFIED_PRESET_LABELS: Record<UnifiedPreset, string> = {
 };
 
 export const UNIFIED_PRESET_COLUMNS: Record<UnifiedPreset, UnifiedColumn[]> = {
-  full: ['account', 'ministry', 'section', 'program', 'program-spending', 'recipient'],
+  full: ['revenue', 'account', 'ministry', 'section', 'program', 'program-spending', 'recipient'],
   rs: ['ministry', 'program', 'program-spending', 'recipient'],
-  mof: ['account', 'ministry', 'organization', 'section', 'program'],
+  mof: ['revenue', 'account', 'ministry', 'organization', 'section', 'program'],
   section: ['section', 'koumoku', 'program', 'program-spending', 'recipient'],
 };
 
 /** 列ごとの表示数の既定。0 は無制限 */
 export const DEFAULT_UNIFIED_TOP_N: Record<UnifiedColumn, number> = {
+  revenue: 40,
   account: 0,
   ministry: 0,
   organization: 40,
@@ -175,6 +176,7 @@ export const DEFAULT_UNIFIED_TOP_N: Record<UnifiedColumn, number> = {
 
 /** 集約ノードの名前に使う単位（「41項」のように件数で出す） */
 export const UNIFIED_AGGREGATE_UNITS: Record<UnifiedColumn, string> = {
+  revenue: '歳入科目',
   account: '会計',
   ministry: '所管',
   organization: '組織',

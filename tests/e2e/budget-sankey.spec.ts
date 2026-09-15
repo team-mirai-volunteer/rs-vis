@@ -36,7 +36,7 @@ function columnHeader(page: Page, label: string) {
 async function headerOrder(page: Page): Promise<string[]> {
   return page.locator(`${CANVAS} text`).evaluateAll(nodes =>
     nodes
-      .filter(n => /^(会計|所管|組織\/勘定|項|目|事業|事業\(支出\)|支出先)_\d{4}/.test(n.textContent ?? ''))
+      .filter(n => /^(歳入|会計|所管|組織\/勘定|項|目|事業|事業\(支出\)|支出先)_\d{4}/.test(n.textContent ?? ''))
       .map(n => ({ x: Number(n.getAttribute('x')), text: (n.textContent ?? '').split(' ')[0] }))
       .sort((a, b) => a.x - b.x)
       .map(n => n.text)
@@ -93,7 +93,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
     expect(await nodeCount(page)).toBeGreaterThan(0);
     // 既定プリセット「統合」の列（組織/勘定・目は畳まれている）
-    expect(await headerOrder(page)).toEqual(['会計_2024', '所管_2024', '項_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
+    expect(await headerOrder(page)).toEqual(['歳入_2024', '会計_2024', '所管_2024', '項_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
     // 事業列は「何年度の・何の額か」を添える
     await expect(columnHeader(page, '事業_2024').first()).toHaveText(/^事業_2024 (歳出予算現額|当初予算)$/);
     await expect(columnHeader(page, '支出先_2024').first()).toHaveText('支出先_2024 支出額');
@@ -240,7 +240,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
   test('preset RSのみ hides 会計 and starts with 所管; URL cols updates', async ({ page }) => {
     await openPage(page);
-    expect((await headerOrder(page))[0]).toBe('会計_2024');
+    expect((await headerOrder(page))[0]).toBe('歳入_2024');
 
     await page.getByLabel('表示プリセット').selectOption('rs');
     await expect(page.getByLabel('表示プリセット')).toHaveValue('rs');
