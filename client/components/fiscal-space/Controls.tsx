@@ -38,10 +38,15 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
       <label className="flex items-center justify-between gap-2 text-xs"><span>支出期間</span><span className="flex items-center gap-1">
         <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
           onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
+    {(policy.id === 'social-insurance' || revenue) && <details className="text-xs text-mirai-text-subtle">
+      <summary className="cursor-pointer font-medium">入力上限・計算の前提</summary>
+      <div className="mt-2 space-y-2">
     {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
     {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(socialInsuranceMax * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
     {revenue && <p className="text-xs leading-relaxed text-mirai-text-subtle">入力上限：{money(max * 1e12, 1)}／年。<a className="underline" href={revenue.sourceUrl} target="_blank" rel="noreferrer">2024年度の{revenue.label}の税収</a>を限度とし、0.1兆円単位で切り下げます。{'municipalSourceUrl' in revenue && <><a className="underline" href={revenue.municipalSourceUrl} target="_blank" rel="noreferrer">市町村分の出典</a>。</>}{revenue.scope}評価期間中はこの基準額を固定します。税額を超える分は「現金給付」に入力してください。</p>}
     {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
+      </div>
+    </details>}
   </div>;
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
@@ -64,8 +69,8 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
     <CardContent className="space-y-5">
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
-      <div className="space-y-4 border-t border-mirai-border pt-4">
-        {policies.map(policyField)}
+      <div className="space-y-4">
+        {[...policies.filter(p => p.id === 'social-insurance'), ...policies.filter(p => p.id !== 'social-insurance')].map(policyField)}
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
       </div>
       <div className="space-y-3 border-t border-mirai-border pt-4">
