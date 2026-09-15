@@ -356,7 +356,7 @@ export default function ProjectMapPage() {
         className={cn(
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[55vh]',
-          'sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-none sm:w-[268px]',
+          'sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-none sm:w-[268px] sm:overflow-hidden',
           mobilePanelOpen || selected ? 'flex' : 'hidden'
         )}
       >
@@ -493,14 +493,17 @@ export default function ProjectMapPage() {
         )}
       </div>
 
-      {/* 選択中の事業の詳細。サンキー図と同じく左側に出す */}
+      {/* 選択中の事業の詳細。サンキー図と同じく左側に出す。
+             列ごとスクロールさせると絞り込みまで動いてしまうので、sm 以上では詳細の中だけがスクロールする */}
       {data && !loading && (
-        <SelectedPanel
-          point={selected}
-          cluster={selected ? clusterById.get(selected.c) : undefined}
-          year={year}
-          onClose={() => setSelected(null)}
-        />
+        <div className={cn('sm:min-h-0 sm:overflow-y-auto', selected && 'sm:flex-1')}>
+          <SelectedPanel
+            point={selected}
+            cluster={selected ? clusterById.get(selected.c) : undefined}
+            year={year}
+            onClose={() => setSelected(null)}
+          />
+        </div>
       )}
 
       </div>
