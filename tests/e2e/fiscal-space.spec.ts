@@ -4,9 +4,31 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await expect(page.getByText('税収弾性値 1.7・徴収ラグ 0年を仮定。', { exact: false })).toBeVisible();
+  const result = page.getByTestId('horizon-results');
+  await expect(result.getByRole('heading', { name: '5年目の結果（試算）' })).toBeVisible();
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.95%');
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
+  await expect(page.getByTestId('input-overview')).toContainText('追加予算');
+  await expect(page.getByTestId('input-overview')).not.toContainText('入力額');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.46%');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -0.489ポイント');
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('269.54兆円');
+  await expect(result.locator('[data-metric="名目GDP"]')).toContainText('805.63兆円');
+  const budget = page.getByTestId('general-account-budget');
+  await expect(budget).toContainText('125.42兆円');
+  await expect(budget).toContainText('一般歳出');
+  await expect(budget).toContainText('73.27兆円');
+  await expect(budget).toContainText('公債金');
+  await expect(budget).toContainText('32.70兆円');
+  await expect(budget).toContainText('2026年度・国の一般会計（補正後）');
+  const headings = await page.locator('main h2').allTextContents();
+  expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('国の一般会計予算と内訳'));
+  expect(headings.indexOf('国の一般会計予算と内訳')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
+  const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
+  await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
+  await expect(projectionTable.getByRole('row').last()).toContainText('33.46%');
   await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.01兆円');
   await expect(page.getByTestId('recommended-envelope')).toHaveText('13.61兆円');
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
@@ -55,6 +77,7 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
   await expect(page.getByRole('region', { name: '3年間の推計表' })).toBeVisible();
   await expect(page.getByRole('region', { name: '5年間の推計表' })).toHaveCount(0);
+  await expect(page.getByTestId('horizon-results').getByRole('heading')).toHaveText('3年目の結果（試算）');
   expect(errors).toEqual([]);
 });
 
@@ -212,12 +235,16 @@ test('unresponsive worker reaches a visible timeout and retries the latest form'
     window.addEventListener('test-resume-worker', () => { stalled = false; });
     Worker.prototype.postMessage = function (message, options) {
       if (!stalled) post.call(this, message, options as StructuredSerializeOptions);
+      else document.documentElement.dataset.testWorkerStalled = 'true';
     };
   });
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
   await page.clock.runFor(200);
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('9');
+  // 初期化・入力の debounce 後に、実際に計算が始まってから監視時間を進める。
+  await page.clock.runFor(200);
+  await expect(page.locator('html')).toHaveAttribute('data-test-worker-stalled', 'true');
   await page.clock.fastForward(31_000);
   await expect(page.locator('main').getByRole('alert')).toContainText('計算の応答がないため停止しました');
   await expect(page.getByTestId('calculation-status')).toBeEmpty();
