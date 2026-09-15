@@ -123,6 +123,50 @@
 }
 
 @layer components {
+  /* Native range tracks differ by OS; keep policy controls consistent. */
+  .policy-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 1.5rem;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .policy-range::-webkit-slider-runnable-track {
+    height: 6px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--mirai-progress-track);
+  }
+
+  .policy-range::-moz-range-track,
+  .policy-range::-moz-range-progress {
+    height: 6px;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--mirai-progress-track);
+  }
+
+  .policy-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .policy-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
   /* メイングラデーション（hero / プライマリ CTA）。1 画面 1 箇所を目安に */
   .bg-mirai-gradient {
     background-image: linear-gradient(
