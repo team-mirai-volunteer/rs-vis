@@ -271,7 +271,9 @@ function main() {
     ensure({
       id: koumokuId(it),
       col: 'koumoku',
-      name: it.subItemName,
+      // 補正予算書は目の内訳を載せない項がある（2026年度の国債費など。subItemCode も空）。
+      // そのままだと名前の無い目ノードが図に出るので、項名を借りて内訳が無いことを明示する。
+      name: it.subItemName || `${it.sectionName}（目の内訳なし）`,
       value: v,
       accountType: it.accountType,
       ministry: it.ministry,
