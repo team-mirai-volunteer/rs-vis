@@ -1,5 +1,20 @@
 import { test, expect } from '@playwright/test';
 
+test('corporate incidence leaves cash disposable income unchanged at fixed salary', async ({ page }) => {
+  await page.goto('/tax-burden');
+  await page.getByLabel('世帯年収を万円で入力').fill('500');
+  const share = page.getByRole('slider', { name: '賃金へ転嫁される割合', exact: true });
+  await share.press('Home');
+  await expect(share).toHaveValue('0');
+  const cash = page.getByText(/^可処分所得（現金）：/);
+  await expect(cash).toBeVisible();
+  const cashBefore = await cash.innerText();
+  for (let i = 0; i < 25; i++) await share.press('ArrowRight');
+  await expect(share).toHaveValue('25');
+  await expect(page.getByRole('rowheader', { name: '法人税の転嫁（仮定）', exact: true })).toBeVisible();
+  await expect(cash).toHaveText(cashBefore);
+});
+
 test('tax prototype: reform, shared conditions, actual revenue, unavailable statistics', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

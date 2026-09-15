@@ -8,8 +8,8 @@ export const SECTOR_LABELS: Record<Sector, string> = { general: '全産業', con
 export const INPUT_LABELS = { capital: '設備', labour: '労働', energy: 'エネルギー', materials: '中間財' };
 /** Future paths and response coefficients are scenarios, not observed statistics. */
 export const PARAMETERS: ModelParameters = {
-  // 国税の2015〜2024年度実績を参考にした仮定。税・社会負担全体の推定値ではない。
-  taxRevenueElasticity: 1.7, taxCollectionLag: 0,
+  // 中期経路のシナリオ仮定。税・社会負担全体の実証推定値ではない。1.7は感度比較。
+  taxRevenueElasticity: 1.1, taxCollectionLag: 0,
   productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
   consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
   electricity: { ...ELECTRICITY_BASELINE },

@@ -58,7 +58,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.filter(policy => primaryIds.includes(policy.id)).map(policyField)}
         <details><summary className="cursor-pointer text-sm font-bold">ほかの{policies.filter(policy => !primaryIds.includes(policy.id)).length}政策を追加する</summary><div className="mt-4 space-y-4">{policies.filter(policy => !primaryIds.includes(policy.id)).map(policyField)}</div></details>
-        {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の限界財政枠を計算します。</p>}
+        {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
       </div>
       <details className="border-t border-mirai-border pt-4"><summary className="cursor-pointer text-sm font-bold">経済状態・評価条件を変える</summary><div className="mt-4 space-y-4">
         <p className="text-xs leading-relaxed">年0は選択したデータの初期状態。GDPギャップは（実際−潜在）÷潜在。マイナスが需要不足、プラスが需要超過で、公表値と同じ符号です。建設利用率と確実電力供給は仮定です。</p>
@@ -71,7 +71,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />
-        <RangeField label="緊急時留保率" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
+        <RangeField label="任意の定率控除" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>
         {definitions.map(d => <label key={d.id} className="block text-xs">{d.label} 上限（%）<input className={`${fieldClass} mt-1`} type="number" min={.01} step={.1} value={Number((thresholds[d.id] * 100).toFixed(3))} onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n > 0) onThreshold(d.id, n / 100); }} /></label>)}
       </div></details>

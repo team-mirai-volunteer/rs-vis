@@ -38,10 +38,12 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
     constraints: peaks, evaluations, tolerance: p.searchTolerance, reserveRule: { method: 'fixed-share', share: p.reserveShare },
   });
   if (base.some(c => c.status === 'violated')) return result(0, 'baseline-violated', base);
+  if (base.some(c => c.status === 'unevaluated' || c.coverageComplete === false)) return result(0, 'unevaluated', base);
   if (!policyMix.some(x => x.weight > 0)) return result(0, 'empty-mix', base);
   let low = 0, high = Math.min(p.searchStep, searchCap), safe = base;
   while (true) {
     const peaks = evaluate(high);
+    if (peaks.some(c => c.status === 'unevaluated' || c.coverageComplete === false)) return result(0, 'unevaluated', peaks);
     if (peaks.some(c => c.status === 'violated')) break;
     low = high; safe = peaks;
     if (high === searchCap) return result(low, limitingPolicy ? 'revenue-cap' : 'search-cap', safe);
@@ -49,6 +51,7 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
   }
   while (high - low > p.searchTolerance) {
     const mid = (low + high) / 2, peaks = evaluate(mid);
+    if (peaks.some(c => c.status === 'unevaluated' || c.coverageComplete === false)) return result(0, 'unevaluated', peaks);
     if (peaks.some(c => c.status === 'violated')) high = mid;
     else { low = mid; safe = peaks; }
   }

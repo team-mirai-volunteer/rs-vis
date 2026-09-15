@@ -5,6 +5,7 @@ import { RangeField } from './Controls';
 import { fieldClass, money, percent, points } from './format';
 import { constraintInflation } from '@/app/lib/fiscal-space/constraints';
 import { BudgetReference } from './BudgetReference';
+import { BaselineSensitivity } from './BaselineSensitivity';
 
 import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
 const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
@@ -21,9 +22,9 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
     <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
     <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。産業・電力の概算に含まれない制約もあるため、政策額の推奨値ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
-      <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。参考上限は同じ配分を拡大し、留保を差し引いた別の計算です。</caption>
-      <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間参考上限（留保後）'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
-      <tbody>{rows.map(r => <tr key={r.label} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.label}</th><td>{money(r.initialMaximum)}</td><td>{money(r.potentialEffect)}</td><td>{money(r.gdpEffect)}</td><td>{percent(r.cpiPeak, 3)}</td><td>{points(r.capacityPriceAdjustment)}</td><td>{money(r.space.recommendedEnvelope)}{r.space.status === 'search-cap' ? '（探索範囲の端）' : r.space.status === 'revenue-cap' ? '（減収対象の収入上限）' : ''}</td></tr>)}</tbody>
+      <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。参考上限は同じ配分を拡大し、任意の定率控除を差し引いた別の計算です。</caption>
+      <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間参考上限（任意控除後）'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
+      <tbody>{rows.map(r => <tr key={r.label} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.label}</th><td>{money(r.initialMaximum)}</td><td>{money(r.potentialEffect)}</td><td>{money(r.gdpEffect)}</td><td>{percent(r.cpiPeak, 3)}</td><td>{points(r.capacityPriceAdjustment)}</td><td>{r.space.status === 'unevaluated' ? '算出不可' : money(r.space.recommendedEnvelope, 1)}{r.space.status === 'search-cap' ? '（探索範囲の端）' : r.space.status === 'revenue-cap' ? '（減収対象の収入上限）' : ''}</td></tr>)}</tbody>
     </table></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label className="text-sm">使用する生産モデル<select aria-label="使用する生産モデル" className={fieldClass} value={controlParameters.productionModel} onChange={e => onParameters({ ...controlParameters, productionModel: e.target.value as ModelParameters['productionModel'] })}>{Object.entries(MODEL_LABELS).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
@@ -41,12 +42,13 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   </section>;
 }
 
-export function InputOverview({ total, estimate, horizon, incomplete, projection, baseline, policies }: {
+export function InputOverview({ total, estimate, riskAudit, horizon, incomplete, projection, baseline, policies }: {
+  riskAudit: FiscalCalculation['riskAudit'];
   estimate: FiscalSpaceEstimate;
   total: number; horizon: number; incomplete: boolean;
   projection: Simulation; baseline: Simulation; policies: Policy[];
 }) {
-  const peak = [projection.initial, ...projection.steps.slice(0, horizon)].reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
+  const peak = projection.steps.slice(0, horizon).reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
   const effect = projection.steps[horizon - 1].state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp;
   return <section data-testid="input-overview" className="rounded-xl border border-mirai-border bg-card p-5">
     <h2 className="mb-4 text-lg font-bold">追加予算と国の一般会計予算</h2>
@@ -54,9 +56,11 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
           <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
-          <div><h3 className="text-sm">同じ配分の参考上限（留保後）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{money(estimate.recommendedEnvelope)} / 年</p></div>
+          <div><h3 className="text-sm">同じ配分の探索上限（条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.theoreticalMaximum, 1)} / 年`}</p></div>
         </div>
-        {total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、留保後の参考上限を{money(total - estimate.recommendedEnvelope)}上回ります。</p>}
+        {estimate.status !== 'unevaluated' && total > estimate.theoreticalMaximum && <p className="text-xs">設定した追加予算は、探索上限を{money(total - estimate.theoreticalMaximum, 1)}上回ります。</p>}
+        <BaselineSensitivity rows={riskAudit.baselineSensitivity} />
+        <p className="text-xs">境界を決めた制約：{estimate.constraints.filter(c => c.status === 'violated').map(c => c.label).join('・') || '未特定'}。債務が境界を決めていない場合、債務の上限を見つけた結果ではありません。</p>
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong></p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>

@@ -30,7 +30,7 @@ export function BurdenBreakdown({ before, after, impact, includeConsumption, pen
         <thead><tr className="border-b border-mirai-border text-xs text-mirai-text-secondary"><th className="py-2 text-left" scope="col">項目</th><th className="text-right" scope="col">基準制度</th>{after && <th className="text-right" scope="col">改革案</th>}</tr></thead>
         <tbody>{rows.map(([label, base, updated]) => <tr key={label} className="border-b border-mirai-border/30"><th scope="row" className="py-2 pr-3 text-left text-xs font-normal">{label}</th><td className="whitespace-nowrap text-right">{yen(base)}</td>{after && <td className="whitespace-nowrap pl-3 text-right">{yen(updated ?? 0)}</td>}</tr>)}</tbody>
         <tfoot><tr className="font-bold"><th scope="row" className="pt-3 text-left">純負担額{qualifiers.length ? `（${qualifiers.join('・')}）` : ''}</th><td className="pt-3 text-right">{yen(total(before))}</td>{after && <td className="pl-3 pt-3 text-right">{yen(total(after))}</td>}</tr></tfoot>
-      </table></div></CardContent>
+      </table></div><p className="mt-3 text-sm font-bold">可処分所得（現金）：{yen(before.income - before.netBurden + before.corporateTax)}{after && ` → ${yen(after.income - after.netBurden + after.corporateTax)}`}</p><p className="mt-2 text-xs">総収入 − 直接税 − 本人保険料 ＋ 現金給付。法人税の賃金転嫁は経済的負担の推計として別計上し、固定した給与の手取りから再控除しません。消費税は消費支出に含まれ、可処分所得からは控除しません。</p></CardContent>
     </Card>
     <Card><CardHeader><h2 className="font-bold">{impact ? '財政収支への影響' : 'この数字の読み方'}</h2><p className="text-xs text-mirai-text-secondary">{impact ? '選択世帯1件あたり・年額' : 'マクロの国民負担率とは分母が異なります'}</p></CardHeader>
       <CardContent className="space-y-4 text-sm leading-relaxed">

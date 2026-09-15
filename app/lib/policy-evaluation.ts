@@ -26,6 +26,9 @@ export interface PolicyQualityInput {
   pid: string;
   budgetAmount: number;
   execAmount: number;
+  /** 翌年度繰越額。欠測時は不用を判定しない。 */
+  carryoverToNext?: number | null;
+  priorUnusedRatio?: number | null;
   axisIdentify?: number | null;
   axisPurpose?: number | null;
   axisBudget?: number | null;
@@ -336,7 +339,7 @@ export function chooseRecommendation(input: {
       label: '縮小',
       tone: 'amber',
       reason:
-        `予算額の${Math.round(unusedRatio! * 100)}%（${formatOku(unusedAmount!)}）が2年連続で執行されていません${prior}。`
+        `予算額の${Math.round(unusedRatio! * 100)}%（${formatOku(unusedAmount!)}）が2年連続で不用（翌年度繰越を除く）です${prior}。`
         + '見直すのは事業そのものではなく翌年度の計上額です。'
         + '不用額の返納は適切な行動であり減点対象ではないため、この判定は総合点には影響していません。',
     };
@@ -362,8 +365,8 @@ export function chooseRecommendation(input: {
       tone: 'amber',
       reason:
         unusedTrend === 'single'
-          ? `当年度は予算額の${Math.round(unusedRatio! * 100)}%が未執行ですが、前年度は通常水準でした。単年の要因か構造的な計上過大かを見極めます。`
-          : `予算額の${Math.round(unusedRatio! * 100)}%が未執行です。前年度の実績が無く傾向を判定できないため、次年度の執行状況を確認します。`,
+          ? `当年度は予算額の${Math.round(unusedRatio! * 100)}%が不用（翌年度繰越を除く）ですが、前年度は通常水準でした。単年の要因か構造的な計上過大かを見極めます。`
+          : `予算額の${Math.round(unusedRatio! * 100)}%が不用（翌年度繰越を除く）です。前年度の実績が無く傾向を判定できないため、次年度の執行状況を確認します。`,
     };
   }
 
@@ -500,13 +503,11 @@ export function buildPolicyEvaluations(qualityItems: PolicyQualityInput[]): Poli
 
     // 予算と執行。執行実績が無い事業（予備的経費・未着手）は「全額不用」ではなく評価対象外。
     const canAssessBudget = item.budgetAmount > 0 && item.execAmount > 0;
-    const unusedRatio = canAssessBudget
-      ? Math.max(0, Math.min(1, (item.budgetAmount - item.execAmount) / item.budgetAmount))
-      : null;
-    const unusedAmount = canAssessBudget ? Math.max(0, item.budgetAmount - item.execAmount) : null;
+    const unusedAmount = canAssessBudget && item.carryoverToNext != null && Number.isFinite(item.carryoverToNext) && item.carryoverToNext >= 0
+      ? Math.max(0, item.budgetAmount - item.execAmount - item.carryoverToNext) : null;
+    const unusedRatio = unusedAmount === null ? null : Math.min(1, unusedAmount / item.budgetAmount);
     const executionRate = canAssessBudget ? item.execAmount / item.budgetAmount : null;
-    const priorUnusedRatio =
-      item.priorExecutionRate == null ? null : Math.max(0, Math.min(1, 1 - item.priorExecutionRate));
+    const priorUnusedRatio = item.priorUnusedRatio ?? null;
 
     const opaqueRatio = item.opaqueRatio ?? null;
     const spendDownRisk =
@@ -549,7 +550,7 @@ export function buildPolicyEvaluations(qualityItems: PolicyQualityInput[]): Poli
       d.overallScore === null ? null : percentileRank(overallSorted, d.overallScore);
 
     // 不用の傾向。前年度が無い事業は unknown（判定不能）で、不利には扱わない。
-    let unusedTrend: UnusedTrend = 'normal';
+    let unusedTrend: UnusedTrend = d.unusedRatio === null ? 'unknown' : 'normal';
     if (d.unusedRatio !== null && d.unusedRatio >= axis.unusedRatioHigh) {
       if (d.priorUnusedRatio === null) unusedTrend = 'unknown';
       else if (d.priorUnusedRatio >= axis.unusedRatioHigh) unusedTrend = 'persistent';

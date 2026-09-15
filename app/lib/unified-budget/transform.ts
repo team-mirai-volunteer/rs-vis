@@ -94,7 +94,8 @@ export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
   const totalNode: UnifiedViewNode = { id: RS_TOTAL_ID, name: RS_TOTAL_NAME, value: total, type: 'account', details: { column: 'account' } };
   const ids = new Set(kept.map(n => n.id));
   for (const l of view.links) if (ids.has(l.source) && ids.has(l.target)) links.push(l);
-  return recomputeValues({ nodes: [totalNode, ...ministries, ...kept], links });
+  return recomputeValues({ nodes: [totalNode, ...ministries, ...kept.map(n => n.details.column === 'program'
+    ? { ...n, value: programValue(n) } : n)], links });
 }
 
 /** 辺から値を作り直す（変換のたびに呼ぶ） */
@@ -109,9 +110,12 @@ export function recomputeValues(view: UnifiedViewGraph): UnifiedViewGraph {
     .map(n => {
       const i = inflow.get(n.id) ?? 0;
       const o = outflow.get(n.id) ?? 0;
-      return { ...n, value: Math.max(i, o) };
+      const budget = n.details.column === 'program' && (n.details.kind === 'rs' || n.details.aggregated);
+      const value = budget ? n.value : Math.max(i, o);
+      return { ...n, value, layoutValue: Math.max(value, i, o),
+        details: budget ? { ...n.details, spendingFlow: o } : n.details };
     })
-    .filter(n => n.value > 0);
+    .filter(n => (inflow.get(n.id) ?? 0) > 0 || (outflow.get(n.id) ?? 0) > 0);
   const ids = new Set(nodes.map(n => n.id));
   return { nodes, links: view.links.filter(l => ids.has(l.source) && ids.has(l.target) && l.value > 0) };
 }

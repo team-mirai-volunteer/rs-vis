@@ -149,7 +149,7 @@ test('long-run scenarios carry permanent costs and commissioning benefits withou
 test('model selection changes reference envelopes when capacity binds', () => {
   const s = initial(); s.production.inputs = { capital: 1.18, labour: 1.01, energy: 1.12, materials: 1.2 };
   const limits = { ...THRESHOLDS, inflation: .5, labour: 2 };
-  const mix = [{ policy: policy('public-investment'), weight: 1 }];
+  const mix = [{ policy: policy('public-investment', { load: { sectorUtilizationPerTrillion: 0, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0, lag: 0, lifetime: 1, depreciation: 0 } }), weight: 1 }];
   const a = estimateFiscalSpace(s, mix, limits, 5, { ...flat, productionModel: 'leontief' });
   const b = estimateFiscalSpace(s, mix, limits, 5, { ...flat, productionModel: 'ces' });
   assert(a.theoreticalMaximum < b.theoreticalMaximum);

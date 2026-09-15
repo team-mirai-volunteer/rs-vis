@@ -98,10 +98,10 @@ export function Explanations({ step, parameters, policies, records }: { step: Pr
       ['流動性調整純債務 / GDP', percent(step.metrics.liquidityAdjustedNetDebtGdp)],
     ].map(([label, value]) => <div key={label}><dt className="text-xs text-mirai-text-subtle">{label}</dt><dd className="font-bold tabular-nums">{value}</dd></div>)}</dl><p className="mt-3 text-xs">経常収支の所得黒字はエネルギー・食料の供給能力へ加算しません。電力需要・非化石発電量の共通経路から火力燃料輸入を計算し、全政策に計上します。発電・送電網の輸入代替は一度だけ差し引き、一般輸入の成長経路に含まれる火力燃料の伸びは置き換えます。電源別の事業条件・ミックスは入力可能ですが、一次エネルギーの物量指数への換算や時間帯別の確実供給は未校正です。</p></details>
     <details><summary className="cursor-pointer font-bold">国家レジリエンス（財政制約とは別枠）</summary><p className="mt-3">食料のカロリー・生産額ベース自給率は冒頭に公表値を掲載しています。輸入先の集中、蛋白自給率、飼料・肥料・農業エネルギー依存、重要鉱物、備蓄日数、供給途絶への耐性は未評価です。自給率から財政枠や有事の供給量を直接算出しません。</p></details>
-    <details><summary className="cursor-pointer font-bold">数式・探索の限界と緊急時留保</summary><div className="mt-3 space-y-2 text-xs">
+    <details><summary className="cursor-pointer font-bold">数式・探索の限界と任意控除</summary><div className="mt-3 space-y-2 text-xs">
       <p>コブ＝ダグラス型: A K^α L^β E^γ。代替弾力性一定型: A(Σw x^ρ)^(1/ρ)、ρ=1−1/σ、σ={parameters.cesSigma}。σ=1は幾何平均。レオンチェフ型: min(K/aK, L/aL, E/aE, M/aM)。投入は基準投入量を1とする指数で、共通の潜在GDPを掛けて円へ戻します。</p>
       <p>探索上限{money(parameters.searchCap)}、走査間隔{money(parameters.searchStep)}、境界区間の分解能{money(parameters.searchTolerance)}。成長投資では安全性が単調とは限らないため、ゼロから最初に観測した違反まで走査し、その区間を二分探索します。走査間隔より狭い違反領域を見逃す可能性があり、離れた許容領域の最大値は保証しません。</p>
-      <p>限界財政枠 = 設定した制約内での探索上限 × (1 − 留保率)。留保率は設定上の控除で、安全性を実証した割合ではありません。限界財政枠も支出を推奨する額ではなく、設定に依存する参考上限です。公表モデルの反応には各モデルの金融政策・民間投資等の経路が含まれますが、この試算は原モデル全体の再推定・再現ではありません。GDPギャップは明示した需要・物価感度で補正し、公表金利反応は借換に接続します。追加感度を実証推定したものではありません。外生金利変更のGDP反応は未推計です。モデル間の差は統計的な信頼区間ではありません。</p>
+      <p>条件付き参考額 = 設定した制約内での探索上限 × (1 − 任意控除率)。任意控除率は設定上の控除で、安全性を実証した割合ではありません。条件付き参考額も支出を推奨する額ではなく、設定に依存する参考上限です。公表モデルの反応には各モデルの金融政策・民間投資等の経路が含まれますが、この試算は原モデル全体の再推定・再現ではありません。GDPギャップは明示した需要・物価感度で補正し、公表金利反応は借換に接続します。追加感度を実証推定したものではありません。外生金利変更のGDP反応は未推計です。モデル間の差は統計的な信頼区間ではありません。</p>
       <p>減税は一般政府の税・社会負担収入を減らします。社会保険料の本人分・事業主分は配分を分けますが、賃金への転嫁、所得階層・年収の壁、給付変更を含む制度別の推計は未実施です。恒久費用は名目年額固定、既存歳出は基準経路に累積CPIの乖離を連動率に応じて反映します。公共資本・研究・教育・保育・送電網には供給シナリオを、半導体・発電には事業条件を適用します。医療・防衛等は未推計。分野別の資源制約は別途必要で、産業別利用率は初期値を保持します。</p>
       <p>債務・資金調達需要の定義の参考：<a className="text-primary-accent underline" href="https://www.imf.org/en/publications/tnm/issues/2025/01/24/a-guide-and-tool-for-projecting-public-gross-financing-needs-555913" target="_blank" rel="noreferrer">国際通貨基金：政府の総資金調達需要の推計ガイド（2025年・英語資料）</a>（2026-09-14確認）。この文献は入力数値・政策係数の出典ではありません。</p>
     </div></details>

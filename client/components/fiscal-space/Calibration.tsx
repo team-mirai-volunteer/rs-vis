@@ -22,7 +22,7 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="消費税の価格転嫁率" value={value.consumptionTax.passThrough * 100} min={0} max={100} step={10} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, passThrough: n / 100 })} />
       <RangeField label="表⑤から分離する直接CPI効果" value={value.consumptionTax.referenceDirectCpi} min={0} max={1} step={.01} unit="%/税率pt" onChange={n => change('consumptionTax', { ...value.consumptionTax, referenceDirectCpi: n })} />
     </div>
-    <p className="mt-3 text-xs">税収弾性値の既定値1.7は、国税の2015〜2024年度の実績を参考にした仮定です。このモデルでは社会保険料を含む税・社会負担収入全体に適用します。一般政府全体の推定値ではありません。政府の2026年度後年度試算は1.2を使用しています。<a className="text-primary-accent underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">出典：2026年4月10日・財務金融委員会答弁</a></p>
+    <p className="mt-3 text-xs">税収弾性値の既定値は1.1（中期経路の仮定）です。国税の短期実績を参考にした1.7は感度として比較します。このモデルでは社会保険料を含む税・社会負担収入全体に適用します。一般政府全体の推定値ではありません。政府の2026年度後年度試算は1.2を使用しています。<a className="text-primary-accent underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">出典：2026年4月10日・財務金融委員会答弁</a></p>
     <p className="mt-3 text-xs">長期金利は表①〜⑤の同じ年額・期間の反応を借換・新発債へ渡します。基準借換金利と外生ショックは財政計算の感度で、GDPへの追加反応は未推計。2022年モデルの金利反応は未接続です。</p>
     <p className="mt-2 text-xs">消費税は対象品目を一つの税率で近似。標準税率品目・軽減税率品目を想定するときは対象CPI比率・減収額・税率を併せて変更してください。1ポイント3.5兆円・対象85%・税率10%は換算仮定です。表⑤の直接CPI効果0.78%、デフレーター0.50%を分離する仮定を置き、転嫁率を掛けた直接価格効果に置換します。終了時は直接値下がりが消え、復税による反動が出ます。税率ゼロを超える減税は入力・探索対象外です。</p>
   </details>;

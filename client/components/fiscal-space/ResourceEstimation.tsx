@@ -19,11 +19,11 @@ export function ResourceEstimation({ result, value, onChange }: {
     </select></label>
     <p className="text-xs">産業は2020年の108部門の取引・雇用から6区分の追加人員を概算。設備稼働率ではありません。電力は2026年度を年0としてOCCTOの地域・季節別見通しを使います。GDPデータの年度とは別の需給シナリオです。公表GDP・物価反応には重ねて加算しません。</p>
     {result.resourceSensitivity.length > 0 && <div className="overflow-x-auto" role="region" tabIndex={0} aria-label="負荷推計の感度表">
-      <table className="w-full text-right text-sm"><caption className="text-left font-bold">負荷の仮定による参考上限の幅（留保後・年額）</caption>
+      <table className="w-full text-right text-sm"><caption className="text-left font-bold">負荷の仮定による参考上限の幅（任意控除後・年額）</caption>
         <thead><tr><th scope="col" className="py-2 text-left">概算負荷</th><th scope="col">参考上限</th><th scope="col">境界の制約</th></tr></thead>
         <tbody>{result.resourceSensitivity.map(row => <tr key={row.loadScale} className="border-t border-mirai-border">
           <th scope="row" className="py-2 text-left">{row.loadScale === .5 ? '低位' : row.loadScale === 1 ? '標準' : '高位'}（{row.loadScale}倍）</th>
-          <td>{money(row.space.recommendedEnvelope)}</td><td>{row.space.constraints.filter(c => c.status === 'violated').map(c => c.label).join('・') || (row.space.status === 'revenue-cap' ? '減収対象の収入' : row.space.status === 'empty-mix' ? '配分未入力' : '探索範囲の端')}</td>
+          <td>{row.space.status === 'unevaluated' ? '算出不可' : money(row.space.recommendedEnvelope, 1)}</td><td>{row.space.constraints.filter(c => c.status === 'violated').map(c => c.label).join('・') || (row.space.status === 'unevaluated' ? '負荷が未評価' : row.space.status === 'revenue-cap' ? '減収対象の収入' : row.space.status === 'empty-mix' ? '配分未入力' : '探索範囲の端')}</td>
         </tr>)}</tbody>
       </table><p className="mt-2 text-xs">0.5～1.5倍は未推定の感度幅です。信頼区間ではありません。手入力した政策の係数は固定します。別の制約が先に効けば、参考上限は変わりません。</p>
     </div>}

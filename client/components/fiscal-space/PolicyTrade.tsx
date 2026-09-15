@@ -41,7 +41,7 @@ export function PolicyTrade({ policies, value, onChange }: { policies: Policy[];
     <p>半導体の公的支援額・官民投資額・国内売上目標は異なる量です。政府の経済波及効果を輸出額やGDPへそのまま置き換えていません。<a className="underline" href={SEMICONDUCTOR_SOURCE} target="_blank" rel="noreferrer">経産省：AI・半導体支援</a></p>
     <details><summary className="cursor-pointer text-sm font-bold">政策別の事業条件から試算する</summary><div className="mt-4 space-y-4">
       <label className="block">試算する政策<select aria-label="試算する政策" className={`${fieldClass} mt-1`} value={value.selected} onChange={e => onChange({ ...value, selected: e.target.value })}>{policies.filter(p => PROJECT_POLICY_IDS.includes(p.id)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-      <p>{selected.name}の追加予算<strong>{money(selected.annualCost, 1)} / 年</strong>と継続期間を使用。設定した事業条件は<strong>上の政策比較・GDP・限界財政枠へ反映</strong>します。建設時の輸入は共通反応を補正し、稼働後の輸出・輸入代替・輸入原価を別に計算します。建設費の輸入割合が空欄なら共通反応を維持します。売上や運転時輸入費が未設定なら、稼働後の便益も費用も未算入です。</p>
+      <p>{selected.name}の追加予算<strong>{money(selected.annualCost, 1)} / 年</strong>と継続期間を使用。設定した事業条件は<strong>上の政策比較・GDP・条件付き参考額へ反映</strong>します。建設時の輸入は共通反応を補正し、稼働後の輸出・輸入代替・輸入原価を別に計算します。建設費の輸入割合が空欄なら共通反応を維持します。売上や運転時輸入費が未設定なら、稼働後の便益も費用も未算入です。</p>
       <p>潜在GDPには、事業が生む輸出＋輸入代替−輸入原価の正の部分を、海外との取引から見込む追加供給能力として反映します。実質GDPへの反映は国内の供給制約で制限します。既存事業の利益ではなく、政策による純増分の販売・置換条件を入力してください。</p>
       <p>{channel.timing}。補助率による民間投資の上乗せは仮定せず、入力した政策費用と同額の投資を想定します。金額は物価・為替を固定した比較です。</p>
       {isPower ? <>

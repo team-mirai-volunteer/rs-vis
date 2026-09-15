@@ -373,8 +373,9 @@ ${a.desc}`}>
                   {policy.executionRate != null ? (
                     <>
                       <div>執行率: {Math.round(policy.executionRate * 100)}%</div>
+                      <div>翌年度繰越額: {item.carryoverToNext == null ? '未確認' : formatAmount(item.carryoverToNext)}</div>
                       <div>
-                        不用額: {policy.unusedAmount ? formatAmount(policy.unusedAmount) : '0'}
+                        不用額（繰越を除く）: {policy.unusedAmount == null ? '判定不能' : formatAmount(policy.unusedAmount)}
                         {policy.unusedRatio != null && `（${Math.round(policy.unusedRatio * 100)}%）`}
                       </div>
                     </>
@@ -384,7 +385,7 @@ ${a.desc}`}>
                   {policy.priorExecutionRate != null ? (
                     <div className="text-mirai-text-muted">
                       前年度: 執行率 {Math.round(policy.priorExecutionRate * 100)}%・
-                      不用率 {Math.round((policy.priorUnusedRatio ?? 0) * 100)}%
+                      不用率 {policy.priorUnusedRatio == null ? '判定不能' : `${Math.round(policy.priorUnusedRatio * 100)}%`}
                     </div>
                   ) : (
                     <div className="text-mirai-text-muted">前年度: 実績なし（傾向は判定不能）</div>
@@ -568,12 +569,12 @@ ${a.desc}`}>
                 <div className="font-mono text-mirai-text-muted">
                   予算 {formatAmount(item.budgetAmount)} → 執行 {formatAmount(item.execAmount ?? 0)}
                   {policy?.executionRate != null
-                    ? `／執行率 ${Math.round(policy.executionRate * 100)}%・不用額 ${policy.unusedAmount ? formatAmount(policy.unusedAmount) : "0"}`
+                    ? `／執行率 ${Math.round(policy.executionRate * 100)}%・不用額 ${policy.unusedAmount == null ? '判定不能' : formatAmount(policy.unusedAmount)}`
                     : "／執行実績なし（予備的経費・未着手のため評価対象外）"}
                 </div>
                 <div className="font-mono text-mirai-text-muted">
                   前年度: {policy?.priorExecutionRate != null
-                    ? `執行率 ${Math.round(policy.priorExecutionRate * 100)}%・不用率 ${Math.round((policy.priorUnusedRatio ?? 0) * 100)}%`
+                    ? `執行率 ${Math.round(policy.priorExecutionRate * 100)}%・不用率 ${policy.priorUnusedRatio == null ? '判定不能' : `${Math.round(policy.priorUnusedRatio * 100)}%`}`
                     : "実績なし（判定不能）"}
                   {policy && (
                     <span className={`ml-2 font-sans ${UNUSED_TREND_META[policy.unusedTrend].cls}`}>
