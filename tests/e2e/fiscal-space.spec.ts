@@ -29,7 +29,6 @@ test('public investment shows commissioned benefits separately and overlap contr
 test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
-  await expect(page.getByText('税収弾性値 1.1・徴収ラグ 0年を仮定。', { exact: false })).toBeVisible();
   const result = page.getByTestId('horizon-results');
   await expect(result.getByRole('heading', { name: '5年目の結果（試算）' })).toBeVisible();
   await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.01%');
@@ -60,12 +59,18 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
   await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
   await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
-  await expect(page.getByTestId('tax-elasticity-sensitivity')).toContainText('1.7');
+  await expect(page.getByTestId('tax-elasticity-sensitivity')).toHaveCount(0);
   await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.0兆円');
   await expect(page.getByTestId('input-overview').getByTestId('recommended-envelope')).toHaveText('17.0兆円 / 年');
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
   await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('22.0兆円');
   await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('22.0兆円');
+  await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
+  const elasticity = page.getByLabel('名目GDPに対する税収弾性値・数値で入力', { exact: true });
+  await elasticity.fill('1.7');
+  await expect(page.getByText('名目GDPが1%増えたとき、税・社会保険料収入が約1.7%増える想定です（減税分を引く前）。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('269.54兆円');
+  await expect(page.getByText('債務経路の仮定：名目GDPへの税収弾性値 1.7', { exact: false })).toBeVisible();
 });
 
 test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
