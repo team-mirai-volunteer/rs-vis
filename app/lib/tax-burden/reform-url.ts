@@ -1,6 +1,7 @@
 import type { TaxState, TaxView } from '@/types/tax-burden';
 import { HOUSEHOLDS, initialTaxState, MODEL_VERSION, REFORM_LIMITS } from './households';
 import { BIRTH_AGE_RANGE } from './simulate';
+import { WORK_UNTIL_MAX } from './simulate-lifecycle';
 
 export { REFORM_LIMITS };
 
@@ -36,7 +37,7 @@ export function decodeTaxState(query: string): { state: TaxState; warning: strin
   state.income = numeric('income', state.income, 0, 20000000, true);
   state.share = numeric('share', state.share, 1, 99, true);
   state.continuation = numeric('continuation', state.continuation, 0, 1);
-  state.workUntil = numeric('workUntil', state.workUntil, 65, 75, true);
+  state.workUntil = numeric('workUntil', state.workUntil, 65, WORK_UNTIL_MAX, true);
   state.corporateShare = numeric('corporateShare', state.corporateShare, 0, 1);
   state.firstBirthAge = numeric('firstBirthAge', state.firstBirthAge, BIRTH_AGE_RANGE[0], BIRTH_AGE_RANGE[1], true);
   state.secondBirthAge = numeric('secondBirthAge', state.secondBirthAge, BIRTH_AGE_RANGE[0], BIRTH_AGE_RANGE[1], true);
