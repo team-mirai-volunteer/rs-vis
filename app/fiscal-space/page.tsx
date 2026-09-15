@@ -56,7 +56,9 @@ export default function FiscalSpacePage() {
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-10 pt-5">
       <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力を考える</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">財政余力シミュレータ（試作）。減税、公共投資、研究、エネルギー。使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
       <ShareScenario form={form} onPreset={amounts => setForm(f => ({ ...f, amounts }))} error={shareError} />
-      {pending && <p role="status" className="text-sm">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>}
+      {/* 再計算は一瞬で終わるので、結果がある間は見える場所に出さない（出すとスライダーを動かすたびに下の全体がずれる）。
+          読み上げ向けにだけ残す。最初の計算だけはまだ何も出ていないので、ずれる相手がおらず普通に出す。 */}
+      {pending && <p role="status" className={result ? 'sr-only' : 'text-sm'}>{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>}
       {error && <div role="alert" className="rounded-xl border border-mirai-border bg-card p-4 text-sm">
         <p>{error === 'worker' ? '計算を読み込めませんでした。再試行してください。' : 'この条件は計算範囲を超えています。入力を調整して再試行してください。'}</p>
         {result && <p>下の結果は直前に計算できた条件です。</p>}
