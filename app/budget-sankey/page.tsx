@@ -194,6 +194,10 @@ function UnifiedBudgetSankeyContent() {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
   const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
+  const [flowScale, setFlowScale] = useState(() => {
+    const value = Number(searchParams.get('th'));
+    return Number.isFinite(value) && value > 0 ? Math.min(8, Math.max(0.25, Math.round(value * 4) / 4)) : 1.25;
+  });
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
   /** sm 未満で表示数・設定を開いているか */
@@ -295,12 +299,13 @@ function UnifiedBudgetSankeyContent() {
     if (selectedId) params.set('sel', selectedId);
     if (focusRelated) params.set('fr', '1');
     if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
+    if (flowScale !== 1.25) params.set('th', String(flowScale));
     params.set('ld', labelDensity);
     serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -313,6 +318,8 @@ function UnifiedBudgetSankeyContent() {
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
       setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
+      const thickness = Number(params.get('th'));
+      setFlowScale(Number.isFinite(thickness) && thickness > 0 ? Math.min(8, Math.max(0.25, Math.round(thickness * 4) / 4)) : 1.25);
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
       setFilterOpen(params.get('ffp') === '1');
@@ -377,6 +384,7 @@ function UnifiedBudgetSankeyContent() {
         filterOpen={filterOpen}
         onToggleFilterOpen={() => setFilterOpen(v => !v)}
         fontPx={fontPx}
+        flowScale={flowScale}
         labelDensity={labelDensity}
         budgetYear={metadata.budgetYear}
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
@@ -402,12 +410,14 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>
-      <div className={cn('absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:max-w-[calc(100%-320px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:max-w-[calc(100%-320px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         <UnifiedSettings
           fontPx={fontPx}
           onFontPxChange={setFontPx}
           defaultFontPx={LABEL_FONT_PX_DEFAULT}
+          flowScale={flowScale}
+          onFlowScaleChange={setFlowScale}
           labelDensity={labelDensity}
           onLabelDensityChange={setLabelDensity}
           focusRelated={focusRelated}

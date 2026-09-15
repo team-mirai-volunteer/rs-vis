@@ -51,11 +51,11 @@ const trackClass =
   '[&::-webkit-slider-runnable-track]:h-full [&::-webkit-slider-runnable-track]:bg-transparent ' +
   '[&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 ' +
   '[&::-webkit-slider-thumb]:mt-0 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full ' +
-  '[&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-mirai-border-light [&::-webkit-slider-thumb]:bg-card [&::-webkit-slider-thumb]:shadow-xs ' +
+  '[&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-xs ' +
   '' +
   '[&::-moz-range-track]:h-full [&::-moz-range-track]:bg-transparent [&::-moz-range-track]:border-0 ' +
   '[&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full ' +
-  '[&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-mirai-border-light [&::-moz-range-thumb]:bg-card';
+  '[&::-moz-range-progress]:bg-transparent [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-primary';
 
 /** 項一覧の数値列を絞り込むレンジスライダー（下ハンドル・上ハンドルの2本＋直接入力） */
 export function RangeSlider({ label, note, domainMin, domainMax, value, onChange, formatValue, scale = 'linear' }: RangeSliderProps) {
@@ -132,9 +132,9 @@ export function RangeSlider({ label, note, domainMin, domainMax, value, onChange
       ) : (
         <>
           <div className="relative h-4">
-            <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mirai-surface-muted" />
+            <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mirai-progress-track" />
             <div
-              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-primary"
+              className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-mirai-text-muted"
               style={{ left: `${(posMin / STEPS) * 100}%`, right: `${100 - (posMax / STEPS) * 100}%` }}
             />
             <input

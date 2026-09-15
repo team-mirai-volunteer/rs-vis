@@ -193,7 +193,7 @@ export function HierarchyControls({
             aria-label={`${targetLabel}の開始位置`}
             value={current}
             onChange={e => commitOffset(Number(e.target.value))}
-            className="w-[60px] min-w-0"
+            className="policy-range w-[60px] min-w-0"
           />
           <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">
             /{total.toLocaleString()}件

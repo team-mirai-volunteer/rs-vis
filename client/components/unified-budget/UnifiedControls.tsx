@@ -34,7 +34,7 @@ export function UnifiedControls({
   if (rows.length === 0) return null;
   return (
     // 列ごとに独立したカードを横に並べる（1 枚 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
-    <div data-pan-disabled="true" className="flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+    <div data-pan-disabled="true" className="pointer-events-none flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
@@ -53,7 +53,7 @@ export function UnifiedControls({
           });
         };
         return (
-          <div key={column} className="w-[260px] min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
+          <div key={column} className="pointer-events-auto w-[260px] min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
           <RangeWindowRow
             label={UNIFIED_COLUMN_LABELS[column]}
             total={total}
