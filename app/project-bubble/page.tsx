@@ -17,6 +17,8 @@ import {
   type ColorMode, type LegendEntry, type SizeMetric,
 } from '@/app/lib/project-map-view';
 import type { ProjectMapCluster, ProjectMapPoint, ProjectMapResponse } from '@/types/project-map';
+import type { ProjectDetail } from '@/types/project-details';
+import { useCached } from '@/client/components/unified-budget/policy-summary-cache';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 
 type Year = '2024' | '2025';
@@ -767,6 +769,9 @@ function Legend({
   );
 }
 
+const detailCache = new Map<string, ProjectDetail | null>();
+const extractDetail = (d: unknown) => d as ProjectDetail;
+
 function SelectedPanel({
   point, cluster, year, onClose,
 }: {
@@ -775,6 +780,9 @@ function SelectedPanel({
   year: string;
   onClose: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const detail = useCached(detailCache, point ? `${year}-${point.pid}` : null, `/api/project-details/${point?.pid}?year=${year}`, extractDetail);
+  useEffect(() => { setExpanded(false); }, [point?.pid]);
   if (!point) {
     return (
       <div className="rounded-xl border border-dashed border-mirai-border p-4 text-center text-xs leading-relaxed text-mirai-text-muted">
@@ -816,6 +824,18 @@ function SelectedPanel({
           {point.years === null ? '不明' : `${point.years}年`}
         </dd>
       </dl>
+      {detail === undefined && <p className="mt-2.5 border-t border-border pt-2 text-[11px] text-mirai-text-muted">事業の説明を読み込んでいます…</p>}
+      {detail && (detail.purpose || detail.overview) && (
+        <div className={cn('mt-2.5 space-y-2 border-t border-border pt-2 text-[11px] leading-relaxed', !expanded && 'line-clamp-[10]')}>
+          {detail.purpose && <p><span className="font-bold text-mirai-text">目的</span><br />{detail.purpose}</p>}
+          {detail.overview && <p><span className="font-bold text-mirai-text">事業概要</span><br />{detail.overview}</p>}
+        </div>
+      )}
+      {detail && (detail.purpose || detail.overview) && (
+        <button type="button" className="mt-1 text-[11px] text-primary-accent underline" onClick={() => setExpanded(v => !v)}>
+          {expanded ? '説明を短く表示' : '説明を全文表示'}
+        </button>
+      )}
       {cluster && (
         <p className="mt-2.5 border-t border-border pt-2 text-[11px] leading-relaxed text-mirai-text-muted">
           近傍{cluster.count}事業の特徴語: {cluster.terms.join('・')}
