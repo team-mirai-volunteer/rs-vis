@@ -19,6 +19,8 @@ export const PARAMETERS: ModelParameters = {
   stockFlowAdjustmentRatio: 0,
   overflowImportShare: .4, inflationPassThrough: 1.4, inflationPersistence: .25,
   energyPricePassThrough: .25, investmentDepreciation: .03, goodsImportShare: .75,
+  energyDomesticPricePassThrough: .5, expenditurePriceIndexation: 1,
+  capacityPriceSensitivity: .005, capacityPressureStart: .85, referenceCapacityRatio: 1.10,
   essentialImportShare: .25, wageInflationPassThrough: .8, cesSigma: .8,
   weights: { capital: .3, labour: .4, energy: .15, materials: .15 },
   cobbWeights: { capital: .35, labour: .5, energy: .15 },

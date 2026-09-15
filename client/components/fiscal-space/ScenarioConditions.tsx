@@ -14,14 +14,24 @@ export function ModelSensitivity({ rows, horizon, controlInputs, controlParamete
 }) {
   return <section className="space-y-4 rounded-xl border border-mirai-border bg-card p-5" aria-label="参考上限の感度">
     <h2 className="text-lg font-bold">同じ配分の参考上限とモデル感度</h2>
-    <p className="text-sm">全期間で同じ生産関数を使い、同じ初期投入・CPI上限で比較します。未評価の産業・電力負荷を含むため、政策額の推奨値ではありません。</p>
-    <table className="w-full text-right text-sm"><thead><tr><th className="text-left">生産モデル</th><th>年間参考上限</th><th>評価期間</th></tr></thead><tbody>{rows.map(r => <tr key={r.label}><th className="py-2 text-left">{r.label}</th><td>{money(r.space.theoreticalMaximum)}{r.space.status === 'search-cap' ? '以上（探索上限）' : ''}</td><td>{horizon}年</td></tr>)}</tbody></table>
+    <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
+    <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。未評価の産業・電力負荷を含むため、政策額の推奨値ではありません。</p>
+    <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
+      <caption className="text-left">GDP・潜在GDPの効果は入力額の年{horizon}、CPIは評価期間のピーク。探索額は同じ配分を拡大した別の計算です。</caption>
+      <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間参考上限'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
+      <tbody>{rows.map(r => <tr key={r.label} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.label}</th><td>{money(r.initialMaximum)}</td><td>{money(r.potentialEffect)}</td><td>{money(r.gdpEffect)}</td><td>{percent(r.cpiPeak, 3)}</td><td>{points(r.capacityPriceAdjustment)}</td><td>{money(r.space.theoreticalMaximum)}{r.space.status === 'search-cap' ? '以上（探索上限）' : ''}</td></tr>)}</tbody>
+    </table></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="text-sm">使用する生産モデル<select className={fieldClass} value={controlParameters.productionModel} onChange={e => onParameters({ ...controlParameters, productionModel: e.target.value as ModelParameters['productionModel'] })}>{Object.entries(MODEL_LABELS).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
+      <label className="text-sm">使用する生産モデル<select aria-label="使用する生産モデル" className={fieldClass} value={controlParameters.productionModel} onChange={e => onParameters({ ...controlParameters, productionModel: e.target.value as ModelParameters['productionModel'] })}>{Object.entries(MODEL_LABELS).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
       <RangeField label="CPI上限の感度" value={controlInflation * 100} min={.1} max={10} step={.1} unit="%" onChange={n => onInflation(n / 100)} />
+      <RangeField label="稼働率による価格補正の強さ" value={controlParameters.capacityPriceSensitivity * 100} min={0} max={2} step={.1} unit="%" onChange={n => onParameters({ ...controlParameters, capacityPriceSensitivity: n / 100 })} />
+      <RangeField label="価格補正が始まる稼働率" value={controlParameters.capacityPressureStart * 100} min={50} max={95} step={5} unit="%" onChange={n => onParameters({ ...controlParameters, capacityPressureStart: n / 100 })} />
+      <RangeField label="価格補正の参照最大能力 / 潜在GDP" value={controlParameters.referenceCapacityRatio} min={1.01} max={1.5} step={.01} unit="倍" onChange={n => onParameters({ ...controlParameters, referenceCapacityRatio: n })} />
       {(Object.keys(INPUT_LABELS) as (keyof Inputs)[]).map(key => <RangeField key={key} label={`${INPUT_LABELS[key]}の初期投入指数`} value={controlInputs[key]} min={1} max={1.5} step={.01} unit="倍" onChange={n => onInputs({ ...controlInputs, [key]: n })} />)}
     </div>
     <p className="text-xs">投入指数は観測された余力ではなく仮定です。1.08は潜在GDPに必要な基準投入の1.08倍。コブ＝ダグラスは中間財を含まない既存の定式化で、モデル間の違いには投入範囲も含みます。探索上限には代表消費税率がゼロになる額も含みます。</p>
+    <p className="text-xs">通常稼働は初期投入の構成を保った比例利用と仮定し、各モデルで初期潜在GDPに一致させます。政策は投入量を変え、通常・最大能力を同じ関数で再計算します。研究はTFP、教育・保育・労働供給は有効労働、公共投資・産業事業は設備、発電・系統の燃料節約は有効エネルギーへ換算します。公共投資と事業の従来の供給係数は、設備0.35・エネルギー0.15という固定の参照弾力性で投入指数へ変換する仮定です。選択モデルの弾力性へ付け替えて効果を固定することはしません。発電の確実供給GWが設定されていれば、その増加率で有効エネルギー増分を制限します。未設定なら燃料節約由来の換算にとどまります。産業人員・電力ピークの制約は別途評価します。</p>
+    <p className="text-xs">稼働率uの価格水準圧力を[max(0, min(1,u)−開始稼働率)/(1−開始稼働率)]²と仮定。政策による増分から、同じ需要を参照最大能力で処理した増分を差し引きます。0.5%・85%・参照能力1.10倍は未推定の設定で、公表モデルの供給構造を再現した値ではありません。補正強度0で公表物価反応のみとの比較ができます。補正は価格水準に一度加え、前年比へ変換します。供給拡大や余力の差で補正が負になる場合もあります。</p>
   </section>;
 }
 
@@ -39,7 +49,7 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
     {total > 0 && <p className="mt-2 text-sm">参考上限の拘束：{binding.length ? binding.map(c => `${c.label}（年${c.year}）`).join('、') : '探索範囲では未特定'}。{binding.length > 0 && 'その他の評価済み制約は、この境界では非拘束です。'}</p>}
     <div className="mt-2 flex flex-wrap gap-1">{policies.map(p => <span key={p.id} className="rounded bg-mirai-surface-warm px-2 py-1 text-sm">{p.name} {money(p.annualCost, 1)}・{p.kind === 'permanent' ? '恒久' : `${p.duration}年`}</span>)}</div>
     <p className="mt-3 text-sm">前提：①公表実験の比例換算（入力額は初期GDPの{percent(total / projection.initial.state.macro.nominalGdp)}） ②最大GDP余力{percent(projection.initial.production.maximum / projection.initial.state.macro.realGdp - 1)}は投入指数の仮定 ③政策別の実証校正は未完了。</p>
-    {projection.steps.slice(0, horizon).every(s => s.inflationPressure === 0) && <p className="mt-2 text-sm">この入力額では最大生産能力の超過による物価圧力は発生していません。超過需要の輸入配分・価格転嫁係数は現在の入力結果に作用せず、物価反応は公表反応とGDPギャップ等の設定から生じます。</p>}
+    {projection.steps.slice(0, horizon).every(s => s.inflationPressure === 0) && <p className="mt-2 text-sm">この入力額では最大生産能力の超過による物価圧力は発生していません。超過需要の輸入配分・価格転嫁係数は現在の入力結果に作用せず、物価反応は公表反応、GDPギャップ、参照条件からの稼働率価格補正等から生じます。</p>}
     <p className="mt-3 text-xs">参考上限は入力した構成比・期間を保って拡大縮小した総額です。入力額に足す金額ではありません。{estimate.status === 'search-cap' && '探索上限（消費税の税率ゼロを含む）まで違反が見つかっていません。'}{estimate.status === 'baseline-violated' && '政策なしでも既存の閾値違反があります。'}{incomplete && ' 産業別・電力の追加負荷に未評価の項目があります。'}</p>
   </section>;
 }
@@ -77,14 +87,14 @@ export function LongRun({ rows, value, onChange }: {
 }) {
   return <section className="space-y-4 rounded-xl border border-mirai-border bg-card p-5" aria-label="長期シナリオ">
     <h2 className="text-lg font-bold">長期の債務・供給力シナリオ</h2>
-    <p className="text-sm">公表乗数の期間後は、下の成長率・物価・借換金利・便益実現率で条件付き計算します。公表モデルによる予測でも、長期の財政上限でもありません。恒久政策の費用は毎年残り、投資便益は稼働時期・耐用年数・減耗に従います。</p>
+    <p className="text-sm">公表乗数の期間後は、下の成長率・物価・借換金利・便益実現率で条件付き計算します。公表モデルによる予測でも、長期の財政上限でもありません。恒久政策の費用は毎年残り、投資便益は稼働時期・耐用年数・減耗に従います。名目年額は固定し、短期終了後の各支出年の期首価格に長期物価を反映して購入量を計算します。過去に支出した投資の量は変えません。</p>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <RangeField label="長期の実質成長率" value={value.realGrowth * 100} min={-1} max={3} step={.1} unit="%" onChange={n => onChange({ ...value, realGrowth: n / 100 })} />
       <RangeField label="長期の基準物価上昇率" value={value.inflation * 100} min={0} max={5} step={.1} unit="%" onChange={n => onChange({ ...value, inflation: n / 100 })} />
       <RangeField label="長期の借換金利" value={value.rate * 100} min={0} max={6} step={.1} unit="%" onChange={n => onChange({ ...value, rate: n / 100 })} />
       <RangeField label="長期便益の実現率" value={value.realization * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, realization: n / 100 })} />
     </div>
-    <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-right text-sm"><caption className="text-left text-xs">供給便益は年0価格。債務/GDP差は同じ長期条件の政策なし経路との差。</caption><thead><tr>{['年', '年間政策費用', '年間供給便益', '債務/GDP', '政策なしとの差', '利払い'].map(x => <th key={x} className="p-2">{x}</th>)}</tr></thead><tbody>{rows.filter(r => [rows[0]?.year, 6, 10, 11, 20, 30].includes(r.year)).map(r => <tr key={r.year} className="border-t border-mirai-border"><th className="p-2">{r.year}</th><td>{money(r.policyCost)}</td><td>{money(r.supplyBenefit)}</td><td>{percent(r.debtGdp)}</td><td>{points(r.debtGdp - r.baselineDebtGdp)}</td><td>{money(r.interest)}</td></tr>)}</tbody></table></div>
-    <p className="text-xs">短期末のGDP・価格の乖離は5年で解消する仮定。供給便益には設定した純追加性に加えて上記実現率を掛けます。金利からGDPへの追加効果、長期の産業・物価制約は未推計です。</p>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="長期投資の試算表"><table className="w-full min-w-[650px] text-right text-sm"><caption className="text-left text-xs">供給便益は年0価格。債務/GDP差は同じ長期条件の政策なし経路との差。</caption><thead><tr>{['年', '年間政策費用', '年間供給便益', '債務/GDP', '政策なしとの差', '利払い'].map(x => <th scope="col" key={x} className="p-2">{x}</th>)}</tr></thead><tbody>{rows.filter(r => [rows[0]?.year, 6, 10, 11, 20, 30].includes(r.year)).map(r => <tr key={r.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{r.year}</th><td>{money(r.policyCost)}</td><td>{money(r.supplyBenefit)}</td><td>{percent(r.debtGdp)}</td><td>{points(r.debtGdp - r.baselineDebtGdp)}</td><td>{money(r.interest)}</td></tr>)}</tbody></table></div>
+    <p className="text-xs">短期末のGDP・価格の乖離は5年で解消する仮定。CPIの乖離による既存歳出の連動分も同じ期間で解消します。供給便益には設定した純追加性に加えて上記実現率を掛けます。金利からGDPへの追加効果、長期の産業・物価制約は未推計です。</p>
   </section>;
 }

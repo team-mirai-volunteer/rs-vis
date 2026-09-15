@@ -16,6 +16,8 @@ import { supplyRecords } from '@/app/lib/fiscal-space/supply';
 import type { FiscalSpaceEstimate, ModelParameters } from '@/types/fiscal-space';
 import type { FiscalForm } from './fiscal-space-form';
 import { configuredPower } from './fiscal-space-trade';
+import { policyCostYen } from './fiscal-space-amounts';
+import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensitivity';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
 
@@ -48,8 +50,7 @@ export function createFiscalEngine() {
     }));
     const policies = policyConfigs.map(policy => ({
       ...policy,
-      annualCost: Math.min((form.amounts[policy.id] ?? 0) * TRILLION,
-        policy.id === 'consumption-tax' ? consumptionTaxLimit(p) : Infinity),
+      annualCost: policyCostYen(policy.id, form.amounts[policy.id] ?? 0, p),
     }));
     const allocated = policies.filter(policy => policy.annualCost > 0);
     const mix = policies.map(policy => ({ policy, weight: policy.annualCost }));
@@ -61,6 +62,12 @@ export function createFiscalEngine() {
     const riskAudit = auditFiscalSpace(initial, mix, estimate, form.thresholds, horizon, p, shock);
     const constraints = peakConstraints({ ...projection, steps: projection.steps.slice(0, horizon) }, form.thresholds);
     const baselineConstraints = peakConstraints({ ...baseline, steps: baseline.steps.slice(0, horizon) }, form.thresholds);
+    const probePolicies = totalYen > 0 ? allocated.map(policy => ({ ...policy,
+      annualCost: policy.annualCost * (totalYen + TRILLION) / totalYen })) : [];
+    const canProbe = probePolicies.length > 0 && probePolicies.every(policy =>
+      policy.id !== 'consumption-tax' || policy.annualCost <= consumptionTaxLimit(p));
+    const sensitivity = constraintSensitivity({ ...projection, steps: projection.steps.slice(0, horizon) },
+      canProbe ? simulate(initial, probePolicies, horizon, p, shock) : undefined, form.thresholds);
     const key = JSON.stringify([initial, policyConfigs, form.thresholds, horizon, p, shock]);
     if (cache?.key !== key) {
       cache = { key, singleSpaces: new Map(policyConfigs.map(policy => [policy.id,
@@ -75,10 +82,18 @@ export function createFiscalEngine() {
     const shocks = rateShockComparison(initial, allocated, p);
     const peaksByYear = projection.steps.map(step => evaluateConstraints(step, form.thresholds)
       .sort((a, b) => b.utilization - a.utilization)[0].label);
-    const modelSensitivity = Object.entries(MODEL_LABELS).map(([id, label]) => ({ label,
-      space: estimateFiscalSpace(initial, mix, form.thresholds, horizon,
-        { ...p, productionModel: id as ModelParameters['productionModel'] }, shock),
-    }));
+    const modelSensitivity = Object.entries(MODEL_LABELS).map(([id, label]) => {
+      const parameters = { ...p, productionModel: id as ModelParameters['productionModel'] };
+      const path = simulate(initial, allocated, horizon, parameters, shock);
+      const base = simulate(initial, [], horizon, parameters, shock);
+      const last = path.steps[horizon - 1];
+      return { label, initialMaximum: path.initial.production.maximum,
+        potentialEffect: last.state.macro.potentialGdp - base.steps[horizon - 1].state.macro.potentialGdp,
+        gdpEffect: last.state.macro.realGdp - base.steps[horizon - 1].state.macro.realGdp,
+        cpiPeak: Math.max(...[path.initial, ...path.steps].map(constraintInflation)),
+        capacityPriceAdjustment: last.demand.capacityPriceAdjustment,
+        space: estimateFiscalSpace(initial, mix, form.thresholds, horizon, parameters, shock) };
+    });
     const longRun = longRunScenario(initial, allocated, projection, baseline, p, form.longRun);
     const durationSensitivity = allocated.some(policy => policy.kind !== 'permanent')
       ? Array.from({ length: publishedYears }, (_, i) => i + 1).map(duration => {
@@ -99,7 +114,7 @@ export function createFiscalEngine() {
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
-      estimate, riskAudit, constraints, baselineConstraints, comparison, shocks, peaksByYear,
+      estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear,
       modelSensitivity, longRun, durationSensitivity, records };
   };
 }

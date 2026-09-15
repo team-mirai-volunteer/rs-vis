@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { PolicyComparison, PolicyComparisonPeriod } from '@/types/fiscal-space';
 import { KIND_LABELS, money, percent, points } from './format';
 
-const amount = (v: number) => Math.abs(v) < 5e8 && v !== 0 ? `${v > 0 ? '+' : '−'}0.001兆円未満` : `${v > 0 ? '+' : ''}${(v / 1e12).toFixed(3)}兆円`;
+const amount = (v: number) => Math.abs(v) < 5e9 && v !== 0 ? `${v > 0 ? '+' : '−'}0.01兆円未満` : `${v > 0 ? '+' : ''}${(v / 1e12).toFixed(2)}兆円`;
 type Field = keyof Omit<PolicyComparisonPeriod, 'year'>;
 
 function PeriodValues({ row, field }: { row: PolicyComparison; field: Field }) {
@@ -19,6 +19,7 @@ export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizo
   return <Card><CardHeader><h2 className="text-lg font-bold">次の1兆円を何に使うか</h2>
     <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年で比較します。金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
     <p className="text-xs leading-relaxed">経済財政モデルは5年、短期日本経済モデルは3年までの公表反応を使用。公表期間外や未設定の供給・代替経路は「未推計」です。国内代替は輸入品・燃料を国産品・国内発電で置き換える額で、稼働前はゼロになります。</p>
+    <p className="text-xs">金額は0.01兆円単位に丸めています。表示桁は推定精度ではなく、係数や事業条件の不確実性はこれより大きい可能性があります。</p>
     <p className="text-xs leading-relaxed">貿易収支のマイナスは、この1兆円を追加しない場合より悪化する意味です。主表は政府支出一般の輸入増・輸出減も含むため、発電の燃料代替があってもマイナスになり得ます。政策固有の需要波及は未校正で、この符号だけでは発電投資の要否を判断できません。</p>
   </CardHeader><CardContent className="space-y-6">
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="次の1兆円の政策比較表">

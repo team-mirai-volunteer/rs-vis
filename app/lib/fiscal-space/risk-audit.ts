@@ -51,7 +51,7 @@ export function auditFiscalSpace(initial: EconomyState, mix: PolicyShare[], esti
     sensitivity: cpiLimits.map(limit => {
       const alternate = limit === thresholds.inflation ? estimate :
         estimateFiscalSpace(initial, mix, { ...thresholds, inflation: limit }, horizon, p, shock);
-      return { limit, amount: alternate.recommendedEnvelope, status: alternate.status, current: limit === thresholds.inflation };
+      return { limit, amount: alternate.recommendedEnvelope, beforeReserve: alternate.theoreticalMaximum, status: alternate.status, current: limit === thresholds.inflation };
     }),
   };
 }

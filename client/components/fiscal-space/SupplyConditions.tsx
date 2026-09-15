@@ -5,10 +5,11 @@ import { fieldClass } from './format';
 export function SupplyConditions({ value, onChange }: { value: Record<string, SupplyCase>; onChange: (v: Record<string, SupplyCase>) => void }) {
   return <Card><CardHeader><h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>
     <p className="text-xs leading-relaxed">研究・公共資本・教育は支出後も残る効果、保育は利用中の就労効果を計算します。純追加性は、既存の投資の置換や実施失敗を除いて効果を生む割合。初期50%は比較条件で、日本の実証値ではありません。</p>
+    <p className="text-xs leading-relaxed">以下の式は投入への参照換算です。実際の供給力は設備・有効労働・エネルギー・TFPに変換し、選択した生産関数で再計算します。レオンチェフでは不足していない投入の増加だけでは潜在GDPが増えない場合があります。</p>
   </CardHeader><CardContent className="space-y-2 text-xs">{Object.entries(SUPPLY_CASES).map(([id, ref]) => <details key={id} className="rounded-lg border border-mirai-border p-3">
     <summary className="cursor-pointer font-bold">{ref.label}：純追加性{Math.round(value[id].additionality * 100)}%・{value[id].lag}年後から</summary>
     <p className="mt-3 leading-relaxed">{ref.evidence} <a href={ref.source} className="underline" target="_blank" rel="noreferrer">出典</a></p>
-    <p className="mt-2 leading-relaxed">{ref.formula}</p>
+    <p className="mt-2 leading-relaxed">参照換算：{ref.formula}</p>
     <div className="mt-3 grid gap-3 sm:grid-cols-3">{([
       ['additionality', '純追加性', 100, 0, 100, 5], ['lag', '効果までの年数', 1, 0, 30, 1],
       ['depreciation', '年間減耗率', 100, 0, 100, 1], ['lifetime', '効果期間', 1, 1, 60, 1],

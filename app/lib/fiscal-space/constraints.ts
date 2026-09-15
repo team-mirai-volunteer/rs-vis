@@ -32,6 +32,7 @@ export function evaluateConstraints(step: ProjectionStep, thresholds: Thresholds
     if (!Number.isFinite(threshold) || threshold <= 0) throw new RangeError(`Invalid threshold: ${d.id}`);
     const currentValue = d.measure(step), utilization = currentValue / threshold;
     return { id: d.id, label: d.label, year: step.state.year, currentValue, threshold, utilization,
+      coverageComplete: !((d.id === 'sector' || d.id === 'energy') && step.coverage?.[d.id] === false),
       status: !Number.isFinite(utilization) || utilization > 1 ? 'violated' :
         ((d.id === 'sector' || d.id === 'energy') && step.coverage?.[d.id] === false) ? 'unevaluated' : 'safe',
       explanation: d.explain(step) + (d.id === 'energy' && step.coverage?.energy === false ? ' 政策による追加電力負荷は一部または全部が未評価です。' : '') };
@@ -40,10 +41,13 @@ export function evaluateConstraints(step: ProjectionStep, thresholds: Thresholds
 /** One peak observation per constraint, including year zero. Never average away a violation. */
 export function peakConstraints(simulation: Simulation, thresholds: Thresholds): ConstraintResult[] {
   const peaks = new Map<string, ConstraintResult>();
+  const incomplete = new Set<string>();
   for (const step of [simulation.initial, ...simulation.steps]) for (const r of evaluateConstraints(step, thresholds)) {
+    if (r.coverageComplete === false) incomplete.add(r.id);
     const old = peaks.get(r.id);
     const priority = { safe: 0, unevaluated: 1, violated: 2 };
     if (!old || priority[r.status] > priority[old.status] || (priority[r.status] === priority[old.status] && r.utilization > old.utilization)) peaks.set(r.id, r);
   }
-  return [...peaks.values()].sort((a, b) => b.utilization - a.utilization);
+  return [...peaks.values()].map(r => ({ ...r, coverageComplete: !incomplete.has(r.id) }))
+    .sort((a, b) => b.utilization - a.utilization);
 }

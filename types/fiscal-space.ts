@@ -21,7 +21,7 @@ export interface EconomyState {
     grossDebt: number; financialAssets: number; netDebt: number;
     liquidFinancialAssets: number; liquidityAdjustedNetDebt: number };
   debtPortfolio: DebtBucket[];
-  production: { inputs: Inputs; tfp: number; labourProductivity: number };
+  production: { inputs: Inputs; tfp: number; labourProductivity: number; normalInputs?: Inputs; basePotentialGdp?: number };
   labour: { labourForce: number; employment: number; unemployment: number; hoursWorked: number;
     participation: number; wageGrowth: number; sectorUtilization: Record<Sector, number> };
   energy: { primaryDemand: number; domesticSupply: number; importedEnergy: number; fossilFuelImportDependency: number;
@@ -77,6 +77,8 @@ export interface ModelParameters {
   stockFlowAdjustmentRatio: number;
   overflowImportShare: number; inflationPassThrough: number; inflationPersistence: number;
   energyPricePassThrough: number; investmentDepreciation: number; goodsImportShare: number;
+  energyDomesticPricePassThrough: number; expenditurePriceIndexation: number;
+  capacityPriceSensitivity: number; capacityPressureStart: number; referenceCapacityRatio: number;
   essentialImportShare: number; wageInflationPassThrough: number; cesSigma: number;
   weights: Inputs; cobbWeights: Omit<Inputs, 'materials'>;
   searchCap: number; searchStep: number; searchTolerance: number; reserveShare: number;
@@ -84,6 +86,8 @@ export interface ModelParameters {
 export type ConstraintId = 'debt' | 'interestGdp' | 'interestTax' | 'gfn' | 'inflation' | 'capacity' | 'labour' | 'sector' | 'energy' | 'external';
 export type Thresholds = Record<ConstraintId, number>;
 export interface ConstraintResult {
+  /** Independent of violation status: all evaluated years have known policy loads. */
+  coverageComplete?: boolean;
   id: ConstraintId; label: string; year: number; currentValue: number; threshold: number;
   utilization: number; status: 'safe' | 'violated' | 'unevaluated'; explanation: string;
 }
@@ -92,10 +96,12 @@ export interface ConstraintDefinition {
   explain: (step: ProjectionStep) => string;
 }
 export interface ProductionResult {
+  potential: number;
   leontief: number; ces: number; cobbDouglas: number; maximum: number;
   binding: Input; second: Input; utilization: Inputs; remainingSlack: Inputs;
 }
 export interface DemandResult {
+  capacityPriceAdjustment: number;
   directTaxPriceEffect: number; directTaxDeflatorEffect: number; longRateEffect: number;
   additionalDemand: number; realOutput: number; exports: number; imports: number; prices: number;
   domesticSubstitution: number; projectEnergyNetImports: number;
@@ -109,6 +115,7 @@ export interface FiscalMetrics {
   effectiveRate: number; stabilizingPrimaryBalance: number; stockFlowAdjustmentGdp: number;
 }
 export interface ProjectionStep {
+  importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
   taxAdjustedInflation?: number; refinancingRate?: number; referenceRateEffect?: number;
   coverage?: { sector: boolean; energy: boolean };
   electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number };

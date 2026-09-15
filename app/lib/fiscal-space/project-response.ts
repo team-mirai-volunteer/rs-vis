@@ -3,6 +3,7 @@ import { calibratedResponse, policyProfile } from './calibration';
 import { industryTrade, powerTrade, powerComponents } from './policy-trade';
 import { effectiveSupplyStock } from './supply';
 import { electricityBaseline } from './electricity-baseline';
+import { investmentPricePath, type InvestmentPricePath } from './investment-price';
 
 // Factory/power project inputs. Grid has its own fuel-saving pathway below;
 // roads and transmission assets are not treated as export factories.
@@ -19,7 +20,7 @@ export interface ProjectFlow {
 }
 export const projectNetOutput = (flow: ProjectFlow) => flow.exports + flow.substitution - flow.operatingImports - flow.domesticOperatingCost;
 
-export function projectResponse(initial: EconomyState, policy: Policy, year: number, p: ModelParameters): ProjectFlow {
+export function projectResponse(initial: EconomyState, policy: Policy, year: number, p: ModelParameters, prices: InvestmentPricePath = investmentPricePath(initial, p)): ProjectFlow {
   const result = { exports: 0, substitution: 0, operatingImports: 0, firmGw: 0,
     grid: false, renewableSubstitution: 0, gridOverlapShare: 0, domesticOperatingCost: 0,
     power: policy.trade?.kind === 'power', operatingConfigured: false, retention: 1,
@@ -30,7 +31,7 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
     const c = policy.supply;
     const maintenance = c.maintenanceRate ?? .01, imported = c.maintenanceImportShare ?? .2, overlap = c.generationOverlapShare ?? 1;
     if ([maintenance, imported, overlap].some(v => !Number.isFinite(v) || v < 0 || v > 1)) throw new RangeError('Invalid grid operating assumptions');
-    const stock = effectiveSupplyStock(initial, policy, year, p);
+    const stock = effectiveSupplyStock(initial, policy, year, p, false, prices);
     result.grid = true; result.power = true; result.operatingConfigured = true; result.gridOverlapShare = overlap;
     // The existing yield is net of maintenance. Recover fuel savings, exclude
     // domestic fuel expenditure, then charge imported and domestic upkeep once.
@@ -44,7 +45,7 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
   if (config.kind === 'power' && policy.id !== 'generation') throw new RangeError('Power configuration requires generation investment');
   if (config.kind === 'power' && config.assumptions.mix) {
     const components = powerComponents(config.assumptions);
-    const flows = components.map(x => projectResponse(initial, { ...policy, annualCost: policy.annualCost * x.share, trade: { kind: 'power', assumptions: x.assumptions } }, year, p));
+    const flows = components.map(x => projectResponse(initial, { ...policy, annualCost: policy.annualCost * x.share, trade: { kind: 'power', assumptions: x.assumptions } }, year, p, prices));
     for (const key of ['exports', 'substitution', 'operatingImports', 'firmGw', 'renewableSubstitution', 'domesticOperatingCost', 'capexImportCorrection'] as const) result[key] = flows.reduce((sum, f) => sum + f[key], 0);
     result.retention = flows.reduce((sum, f, i) => sum + f.retention * components[i].share, 0);
     result.operatingConfigured = flows.every(f => f.operatingConfigured);
@@ -52,13 +53,12 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
   }
   result.operatingConfigured = config.kind === 'industry'
     ? config.assumptions.annualSalesPerInvestment !== null : config.assumptions.operatingImportYenPerKwh !== null;
-  if (result.operatingConfigured && [policy.potentialGdpEffect, policy.tfpEffect, policy.labourProductivityEffect, policy.energyCapacityEffect].some(v => v > 0)) {
+  if (result.operatingConfigured && [policy.potentialGdpEffect, policy.tfpEffect, policy.labourProductivityEffect, policy.energyCapacityEffect, policy.capitalEffect].some(v => v > 0)) {
     throw new RangeError('Use project capacity or generic supply coefficients, not both for the same investment');
   }
-  let price = initial.macro.nominalGdp / initial.macro.realGdp;
   for (let paid = 1; paid <= year; paid++) {
     if (policy.kind === 'permanent' || paid <= policy.duration) {
-      const vintage = { ...policy, annualCost: policy.annualCost / price, kind: 'temporary' as const, duration: 1 };
+      const vintage = { ...policy, annualCost: policy.annualCost / prices(paid), kind: 'temporary' as const, duration: 1 };
       const flow = config.kind === 'industry'
         ? industryTrade(vintage, year - paid + 1, config.assumptions)
         : powerTrade(vintage, year - paid + 1, config.assumptions);
@@ -69,8 +69,6 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
       }
       if ('firmGw' in flow) result.firmGw += flow.firmGw ?? 0;
     }
-    // Baseline price before payment in paid+1.
-    if (paid < year) price *= 1 + p.baselineInflation + p.inflationPersistence ** paid * (initial.macro.inflation - p.baselineInflation);
   }
   const share = config.assumptions.capexImportShare;
   if (config.kind === 'power' && config.assumptions.technology !== 'nuclear') result.renewableSubstitution = result.substitution;
@@ -80,7 +78,7 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
     const anchor = policyProfile(policy, p).imports[0] * initial.external.imports / initial.macro.nominalGdp;
     if (anchor < 0 || anchor >= 1) throw new RangeError('Reference import anchor outside the adjustment domain');
     result.retention = (1 - share) / (1 - anchor);
-    const cost = policy.kind === 'permanent' || year <= policy.duration ? policy.annualCost / price : 0;
+    const cost = policy.kind === 'permanent' || year <= policy.duration ? policy.annualCost / prices(year) : 0;
     result.capexImportCorrection = cost * (share - anchor * result.retention);
   }
   return result;
@@ -88,8 +86,8 @@ export function projectResponse(initial: EconomyState, policy: Policy, year: num
 
 /** Cap overlapping import replacement jointly across policies and vintages.
  * These national ceilings prevent negative imports, not sector market forecasts. */
-export function projectResponses(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters) {
-  const flows = policies.map(policy => projectResponse(initial, policy, year, p));
+export function projectResponses(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, prices: InvestmentPricePath = investmentPricePath(initial, p)) {
+  const flows = policies.map(policy => projectResponse(initial, policy, year, p, prices));
   const price = initial.macro.nominalGdp / initial.macro.realGdp;
   // A master-plan grid benefit can overlap the extra renewable generation.
   // Remove the shared portion once across all grid investments, independent

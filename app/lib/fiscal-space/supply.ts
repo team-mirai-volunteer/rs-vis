@@ -1,6 +1,7 @@
 import type { EconomyState, ModelParameters, Policy, SourceValue } from '@/types/fiscal-space';
 import { REFERENCES } from './calibration';
 import { powerComponents } from './policy-trade';
+import { investmentPricePath, type InvestmentPricePath } from './investment-price';
 
 export interface SupplyCase {
   kind: 'capital' | 'research' | 'education' | 'childcare' | 'grid';
@@ -58,35 +59,39 @@ export function hasCommercialSupply(policy: Policy) {
     : policy.trade?.kind === 'power' && powerComponents(policy.trade.assumptions).every(x => x.assumptions.operatingImportYenPerKwh !== null);
 }
 
-export function effectiveSupplyStock(initial: EconomyState, policy: Policy, year: number, p: ModelParameters, realized = false) {
+export function effectiveSupplyStock(initial: EconomyState, policy: Policy, year: number, p: ModelParameters, realized = false, prices = investmentPricePath(initial, p)) {
   const c = policy.supply;
   if (!c) return 0;
-  if ([policy.potentialGdpEffect, policy.tfpEffect, policy.labourProductivityEffect].some(v => v !== 0)) {
+  if ([policy.potentialGdpEffect, policy.tfpEffect, policy.labourProductivityEffect, policy.capitalEffect, policy.energyCapacityEffect].some(v => v !== 0)) {
     throw new RangeError('Supply scenario and manual productivity coefficients cannot be combined');
   }
   if (!Object.values(c).every(v => typeof v !== 'number' || Number.isFinite(v)) ||
     c.additionality < 0 || c.additionality > 1 || c.depreciation < 0 || c.depreciation > 1 ||
     !Number.isInteger(c.lag) || c.lag < 0 || !Number.isInteger(c.lifetime) || c.lifetime < 1 ||
     c.unitCost <= 0 || c.yield < 0 || c.yield > 1 || c.employment < 0 || c.employment > 1) throw new RangeError('Invalid supply scenario');
-  let price = initial.macro.nominalGdp / initial.macro.realGdp;
   let stock = 0;
   for (let paid = 1; paid <= year; paid++) {
     const age = year - paid - c.lag;
     if ((policy.kind === 'permanent' || paid <= policy.duration) && age >= 0 && age < c.lifetime) {
       const referenceYears = REFERENCES[p.referenceModel].years;
       const realization = realized ? Math.min(1, Math.max(0, (year - paid + 1 - referenceYears) / (10 - referenceYears))) : 1;
-      stock += policy.annualCost / price * c.additionality * (1 - c.depreciation) ** age * realization;
+      stock += policy.annualCost / prices(paid) * c.additionality * (1 - c.depreciation) ** age * realization;
     }
-    price *= 1 + p.baselineInflation + p.inflationPersistence ** paid * (initial.macro.inflation - p.baselineInflation);
   }
   return stock;
 }
 
+/** Reference output for interpreting the source coefficient, not selected-model
+ * potential. The simulation applies supplyInputs through policyProduction. */
 export function supplyResponse(initial: EconomyState, policy: Policy, year: number, p: ModelParameters, realized = false) {
   const c = policy.supply;
   // Grid savings now enter through the energy/trade path, exactly once.
   if (!c || c.kind === 'grid' || hasCommercialSupply(policy)) return 0;
   const stock = effectiveSupplyStock(initial, policy, year, p, realized);
+  return supplyFromStock(initial, c, stock, p);
+}
+
+function supplyFromStock(initial: EconomyState, c: SupplyCase, stock: number, p: ModelParameters) {
   if (c.kind === 'capital') return initial.macro.potentialGdp * Math.expm1(c.yield * Math.log1p(stock / (initial.macro.realGdp * c.unitCost)));
   if (c.kind === 'education' || c.kind === 'childcare') {
     const price0 = initial.macro.nominalGdp / initial.macro.realGdp;
@@ -99,17 +104,43 @@ export function supplyResponse(initial: EconomyState, policy: Policy, year: numb
   return stock * c.yield;
 }
 
-/** Pool identical capital cases before applying decreasing returns; splitting a
- * policy across rows must never manufacture additional productivity. */
-export function supplyTotal(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false) {
-  const pooled = new Map<string, Policy>();
+/** Map the reference output scenarios to inputs BEFORE choosing a production
+ * function. Fixed bridge elasticities (capital .35, energy .15) are
+ * conversion assumptions, not re-estimated effects for each selected model. */
+export function supplyInputs(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false, prices = investmentPricePath(initial, p)) {
+  const result = { capital: 1, labour: 1, energy: 1, materials: 1, tfp: 1 };
+  const pooled = new Map<string, { c: SupplyCase; stock: number }>();
   for (const policy of policies) {
-    if (!policy.supply || hasCommercialSupply(policy)) continue;
-    const key = JSON.stringify([policy.id, policy.kind, policy.duration, policy.supply]);
-    const old = pooled.get(key);
-    pooled.set(key, old ? { ...old, annualCost: old.annualCost + policy.annualCost } : policy);
+    const c = policy.supply;
+    if (!c || c.kind === 'grid' || hasCommercialSupply(policy)) continue;
+    const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment]);
+    const stock = effectiveSupplyStock(initial, policy, year, p, realized, prices);
+    pooled.set(key, { c, stock: (pooled.get(key)?.stock ?? 0) + stock });
   }
-  return [...pooled.values()].reduce((sum, policy) => sum + supplyResponse(initial, policy, year, p, realized), 0);
+  for (const { c, stock } of pooled.values()) {
+    if (c.kind === 'capital') {
+      result.capital += Math.expm1(c.yield / .35 * Math.log1p(stock / (initial.macro.realGdp * c.unitCost)));
+    } else if (c.kind === 'education' || c.kind === 'childcare') {
+      const people = stock / (c.unitCost / (initial.macro.nominalGdp / initial.macro.realGdp)) * c.employment;
+      const effect = c.kind === 'education' ? Math.expm1(c.yield) : c.yield;
+      result.labour += Math.min(people * effect / initial.labour.employment, .1);
+    } else result.tfp += stock * c.yield / initial.macro.potentialGdp;
+  }
+  return result;
+}
+
+/** Pooled reference output only; selected-model supply uses supplyInputs. */
+export function supplyTotal(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false, prices: InvestmentPricePath = investmentPricePath(initial, p)) {
+  const pooled = new Map<string, { supply: SupplyCase; stock: number }>();
+  for (const policy of policies) {
+    if (!policy.supply || policy.supply.kind === 'grid' || hasCommercialSupply(policy)) continue;
+    const c = policy.supply;
+    const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment]);
+    const stock = effectiveSupplyStock(initial, policy, year, p, realized, prices);
+    const old = pooled.get(key);
+    pooled.set(key, { supply: c, stock: (old?.stock ?? 0) + stock });
+  }
+  return [...pooled.values()].reduce((sum, x) => sum + supplyFromStock(initial, x.supply, x.stock, p), 0);
 }
 
 export function supplyRecords(cases: Record<string, SupplyCase>): SourceValue[] {
@@ -119,6 +150,6 @@ export function supplyRecords(cases: Record<string, SupplyCase>): SourceValue[] 
     unit: key === 'lag' || key === 'lifetime' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
     referenceYear: `政策別供給シナリオ・${labels[key]}`, sourceName: SUPPLY_CASES[id].label,
     sourceUrl: SUPPLY_CASES[id].source, status: 'assumption' as const,
-    uncertaintyNote: `${SUPPLY_CASES[id].evidence} ${SUPPLY_CASES[id].formula} 係数・時期は変更可能な条件で、信頼区間ではない。`,
+    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を設備、教育・保育を有効労働、燃料節約を有効エネルギーに換算して選択した生産関数で再計算。設備0.35・エネルギー0.15の固定参照弾力性は換算仮定。係数・時期は変更可能な条件で、信頼区間ではない。`,
   })));
 }
