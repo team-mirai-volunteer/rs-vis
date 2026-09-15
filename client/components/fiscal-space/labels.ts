@@ -72,6 +72,7 @@ const LABELS: Record<string, string> = {
 
 /** Translate display names only; keep source keys and model identifiers stable. */
 export function inputLabel(key: string, policies: Policy[]): string {
+  if (key.startsWith('personalTaxRevenue.')) return `減税対象税収 / ${key.includes('resident-tax') ? '個人住民税の所得割' : '所得税'}`;
   const tradeLabels: Record<string, string> = { importFxExposure: '輸入価格への円安転嫁', exportFxExposure: '輸出受取の円換算割合', cpiPass: 'CPI水準への転嫁', foodPass: '食品価格水準への転嫁',
     annualSalesPerInvestment: '投資あたり年間売上', capexImportShare: '建設費の輸入割合', exportShare: '売上の輸出割合', domesticReplacementShare: '国内販売の輸入置換割合', operatingImportShare: '輸入原価割合',
     lag: '稼働までの年数', lifetime: '便益期間', capexPerKw: '設備容量あたり建設費', capacityFactor: '設備利用率', curtailment: '出力制御率', thermalReplacement: '火力置換割合',

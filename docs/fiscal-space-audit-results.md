@@ -1,4 +1,4 @@
-# 財政余力の再現条件と感度（2026-09-16.1）
+# 財政余力の再現条件と感度（2026-09-16.2）
 
 この文書は `scripts/generate-fiscal-audit-report.ts` が生成する出力記録です。再生成：`npx tsx scripts/generate-fiscal-audit-report.ts`。係数の妥当性の証明・信頼区間ではありません。
 

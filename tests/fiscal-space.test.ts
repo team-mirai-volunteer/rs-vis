@@ -391,7 +391,7 @@ test('project vintages deflate payments, expire, and cap overlapping substitutio
 test('power savings reach trade and energy bills once, while unknown nuclear imports suppress incomplete benefits', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
   const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
-  const c = powerCase('solar');
+  const c = { ...powerCase('solar'), lag: 2 }; // Pin commissioning to year 3 for the accounting comparison.
   const policy = preset('generation', { duration: 1, trade: { kind: 'power', assumptions: c } });
   const without = { ...policy, trade: { kind: 'power' as const, assumptions: { ...c, thermalReplacement: 0 } } };
   const actual = simulate(initial, [policy], 10, p), base = simulate(initial, [without], 10, p);
@@ -590,7 +590,8 @@ test('power options distinguish capacity, generation, lag, fuel imports and firm
   const operating = powerTrade(policy, 5, solar);
   near(operating.capacityGw, T / 176000 / 1e6);
   near(operating.generationTwh, T / 176000 * 8760 * .183 / 1e9);
-  assert.equal(operating.firmGw, null);
+  near(operating.firmGw!, operating.capacityGw * .1);
+  assert.equal(powerTrade(policy, 5, { ...solar, firmShare: null }).firmGw, null);
   assert.equal(operating.tradeBalance, null);
   near(powerTrade(policy, 5, { ...solar, curtailment: .5 }).substitution, operating.substitution / 2);
   assert.equal(powerTrade(policy, 5, { ...solar, thermalReplacement: 0 }).substitution, 0);

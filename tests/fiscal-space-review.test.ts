@@ -331,7 +331,7 @@ test('energy investment helps a binding energy input, while extra nonbinding lab
   const base = policyProduction(s, [], 3, p);
   near(policyProduction(s, [tax], 3, p).potential, base.potential);
   assert(policyProduction(s, [power], 3, p).potential > base.potential);
-  near(policyProduction(s, [power], 2, p).potential, base.potential); // Not commissioned yet.
+  near(policyProduction(s, [power], 1, p).potential, base.potential); // Before commissioning.
   const noFirm = { ...power, trade: { kind: 'power' as const, assumptions: { ...powerCase('solar'), firmShare: 0 } } };
   near(policyProduction(s, [noFirm], 3, p).potential, base.potential);
   const firm = { ...power, trade: { kind: 'power' as const, assumptions: { ...powerCase('solar'), firmShare: .2 } } };

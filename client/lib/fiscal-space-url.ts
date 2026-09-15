@@ -6,7 +6,7 @@ import { validateScenarioNumber } from './fiscal-space-ranges';
 import { policyInputLimitYen } from './fiscal-space-amounts';
 import { RESOURCE_DEFAULTS, RESOURCE_REGIONS } from '@/app/lib/fiscal-space/resource-estimate';
 
-export const FISCAL_MODEL_VERSION = '2026-09-16.1';
+export const FISCAL_MODEL_VERSION = '2026-09-16.2';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
   dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'],
@@ -53,7 +53,7 @@ function shape(value: unknown, template: unknown, path: string): void {
 export function decodeScenario(hash: string): FiscalForm {
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     // Old links retain their manual/unevaluated load assumptions, never silently opt in.
     if (!Object.hasOwn(payload.form, 'resource')) Object.assign(payload.form, { resource: { ...RESOURCE_DEFAULTS, mode: 'manual' } });
@@ -68,6 +68,9 @@ export function decodeScenario(hash: string): FiscalForm {
   const technologies = ['solar', 'nuclear', 'hydro'] as const;
   template.trade.mix = { solar: 1, nuclear: 0, hydro: 0 };
   template.trade.powerCases = { solar: powerCase('solar'), nuclear: powerCase('nuclear'), hydro: powerCase('hydro') };
+  // A numeric default must not remove the explicit unknown option or break saved links.
+  template.trade.power.firmShare = null;
+  for (const item of Object.values(template.trade.powerCases)) item.firmShare = null;
   for (const item of Object.values(template.trade.industry)) {
     item.additionality = 1;
     item.depreciation = 0;
@@ -86,7 +89,7 @@ export function decodeScenario(hash: string): FiscalForm {
   for (const key of ['energyPricePassThrough', 'energyDomesticPricePassThrough', 'expenditurePriceIndexation'] as const) range(form.calibration[key], 0, 1);
   range(form.longRun.years, 6, 100);
   for (const amount of Object.values(form.amounts)) range(amount, 0, 100);
-  range(form.amounts['social-insurance'], 0, policyInputLimitYen('social-insurance', form.calibration) / 1e12);
+  for (const [id, amount] of Object.entries(form.amounts)) range(amount, 0, policyInputLimitYen(id, form.calibration) / 1e12);
   for (const settings of Object.values(form.policySettings)) range(settings.duration, 1, 10);
   for (const v of Object.values(form.inputs)) range(v, 1, 1.5);
   for (const v of Object.values(form.thresholds)) range(v, .0001, 100);

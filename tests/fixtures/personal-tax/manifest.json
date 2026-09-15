@@ -1,0 +1,25 @@
+{
+  "referenceYear": 2024,
+  "retrievedOn": "2026-09-16",
+  "sources": {
+    "prefecture": {
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040374263&fileKind=1",
+      "sha256": "7d544a092b5838204e437a1258f89840567423d26b48cd1b1048290f8e0eab7a",
+      "selection": "所得割、47都道府県と合計(全国)、収入済額・合計（千円）"
+    },
+    "municipal": {
+      "url": "https://www.soumu.go.jp/main_content/001063596.pdf",
+      "sha256": "c65a543952bfdc86b7021efe971ffef2fd99a5b0c85085631145e90a6650a2bc",
+      "selection": "PDF38ページ、第13表その4、所得割・収入額B、8,187,266百万円。均等割・法人分を除く。"
+    },
+    "income": {
+      "url": "https://www.mof.go.jp/tax_policy/reference/fy2024k_budget_and_settlement.pdf",
+      "selection": "所得税計・2024年度決算額・212,086億円"
+    }
+  },
+  "files": {
+    "income-tax.pdf": "869bb3cd099e55c013e233e8e2df2b603b90e10e608db0edd5e4eb99671643f9",
+    "municipal-income.pdf": "e41a1c2d2685e1ee5a6644bd28c84e74a9d8e6259209838aee276673e2eae25d",
+    "prefecture-income.json": "b851a1d002a8dba677b12882b81df0c8536db11f3844ae44aceab047ca6ccbc7"
+  }
+}

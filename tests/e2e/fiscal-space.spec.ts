@@ -56,6 +56,9 @@ test('example allocation displays pinned yen conversion and absolute search resu
   const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
   await expect(projectionTable.getByRole('row').last()).toContainText('30.41%');
+  await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
+  await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
   await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
   await expect(page.getByTestId('tax-elasticity-sensitivity')).toContainText('1.7');
   await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.0兆円');
@@ -117,6 +120,9 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
   await expect(amount).toHaveValue('10');
   await expect(page.getByTestId('recommended-envelope')).not.toHaveText('0.0兆円 / 年');
+  await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
+  await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
   await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
   await expect(page.locator('[data-observation-key="fiscal.grossDebt"]')).toContainText('214.50%');
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
@@ -321,4 +327,52 @@ test('large supply scenarios keep a bounded chart and subsequent edits work', as
   expect(await chart.locator('text').filter({ hasText: '兆円' }).count()).toBeLessThanOrEqual(9);
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('99');
   await expect(page.getByTestId('input-overview')).toContainText('99.00兆円 / 年');
+});
+
+
+test('all policies are expanded and personal tax inputs stop at eligible revenue', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await expect(page.getByText('ほかの8政策を追加する', { exact: true })).toHaveCount(0);
+  for (const [name, cap] of [['所得税減税', '21.2'], ['住民税減税', '12.6']]) {
+    const input = page.getByLabel(`${name}・数値で入力`, { exact: true });
+    await input.fill('100');
+    await expect(input).toHaveValue(cap);
+    await expect(input).toHaveAttribute('max', cap);
+    await input.fill('0');
+  }
+});
+
+test('generation settings open beside the amount and stay linked to results and shared URLs', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  const amount = page.getByLabel('発電設備投資・数値で入力', { exact: true });
+  await amount.fill('1');
+  const trigger = page.getByRole('button', { name: '電源構成・稼働時期を設定', exact: true });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: '発電設備投資の設定', exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId('power-investment-total')).toHaveText('1.0兆円／年');
+  await expect(dialog.getByLabel('太陽光・稼働まで', { exact: true })).toHaveValue('1');
+  await dialog.getByLabel('太陽光・稼働まで', { exact: true }).fill('0');
+  await dialog.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  const timeline = page.getByTestId('power-timeline');
+  await timeline.locator('summary').click();
+  await expect(timeline.locator('[data-power-year="1"] [data-power-supply]')).not.toHaveText('0.00');
+  await amount.fill('2');
+  await trigger.click();
+  await expect(dialog.getByTestId('power-investment-total')).toHaveText('2.0兆円／年');
+  await dialog.getByLabel('太陽光・稼働まで', { exact: true }).fill('1');
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(timeline.locator('[data-power-year="1"] [data-power-supply]')).toHaveText('0.00');
+  await expect(timeline.locator('[data-power-year="2"] [data-power-supply]')).not.toHaveText('0.00');
+  await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
+  const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(url);
+  await expect(amount).toHaveValue('2');
+  await trigger.click();
+  await expect(dialog.getByLabel('太陽光・稼働まで', { exact: true })).toHaveValue('1');
 });

@@ -1,5 +1,5 @@
 {
-  "modelVersion": "2026-09-16.1",
+  "modelVersion": "2026-09-16.2",
   "form": {
     "dataset": "latest",
     "horizon": 5,
@@ -224,13 +224,13 @@
         "technology": "solar",
         "capexPerKw": 176000,
         "capacityFactor": 0.183,
-        "lag": 2,
+        "lag": 1,
         "curtailment": 0,
         "thermalReplacement": 0.8,
         "displacedFuelYenPerKwh": 9,
         "operatingImportYenPerKwh": 0,
         "capexImportShare": null,
-        "firmShare": null
+        "firmShare": 0.1
       }
     },
     "policySettings": {
