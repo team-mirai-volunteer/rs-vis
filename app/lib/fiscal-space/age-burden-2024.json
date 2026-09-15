@@ -1,0 +1,434 @@
+{
+  "metadata": {
+    "survey": "家計調査 家計収支編 2024年 第3-2表 世帯主の年齢階級別",
+    "statInfId": "000040247076",
+    "sourceUrl": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040247076",
+    "unit": "年額・円（公表月額×12）。支出は税込。年間収入は年齢階級別には非公表のため、負担率の分母は実収入（勤め先収入・公的年金給付等の月額×12）",
+    "retrievedOn": "2026-09-14",
+    "mapVersion": "kakei-2024-table3-v1",
+    "notes": [
+      "葉項目は第3表の階層で消費支出を漏れなく重複なく覆うように選んだ。生成時に葉の合計が消費支出と一致することを検証する。",
+      "『教育』は授業料等・教科書（非課税）と補習教育（課税）が混在するため、非課税0.75・標準0.25の按分（仮定）。",
+      "『こづかい（使途不明）』は用途不明のため標準0.7・軽減0.3の按分（仮定）。",
+      "『他の交際費』は会費・つきあい費（課税）と祝儀等（不課税）が混在するため標準0.5・非課税0.5の按分（仮定）。",
+      "『保健医療サービス』は保険診療を主とみて非課税扱い。自由診療分の課税は無視。『健康保持用摂取品』は飲食料品として軽減。",
+      "『たばこ』『酒類』は消費税では標準税率。たばこ税・酒税は本対応表の対象外。",
+      "按分比率は仮定値であり、公表統計ではない。画面の注記に『按分は仮定』と表示する。",
+      "『教育』の内訳（授業料等・教科書・補習教育）が公表されている表では内訳で分類し、按分は使わない。『賄い費』が無い表では0として扱う。",
+      "無職世帯は世帯主が無職の世帯（年金受給者を多く含む）。直接税・社会保険料は年金からの徴収分を含む。",
+      "二人以上の世帯のみ。単身世帯は対象外。"
+    ]
+  },
+  "groups": [
+    {
+      "population": "二人以上の世帯のうち勤労者世帯",
+      "classes": [
+        {
+          "label": "～34歳",
+          "headAge": 31,
+          "householdSize": 3.28,
+          "earners": 1.65,
+          "realIncomeAnnual": 6946848,
+          "salaryAnnual": 6447648,
+          "pensionBenefitAnnual": 18792,
+          "disposableAnnual": 5946360,
+          "consumptionAnnual": 3253776,
+          "standardGross": 2076046,
+          "reducedGross": 651464,
+          "exemptGross": 526266,
+          "directTaxes": {
+            "incomeTax": 132648,
+            "residentTax": 146568,
+            "other": 55416
+          },
+          "socialInsurance": {
+            "pension": 426216,
+            "health": 213312,
+            "care": 876,
+            "other": 24060
+          }
+        },
+        {
+          "label": "35～39歳",
+          "headAge": 37.1,
+          "householdSize": 3.75,
+          "earners": 1.68,
+          "realIncomeAnnual": 7545720,
+          "salaryAnnual": 7040124,
+          "pensionBenefitAnnual": 52224,
+          "disposableAnnual": 6400224,
+          "consumptionAnnual": 3462156,
+          "standardGross": 2253516,
+          "reducedGross": 805986,
+          "exemptGross": 402642,
+          "directTaxes": {
+            "incomeTax": 151476,
+            "residentTax": 168828,
+            "other": 73296
+          },
+          "socialInsurance": {
+            "pension": 475356,
+            "health": 246252,
+            "care": 3732,
+            "other": 26316
+          }
+        },
+        {
+          "label": "40～44歳",
+          "headAge": 42,
+          "householdSize": 3.81,
+          "earners": 1.68,
+          "realIncomeAnnual": 8231676,
+          "salaryAnnual": 7764012,
+          "pensionBenefitAnnual": 29448,
+          "disposableAnnual": 6777120,
+          "consumptionAnnual": 3736800,
+          "standardGross": 2401661,
+          "reducedGross": 892987,
+          "exemptGross": 442176,
+          "directTaxes": {
+            "incomeTax": 237132,
+            "residentTax": 222156,
+            "other": 89916
+          },
+          "socialInsurance": {
+            "pension": 540168,
+            "health": 286452,
+            "care": 46056,
+            "other": 32232
+          }
+        },
+        {
+          "label": "45～49歳",
+          "headAge": 47.1,
+          "householdSize": 3.55,
+          "earners": 1.8,
+          "realIncomeAnnual": 8558976,
+          "salaryAnnual": 8146392,
+          "pensionBenefitAnnual": 74988,
+          "disposableAnnual": 6917268,
+          "consumptionAnnual": 4186740,
+          "standardGross": 2586860,
+          "reducedGross": 914554,
+          "exemptGross": 685302,
+          "directTaxes": {
+            "incomeTax": 283236,
+            "residentTax": 268272,
+            "other": 116328
+          },
+          "socialInsurance": {
+            "pension": 578616,
+            "health": 308940,
+            "care": 51912,
+            "other": 33540
+          }
+        },
+        {
+          "label": "50～54歳",
+          "headAge": 51.9,
+          "householdSize": 3.24,
+          "earners": 1.92,
+          "realIncomeAnnual": 8366292,
+          "salaryAnnual": 8029020,
+          "pensionBenefitAnnual": 110160,
+          "disposableAnnual": 6733416,
+          "consumptionAnnual": 4375740,
+          "standardGross": 2613440,
+          "reducedGross": 936640,
+          "exemptGross": 825660,
+          "directTaxes": {
+            "incomeTax": 284916,
+            "residentTax": 274560,
+            "other": 82524
+          },
+          "socialInsurance": {
+            "pension": 592980,
+            "health": 309336,
+            "care": 52572,
+            "other": 35172
+          }
+        },
+        {
+          "label": "55～59歳",
+          "headAge": 56.9,
+          "householdSize": 2.93,
+          "earners": 1.99,
+          "realIncomeAnnual": 8742840,
+          "salaryAnnual": 8365224,
+          "pensionBenefitAnnual": 140280,
+          "disposableAnnual": 6957156,
+          "consumptionAnnual": 4249224,
+          "standardGross": 2572440,
+          "reducedGross": 954498,
+          "exemptGross": 722298,
+          "directTaxes": {
+            "incomeTax": 366288,
+            "residentTax": 303456,
+            "other": 97296
+          },
+          "socialInsurance": {
+            "pension": 604560,
+            "health": 322320,
+            "care": 54228,
+            "other": 36372
+          }
+        },
+        {
+          "label": "60～64歳",
+          "headAge": 61.9,
+          "householdSize": 2.74,
+          "earners": 1.98,
+          "realIncomeAnnual": 6182184,
+          "salaryAnnual": 5531784,
+          "pensionBenefitAnnual": 342492,
+          "disposableAnnual": 5038452,
+          "consumptionAnnual": 3859788,
+          "standardGross": 2474354,
+          "reducedGross": 922606,
+          "exemptGross": 462816,
+          "directTaxes": {
+            "incomeTax": 146616,
+            "residentTax": 196548,
+            "other": 110016
+          },
+          "socialInsurance": {
+            "pension": 394356,
+            "health": 232728,
+            "care": 39060,
+            "other": 24120
+          }
+        },
+        {
+          "label": "65～69歳",
+          "headAge": 66.9,
+          "householdSize": 2.57,
+          "earners": 1.8,
+          "realIncomeAnnual": 5998356,
+          "salaryAnnual": 3967848,
+          "pensionBenefitAnnual": 1841568,
+          "disposableAnnual": 5090280,
+          "consumptionAnnual": 3725484,
+          "standardGross": 2393933,
+          "reducedGross": 975349,
+          "exemptGross": 356190,
+          "directTaxes": {
+            "incomeTax": 81528,
+            "residentTax": 159564,
+            "other": 99480
+          },
+          "socialInsurance": {
+            "pension": 264744,
+            "health": 184968,
+            "care": 100032,
+            "other": 17196
+          }
+        },
+        {
+          "label": "70歳～",
+          "headAge": 73.2,
+          "householdSize": 2.41,
+          "earners": 1.63,
+          "realIncomeAnnual": 4932000,
+          "salaryAnnual": 2588904,
+          "pensionBenefitAnnual": 2120556,
+          "disposableAnnual": 4434516,
+          "consumptionAnnual": 3350148,
+          "standardGross": 2026385,
+          "reducedGross": 962395,
+          "exemptGross": 361368,
+          "directTaxes": {
+            "incomeTax": 27264,
+            "residentTax": 79464,
+            "other": 100884
+          },
+          "socialInsurance": {
+            "pension": 42480,
+            "health": 144360,
+            "care": 93876,
+            "other": 9012
+          }
+        }
+      ]
+    },
+    {
+      "population": "二人以上の世帯のうち無職世帯",
+      "classes": [
+        {
+          "label": "～59歳",
+          "headAge": 49.6,
+          "householdSize": 2.7,
+          "earners": 0.52,
+          "realIncomeAnnual": 2247516,
+          "salaryAnnual": 662124,
+          "pensionBenefitAnnual": 625284,
+          "disposableAnnual": 1908780,
+          "consumptionAnnual": 3282768,
+          "standardGross": 1813271,
+          "reducedGross": 823663,
+          "exemptGross": 645834,
+          "directTaxes": {
+            "incomeTax": 5940,
+            "residentTax": 35184,
+            "other": 69768
+          },
+          "socialInsurance": {
+            "pension": 114252,
+            "health": 98676,
+            "care": 10356,
+            "other": 2436
+          }
+        },
+        {
+          "label": "60～64歳",
+          "headAge": 62.2,
+          "householdSize": 2.51,
+          "earners": 0.72,
+          "realIncomeAnnual": 2245656,
+          "salaryAnnual": 849564,
+          "pensionBenefitAnnual": 933156,
+          "disposableAnnual": 1822932,
+          "consumptionAnnual": 3432600,
+          "standardGross": 2188463,
+          "reducedGross": 899131,
+          "exemptGross": 345006,
+          "directTaxes": {
+            "incomeTax": 11004,
+            "residentTax": 73572,
+            "other": 94788
+          },
+          "socialInsurance": {
+            "pension": 92376,
+            "health": 126924,
+            "care": 21060,
+            "other": 2796
+          }
+        },
+        {
+          "label": "65～69歳",
+          "headAge": 67.2,
+          "householdSize": 2.42,
+          "earners": 0.57,
+          "realIncomeAnnual": 3692892,
+          "salaryAnnual": 674016,
+          "pensionBenefitAnnual": 2576736,
+          "disposableAnnual": 3196032,
+          "consumptionAnnual": 3735372,
+          "standardGross": 2435450,
+          "reducedGross": 983866,
+          "exemptGross": 316044,
+          "directTaxes": {
+            "incomeTax": 7200,
+            "residentTax": 60432,
+            "other": 116904
+          },
+          "socialInsurance": {
+            "pension": 58308,
+            "health": 161616,
+            "care": 89460,
+            "other": 2784
+          }
+        },
+        {
+          "label": "70～74歳",
+          "headAge": 72.2,
+          "householdSize": 2.32,
+          "earners": 0.4,
+          "realIncomeAnnual": 3305040,
+          "salaryAnnual": 404448,
+          "pensionBenefitAnnual": 2600016,
+          "disposableAnnual": 2887152,
+          "consumptionAnnual": 3228180,
+          "standardGross": 1964892,
+          "reducedGross": 947850,
+          "exemptGross": 315450,
+          "directTaxes": {
+            "incomeTax": 5532,
+            "residentTax": 41904,
+            "other": 108408
+          },
+          "socialInsurance": {
+            "pension": 30612,
+            "health": 134928,
+            "care": 94716,
+            "other": 1524
+          }
+        },
+        {
+          "label": "75～79歳",
+          "headAge": 76.7,
+          "householdSize": 2.28,
+          "earners": 0.34,
+          "realIncomeAnnual": 3130392,
+          "salaryAnnual": 310032,
+          "pensionBenefitAnnual": 2546976,
+          "disposableAnnual": 2746692,
+          "consumptionAnnual": 3098892,
+          "standardGross": 1859729,
+          "reducedGross": 934477,
+          "exemptGross": 304674,
+          "directTaxes": {
+            "incomeTax": 6336,
+            "residentTax": 35136,
+            "other": 96948
+          },
+          "socialInsurance": {
+            "pension": 21324,
+            "health": 131580,
+            "care": 91128,
+            "other": 1056
+          }
+        },
+        {
+          "label": "80～84歳",
+          "headAge": 81.8,
+          "householdSize": 2.27,
+          "earners": 0.3,
+          "realIncomeAnnual": 2937396,
+          "salaryAnnual": 252276,
+          "pensionBenefitAnnual": 2430600,
+          "disposableAnnual": 2577192,
+          "consumptionAnnual": 2773668,
+          "standardGross": 1582738,
+          "reducedGross": 888296,
+          "exemptGross": 302622,
+          "directTaxes": {
+            "incomeTax": 5208,
+            "residentTax": 32532,
+            "other": 98604
+          },
+          "socialInsurance": {
+            "pension": 22596,
+            "health": 114924,
+            "care": 84960,
+            "other": 1044
+          }
+        },
+        {
+          "label": "85歳～",
+          "headAge": 88,
+          "householdSize": 2.3,
+          "earners": 0.33,
+          "realIncomeAnnual": 2963388,
+          "salaryAnnual": 352116,
+          "pensionBenefitAnnual": 2399052,
+          "disposableAnnual": 2622252,
+          "consumptionAnnual": 2741460,
+          "standardGross": 1553483,
+          "reducedGross": 893881,
+          "exemptGross": 294084,
+          "directTaxes": {
+            "incomeTax": 4836,
+            "residentTax": 36480,
+            "other": 74112
+          },
+          "socialInsurance": {
+            "pension": 29568,
+            "health": 117300,
+            "care": 77292,
+            "other": 1440
+          }
+        }
+      ]
+    }
+  ]
+}

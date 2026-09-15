@@ -76,3 +76,8 @@ __pycache__/
 # --- IGNORE ---
 docs/*ignore*
 docs/image*.png
+
+# editor backups and local worktrees
+.env~
+*.un~
+.worktrees/

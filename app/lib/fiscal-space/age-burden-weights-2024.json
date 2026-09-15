@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "sourceUrl": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040247076",
+    "referenceYear": 2024,
+    "population": "二人以上の世帯のうち勤労者世帯",
+    "sourceRow": "世帯数分布(抽出率調整)",
+    "unit": "全対象世帯10,000に対する分布（公表値の丸めあり）",
+    "rawSha256": "6565d2ca2f1265532d9342b03801d3b4b17496283d3ab1f79b9fc2c200a079a8",
+    "note": "集計世帯数ではなく抽出率調整済み分布を使用。対象年齢階級の重み合計で正規化する。"
+  },
+  "weights": [
+    {
+      "label": "～34歳",
+      "weight": 856
+    },
+    {
+      "label": "35～39歳",
+      "weight": 1041
+    },
+    {
+      "label": "40～44歳",
+      "weight": 1275
+    },
+    {
+      "label": "45～49歳",
+      "weight": 1486
+    },
+    {
+      "label": "50～54歳",
+      "weight": 1683
+    },
+    {
+      "label": "55～59歳",
+      "weight": 1327
+    },
+    {
+      "label": "60～64歳",
+      "weight": 1118
+    },
+    {
+      "label": "65～69歳",
+      "weight": 703
+    },
+    {
+      "label": "70歳～",
+      "weight": 512
+    }
+  ]
+}
