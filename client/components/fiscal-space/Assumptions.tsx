@@ -52,6 +52,8 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       {debt && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent((key === 'fiscal.grossDebt' ? s.fiscal.grossDebt : s.fiscal.netDebt) / s.macro.nominalGdp)}</dd>}
       {key === 'fiscal.primaryBalance' && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent(s.fiscal.primaryBalance / s.macro.nominalGdp)}<p className="text-xs">利子の受払を除く収支。黒字がプラス、赤字がマイナス。</p></dd>}
       {key === 'fiscal.interestPayments' && <dd className="mt-1 text-sm tabular-nums">利払いGDP比 {percent(s.fiscal.interestPayments / s.macro.nominalGdp)}<p className="text-xs">受取利子を控除する前の支払利子。</p></dd>}
+      {key === 'labour.employment' && <dd className="mt-1 text-sm tabular-nums">完全失業率 {percent(s.labour.unemployment / s.labour.labourForce, 1)}
+        <p className="text-xs">完全失業者{(s.labour.unemployment / 1e4).toLocaleString('ja-JP')}万人 ÷ 労働力人口{(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人。就業者数と同じ労働力調査から計算しています。</p></dd>}
       <dd className="mt-1 text-xs text-mirai-text-subtle">{source.referenceYear}・{ratio ? '公表額から換算' : SOURCE_STATUS_LABELS[source.status]} <a className="text-primary-accent underline" href={source.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${label}の出典`}>出典</a></dd>
       {source.publishedAt && <dd className="mt-1 text-xs text-mirai-text-subtle">公表：{source.publishedAt}</dd>}
       {latest && ratio && <dd className="mt-1 text-xs">分母：2026年4〜6月期GDP（季調年率）。同一時点の実績比率ではありません。</dd>}
@@ -61,6 +63,11 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       {key === 'context.coreCoreCpi' && <dd className="mt-1 text-xs">生鮮食品・エネルギーを除く総合。加工食品は含みます。</dd>}
       {key === 'context.foodCpi' && <dd className="mt-1 text-xs">生鮮食品・酒類・外食を含む全国平均。家計ごとの負担感は購入内容で異なります。</dd>}
       {key === 'context.energyCpi' && <dd className="mt-1 text-xs">電気・ガス・灯油・ガソリン。補助金・税制の影響を含む家計向け価格で、輸入価格とは異なります。</dd>}
+      {key === 'context.energyCpi' && <dd className="mt-2 space-y-1 text-xs" data-testid="energy-cpi-adjusted">{latest ? <>
+        <p>政策効果を除く参考：<strong className="text-base tabular-nums">約{percent(context['context.energyPolicyAdjustedCpi'].value, 1)}</strong></p>
+        <p>補助金・ガソリン暫定税率廃止を合わせて調整。補助金だけの影響は公表内訳から分離できていません。</p>
+        <p>当月と前年の政策効果を両方除いた前年比です。公表丸め値からの近似で、補助金の即時廃止による値上がり予測ではありません。<a className="underline" href={context['context.energyPolicyAdjustedCpi'].sourceUrl!} target="_blank" rel="noreferrer">計算に用いた公表資料（3頁）</a></p>
+      </> : <p>補助金を除く年平均：未推計。2023年・2024年の同じ対象範囲の調整額が必要なため、単月の寄与度では代用しません。</p>}</dd>}
       {key === 'context.ureaDomesticShare' && <dd className="mt-1 space-y-1 text-xs"><p>りん安・塩化加里：ほぼ全量を輸入（国産割合はほぼ0%）。<a href={FERTILIZER_SOURCE} className="underline" target="_blank" rel="noreferrer">農水省</a></p><p>主要3原料の参考値。堆肥・硫安等を含む肥料全体や、窒素・りん酸・加里の成分全体の自給率ではありません。国内製造でも原料・燃料を輸入する場合があります。</p><p>OECD平均：同じ対象原料・期間の値は未取得。</p></dd>}
       {key === 'context.valueSelfSufficiency' && <dd className="mt-1 text-xs">国内価格の上昇でも高まるため、供給量の増加とは限りません。</dd>}
       {key === 'fiscal.grossDebt' && <dd className="mt-2 text-xs leading-relaxed">OECD平均：<strong>{percent(OECD_DEBT_RECORDS[0].value, 1)}</strong>（2024年・公表集計）。同じOECD定義の日本：{percent(OECD_DEBT_RECORDS[1].value, 1)}。時価等の定義差がある参考比較。<a href={OECD_DEBT_SOURCE} target="_blank" rel="noreferrer" className="text-primary-accent underline">比較出典</a></dd>}
