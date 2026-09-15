@@ -179,3 +179,66 @@ test('worker startup failure leaves inputs usable and retry calculates the edite
   await expect(page.getByTestId('input-overview')).toContainText('7.00兆円 / 年');
   await expect(page.locator('main').getByRole('alert')).toHaveCount(0);
 });
+
+test('stalled worker can be restarted without losing inputs and pending status reserves no space', async ({ page }) => {
+  await page.addInitScript(() => {
+    const post = Worker.prototype.postMessage;
+    let stalled = true;
+    window.addEventListener('test-resume-worker', () => { stalled = false; });
+    Worker.prototype.postMessage = function (message, options) {
+      if (!stalled) post.call(this, message, options as StructuredSerializeOptions);
+    };
+  });
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
+  const amount = page.getByLabel('公共投資・数値で入力', { exact: true });
+  await amount.fill('7');
+  const panel = page.getByRole('region', { name: '政策の操作パネル' });
+  const top = await panel.evaluate(el => el.getBoundingClientRect().top + scrollY);
+  expect(await page.getByTestId('calculation-status').evaluate(el => el.getBoundingClientRect().height)).toBe(0);
+  await page.evaluate(() => window.dispatchEvent(new Event('test-resume-worker')));
+  await page.getByRole('button', { name: '計算をやり直す', exact: true }).click();
+  await expect(page.getByTestId('input-overview')).toContainText('7.00兆円 / 年');
+  await expect(page.getByTestId('calculation-status')).toBeEmpty();
+  expect(await panel.evaluate(el => el.getBoundingClientRect().top + scrollY)).toBe(top);
+});
+
+test('unresponsive worker reaches a visible timeout and retries the latest form', async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    const post = Worker.prototype.postMessage;
+    let stalled = true;
+    window.addEventListener('test-resume-worker', () => { stalled = false; });
+    Worker.prototype.postMessage = function (message, options) {
+      if (!stalled) post.call(this, message, options as StructuredSerializeOptions);
+    };
+  });
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
+  await page.clock.runFor(200);
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('9');
+  await page.clock.fastForward(31_000);
+  await expect(page.locator('main').getByRole('alert')).toContainText('計算の応答がないため停止しました');
+  await expect(page.getByTestId('calculation-status')).toBeEmpty();
+  await page.evaluate(() => window.dispatchEvent(new Event('test-resume-worker')));
+  await page.getByRole('button', { name: '計算を再試行', exact: true }).click();
+  await page.clock.runFor(200);
+  await expect(page.getByTestId('input-overview')).toContainText('9.00兆円 / 年');
+});
+
+test('large supply scenarios keep a bounded chart and subsequent edits work', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('100');
+  await page.getByLabel('使用する生産モデル', { exact: true }).selectOption('cobbDouglas');
+  await page.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();
+  await page.getByLabel('公共資本の蓄積・効果係数', { exact: true }).fill('1');
+  await page.getByLabel('公共資本の蓄積・純追加性', { exact: true }).fill('100');
+  await page.getByLabel('公共資本の蓄積・効果までの年数', { exact: true }).fill('0');
+  await page.getByLabel('公共資本の蓄積・単位費用・基準資本比', { exact: true }).fill('0.01');
+  await expect(page.getByTestId('calculation-status')).toBeEmpty();
+  const chart = page.getByRole('img', { name: /5年推移/ });
+  expect(await chart.locator('text').filter({ hasText: '兆円' }).count()).toBeLessThanOrEqual(9);
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('99');
+  await expect(page.getByTestId('input-overview')).toContainText('99.00兆円 / 年');
+});
