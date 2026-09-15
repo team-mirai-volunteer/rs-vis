@@ -1,4 +1,5 @@
-import { memo, useId, useState } from 'react';
+import { memo, useId, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ConstraintDefinition, Policy, PolicyKind, Thresholds } from '@/types/fiscal-space';
@@ -57,17 +58,31 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
   const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
+  const economyDialog = useRef<HTMLDialogElement>(null);
+  const economyTitle = useId();
   return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="max-h-[45dvh] overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-2rem)]"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
-      <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
-      <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.map(policyField)}
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
       </div>
-      <details className="border-t border-mirai-border pt-4"><summary className="cursor-pointer text-sm font-bold">経済状態・評価条件を変える</summary><div className="mt-4 space-y-4">
+      <div className="space-y-3 border-t border-mirai-border pt-4">
+        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => economyDialog.current?.showModal()}>経済状態・評価条件を変える</Button>
+        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
+        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
+      </div>
+    </CardContent>
+    <dialog ref={economyDialog} aria-labelledby={economyTitle}
+      onKeyDown={e => { if (e.key === 'Escape') e.stopPropagation(); }}
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id={economyTitle} className="text-lg font-bold">経済状態・評価条件</h2>
+        <Button variant="ghost" size="icon" aria-label="経済状態・評価条件を閉じる" onClick={() => economyDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-4 p-3 sm:p-5">
+        <p className="text-sm">変更はすぐに計算へ反映されます。</p>
         <p className="text-xs leading-relaxed">年0は選択したデータの初期状態。GDPギャップは（実際−潜在）÷潜在。マイナスが需要不足、プラスが需要超過で、公表値と同じ符号です。建設利用率と確実電力供給は仮定です。</p>
         <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
         <RangeField label="CPI総合・初期インフレ率（年0）" value={inflation} min={-3} max={10} step={.1} unit="%" onChange={onInflation} />
@@ -81,7 +96,8 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <RangeField label="任意の定率控除" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>
         {definitions.map(d => <label key={d.id} className="block text-xs">{d.label} 上限（%）<input className={`${fieldClass} mt-1`} type="number" min={.01} step={.1} value={Number((thresholds[d.id] * 100).toFixed(3))} onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n > 0) onThreshold(d.id, n / 100); }} /></label>)}
-      </div></details>
-    </CardContent>
+        <Button variant="outline" onClick={() => economyDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
   </Card>;
 }

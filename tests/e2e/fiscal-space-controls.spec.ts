@@ -17,7 +17,11 @@ test('desktop keeps controls beside the five-year projection and changes it in p
   await expect(graph).not.toHaveAttribute('points', before!);
   await expect(heading).toBeInViewport();
   await panel.getByText('経済状態・評価条件を変える', { exact: true }).click();
+  const economy = page.getByRole('dialog', { name: '経済状態・評価条件', exact: true });
+  await expect(economy).toBeVisible();
   await page.getByLabel('制約の評価期間', { exact: true }).selectOption('3');
+  await economy.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
+  await expect(panel.getByRole('button', { name: '経済状態・評価条件を変える', exact: true })).toBeFocused();
   await expect(page.getByTestId('horizon-results').getByRole('heading')).toHaveText('3年目の結果（試算）');
   await expect(heading).toBeInViewport();
 });
@@ -31,6 +35,16 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await page.getByRole('button', { name: /^政策を調整/ }).click();
   const panel = page.getByRole('region', { name: '政策の操作パネル' });
   await expect(panel).toBeInViewport();
+  const economyOpener = panel.getByRole('button', { name: '経済状態・評価条件を変える', exact: true });
+  const settings = panel.locator('[aria-haspopup="dialog"]');
+  expect((await settings.allTextContents()).slice(-3)).toEqual(['経済状態・評価条件を変える', '乗数・労働反応の条件', '政策別の供給力・長期条件']);
+  await economyOpener.click();
+  const economy = page.getByRole('dialog', { name: '経済状態・評価条件', exact: true });
+  await expect(economy).toBeInViewport();
+  await economy.getByLabel('潜在GDPギャップ（年0）・数値で入力', { exact: true }).fill('-2');
+  await page.keyboard.press('Escape');
+  await expect(economy).not.toBeVisible();
+  await expect(economyOpener).toBeFocused();
   const opener = page.getByRole('button', { name: '乗数・労働反応の条件', exact: true });
   await opener.click();
   const dialog = page.getByRole('dialog', { name: '乗数・労働反応の条件', exact: true });
@@ -60,6 +74,9 @@ test('mobile opens controls and model dialog without leaving the projection', as
   const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
   await page.goto(url);
   await page.getByRole('button', { name: /^政策を調整/ }).click();
+  await economyOpener.click();
+  await expect(economy.getByLabel('潜在GDPギャップ（年0）・数値で入力', { exact: true })).toHaveValue('-2');
+  await economy.getByRole('button', { name: '経済状態・評価条件を閉じる', exact: true }).click();
   await opener.click();
   await dialog.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
   await expect(dialog.getByLabel('GDP乗数の感度倍率・数値で入力', { exact: true })).toHaveValue('1.5');
