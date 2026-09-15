@@ -14,19 +14,290 @@ import { inputLabel } from '../client/components/fiscal-space/labels';
 import type { Policy } from '../types/fiscal-space';
 import { auditFiscalSpace } from '../app/lib/fiscal-space/risk-audit';
 import { japanContext, OECD_DEBT_RECORDS } from '../app/lib/fiscal-space/japan-context';
-import { AGE_BURDEN, NATIONAL_BURDEN, extendedHouseholdBurden, burdenRecords } from '../app/lib/fiscal-space/burden-data';
+import { AGE_BURDEN, AGE_BURDEN_WEIGHTS, NATIONAL_BURDEN, OECD_WORKING_BURDEN, workingHouseholdBurden, extendedHouseholdBurden, burdenRecords } from '../app/lib/fiscal-space/burden-data';
 import { externalStress, externalStressRecords, STRESS_ASSUMPTIONS } from '../app/lib/fiscal-space/external-stress';
 import { industryTrade, powerTrade, powerCase, INDUSTRY_CASE, POLICY_TRADE_CHANNELS, policyTradeRecords } from '../app/lib/fiscal-space/policy-trade';
 import { calibratedResponse } from '../app/lib/fiscal-space/calibration';
 import { fiscalExternal } from '../app/lib/fiscal-space/fiscal-external';
 import { BURDEN_INCIDENCE } from '../app/lib/fiscal-space/burden-data';
 import { projectResponse, projectResponses } from '../app/lib/fiscal-space/project-response';
+import { SUPPLY_CASES, supplyResponse, supplyTotal, supplyRecords } from '../app/lib/fiscal-space/supply';
+import { SEMICONDUCTOR_CASE } from '../app/lib/fiscal-space/policy-trade';
+import { electricityBaseline, ELECTRICITY_BASELINE } from '../app/lib/fiscal-space/electricity-baseline';
 
 const preset = (id: string, overrides: Partial<Policy> = {}): Policy => ({ ...POLICIES.find(p => p.id === id)!, ...overrides });
 const near = (a: number, b: number, tolerance = 1e-10) => assert(Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(a), Math.abs(b)), `${a} ≈ ${b}`);
 const last = (policies: Policy[]) => simulate(initialEconomy(), policies).steps[9];
 
-test('comparison reports actual marginal outcomes at 1, 3 and 10 years, including delayed potential output', () => {
+test('common thermal demand and fuel imports enter every policy and the no-policy path once', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const flat = { ...p, electricity: { ...p.electricity, demandGrowth: 0, peakGrowth: 0 } };
+  const expected = electricityBaseline(p.electricity, 1).additionalFuelBill;
+  assert(expected > 0);
+  for (const policies of [[], ...POLICIES.map(policy => [policy])]) {
+    const actual = simulate(initial, policies, 1, p).steps[0], base = simulate(initial, policies, 1, flat).steps[0];
+    near(actual.electricity!.commonFuelIncrease, expected);
+    near(actual.state.energy.importBill - base.state.energy.importBill, expected);
+    near(actual.state.external.imports - base.state.external.imports, expected);
+    near(base.state.external.tradeBalance - actual.state.external.tradeBalance, expected);
+    assert(actual.state.energy.peakDemand > base.state.energy.peakDemand);
+  }
+  const yearly = simulate(initial, [], 5, p).steps;
+  near(yearly[4].electricity!.commonFuelIncrease, electricityBaseline(p.electricity, 5).additionalFuelBill);
+  assert(yearly[4].electricity!.commonFuelIncrease > yearly[0].electricity!.commonFuelIncrease);
+  near(simulate(initial, [], 1, p, { ...NO_SHOCK, energyPriceChange: .3 }).steps[0].electricity!.commonFuelIncrease, expected * 1.3);
+});
+
+test('thermal baseline balances non-fossil retirements, planned additions and declining demand', () => {
+  const c = { ...ELECTRICITY_BASELINE, generationTwh: 100, thermalShare: .6, demandGrowth: .01, nonThermalDecline: .1, plannedNonThermalTwh: 2 };
+  const first = electricityBaseline(c, 1);
+  near(first.demandTwh, 101); near(first.nonThermalTwh, 38); near(first.thermalTwh, 63); near(first.thermalIncreaseTwh, 3);
+  near(first.additionalFuelBill, 3e9 * 9);
+  const overbuilt = electricityBaseline({ ...c, plannedNonThermalTwh: 200 }, 5);
+  near(overbuilt.thermalTwh, 0); near(overbuilt.additionalFuelBill, -overbuilt.initialFuelBill);
+  assert(electricityBaseline({ ...c, demandGrowth: -.1, nonThermalDecline: 0, plannedNonThermalTwh: 0 }, 1).additionalFuelBill < 0);
+  assert.throws(() => electricityBaseline({ ...c, demandGrowth: -1 }, 1));
+  assert.throws(() => electricityBaseline({ ...c, nonThermalDecline: NaN }, 1));
+  const initial = initialEconomy(), p = { ...P, electricity: c };
+  const power = preset('generation', { annualCost: 500 * T, trade: { kind: 'power', assumptions: { ...powerCase('solar'), lag: 0 } } });
+  near(projectResponses(initial, [power], 1, p)[0].substitution, first.fuelBill / (initial.macro.nominalGdp / initial.macro.realGdp));
+  near(projectResponses(initial, [power], 1, { ...p, electricity: { ...c, plannedNonThermalTwh: 200 } })[0].substitution, 0);
+});
+
+test('power fuel counterfactual charges continued thermal generation and counts avoided imports once', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, multiplierScale: 0, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  for (const technology of ['solar', 'nuclear', 'hydro'] as const) {
+    const c = powerCase(technology), year = c.lag + 1;
+    const policy = preset('generation', { annualCost: T, duration: 1, energyDemand: 0, trade: { kind: 'power', assumptions: c } });
+    const flow = powerTrade(policy, year, c);
+    const thermalBill = flow.generationTwh * 1e9 * c.thermalReplacement * c.displacedFuelYenPerKwh;
+    near(flow.substitution, thermalBill);
+    // Hold construction and its macro price response fixed to isolate the
+    // operating benefit. The multiplier sensitivity only scales GDP, not prices.
+    const base = simulate(initial, [{ ...policy, trade: undefined }], year, p).steps[year - 1];
+    const path = simulate(initial, [policy], year, p), built = path.steps[year - 1];
+    const before = year === 1 ? initial : path.steps[year - 2].state;
+    const initialPrice = initial.macro.nominalGdp / initial.macro.realGdp;
+    const expected = (thermalBill - flow.operatingImports!) / initialPrice * before.macro.nominalGdp / before.macro.realGdp;
+    assert(expected > 0);
+    near(base.state.energy.importBill - built.state.energy.importBill, expected);
+    near(built.state.external.tradeBalance - base.state.external.tradeBalance, expected);
+    near(built.demand.domesticSubstitution, thermalBill / (initial.macro.nominalGdp / initial.macro.realGdp));
+    const noReplacement = powerTrade(policy, year, { ...c, thermalReplacement: 0 });
+    near(noReplacement.substitution, 0);
+    near(noReplacement.operatingImports!, flow.operatingImports!);
+    assert.equal(powerTrade(policy, year, { ...c, operatingImportYenPerKwh: null }).operatingImports, null);
+  }
+});
+
+test('power trade breakdown uses each path previous deflator and energy shocks without changing totals', () => {
+  const initial = initialEconomy();
+  const policy = preset('generation', { duration: 1, trade: { kind: 'power', assumptions: powerCase('solar') } });
+  const current = [preset('grid', { supply: { ...SUPPLY_CASES.grid.settings, lag: 2 } })];
+  for (const energyPriceChange of [0, .3, -.2]) {
+    const shock = { ...NO_SHOCK, energyPriceChange };
+    const baseline = simulate(initial, current, 5, P, shock);
+    const added = simulate(initial, [...current, policy], 5, P, shock);
+    const row = compareNextTrillion(initial, current, P, shock, THRESHOLDS, [policy])[0];
+    for (const period of row.periods) {
+      const i = period.year - 1;
+      const price = (path: typeof added) => { const s = i ? path.steps[i - 1].state : initial; return s.macro.nominalGdp / s.macro.realGdp; };
+      const operating = -(added.steps[i].demand.projectEnergyNetImports * price(added) - baseline.steps[i].demand.projectEnergyNetImports * price(baseline)) * (1 + energyPriceChange);
+      near(period.energyOperatingTradeEffect, operating);
+      near(period.tradeBalanceEffect, added.steps[i].state.external.tradeBalance - baseline.steps[i].state.external.tradeBalance);
+    }
+    near(row.periods[0].energyOperatingTradeEffect, 0);
+    assert(row.periods[1].energyOperatingTradeEffect > 0);
+  }
+});
+
+test('grid fuel savings reach imports and capacity once, net of upkeep, with explicit renewable overlap', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const grid = preset('grid', { duration: 1, energyDemand: 0, supply: { ...SUPPLY_CASES.grid.settings } });
+  const c = grid.supply!;
+  assert.equal(projectResponse(initial, grid, 5, p).substitution, 0);
+  const flow = projectResponse(initial, grid, 6, p);
+  const stock = T * c.additionality;
+  near(flow.substitution, stock * (c.yield + c.maintenanceRate!) * initial.energy.fossilFuelImportDependency);
+  near(flow.operatingImports, stock * c.maintenanceRate! * c.maintenanceImportShare!);
+  near(flow.domesticOperatingCost, stock * c.maintenanceRate! * (1 - c.maintenanceImportShare!));
+  assert.equal(supplyResponse(initial, grid, 6, p), 0, 'No duplicate structural grid supply');
+  const base = simulate(initial, [], 6, p).steps[5], actual = simulate(initial, [grid], 6, p).steps[5];
+  const net = flow.substitution - flow.operatingImports - flow.domesticOperatingCost;
+  near(actual.state.macro.potentialGdp - base.state.macro.potentialGdp, net);
+  near(actual.state.macro.realGdp - base.state.macro.realGdp, net);
+  near(actual.demand.imports, flow.operatingImports - flow.substitution);
+  near(actual.demand.additionalDemand, actual.demand.realOutput + actual.demand.imports - actual.demand.exports + actual.demand.prices);
+  const solar = preset('generation', { duration: 1, trade: { kind: 'power', assumptions: powerCase('solar') } });
+  const solarOnly = projectResponse(initial, solar, 6, p);
+  const together = projectResponses(initial, [grid, solar], 6, p);
+  near(together.reduce((sum, f) => sum + f.substitution, 0), Math.max(flow.substitution, solarOnly.substitution));
+  const distinct = projectResponses(initial, [{ ...grid, supply: { ...c, generationOverlapShare: 0 } }, solar], 6, p);
+  near(distinct.reduce((sum, f) => sum + f.substitution, 0), flow.substitution + solarOnly.substitution);
+  const reversed = projectResponses(initial, [solar, grid], 6, p);
+  near(together[0].substitution, reversed[1].substitution);
+  assert.throws(() => projectResponse(initial, { ...grid, supply: { ...c, maintenanceImportShare: 2 } }, 6, p));
+});
+
+test('power mixes preserve investment totals, commissioning lags, fuel costs and single-policy equivalence', () => {
+  const initial = initialEconomy(), policy = preset('generation', { duration: 1, annualCost: 2 * T });
+  const solar = powerCase('solar'), nuclear = powerCase('nuclear');
+  const mixed = { ...solar, mix: [{ share: 3, assumptions: solar }, { share: 7, assumptions: nuclear }] };
+  for (const year of [1, 3, 5, 11]) {
+    const result = powerTrade(policy, year, mixed);
+    const a = powerTrade({ ...policy, annualCost: .6 * T }, year, solar), b = powerTrade({ ...policy, annualCost: 1.4 * T }, year, nuclear);
+    near(result.generationTwh, a.generationTwh + b.generationTwh);
+    near(result.substitution, a.substitution + b.substitution);
+    near(result.operatingImports!, a.operatingImports! + b.operatingImports!);
+  }
+  const combined = { ...policy, trade: { kind: 'power' as const, assumptions: mixed } };
+  const split = [{ ...policy, annualCost: .6 * T, trade: { kind: 'power' as const, assumptions: solar } }, { ...policy, annualCost: 1.4 * T, trade: { kind: 'power' as const, assumptions: nuclear } }];
+  const actual = simulate(initial, [combined], 5, P), separate = simulate(initial, split, 5, P);
+  actual.steps.forEach((s, i) => { near(s.state.macro.realGdp, separate.steps[i].state.macro.realGdp); near(s.state.external.imports, separate.steps[i].state.external.imports); near(s.state.fiscal.primaryBalance, separate.steps[i].state.fiscal.primaryBalance); });
+  const mature = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [combined])[0].investment!;
+  assert.equal(mature.startYear, 11); assert.equal(mature.timings!.length, 2); assert(mature.trade!.operatingImports > 0);
+  assert.throws(() => powerTrade(policy, 5, { ...solar, mix: [{ share: 0, assumptions: solar }] }));
+  for (const record of policyTradeRecords({ industry: {}, power: solar, powerCases: { solar, nuclear, hydro: powerCase('hydro') }, mix: { solar: 3, nuclear: 7, hydro: 0 } })) assert(!inputLabel(record.key, POLICIES).includes('未分類'), record.key);
+});
+
+test('one-year government spending reproduces the published five-year experiment instead of differencing sustained shocks', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const policy = preset('public-investment', { duration: 1, annualCost: initial.macro.realGdp * .01 });
+  // EF2026 table 1: output and trade level deviations (% of each own baseline).
+  const expected = [[1.08, -.01, .45, .19, .15], [-.10, 0, .45, .26, .22], [-.20, -.05, .43, .22, .17], [-.21, -.06, .36, .17, .13], [-.14, -.04, .31, .13, .10]];
+  const result = simulate(initial, [policy], 5, p);
+  let cpiIndex = 1;
+  result.steps.forEach((step, i) => {
+    const [gdp, exports, imports, deflator, cpi] = expected[i];
+    near((step.state.macro.realGdp / initial.macro.realGdp - 1) * 100, gdp);
+    near(step.demand.exports / initial.external.exports * 100, exports);
+    near(step.demand.imports / initial.external.imports * 100, imports);
+    near((step.state.macro.nominalGdp / step.state.macro.realGdp - 1) * 100, deflator);
+    cpiIndex *= 1 + step.state.macro.inflation;
+    near((cpiIndex - 1) * 100, cpi);
+  });
+});
+
+test('research cohorts survive spending expiry, decay after commissioning and never duplicate commercial output', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const policy = preset('rd', { duration: 1, supply: { ...SUPPLY_CASES.rd.settings } });
+  assert.equal(supplyResponse(initial, policy, 3, p), 0);
+  near(supplyResponse(initial, policy, 4, p), .15 * T);
+  near(supplyResponse(initial, policy, 10, p), .15 * T * .85 ** 6);
+  const actual = simulate(initial, [policy], 10, p), base = simulate(initial, [{ ...policy, supply: undefined }], 10, p);
+  near(actual.steps[3].state.macro.potentialGdp - base.steps[3].state.macro.potentialGdp, .15 * T);
+  near(actual.steps[3].state.macro.realGdp, base.steps[3].state.macro.realGdp);
+  assert(actual.steps[9].state.macro.realGdp > base.steps[9].state.macro.realGdp);
+  const commercial = { ...policy, trade: { kind: 'industry' as const, assumptions: { ...INDUSTRY_CASE, annualSalesPerInvestment: 1 } } };
+  assert.equal(supplyResponse(initial, commercial, 10, p), 0);
+  assert.throws(() => simulate(initial, [{ ...policy, potentialGdpEffect: .5 }], 10, p));
+});
+
+test('public capital has diminishing returns and row splitting preserves supply', () => {
+  const initial = initialEconomy(), policy = preset('public-investment', { duration: 1, supply: { ...SUPPLY_CASES['public-investment'].settings } });
+  const one = supplyResponse(initial, policy, 3, P);
+  const two = supplyResponse(initial, { ...policy, annualCost: 2 * T }, 3, P);
+  assert(two > one && two < 2 * one);
+  near(supplyTotal(initial, [policy, policy], 3, P), two);
+  assert.equal(supplyResponse(initial, { ...policy, supply: { ...policy.supply!, additionality: 0 } }, 3, P), 0);
+  assert.throws(() => supplyResponse(initial, { ...policy, supply: { ...policy.supply!, depreciation: 2 } }, 3, P));
+});
+
+test('late spending does not inherit an earlier cohorts long-run realization', () => {
+  const initial = initialEconomy(); initial.macro.inflation = 0;
+  const p = { ...P, baselineInflation: 0, inflationPersistence: 0 };
+  const ref = { ...SUPPLY_CASES.rd.settings, lag: 0, depreciation: 0 };
+  const one = preset('rd', { duration: 1, supply: ref });
+  const permanent = { ...one, kind: 'permanent' as const };
+  // At year 6 only the year-1 vintage starts the 5-to-10-year realization ramp.
+  near(supplyResponse(initial, permanent, 6, p, true), supplyResponse(initial, one, 6, p, true));
+  near(supplyResponse(initial, one, 6, p, true), .15 * T / 5);
+  near(supplyResponse(initial, permanent, 10, p, true), .15 * T * 3);
+  near(supplyResponse(initial, permanent, 10, p), .15 * T * 10);
+});
+
+test('education enters after schooling while childcare operating support expires without creating future workers', () => {
+  const initial = initialEconomy();
+  const education = preset('education', { duration: 1, supply: { ...SUPPLY_CASES.education.settings } });
+  const childcare = preset('childcare', { duration: 1, supply: { ...SUPPLY_CASES.childcare.settings } });
+  assert.equal(supplyResponse(initial, education, 3, P), 0);
+  assert(supplyResponse(initial, education, 10, P) > 0);
+  assert(supplyResponse(initial, childcare, 1, P) > 0);
+  assert.equal(supplyResponse(initial, childcare, 2, P), 0);
+  assert.equal(supplyResponse(initial, childcare, 10, P), 0);
+  assert(supplyResponse(initial, { ...childcare, kind: 'permanent' }, 10, P) > 0);
+});
+
+test('semiconductor reference uses capital stock and pays for construction even when additionality is zero', () => {
+  near(SEMICONDUCTOR_CASE.annualSalesPerInvestment!, 2894307699 / 3234980070);
+  const c = { ...SEMICONDUCTOR_CASE, capexImportShare: .3 };
+  const policy = preset('semiconductors', { duration: 1 });
+  const early = industryTrade(policy, 4, c), late = industryTrade(policy, 10, c);
+  near(late.sales!, early.sales! * .9 ** 6);
+  const failed = industryTrade(policy, 1, { ...c, additionality: 0 });
+  assert.equal(failed.sales, 0); assert.equal(failed.capexImports, .3 * T);
+});
+
+test('default substitution starts at commissioning, reports commissioning capacity and distinguishes unknown from estimated zero', () => {
+  const initial = initialEconomy('latest');
+  const semiconductor = preset('semiconductors', { duration: 1, trade: { kind: 'industry', assumptions: { ...SEMICONDUCTOR_CASE } } });
+  const solar = preset('generation', { duration: 1, trade: { kind: 'power', assumptions: powerCase('solar') } });
+  const unknown = preset('rd', { supply: { ...SUPPLY_CASES.rd.settings }, trade: { kind: 'industry', assumptions: { ...INDUSTRY_CASE } } });
+  const noReplacement = { ...semiconductor, trade: { kind: 'industry' as const, assumptions: { ...SEMICONDUCTOR_CASE, domesticReplacementShare: 0 } } };
+  const [semi, power, research, zero] = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [semiconductor, solar, unknown, noReplacement]);
+  const deflator = initial.macro.nominalGdp / initial.macro.realGdp;
+  const expectedSemi = T / deflator * SEMICONDUCTOR_CASE.annualSalesPerInvestment! * .5 * (1 - SEMICONDUCTOR_CASE.exportShare) * SEMICONDUCTOR_CASE.domesticReplacementShare;
+  assert.equal(semi.periods[0].domesticSubstitution, 0);
+  assert.equal(semi.periods[1].domesticSubstitution, 0);
+  assert(simulate(initial, [semiconductor], 4, P).steps[3].demand.domesticSubstitution > 0);
+  near(semi.investment!.trade!.substitution, expectedSemi);
+  near(semi.investment!.trade!.operatingImports, expectedSemi);
+  near(semi.investment!.trade!.imports, 0);
+  near(semi.investment!.trade!.tradeBalance, semi.investment!.trade!.exports - semi.investment!.trade!.imports);
+  assert.equal(power.periods[0].domesticSubstitution, 0);
+  assert(power.periods[1].domesticSubstitution > 0);
+  near(power.investment!.trade!.substitution, powerTrade({ ...solar, annualCost: T / deflator }, 3, powerCase('solar')).substitution);
+  near(power.investment!.trade!.exports, 0);
+  near(power.investment!.trade!.imports, -power.investment!.trade!.substitution);
+  near(power.investment!.trade!.tradeBalance, power.investment!.trade!.substitution);
+  assert.equal(research.investment?.trade, undefined);
+  assert.equal(zero.investment!.trade!.substitution, 0);
+  const nuclear = { ...solar, trade: { kind: 'power' as const, assumptions: { ...powerCase('nuclear'), operatingImportYenPerKwh: null } } };
+  assert.equal(compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [nuclear])[0].investment?.trade, undefined);
+  assert.equal(compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [nuclear])[0].investment?.startYear, 11);
+  const grid = preset('grid', { supply: { ...SUPPLY_CASES.grid.settings } });
+  const gridRow = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [grid])[0];
+  assert.equal(gridRow.periods[2].potentialGdpEffect, 0);
+  assert.equal(gridRow.investment!.startYear, 6);
+  assert(gridRow.investment!.supply! > 0, 'Benefits beyond year five remain visible at commissioning');
+  const importedInputs = { ...semiconductor, trade: { kind: 'industry' as const, assumptions: { ...SEMICONDUCTOR_CASE, exportShare: .1, domesticReplacementShare: 0, operatingImportShare: .8 } } };
+  const adverse = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [importedInputs])[0].investment!.trade!;
+  assert(adverse.exports > 0 && adverse.imports > adverse.exports);
+  near(adverse.tradeBalance, adverse.exports - adverse.imports);
+  assert(adverse.tradeBalance < 0, 'Positive exports alone must not be labelled a positive trade contribution');
+});
+
+test('long-run comparisons distinguish conditional supply, unknown policies, and publication horizons', () => {
+  const initial = initialEconomy();
+  const candidate = preset('rd', { supply: { ...SUPPLY_CASES.rd.settings } });
+  const row = compareNextTrillion(initial, [candidate], P, NO_SHOCK, THRESHOLDS, [candidate])[0];
+  assert.equal(row.publishedYears, 5);
+  assert.equal(row.investment!.startYear, 4);
+  assert.equal(row.investment!.lifetime, 20);
+  assert(row.investment!.supply! > 0);
+  assert.equal(compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [preset('defence')])[0].investment, undefined);
+  for (const record of supplyRecords(Object.fromEntries(Object.entries(SUPPLY_CASES).map(([id, ref]) => [id, ref.settings])))) {
+    assert.equal(record.status, 'assumption'); assert(record.sourceUrl);
+    assert(!inputLabel(record.key, POLICIES).includes('未分類'));
+  }
+});
+
+test('comparison reports actual marginal outcomes at 1, 3 and 5 years, including delayed potential output', () => {
   const initial = initialEconomy();
   const current = [preset('cash', { annualCost: 4 * T })];
   const candidate = preset('rd', { potentialGdpEffect: .5, implementationLag: 3 });
@@ -35,7 +306,7 @@ test('comparison reports actual marginal outcomes at 1, 3 and 10 years, includin
     const row = compareNextTrillion(initial, current, p, NO_SHOCK, THRESHOLDS, [candidate])[0];
     const base = simulate(initial, current, 10, p);
     const extra = simulate(initial, [...current, { ...candidate, annualCost: T, duration: 1 }], 10, p);
-    assert.deepEqual(row.periods.map(period => period.year), [1, 3, 10]);
+    assert.deepEqual(row.periods.map(period => period.year), [1, 3, 5]);
     for (const period of row.periods) {
       const step = extra.steps[period.year - 1], before = base.steps[period.year - 1];
       near(period.realGdpEffect, step.state.macro.realGdp - before.state.macro.realGdp);
@@ -95,6 +366,7 @@ test('project vintages deflate payments, expire, and cap overlapping substitutio
   const doubled = projectResponses(initial, [{ ...huge, annualCost: huge.annualCost * 2 }], 3, p);
   near(doubled[0].substitution, combined[0].substitution + combined[1].substitution);
   assert.throws(() => simulate(initial, [preset('cash', { trade: policy.trade })]));
+  assert.throws(() => simulate(initial, [preset('grid', { trade: policy.trade })]));
   assert.throws(() => simulate(initial, [{ ...policy, trade: { kind: 'industry', assumptions: { ...c, capexImportShare: 2 } } }]));
 });
 
@@ -111,7 +383,7 @@ test('power savings reach trade and energy bills once, while unknown nuclear imp
     -saving * (base.steps[1].state.macro.nominalGdp / base.steps[1].state.macro.realGdp));
   near(actual.steps[2].state.energy.importBill - base.steps[2].state.energy.importBill,
     actual.steps[2].state.external.imports - base.steps[2].state.external.imports);
-  const nuclear = { ...policy, trade: { kind: 'power' as const, assumptions: powerCase('nuclear') } };
+  const nuclear = { ...policy, trade: { kind: 'power' as const, assumptions: { ...powerCase('nuclear'), operatingImportYenPerKwh: null } } };
   assert.equal(projectResponse(initial, nuclear, 11, p).substitution, 0);
   assert.equal(projectResponse(initial, nuclear, 11, p).operatingConfigured, false);
   assert(projectResponse(initial, { ...nuclear, trade: { kind: 'power', assumptions: { ...powerCase('nuclear'), operatingImportYenPerKwh: 1 } } }, 11, p).substitution > 0);
@@ -204,10 +476,49 @@ test('extended household burden includes employer cost on both sides and VAT onl
   near(extendedHouseholdBurden({ ...row, exemptGross: 0 }, .16).rate, r.rate);
   assert(extendedHouseholdBurden(row, .18).rate > r.rate);
   assert.equal(extendedHouseholdBurden({ ...row, salaryAnnual: 0 }).employer, 0);
-  assert.equal(NATIONAL_BURDEN[0].rate, .467);
+  assert.equal(NATIONAL_BURDEN[0].rate, .329);
   assert(!burdenRecords(false).some(r => r.key === 'burden.national.2025'));
   assert.equal(burdenRecords(true).find(r => r.key === 'burden.national.2025')!.status, 'estimated');
   assert.throws(() => extendedHouseholdBurden(row, NaN));
+});
+
+test('national GDP and NI ratios retain published totals and fiscal-year status', () => {
+  const national = NATIONAL_BURDEN[0];
+  near(national.tax, .282 * 452 / 642.4);
+  assert.deepEqual(NATIONAL_BURDEN.map(r => r.rate), [.329, .329, .327]);
+  assert.deepEqual(NATIONAL_BURDEN.map(r => r.niRate), [.467, .461, .457]);
+  // Published 2026 components round to 45.6%, but the official total is 45.7%.
+  assert.notEqual(NATIONAL_BURDEN[2].niRate, NATIONAL_BURDEN[2].taxNi + NATIONAL_BURDEN[2].socialNi);
+  const records = burdenRecords(true);
+  assert.equal(records.find(r => r.key === 'burden.national.2024.ni')!.status, 'verified');
+  assert.equal(records.find(r => r.key === 'burden.national.2025.ni')!.status, 'estimated');
+  assert(!burdenRecords(false).some(r => r.key === 'burden.national.2025.ni'));
+  assert(!records.some(r => r.key.endsWith('.gni')));
+});
+
+test('working household aggregate uses adjusted household weights and excludes older households', () => {
+  assert.deepEqual(AGE_BURDEN_WEIGHTS.map(r => r.weight), [856, 1041, 1275, 1486, 1683, 1327, 1118, 703, 512]);
+  const result = workingHouseholdBurden();
+  assert.equal(result.totalWeight, 8786);
+  // Independent sums from the seven source classes, for the default incidence.
+  near(result.income, 9340501.407994537);
+  near(result.burden, 3156023.220423401);
+  near(result.average, result.burden / result.income);
+  assert(result.average > result.min && result.average < result.max);
+  const rates = AGE_BURDEN[0].classes.filter(r => r.headAge < 65).map(r => extendedHouseholdBurden(r, .16, .25).rate);
+  assert(Math.abs(result.average - rates.reduce((a, b) => a + b, 0) / rates.length) > .001);
+  assert(workingHouseholdBurden(0).average < result.average);
+  near(burdenRecords(false, 0).find(r => r.key === 'burden.household.average')!.value!, workingHouseholdBurden(0).average);
+});
+
+test('OECD benchmarks switch observation years without using the household incidence assumption', () => {
+  assert.deepEqual(OECD_WORKING_BURDEN.map(r => r.year), [2024, 2025]);
+  const key = 'burden.oecd.single.oecd';
+  const historical = burdenRecords(false).find(r => r.key === key)!;
+  const latest = burdenRecords(true).find(r => r.key === key)!;
+  assert.equal(historical.value, .349); assert.equal(latest.value, .351);
+  assert.equal(burdenRecords(true, 1).find(r => r.key === key)!.value, latest.value);
+  assert(latest.uncertaintyNote.includes('消費税・法人税を含まない'));
 });
 
 test('external stress compounds FX and world prices and raises inflation only once', () => {
@@ -267,7 +578,8 @@ test('power options distinguish capacity, generation, lag, fuel imports and firm
   assert.equal(powerTrade(policy, 5, { ...solar, thermalReplacement: 0 }).substitution, 0);
   assert.equal(powerTrade(policy, 10, powerCase('nuclear')).capacityGw, 0);
   assert(powerTrade(policy, 11, powerCase('nuclear')).capacityGw > 0);
-  assert.equal(powerTrade(policy, 11, powerCase('nuclear')).operatingImports, null);
+  assert(powerTrade(policy, 11, powerCase('nuclear')).operatingImports! > 0);
+  assert.equal(powerTrade(policy, 11, { ...powerCase('nuclear'), operatingImportYenPerKwh: null }).operatingImports, null);
   assert(powerTrade(policy, 6, powerCase('hydro')).generationTwh > 0);
   assert.equal(powerTrade(policy, 28, solar).generationTwh, 0);
   assert.throws(() => powerTrade(policy, 5, { ...solar, capexPerKw: 0 }));
@@ -478,7 +790,7 @@ test('energy demand propagates through imports, trade and prices while primary i
   assert(income.steps[0].state.external.currentAccount > high.steps[0].state.external.currentAccount);
 });
 
-test('longer maturity spreads rate shock effects across 1, 5 and 10 years', () => {
+test('longer maturity spreads rate shock effects across 1, 3 and 5 years', () => {
   const result = rateShockComparison(initialEconomy(), []);
   assert.equal(result.length, 3);
   assert(result[0].years[0].interestIncrease < result[0].years[1].interestIncrease);
@@ -515,7 +827,8 @@ test('provenance differentiates currency, maturity years, capacity and ratio thr
   assert.equal(unit('initial.energy.firmCapacity'), 'GW');
   assert.equal(unit('thresholds.interestGdp'), '比率（1 = 100%）');
   assert.equal(unit('initial.energy.primaryDemand'), '指数（基準年需要 = 100）');
-  assert(rows.filter(r => r.key.startsWith('parameters.') || r.key.startsWith('thresholds.')).every(r => r.status === 'assumption' && r.sourceUrl === null));
+  assert(rows.filter(r => (r.key.startsWith('parameters.') && !r.key.startsWith('parameters.electricity.')) || r.key.startsWith('thresholds.')).every(r => r.status === 'assumption' && r.sourceUrl === null));
+  assert(rows.filter(r => r.key.startsWith('parameters.electricity.')).every(r => r.status === 'assumption' && r.sourceUrl));
 });
 
 test('Japan baseline preserves published 2024 values and accounting identities', () => {
@@ -608,7 +921,7 @@ test('published annual GDP responses are reproduced at fixed baseline prices wit
 
 test('CPI level response is differenced into inflation and is not used as the GDP deflator', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
-  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0 };
+  const p = { ...P, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0 };
   const result = simulate(initial, [preset('public-investment', { kind: 'permanent', annualCost: initial.macro.nominalGdp * .01 })], 5, p);
   const cpi = [.0015, .0037, .0054, .0067, .0076], deflator = [.0019, .0045, .0066, .0082, .0094];
   let cpiIndex = 1;
@@ -657,7 +970,7 @@ test('labour supply sensitivity increases hours and participation without creati
 test('reference periods and every numeric calibration input have visible provenance and Japanese labels', () => {
   for (const model of ['ef2026', 'esri2022'] as const) {
     const rows = referenceRecords(model);
-    assert.equal(rows.length, REFERENCES[model].years * 3 * 9);
+    assert.equal(rows.length, REFERENCES[model].years * (model === 'ef2026' ? 4 : 3) * 9);
     assert.equal(new Set(rows.map(r => r.key)).size, rows.length);
     assert(rows.every(r => r.sourceUrl && (r.status === 'estimated' || r.status === 'assumption')));
     for (const row of [...rows, ...assumptionRecords({ initial: initialEconomy(), parameters: P, policies: POLICIES })]) {

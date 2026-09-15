@@ -1,8 +1,12 @@
-/** Money is yen; rates are fractions; real values use prototype year-0 prices. */
+import type { IndustryTradeCase, PowerCase } from '@/app/lib/fiscal-space/policy-trade';
+
+/** Money is yen; rates are fractions; real values use the selected year-0 prices. */
 export interface SourceValue {
   key: string; value: number; unit: string; referenceYear: string;
-  sourceName: string; sourceUrl: string | null; status: 'assumption' | 'verified';
+  sourceName: string; sourceUrl: string | null; status: 'assumption' | 'verified' | 'derived' | 'estimated';
   low?: number; high?: number; uncertaintyNote: string;
+  publishedAt?: string;
+  retainedReason?: string;
 }
 export type Input = 'capital' | 'labour' | 'energy' | 'materials';
 export type Inputs = Record<Input, number>;
@@ -13,7 +17,8 @@ export interface EconomyState {
   macro: { nominalGdp: number; realGdp: number; potentialGdp: number; inflation: number;
     coreInflation: number; expectedInflation: number; nominalWageGrowth: number; realGrowth: number; nominalGrowth: number };
   fiscal: { primaryBalance: number; structuralPrimaryBalance: number; taxRevenue: number; primaryExpenditure: number;
-    interestPayments: number; grossDebt: number; financialAssets: number; netDebt: number;
+    interestPayments: number; interestRevenue: number; otherPrimaryRevenue: number;
+    grossDebt: number; financialAssets: number; netDebt: number;
     liquidFinancialAssets: number; liquidityAdjustedNetDebt: number };
   debtPortfolio: DebtBucket[];
   production: { inputs: Inputs; tfp: number; labourProductivity: number };
@@ -32,17 +37,21 @@ export interface EconomyState {
 export type PolicyKind = 'temporary' | 'permanent' | 'growth';
 export interface Policy {
   id: string; name: string; kind: PolicyKind; channel: 'tax' | 'expenditure'; sector: Sector;
-  annualCost: number; duration: number; baseMultiplier: number; importPropensity: number;
-  inflationSensitivity: number; labourDemand: number; energyDemand: number;
+  annualCost: number; duration: number; energyDemand: number;
   potentialGdpEffect: number; implementationLag: number;
   capitalEffect: number; tfpEffect: number; energyCapacityEffect: number; labourProductivityEffect: number;
+  trade?: { kind: 'industry'; assumptions: IndustryTradeCase } | { kind: 'power'; assumptions: PowerCase };
+  supply?: import('@/app/lib/fiscal-space/supply').SupplyCase;
 }
 export interface PolicyShare { policy: Policy; weight: number }
 export interface Shock { marketRateDelta: number; energyPriceChange: number; realGrowthDelta: number }
 export interface ModelParameters {
+  electricity: import('@/app/lib/fiscal-space/electricity-baseline').ElectricityBaselineCase;
+  referenceModel: 'ef2026' | 'esri2022'; multiplierScale: number;
+  hoursElasticity: number; participationElasticity: number; netLabourIncomeShare: number;
+  employeeReliefShare: number; employerDemandElasticity: number; employerLabourCostShare: number;
   baselineRealGrowth: number; baselineInflation: number; marketRate: number; newDebtMaturity: number;
-  stockFlowAdjustmentRatio: number; gapMultiplierSensitivity: number; slackMultiplierSensitivity: number;
-  supplySlackReference: number; sectorSlackReference: number; minimumCapacityFactor: number;
+  stockFlowAdjustmentRatio: number;
   overflowImportShare: number; inflationPassThrough: number; inflationPersistence: number;
   energyPricePassThrough: number; investmentDepreciation: number; goodsImportShare: number;
   essentialImportShare: number; wageInflationPassThrough: number; cesSigma: number;
@@ -64,7 +73,9 @@ export interface ProductionResult {
   binding: Input; second: Input; utilization: Inputs; remainingSlack: Inputs;
 }
 export interface DemandResult {
-  additionalDemand: number; realOutput: number; imports: number; prices: number;
+  additionalDemand: number; realOutput: number; exports: number; imports: number; prices: number;
+  domesticSubstitution: number; projectEnergyNetImports: number;
+  priceLevelEffect: number; deflatorLevelEffect: number; employmentEffect: number; labourForceEffect: number; hoursEffect: number;
   details: { policyId: string; cost: number; baseMultiplier: number; slackFactor: number;
     capacityFactor: number; domesticRetentionFactor: number; effectiveMultiplier: number; realOutput: number }[];
 }
@@ -74,6 +85,7 @@ export interface FiscalMetrics {
   effectiveRate: number; stabilizingPrimaryBalance: number; stockFlowAdjustmentGdp: number;
 }
 export interface ProjectionStep {
+  electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number };
   state: EconomyState; production: ProductionResult; demand: DemandResult; metrics: FiscalMetrics;
   outputGap: number; maximumGap: number; policyCost: number; maturingDebt: number;
   energyImportIncrease: number; inflationPressure: number; sectorDemand: Record<Sector, number>;
@@ -85,8 +97,25 @@ export interface FiscalSpaceEstimate {
   constraints: ConstraintResult[]; evaluations: number; tolerance: number;
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };
 }
+export interface PolicyComparisonPeriod {
+  year: 1 | 3 | 5;
+  realGdpEffect: number; inflationPressure: number;
+  exports: number; imports: number; tradeBalanceEffect: number; domesticSubstitution: number;
+  energyOperatingTradeEffect: number;
+  debtGdp: number; debtGdpChange: number; potentialGdpEffect: number;
+}
 export interface PolicyComparison {
-  policy: Policy; realGdpEffect: number; inflationPressure: number; imports: number; tradeBalanceEffect: number;
-  debtGdp10y: number; debtGdpChange10y: number; potentialGdpEffect: number;
+  publishedYears: number;
+  supplyNote: string;
+  investment?: {
+    startYear: number; lifetime: number;
+    timings?: { name: string; startYear: number; lifetime: number }[];
+    supply?: number;
+    trade?: { exports: number; imports: number; substitution: number; operatingImports: number; tradeBalance: number };
+  };
+  periods: PolicyComparisonPeriod[];
+  supplyEffectConfigured: boolean;
+  policy: Policy; realGdpEffect: number; inflationPressure: number; exports: number; imports: number; tradeBalanceEffect: number;
+  debtGdp5y: number; debtGdpChange5y: number; potentialGdpEffect: number;
   mainCapacity: string; space: FiscalSpaceEstimate;
 }

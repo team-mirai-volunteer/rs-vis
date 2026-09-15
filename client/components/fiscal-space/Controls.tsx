@@ -8,51 +8,58 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
   label: string; value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
 }) {
   const id = useId();
-  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-medium">{label}</label><span className="text-xs tabular-nums">{value.toFixed(step < 1 ? 1 : 0)}{unit}</span></div>
+  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
+    <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={Number(value.toFixed(6))}
+      onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8))); }}
+      className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(e.target.valueAsNumber)} className="w-full accent-primary" />
   </div>;
 }
-export function Controls({ policies, weights, total, duration, mode, horizon, rateShock, energyShock, reserve, thresholds, definitions, gap, construction, firmCapacity,
-  onWeight, onTotal, onDuration, onMode, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onConstruction, onFirmCapacity, onReset }: {
-  policies: Policy[]; weights: Record<string, number>; total: number; duration: number; mode: 'preset' | PolicyKind; horizon: number;
+export function Controls({ policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
+  onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
+  policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
-  gap: number; construction: number; firmCapacity: number;
-  onWeight: (id: string, n: number) => void; onTotal: (n: number) => void; onDuration: (n: number) => void;
-  onMode: (v: 'preset' | PolicyKind) => void; onHorizon: (n: number) => void; onRateShock: (n: number) => void; onEnergyShock: (n: number) => void;
+  gap: number; inflation: number; construction: number; firmCapacity: number;
+  onAmount: (id: string, n: number) => void; onPolicyDuration: (id: string, n: number) => void;
+  onPolicyKind: (id: string, v: PolicyKind) => void; onHorizon: (n: number) => void; onRateShock: (n: number) => void; onEnergyShock: (n: number) => void;
   onReserve: (n: number) => void; onThreshold: (id: keyof Thresholds, n: number) => void;
-  onGap: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
+  onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
-  const weightTotal = Object.values(weights).reduce((a, b) => a + b, 0);
   const primaryIds = ['social-insurance', 'rd', 'grid', 'defence', 'childcare', 'public-investment'];
-  const policyField = (policy: Policy) => <div key={policy.id}>
-    <RangeField label={policy.name} value={weights[policy.id] ?? 0} min={0} max={10} unit="" onChange={n => onWeight(policy.id, n)} />
-    <p className="text-xs text-mirai-text-subtle">{money(weightTotal ? total * 1e12 * (weights[policy.id] ?? 0) / weightTotal : 0)} / 年・{KIND_LABELS[mode === 'preset' ? policy.kind : mode]}</p>
+  const policyField = (policy: Policy) => <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
+    <RangeField label={policy.name} value={amounts[policy.id] ?? 0} min={0} max={100} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
+      {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+    </select></label>
+    {policy.kind === 'permanent' ? <p className="text-xs text-mirai-text-subtle">評価期間中、毎年継続します。</p> :
+      <label className="flex items-center justify-between gap-2 text-xs"><span>支出期間</span><span className="flex items-center gap-1">
+        <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
+          onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
+    {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
   </div>;
-  return <Card><CardHeader><h2 className="text-lg font-bold">政策を組み合わせる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">総額は年間の追加費用。配分の重みを動かすと、総額を保って他の政策の金額も変わります。</p></CardHeader>
+  return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
-      <RangeField label="年間追加総額" value={total} min={0} max={100} step={.5} unit="兆円" onChange={onTotal} />
-      <label className="block text-xs">総額を数値入力（兆円）<input className={`${fieldClass} mt-2`} type="number" min={0} max={100} step={.1} value={total} onChange={e => { const v = e.target.valueAsNumber; if (Number.isFinite(v)) onTotal(Math.max(0, Math.min(100, v))); }} /></label>
-      <label className="block space-y-2 text-sm"><span>政策の継続方法</span><select className={fieldClass} value={mode} onChange={e => onMode(e.target.value as typeof mode)}>
-        <option value="preset">各政策のプリセット</option>{Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-      </select></label>
-      <RangeField label="支出期間（恒久政策を除く）" value={duration} min={1} max={10} unit="年" onChange={onDuration} />
+      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">年間追加総額</p><output data-testid="annual-total" aria-label="年間追加総額" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">各政策の年額の合計。実際の年別費用は継続方法・期間に従います。</p></div>
+      <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.filter(policy => primaryIds.includes(policy.id)).map(policyField)}
-        <details><summary className="cursor-pointer text-sm font-bold">ほかの7政策を配分する</summary><div className="mt-4 space-y-4">{policies.filter(policy => !primaryIds.includes(policy.id)).map(policyField)}</div></details>
-        {weightTotal === 0 && <p role="status" className="text-sm">配分がありません。政策の重みを1つ以上設定してください。</p>}
+        <details><summary className="cursor-pointer text-sm font-bold">ほかの7政策を追加する</summary><div className="mt-4 space-y-4">{policies.filter(policy => !primaryIds.includes(policy.id)).map(policyField)}</div></details>
+        {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の限界財政枠を計算します。</p>}
       </div>
       <details className="border-t border-mirai-border pt-4"><summary className="cursor-pointer text-sm font-bold">経済状態・評価条件を変える</summary><div className="mt-4 space-y-4">
-        <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-3} max={10} step={.5} unit="%" onChange={onGap} />
+        <p className="text-xs leading-relaxed">年0は選択したデータの初期状態。GDPギャップは（実際−潜在）÷潜在。マイナスが需要不足、プラスが需要超過で、公表値と同じ符号です。建設利用率と確実電力供給は仮定です。</p>
+        <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
+        <RangeField label="CPI総合・初期インフレ率（年0）" value={inflation} min={-3} max={10} step={.1} unit="%" onChange={onInflation} />
+        <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準インフレ率は2%、前年の乖離が翌年に残る割合は25%という別の仮定です。</p>
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
-        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 5, 10].map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
-        <RangeField label="市場金利ショック" value={rateShock} min={0} max={300} step={100} unit="bp" onChange={onRateShock} />
+        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
+        <RangeField label="市場金利ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />
         <RangeField label="緊急時留保率" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>
         {definitions.map(d => <label key={d.id} className="block text-xs">{d.label} 上限（%）<input className={`${fieldClass} mt-1`} type="number" min={.01} step={.1} value={Number((thresholds[d.id] * 100).toFixed(3))} onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n > 0) onThreshold(d.id, n / 100); }} /></label>)}
       </div></details>
-      <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
     </CardContent>
   </Card>;
 }
