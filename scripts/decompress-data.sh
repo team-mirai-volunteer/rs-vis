@@ -45,16 +45,12 @@ decompress_if_needed "rs2025-project-outcomes.json" optional
 decompress_if_needed "rs2024-project-outcomes.json" optional
 decompress_if_needed "project-map-2025.json" optional
 decompress_if_needed "project-map-2024.json" optional
-# 統合ビュー（/budget-sankey）がブラウザから直接 fetch する統合グラフ
-decompress_if_needed "unified-budget-2023-initial-graph.json" optional
-decompress_if_needed "unified-budget-2023-supplementary-graph.json" optional
-decompress_if_needed "unified-budget-2023-settlement-graph.json" optional
-decompress_if_needed "unified-budget-2024-initial-graph.json" optional
-decompress_if_needed "unified-budget-2024-supplementary-graph.json" optional
-decompress_if_needed "unified-budget-2024-settlement-graph.json" optional
-decompress_if_needed "unified-budget-2025-initial-graph.json" optional
-decompress_if_needed "unified-budget-2025-supplementary-graph.json" optional
-decompress_if_needed "unified-budget-2026-initial-graph.json" optional
+# 統合ビューの生成済みグラフは全てブラウザへ配信する。
+# 年度・基準を手列挙すると、新しい補正予算の .gz だけが配信され JSON が404になる。
+for unified_graph in "$DATA_DIR"/unified-budget-*-graph.json.gz; do
+  [ -f "$unified_graph" ] || continue
+  decompress_if_needed "$(basename "${unified_graph%.gz}")" required
+done
 
 # --- サーバ関数バンドル用データの同期 ---
 # Vercel の関数には public/data を一切同梱しない（生 .json 込みだと 250MB 上限を
