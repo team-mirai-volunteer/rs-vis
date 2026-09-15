@@ -154,7 +154,7 @@ export default function TaxBurdenPage() {
               <Card><CardHeader><h2 className="text-lg font-bold">同じ所得階層の人が、年齢とともにどれだけ負担するか</h2><p className="mt-2 text-xs text-mirai-text-secondary">{household.label}・現役期の世帯年収 {(state.income / 10000).toLocaleString('ja-JP')}万円。60歳以降は賃金{Math.round(state.continuation * 100)}%で継続雇用、65歳から年金{state.workUntil > 65 ? `（${state.workUntil - 1}歳まで就労継続）` : ''}。</p></CardHeader>
                 <CardContent><LifecycleChart years={lifecycle} base={lifecycleBase} state={state} selectedAge={selectedAge} onSelectAge={setSelectedAge} />
                   <LifecycleTable years={lifecycle} state={state} selectedAge={selectedAge} />
-                  <p className="mt-4 text-xs leading-relaxed text-mirai-text-secondary">年金は老齢基礎年金（満額）＋報酬比例部分（平均標準報酬額×5.481/1000×480か月）。65歳以降の医療保険は国民健康保険（東京都特別区の統一保険料・要照合）、75歳から後期高齢者医療（東京都広域連合）、介護保険第1号は国の標準段階×全国平均基準額。年金生活者支援給付金は所得要件を満たす場合のみ。住民税は前年所得課税で計算するため、就労初年度（20歳）は0、継続雇用で減収した60歳と年金生活に入った65歳には前年の給与に基づく重い住民税がかかります。</p>
+                  <p className="mt-4 text-xs leading-relaxed text-mirai-text-secondary">年金は老齢基礎年金（満額）＋報酬比例部分（平均標準報酬額×5.481/1000×480か月）。65歳以降の医療保険は国民健康保険（東京都特別区の統一保険料・要照合）、75歳から後期高齢者医療（東京都広域連合）、介護保険第1号は国の標準段階×全国平均基準額。年金生活者支援給付金は所得要件を満たす場合のみ。住民税は前年所得課税で計算するため、就労初年度（20歳）は0、継続雇用で減収した年と働き終えた翌年には前年の給与に基づく重い住民税がかかります。働いていない年齢にも住民税が残るのは、公的年金にも住民税がかかるためです（公的年金等控除を引いた合計所得が非課税限度額を超える世帯のみ。片働き夫婦・子2人なら現役期年収800万円以上で年約4.7万円、500万円以下は0）。</p>
                 </CardContent>
               </Card>
               {ageRow && <BurdenBreakdown before={ageRow} includeConsumption={state.includeConsumption}
