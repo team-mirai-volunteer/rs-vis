@@ -15,6 +15,7 @@ import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route
 import type { ProjectDetail } from '@/types/project-details';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { useQualityLocation } from '@/client/hooks/useQualityLocation';
+import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, TONE_CLS, ACTION_CLS, COL_WIDTHS,
@@ -481,7 +482,7 @@ export default function QualityPage() {
               {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">2026年度は要求ベース（採点はシート2025・予算額は翌年度要求額・執行額なし）</span>}
             </h1>
           </div>
-          <p className="text-sm text-mirai-text-muted mt-1">
+          <p className="hidden text-sm text-mirai-text-muted mt-1 sm:block">
             {(() => {
               const all = policyByPid ? [...policyByPid.values()] : [];
               if (all.length === 0) return `${summary.total.toLocaleString()}事業`;
@@ -807,6 +808,16 @@ ${a.desc}` })),
       </div>
 
       {/* Table */}
+      <div className="shrink-0 space-y-2 px-3 pb-3 sm:hidden">
+        <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-mirai-border bg-card p-2 text-sm" />
+        <div className="flex items-center gap-2 text-xs">
+          <label htmlFor="mobile-quality-sort">並び順</label>
+          <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">
+            <option value="spendNetTotal">実質支出額</option><option value="budgetAmount">予算額</option><option value="overallScore">総合点</option><option value="recommendation">推奨</option><option value="name">事業名</option><option value="pid">PID</option>
+          </select>
+          <Button variant="outline" size="xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>{sortDir === 'asc' ? '昇順' : '降順'}</Button>
+        </div>
+      </div>
       <div className="flex-1 min-h-0 flex flex-col w-full px-3 pb-4">
         {/*
           外枠（枠線・角丸）と、スクロールする内箱を分ける。
@@ -816,8 +827,9 @@ ${a.desc}` })),
         */}
         <div className="flex-1 min-h-0 rounded-xl border border-mirai-border bg-card shadow-xs overflow-hidden flex flex-col">
         <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-auto">
+          <MobileQualityList items={pageItems} policies={policyByPid} requestYear={isRequestYear} onOpen={openDetail} />
           {/* table-fixed + colgroup: ソートで中身が変わっても列幅が動かないようにする */}
-          <table className="w-full text-xs table-fixed min-w-[1754px]">
+          <table className="hidden w-full text-xs table-fixed min-w-[1754px] sm:table">
             <colgroup>
               {COL_WIDTHS.map((w, i) => <col key={i} style={{ width: w }} />)}
             </colgroup>

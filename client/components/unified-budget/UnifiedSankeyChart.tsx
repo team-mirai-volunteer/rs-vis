@@ -243,7 +243,7 @@ export function UnifiedSankeyChart({
   /** 事業列のうちRS事業（個別＋集約）の合計 */
   const rsTotal = useMemo(() => layout.nodes.filter(n => n.details?.column === 'program' && (!n.details.kind || n.details.kind === 'rs')).reduce((s, n) => s + n.value, 0), [layout]);
 
-  const showsLabel = useCallback((node: MOFLayoutNode<UnifiedViewDetails>) => labelDensity === 'all' || node.height >= labelSlot(fontPx), [labelDensity, fontPx]);
+  const showsLabel = useCallback((node: MOFLayoutNode<UnifiedViewDetails>) => node.id === selectedId || labelDensity === 'all' || node.height >= labelSlot(fontPx), [selectedId, labelDensity, fontPx]);
 
   useEffect(() => {
     if (!selectedId) return;
