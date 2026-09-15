@@ -1,13 +1,13 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
-import { ResultAssumptions } from '@/client/components/fiscal-space/ResultAssumptions';
-import { defaults } from '@/client/lib/fiscal-space-form';
+import { CalculationOverview } from '@/client/components/fiscal-space/CalculationOverview';
+import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
 import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
 import { decodeScenario } from '@/client/lib/fiscal-space-url';
-import { ModelSensitivity, InputOverview, LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
+import { ModelSensitivity, LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, X } from 'lucide-react';
@@ -17,10 +17,8 @@ import { POLICIES, TRILLION } from '@/app/lib/fiscal-space/assumptions';
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 import { Controls } from '@/client/components/fiscal-space/Controls';
 import { Summary } from '@/client/components/fiscal-space/Summary';
-import { FiscalExternal } from '@/client/components/fiscal-space/FiscalExternal';
-import { ConstraintMeters } from '@/client/components/fiscal-space/ConstraintMeters';
 import { Comparison } from '@/client/components/fiscal-space/Comparison';
-import { CapacityComparison, CurrentMetrics, Projection } from '@/client/components/fiscal-space/Projection';
+import { Projection } from '@/client/components/fiscal-space/Projection';
 import { Explanations, JapanBaseline } from '@/client/components/fiscal-space/Assumptions';
 import { Calibration } from '@/client/components/fiscal-space/Calibration';
 import { BurdenIndicators } from '@/client/components/fiscal-space/BurdenIndicators';
@@ -29,12 +27,25 @@ import { PowerMix } from '@/client/components/fiscal-space/PowerMix';
 import { ElectricityBaseline } from '@/client/components/fiscal-space/ElectricityBaseline';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { SupplyConditions } from '@/client/components/fiscal-space/SupplyConditions';
-import type { Thresholds } from '@/types/fiscal-space';
+import type { PolicyKind, Thresholds } from '@/types/fiscal-space';
 
 
 const MemoExplanations = memo(Explanations);
 const MemoComparison = memo(Comparison);
 const MemoProjection = memo(Projection);
+const MemoControls = memo(Controls);
+const MemoSummary = memo(Summary);
+const MemoModelSensitivity = memo(ModelSensitivity);
+const MemoLongRun = memo(LongRun);
+const MemoDurationSensitivity = memo(DurationSensitivity);
+const MemoJapanBaseline = memo(JapanBaseline);
+const MemoBurdenIndicators = memo(BurdenIndicators);
+const MemoCalibration = memo(Calibration);
+const MemoSupplyConditions = memo(SupplyConditions);
+const MemoElectricityBaseline = memo(ElectricityBaseline);
+const MemoPowerMix = memo(PowerMix);
+const MemoPolicyLoads = memo(PolicyLoads);
+const MemoPolicyTrade = memo(PolicyTrade);
 
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
@@ -50,9 +61,36 @@ export default function FiscalSpacePage() {
     restore(); window.addEventListener('hashchange', restore);
     return () => window.removeEventListener('hashchange', restore);
   }, []);
-  const update = <K extends keyof typeof form>(key: K, value: typeof form[K]) => setForm(f => ({ ...f, [key]: value }));
+  const update = useCallback(<K extends keyof FiscalForm>(key: K, value: FiscalForm[K]) =>
+    setForm(f => Object.is(f[key], value) ? f : { ...f, [key]: value }), []);
+  // Stable callbacks let unchanged controls skip rendering without retaining stale form values.
+  const change = useMemo(() => ({
+    amount: (id: string, n: number) => setForm(f => f.amounts[id] === n ? f : { ...f, amounts: { ...f.amounts, [id]: n } }),
+    preset: (amounts: FiscalForm['amounts']) => update('amounts', amounts),
+    kind: (id: string, kind: PolicyKind) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], kind } } })),
+    duration: (id: string, duration: number) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], duration } } })),
+    horizon: (n: number) => update('horizon', n), rate: (n: number) => update('rateShock', n), energy: (n: number) => update('energyShock', n),
+    reserve: (n: number) => update('reserve', n), gap: (n: number) => update('gap', n), inflation: (n: number) => update('inflation', n),
+    construction: (n: number) => update('construction', n), firm: (n: number) => update('firmCapacity', n),
+    threshold: (id: keyof Thresholds, n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } })),
+    cpiLimit: (n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, inflation: n } })),
+    inputs: (v: FiscalForm['inputs']) => update('inputs', v), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
+    calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: Math.min(f.horizon, REFERENCES[v.referenceModel].years) })),
+    supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
+    electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
+    trade: (v: FiscalForm['trade']) => update('trade', v),
+    power: (trade: FiscalForm['trade'], total: number) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } })),
+    load: (id: string, load: FiscalForm['loads'][string]) => setForm(f => ({ ...f, loads: { ...f.loads, [id]: load } })),
+    reset: () => setForm(f => defaults(f.dataset)),
+    dataset: (dataset: FiscalForm['dataset']) => setForm(f => {
+      const base = defaults(dataset);
+      return { ...f, dataset, gap: base.gap, inflation: base.inflation, construction: base.construction, firmCapacity: base.firmCapacity };
+    }),
+  }), [update]);
   const result = completed?.result;
   const calculationForm = completed?.form;
+  const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
+  const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] })) ?? [], [result, form.loads]);
 
   return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-6 [&_summary]:py-1">
     <AppHeader current="/fiscal-space">
@@ -62,68 +100,58 @@ export default function FiscalSpacePage() {
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-10 pt-5">
       <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力を考える</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">財政余力シミュレータ（試作）。減税、公共投資、研究、エネルギー。使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
-      <ShareScenario form={form} onPreset={amounts => setForm(f => ({ ...f, amounts }))} error={shareError} />
-      <div className="min-h-10 text-sm" data-testid="calculation-status" aria-live="polite">
-        {pending && <p role="status" className="rounded bg-mirai-surface-warm px-2 py-1">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>}
+      <ShareScenario form={form} onPreset={change.preset} error={shareError} />
+      <div className="contents" data-testid="calculation-status" aria-live="polite">
+        {pending && <div className="fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg">
+          <p role="status">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>
+          <button type="button" className="mt-1 min-h-6 text-primary-accent underline" onClick={retry}>計算をやり直す</button>
+        </div>}
       </div>
       {error && <div role="alert" className="rounded-xl border border-mirai-border bg-card p-4 text-sm">
-        <p>{error === 'worker' ? '計算を読み込めませんでした。再試行してください。' : 'この条件は計算範囲を超えています。入力を調整して再試行してください。'}</p>
+        <p>{error === 'timeout' ? '計算の応答がないため停止しました。入力を保ったまま再試行できます。' : error === 'worker' ? '計算を読み込めませんでした。再試行してください。' : 'この条件は計算範囲を超えています。入力を調整して再試行してください。'}</p>
         {result && <p>下の結果は直前に計算できた条件です。</p>}
         <Button variant="outline" onClick={retry} className="mt-2">計算を再試行</Button>
       </div>}
       {result && <p role="status" aria-live="polite" className="sr-only">年間追加総額{result.totalYen / TRILLION}兆円。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <Controls
-          {...form}
+        <MemoControls
+          amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
+          thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
-          policies={POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] }))}
+          policies={policies}
           horizon={Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
           definitions={CONSTRAINTS}
-          onAmount={(id, n) => setForm(f => ({ ...f, amounts: { ...f.amounts, [id]: n } }))}
-          onHorizon={n => update('horizon', n)}
-          onPolicyKind={(id, kind) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], kind } } }))}
-          onPolicyDuration={(id, duration) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], duration } } }))}
-          onRateShock={n => update('rateShock', n)} onEnergyShock={n => update('energyShock', n)} onReserve={n => update('reserve', n)}
-          onThreshold={(id: keyof Thresholds, n) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } }))}
-          onGap={n => update('gap', n)} onInflation={n => update('inflation', n)} onConstruction={n => update('construction', n)} onFirmCapacity={n => update('firmCapacity', n)} onReset={() => setForm(defaults(form.dataset))} />
+          onAmount={change.amount} onHorizon={change.horizon} onPolicyKind={change.kind} onPolicyDuration={change.duration}
+          onRateShock={change.rate} onEnergyShock={change.energy} onReserve={change.reserve} onThreshold={change.threshold}
+          onGap={change.gap} onInflation={change.inflation} onConstruction={change.construction} onFirmCapacity={change.firm} onReset={change.reset} />
         {result && calculationForm ? <div className="min-w-0 space-y-5" aria-busy={pending}>
-          <InputOverview total={result.totalYen} estimate={result.estimate} horizon={result.horizon} incomplete={result.constraints.some(x => x.coverageComplete === false)} projection={result.projection} baseline={result.baseline} policies={result.allocated} />
-          <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={calculationForm.dataset === 'latest'} />
-          <ResultAssumptions result={result} latest={calculationForm.dataset === 'latest'} />
-          <p className="text-sm">{calculationForm.dataset === 'latest' ? '財政比率の試算は2024年の財政額と最新GDPを組み合わせた初期条件です。同時点の観測値ではありません。' : '財政の初期値は2024年で揃えています。'} 税収弾性値 {result.p.taxRevenueElasticity}・徴収ラグ {result.p.taxCollectionLag}年を仮定。</p>
-          <CurrentMetrics step={result.projection.steps[result.horizon - 1]} baseline={result.baseline.steps[result.horizon - 1]} publishedYears={REFERENCES[result.p.referenceModel].years} latest={calculationForm.dataset === 'latest'} />
-          <div className="rounded-xl border border-mirai-border bg-white p-4"><FiscalExternal rows={result.inputExternal} model={result.p.referenceModel} label={`入力中の政策 ${(result.totalYen / TRILLION).toFixed(1)}兆円 / 年`} /></div>
-          <CapacityComparison initial={result.initial} production={result.projection.initial.production} />
+          <CalculationOverview result={result} latest={calculationForm.dataset === 'latest'} />
         </div> : <p className="rounded-xl border border-mirai-border bg-card p-5">{error
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       </div>
       {result && <>
-      <Summary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} />
-      <ModelSensitivity rows={result.modelSensitivity} horizon={result.horizon}
+      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} />
+      <MemoModelSensitivity rows={result.modelSensitivity} horizon={result.horizon}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
-        onParameters={v => update('calibration', v)} onInputs={v => update('inputs', v)} onInflation={n => update('thresholds', { ...form.thresholds, inflation: n })} />
-      <DurationSensitivity rows={result.durationSensitivity} />
-      <LongRun rows={result.longRun} value={form.longRun} onChange={v => update('longRun', v)} />
+        onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
+      <MemoDurationSensitivity rows={result.durationSensitivity} />
+      <MemoLongRun rows={result.longRun} value={form.longRun} onChange={change.longRun} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>
-      <JapanBaseline dataset={form.dataset} onDataset={dataset => setForm(f => {
-        const base = defaults(dataset);
-        return { ...f, dataset, gap: base.gap, inflation: base.inflation,
-          construction: base.construction, firmCapacity: base.firmCapacity };
-      })} />
-      <BurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onCorporateShare={value => update('corporateShare', value)} />
-      <Calibration value={form.calibration} onChange={value => setForm(f => ({ ...f, calibration: { ...f.calibration, ...value }, horizon: Math.min(f.horizon, REFERENCES[value.referenceModel].years) }))} />
-      <SupplyConditions value={form.supply} onChange={value => update('supply', value)} />
+      <MemoJapanBaseline dataset={form.dataset} onDataset={change.dataset} />
+      <MemoBurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onCorporateShare={change.corporate} />
+      <MemoCalibration value={form.calibration} onChange={change.calibration} />
+      <MemoSupplyConditions value={form.supply} onChange={change.supply} />
       {result && <>
-      <ElectricityBaseline value={form.calibration.electricity} onChange={electricity => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity } }))} baseline={result.baseline} projection={result.projection} />
-      <PowerMix value={form.trade} total={form.amounts.generation ?? 0} onChange={(trade, total) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } }))} />
-      <PolicyLoads policies={result.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] }))} onChange={(id, load) => update('loads', { ...form.loads, [id]: load })} />
-      <PolicyTrade policies={result.policies} value={form.trade} onChange={value => update('trade', value)} />
+      <MemoElectricityBaseline value={form.calibration.electricity} onChange={change.electricity} baseline={result.baseline} projection={result.projection} />
+      <MemoPowerMix value={form.trade} total={form.amounts.generation ?? 0} onChange={change.power} />
+      <MemoPolicyLoads policies={loadedPolicies} onChange={change.load} />
+      <MemoPolicyTrade policies={result.policies} value={form.trade} onChange={change.trade} />
       <MemoProjection simulation={result.projection} baseline={result.baseline} peaksByYear={result.peaksByYear} shocks={result.shocks} parameters={result.p} latest={calculationForm?.dataset === 'latest'} />
       </>}
     </main>

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { memo, useId, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ConstraintDefinition, Policy, PolicyKind, Thresholds } from '@/types/fiscal-space';
@@ -17,6 +17,25 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="w-full accent-primary" />
   </div>;
 }
+const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, onAmount, onPolicyKind, onPolicyDuration }: {
+  policy: Policy; amount: number; consumptionTaxMax: number;
+  onAmount: (id: string, n: number) => void;
+  onPolicyKind: (id: string, kind: PolicyKind) => void;
+  onPolicyDuration: (id: string, duration: number) => void;
+}) {
+  return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
+    <RangeField label={policy.name} value={Math.min(amount, policy.id === 'consumption-tax' ? consumptionTaxMax : Infinity)} min={0} max={policy.id === 'consumption-tax' ? consumptionTaxMax : 100} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
+      {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+    </select></label>
+    {policy.kind === 'permanent' ? <p className="text-xs text-mirai-text-subtle">評価期間中、毎年継続します。</p> :
+      <label className="flex items-center justify-between gap-2 text-xs"><span>支出期間</span><span className="flex items-center gap-1">
+        <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
+          onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
+    {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
+    {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
+  </div>;
+});
 export function Controls({ consumptionTaxMax = 35, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
   onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
@@ -28,18 +47,7 @@ export function Controls({ consumptionTaxMax = 35, policies, amounts, total, hor
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
   const primaryIds = ['social-insurance', 'rd', 'grid', 'defence', 'childcare', 'public-investment'];
-  const policyField = (policy: Policy) => <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
-    <RangeField label={policy.name} value={Math.min(amounts[policy.id] ?? 0, policy.id === 'consumption-tax' ? consumptionTaxMax : Infinity)} min={0} max={policy.id === 'consumption-tax' ? consumptionTaxMax : 100} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
-    <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
-      {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-    </select></label>
-    {policy.kind === 'permanent' ? <p className="text-xs text-mirai-text-subtle">評価期間中、毎年継続します。</p> :
-      <label className="flex items-center justify-between gap-2 text-xs"><span>支出期間</span><span className="flex items-center gap-1">
-        <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
-          onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
-    {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
-    {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
-  </div>;
+  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">年間追加総額</p><output data-testid="annual-total" aria-label="年間追加総額" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">各政策の年額の合計。実際の年別費用は継続方法・期間に従います。</p></div>

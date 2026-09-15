@@ -3,6 +3,7 @@ import type { EconomyState, ModelParameters, ProductionResult, ProjectionStep, S
 import { money, percent, points } from './format';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { FiscalVintageBadge } from './ResultAssumptions';
+import { fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 
 export function CapacityComparison({ initial, production }: { initial: EconomyState; production: ProductionResult }) {
   const rows = [
@@ -48,9 +49,7 @@ export function Projection({ simulation, baseline, peaksByYear, shocks, paramete
   const years = simulation.steps.length;
   const last = simulation.steps[years - 1], baseLast = baseline.steps[years - 1];
   const values = steps.flatMap(s => [s.state.macro.realGdp, s.state.macro.potentialGdp, s.production.maximum]);
-  const tick = 50e12;
-  const low = Math.floor(Math.min(...values) / tick) * tick, high = Math.ceil(Math.max(...values) / tick) * tick;
-  const ticks = Array.from({ length: Math.round((high - low) / tick) + 1 }, (_, i) => low + i * tick);
+  const { low, high, ticks } = fiscalChartScale(values);
   const x = (i: number) => 90 + i * 620 / years, y = (v: number) => 200 - (v - low) / (high - low) * 170;
   const line = (get: (s: ProjectionStep) => number) => steps.map((s, i) => `${x(i)},${y(get(s))}`).join(' ');
   return <Card><CardHeader><h2 className="text-lg font-bold">{years}年間の状態遷移</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">グラフは基準年価格（兆円）。公表モデルの期間内でGDP・物価・輸出入・財政を比較します。政策固有の供給効果や事業条件には仮定を含みます。期間後の投資便益は「長期投資の稼働開始と年間効果」を参照してください。</p><p className="text-xs leading-relaxed">3年支出の政策は4年目に支出が止まり、公表反応の組み合わせではGDPが政策なし経路を下回る場合があります。研究・公共資本等の供給効果は、供用開始と減耗に応じて残ります。</p></CardHeader><CardContent className="space-y-5">

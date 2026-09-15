@@ -40,7 +40,7 @@ test('amount changes reuse single-policy bounds; economic assumptions invalidate
   assert.notEqual(after.comparison[0].space, changed.comparison[0].space);
 });
 
-function harness() {
+function harness(timeout?: number) {
   const sent: FiscalWorkerRequest[] = [], results: FiscalForm[] = [], errors: string[] = [];
   let terminated = 0;
   const port: FiscalWorkerPort = {
@@ -49,7 +49,7 @@ function harness() {
   };
   const client = createFiscalWorkerClient(port, {
     result: form => { results.push(form); }, error: kind => { errors.push(kind); },
-  }, 0);
+  }, 0, timeout);
   const receive = (data: FiscalWorkerResponse) => port.onmessage?.({ data } as MessageEvent<FiscalWorkerResponse>);
   return { port, client, sent, results, errors, receive, terminated: () => terminated };
 }
@@ -96,5 +96,39 @@ test('synchronous transport failure is reported without losing the editable form
   h.port.postMessage = () => { throw new Error('worker unavailable'); };
   h.client.submit(defaults()); await tick(5);
   assert.deepEqual(h.errors, ['worker']);
+  assert.equal(h.terminated(), 1);
+});
+
+test('unresponsive worker times out despite newer inputs; late replies cannot publish', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = harness(1000);
+  h.client.submit(defaults()); t.mock.timers.tick(1);
+  const lateReply = h.port.onmessage!;
+  t.mock.timers.tick(700);
+  h.client.submit(defaults()); t.mock.timers.tick(301);
+  assert.deepEqual(h.errors, ['timeout']);
+  assert.equal(h.terminated(), 1);
+  assert.equal(h.sent.length, 1);
+  assert.equal(h.port.onmessage, null);
+  lateReply({ data: { id: 1, ok: true, result: zero } } as MessageEvent<FiscalWorkerResponse>);
+  assert.equal(h.results.length, 0);
+  h.client.dispose(); t.mock.timers.tick(5000);
+  assert.equal(h.terminated(), 1);
+  assert.deepEqual(h.errors, ['timeout']);
+});
+
+test('watchdog clears on completion/disposal and restarts for each actual job', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const h = harness(1000);
+  h.client.submit(defaults()); t.mock.timers.tick(1);
+  t.mock.timers.tick(800);
+  h.receive({ id: 1, ok: true, result: zero });
+  t.mock.timers.tick(5000);
+  assert.deepEqual(h.errors, []);
+  h.client.submit(defaults()); t.mock.timers.tick(1);
+  t.mock.timers.tick(800);
+  assert.deepEqual(h.errors, []);
+  h.client.dispose(); t.mock.timers.tick(5000);
+  assert.deepEqual(h.errors, []);
   assert.equal(h.terminated(), 1);
 });
