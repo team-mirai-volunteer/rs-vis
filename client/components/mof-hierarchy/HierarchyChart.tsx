@@ -45,7 +45,7 @@ import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { E2E_TEST_IDS_ENABLED, testId } from '@/client/lib/testId';
 
 /** ラベルの既定サイズ（px） */
-export const LABEL_FONT_PX_DEFAULT = 11;
+export const LABEL_FONT_PX_DEFAULT = 13;
 
 /**
  * ラベル1行が占める高さ（px）。

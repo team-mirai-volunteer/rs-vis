@@ -37,7 +37,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { truncateName, Ellipsis } from './sankey-label';
 
-export const LABEL_FONT_PX_DEFAULT = 11;
+export const LABEL_FONT_PX_DEFAULT = 13;
 
 const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;

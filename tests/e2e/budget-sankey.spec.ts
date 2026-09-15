@@ -322,20 +322,17 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const links = page.getByTestId('unified-link');
     await expect(links.first()).toBeAttached();
 
-    // 太いリボンから順に、ノードに隠れていない位置で hover を試す
-    const count = Math.min(await links.count(), 20);
-    let shown = false;
-    for (let i = 0; i < count && !shown; i++) {
-      const box = await links.nth(i).boundingBox();
-      if (!box || box.height < 8) continue;
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      shown = await page
-        .getByTestId('unified-link-tooltip')
-        .waitFor({ state: 'visible', timeout: 1_000 })
-        .then(() => true)
-        .catch(() => false);
-    }
-    expect(shown).toBe(true);
+    // 全ラベル表示ではリボンの外接矩形の中心が画面外になるため、画面内の実際の塗りを探す。
+    const point = await page.evaluate(() => {
+      for (let y = 150; y < innerHeight - 60; y += 12) {
+        for (let x = 30; x < innerWidth - 30; x += 12) {
+          if (document.elementFromPoint(x, y)?.getAttribute('data-testid') === 'unified-link') return { x, y };
+        }
+      }
+      return null;
+    });
+    expect(point).not.toBeNull();
+    await page.mouse.move(point!.x, point!.y);
     await expect(page.getByTestId('unified-link-tooltip')).toContainText('→');
   });
 });

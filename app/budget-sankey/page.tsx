@@ -193,7 +193,7 @@ function UnifiedBudgetSankeyContent() {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
   const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
-  const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'all' ? 'all' : 'major'));
+  const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
   /** sm 未満で表示数・設定を開いているか */
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
@@ -310,7 +310,7 @@ function UnifiedBudgetSankeyContent() {
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
       setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
-      setLabelDensity(params.get('ld') === 'all' ? 'all' : 'major');
+      setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
       setFilterOpen(params.get('ffp') === '1');
     };
@@ -357,11 +357,8 @@ function UnifiedBudgetSankeyContent() {
       />
       <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} />
     </AppHeader>
-    <section className="fixed inset-x-0 top-[var(--app-header-h)] z-30 h-20 border-b border-mirai-border bg-background px-4 py-2 sm:h-16">
-      <h1 className="text-base font-bold">国の予算と支出の流れ</h1>
-      <p className="mt-1 text-xs text-mirai-text-subtle">左から右へ、お金の流れをたどれます。気になる事業を検索するか、図の項目を選んで詳細を確認してください。</p>
-    </section>
-    <div className="fixed inset-x-0 bottom-0 top-[calc(var(--app-header-h)+5rem)] overflow-hidden bg-background sm:top-[calc(var(--app-header-h)+4rem)]">
+    <h1 className="sr-only">国の予算と支出の流れ</h1>
+    <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-background">
       <UnifiedSankeyChart
         nodes={display.nodes}
         links={display.links}

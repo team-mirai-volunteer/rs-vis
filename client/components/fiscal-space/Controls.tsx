@@ -15,7 +15,7 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
     <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={empty ? '' : Number(value.toFixed(6))}
       onBlur={() => setEmpty(false)} onChange={e => { setEmpty(e.target.value === ''); const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
       className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>
-    <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="w-full accent-primary" />
+    <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full accent-primary" />
   </div>;
 }
 const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, onPowerSettings, onAmount, onPolicyKind, onPolicyDuration }: {

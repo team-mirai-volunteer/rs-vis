@@ -47,7 +47,7 @@ import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanel
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { E2E_TEST_IDS_ENABLED, testId } from '@/client/lib/testId';
 
-export const LABEL_FONT_PX_DEFAULT = 11;
+export const LABEL_FONT_PX_DEFAULT = 13;
 
 const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;

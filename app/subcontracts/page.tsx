@@ -502,7 +502,7 @@ function SubcontractsPageInner() {
             align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start',
           )}
         >
-          <span className="min-w-0 truncate leading-4" style={{ textAlign: align }}>{children}</span>
+          <span className="min-w-0 whitespace-normal break-words leading-4" style={{ textAlign: align }}>{children}</span>
           <SortIndicator k={sort} />
         </Button>
         <Button
@@ -707,8 +707,8 @@ function SubcontractsPageInner() {
                   <SortHeader sort="execution" columnIndex={6} align="right">執行額</SortHeader>
                   <SortHeader sort="directExpenseTotal" columnIndex={7} align="right">直接支出合計</SortHeader>
                   <SortHeader sort="totalExpense" columnIndex={8} align="right">支出額合計</SortHeader>
-                  <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）">支出計−直接</SortHeader>
-                  <SortHeader sort="executionMinusDirect" columnIndex={10} align="right" title="執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり">執行−直接</SortHeader>
+                  <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）">支出額合計 − 直接支出合計</SortHeader>
+                  <SortHeader sort="executionMinusDirect" columnIndex={10} align="right" title="執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり">執行額 − 直接支出合計</SortHeader>
                   <SortHeader sort="totalBlockCount" columnIndex={11} align="right">ブロック</SortHeader>
                   <SortHeader sort="directBlockCount" columnIndex={12} align="right">直接支出</SortHeader>
                   <SortHeader sort="subcontractBlockCount" columnIndex={13} align="right">再委託</SortHeader>

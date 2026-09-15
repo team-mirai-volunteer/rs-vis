@@ -1,5 +1,38 @@
 import { expect, test } from '@playwright/test';
 
+for (const width of [1440, 390]) {
+  test(`navigation preserves the header and replaces page controls (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/budget-sankey?year=2024');
+    await expect(page.getByTestId('unified-canvas')).toBeVisible();
+    const header = await page.getByRole('banner').elementHandle();
+    const menu = await page.getByRole('button', { name: 'ページ切替メニュー' }).elementHandle();
+    await page.getByRole('button', { name: 'ページ切替メニュー' }).click();
+    await page.getByRole('link', { name: '評価一覧', exact: true }).last().click();
+    await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
+    expect(await header!.evaluate(el => el.isConnected)).toBe(true);
+    expect(await menu!.evaluate(el => el.isConnected)).toBe(true);
+    await expect(page.getByRole('button', { name: 'ページ切替メニュー' })).toHaveAttribute('aria-expanded', 'false');
+    await page.getByLabel('年度', { exact: true }).selectOption('2024');
+    await expect(page).toHaveURL(/year=2024/);
+    if (width >= 1280) {
+      await page.getByRole('navigation', { name: '主要ビュー' }).getByRole('link', { name: '委託構造', exact: true }).click();
+    } else {
+      await page.getByRole('button', { name: 'ページ切替メニュー' }).click();
+      await page.getByRole('link', { name: '委託構造', exact: true }).last().click();
+    }
+    await expect(page.locator('thead th')).toHaveCount(23);
+    expect(await header!.evaluate(el => el.isConnected)).toBe(true);
+    await page.goBack();
+    await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
+    expect(await header!.evaluate(el => el.isConnected)).toBe(true);
+    await page.getByRole('link', { name: '行政事業レビュー可視化 トップ', exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    expect(await menu!.evaluate(el => el.isConnected)).toBe(true);
+    await expect(page.getByLabel('年度', { exact: true })).toHaveCount(0);
+  });
+}
+
 test('public pages have distinct titles and usable social cards before JavaScript runs', async ({ request }) => {
   const titles = new Set<string>();
   for (const path of ['/', '/budget-sankey', '/quality', '/subcontracts', '/project-bubble', '/fiscal-space', '/tax-burden']) {
@@ -48,14 +81,26 @@ test('mobile quality shows the evaluation and opens details without horizontal s
   await expect(list).toContainText('未収録');
 });
 
-test('budget flow has a visible heading and starts with reduced labels', async ({ page }) => {
+test('budget flow uses the space below navigation and starts with all labels', async ({ page }) => {
   await page.goto('/budget-sankey?year=2024');
-  await expect(page.getByRole('heading', { level: 1, name: '国の予算と支出の流れ' })).toBeVisible();
-  await expect(page.getByText('左から右へ、お金の流れをたどれます。', { exact: false })).toBeVisible();
-  await expect(page).toHaveURL(/ld=major/);
+  await expect(page.getByText('左から右へ、お金の流れをたどれます。', { exact: false })).toHaveCount(0);
+  await expect(page).toHaveURL(/ld=all/);
   await expect(page.getByTestId('unified-canvas')).toBeVisible();
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
+  await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: 'すべてのノードラベルを表示' })).toBeChecked();
+  await expect(page.getByRole('button', { name: '基準フォントサイズ編集を開始' })).toHaveText('13');
+  await page.keyboard.press('Escape');
+  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const chartTop = await page.getByTestId('unified-canvas').evaluate(el => {
+      const container = el.closest('div.fixed')!;
+      const headerHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-header-h'));
+      return { top: container.getBoundingClientRect().top, headerHeight };
+    });
+    expect(chartTop.top).toBe(chartTop.headerHeight);
+  }
+  await page.goto('/budget-sankey?year=2024&ld=major');
+  await expect(page).toHaveURL(/ld=major/);
 });
 
 test('public regex APIs reject unsafe syntax and remain responsive for nested repetition', async ({ request }) => {
