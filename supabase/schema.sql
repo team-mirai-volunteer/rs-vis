@@ -14,7 +14,7 @@ create table if not exists public.project_comments (
   pid         text not null,                       -- 予算事業ID（文字列）
   year        int  not null,                       -- 事業年度（2024 / 2025）
   body        text not null check (char_length(body) between 1 and 1000),
-  transcript  jsonb,                               -- インタビュー全文（非公開・運用参照用）
+  transcript  jsonb,                               -- 旧インタビュー全文（非公開・新規投稿では保存しない）
   status      text not null default 'published' check (status in ('published', 'hidden')),
   ip_hash     text,                                -- ソルト付きハッシュ（レート制限・荒らし対応）
   created_at  timestamptz not null default now()
@@ -66,6 +66,17 @@ create policy "anon can read published comments"
   for select
   to anon, authenticated
   using (status = 'published');
+
+-- RLS limits rows, not columns. Public roles never receive transcript/ip_hash.
+revoke all on public.project_comments from public, anon, authenticated;
+grant select (id, pid, year, body, status, created_at)
+  on public.project_comments to anon, authenticated;
+create or replace view public.published_project_comments
+with (security_invoker = true) as
+  select id, pid, year, body, created_at
+  from public.project_comments where status = 'published';
+revoke all on public.published_project_comments from public, anon, authenticated;
+grant select on public.published_project_comments to anon, authenticated;
 
 -- rate_limits はポリシー無し = service role 以外はアクセス不可
 revoke all on public.rate_limits from anon, authenticated;
