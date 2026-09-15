@@ -134,11 +134,16 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [turns, thinking]);
 
-  // Esc で閉じる
+  // 背面にも window の Escape ハンドラがあるため、先に受けてこの画面だけ閉じる。
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.isComposing) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
   const handleSaveKey = async () => {
@@ -221,7 +226,11 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   const body = (
     <div
       className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4"
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}
+      // Portal のイベントは React の親へ伝わる。背面の選択解除・パンに渡さない。
+      onClick={e => { e.stopPropagation(); if (e.target === e.currentTarget) onClose(); }}
+      onPointerDown={stopPropagation}
+      onMouseDown={stopPropagation}
+      onMouseMove={stopPropagation}
       onWheel={stopPropagation}
       role="presentation"
     >

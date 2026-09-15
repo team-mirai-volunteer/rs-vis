@@ -19,6 +19,9 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
+    // インタビューの UI を有効化。コメント・AI通信は interview.spec.ts でモックする。
+    // production モードではビルド時にも同じ公開フラグが必要（checks.yml）。
+    env: { NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://comments-test.invalid' },
     command: `node node_modules/next/dist/bin/next ${production ? 'start' : 'dev --turbopack'} --port ${new URL(baseURL).port || '3000'}`,
     url: baseURL,
     reuseExistingServer: !production,
