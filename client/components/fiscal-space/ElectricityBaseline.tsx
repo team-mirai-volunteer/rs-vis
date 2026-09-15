@@ -9,6 +9,7 @@ export function ElectricityBaseline({ value, onChange, baseline, projection }: {
   return <Card><CardHeader><h2 className="text-lg font-bold">全政策に共通する電力需要・火力燃料の経路</h2>
     <p className="text-xs">政策を追加しなくても、需要増や非化石電源の減少で不足する電力量を火力で補い、燃料輸入を計上します。減税・給付・産業投資にも同じ経路を適用し、追加発電・送電網の燃料削減をそこから差し引きます。</p>
   </CardHeader><CardContent className="space-y-3 text-xs">
+    {baseline.initial.resourcePower && <p>概算モードのピーク需要には地域別の年度見通しを使用します。下のピーク増加率を変更すると、既定の年0.4%からの差を見通しに累積して反映します。年間電力量と火力燃料は下の共通経路で別に計算します。</p>}
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{([
       ['generationTwh', '基準の発電電力量', 1, 'TWh', 1, 3000], ['thermalShare', '基準の火力割合', .01, '%', 0, 100],
       ['demandGrowth', '共通の電力需要増加率', .01, '%／年', -10, 10], ['peakGrowth', '共通のピーク需要増加率', .01, '%／年', -10, 10],

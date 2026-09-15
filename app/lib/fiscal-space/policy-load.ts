@@ -53,12 +53,18 @@ export function policyLoads(initial: EconomyState, policies: Policy[], year: num
     if ([c.sectorUtilizationPerTrillion, c.peakGwPerTrillion, c.operatingPeakGwPerTrillion,
       c.lag, c.lifetime, c.depreciation].some(v => v !== null && (!Number.isFinite(v) || v < 0)) || c.depreciation > 1 ||
       !Number.isInteger(c.lag) || !Number.isInteger(c.lifetime) || c.lifetime < 1) throw new RangeError('Invalid policy load assumptions');
-    let price = initial.macro.nominalGdp / initial.macro.realGdp;
+    if (c.estimated && (!Number.isFinite(c.priceIndex) || c.priceIndex! <= 0 ||
+      !c.sectorLoads || SECTORS.some(s => !Number.isFinite(c.sectorLoads![s]) || c.sectorLoads![s] < 0))) {
+      throw new RangeError('Invalid estimated policy load');
+    }
+    let price = c.estimated ? c.priceIndex! : initial.macro.nominalGdp / initial.macro.realGdp;
     for (let paid = 1; paid <= year; paid++) {
       if (policy.kind === 'permanent' || paid <= policy.duration) {
         const cost = policy.annualCost / price / TRILLION;
         if (paid === year) {
-          sectorDemand[policy.sector] += cost * (c.sectorUtilizationPerTrillion ?? 0);
+          if (c.estimated && c.sectorLoads) {
+            for (const sector of SECTORS) sectorDemand[sector] += cost * c.sectorLoads[sector];
+          } else sectorDemand[policy.sector] += cost * (c.sectorUtilizationPerTrillion ?? 0);
           peakGw += cost * (c.peakGwPerTrillion ?? 0);
         }
         const age = year - paid - c.lag;

@@ -2,6 +2,7 @@ import type { Policy, PolicyLoad, ProjectLoadBasis } from '@/types/fiscal-space'
 import { EMPTY_PROJECT_BASIS, effectiveLoad, loadCoverage } from '@/app/lib/fiscal-space/policy-load';
 import { SECTOR_LABELS, TRILLION } from '@/app/lib/fiscal-space/assumptions';
 import { RangeField } from './Controls';
+import { RESOURCE_PROFILE_NOTES } from '@/app/lib/fiscal-space/resource-estimate';
 import { fieldClass, percent } from './format';
 
 function NullableNumber({ label, value, onChange, min = 0, max = 1e7, step = .1, unit }: {
@@ -93,19 +94,20 @@ export function PolicyLoads({ policies, onChange }: {
     <h2 className="text-lg font-bold">政策別の人員・電力負荷</h2>
     <p className="text-sm">空欄は未評価です。負荷がないと仮定する項目には0を入力します。
       人員と電力は別々に判定し、電力は当年・稼働後の両方が分かるまで未評価を残します。
-      波及先の産業連関、年間電力量から燃料輸入費への換算は未接続です。</p>
+      公表統計からの概算は政策ごとに上書きできます。手入力の空欄を概算で補完することはありません。年間電力量から燃料輸入費への換算は未接続です。</p>
     {active.length === 0 && <p className="text-sm">政策額を入力すると、その政策の負荷を設定できます。</p>}
     {active.map(policy => {
       const coverage = loadCoverage(policy.load);
       return <details key={policy.id}>
-        <summary className="cursor-pointer text-sm font-bold">{policy.name}：産業 {coverage.sector ? '設定あり' : '未評価'}／電力 {coverage.energy ? '設定あり' : '未評価'}</summary>
+        <summary className="cursor-pointer text-sm font-bold">{policy.name}：産業 {coverage.sector ? policy.load?.estimated ? '概算' : '設定あり' : '未評価'}／電力 {coverage.energy ? policy.load?.estimated ? '概算' : '設定あり' : '未評価'}</summary>
+        {policy.load?.estimated && <p className="mt-2 text-sm">{RESOURCE_PROFILE_NOTES[policy.id]} 価格補正・電力単価などは「産業・電力制約を概算する」で調整できます。</p>}
         <label className="my-3 block text-sm">
-          <input type="checkbox" checked={!!policy.load} onChange={e => onChange(policy.id, e.target.checked ? {
+          <input type="checkbox" checked={!!policy.load && !policy.load.estimated} onChange={e => onChange(policy.id, e.target.checked ? {
             sectorUtilizationPerTrillion: null, peakGwPerTrillion: null, operatingPeakGwPerTrillion: null,
             lag: 2, lifetime: 20, depreciation: .03,
           } : undefined)} /> {policy.name}の負荷条件を入力する
         </label>
-        {policy.load && <LoadFields policy={policy} value={policy.load} onChange={load => onChange(policy.id, load)} />}
+        {policy.load && !policy.load.estimated && <LoadFields policy={policy} value={policy.load} onChange={load => onChange(policy.id, load)} />}
       </details>;
     })}
   </section>;
