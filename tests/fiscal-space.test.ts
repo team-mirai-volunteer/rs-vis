@@ -130,7 +130,7 @@ test('power trade breakdown uses each path previous deflator and energy shocks w
 
 test('grid fuel savings reach imports and capacity once, net of upkeep, with explicit renewable overlap', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
-  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const p = { ...P, productionModel: 'cobbDouglas' as const, capacityPriceSensitivity: 0, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
   const grid = preset('grid', { duration: 1, energyDemand: 0, supply: { ...SUPPLY_CASES.grid.settings } });
   const c = grid.supply!;
   assert.equal(projectResponse(initial, grid, 5, p).substitution, 0);
@@ -180,7 +180,7 @@ test('power mixes preserve investment totals, commissioning lags, fuel costs and
 
 test('one-year government spending reproduces the published five-year experiment instead of differencing sustained shocks', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
-  const p = { ...P, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const p = { ...P, capacityPriceSensitivity: 0, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
   const policy = preset('public-investment', { duration: 1, annualCost: initial.macro.realGdp * .01 });
   // EF2026 table 1: output and trade level deviations (% of each own baseline).
   const expected = [[1.08, -.01, .45, .19, .15], [-.10, 0, .45, .26, .22], [-.20, -.05, .43, .22, .17], [-.21, -.06, .36, .17, .13], [-.14, -.04, .31, .13, .10]];
@@ -289,7 +289,8 @@ test('default substitution starts at commissioning, reports commissioning capaci
   const gridRow = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [grid])[0];
   assert.equal(gridRow.periods[2].potentialGdpEffect, 0);
   assert.equal(gridRow.investment!.startYear, 6);
-  assert(gridRow.investment!.supply! > 0, 'Benefits beyond year five remain visible at commissioning');
+  near(gridRow.investment!.supply!, 0); // Energy is not the Leontief bottleneck.
+  assert(gridRow.investment!.trade!.tradeBalance > 0, 'Fuel savings remain visible at commissioning');
   const importedInputs = { ...semiconductor, trade: { kind: 'industry' as const, assumptions: { ...SEMICONDUCTOR_CASE, exportShare: .1, domesticReplacementShare: 0, operatingImportShare: .8 } } };
   const adverse = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [importedInputs])[0].investment!.trade!;
   assert(adverse.exports > 0 && adverse.imports > adverse.exports);
@@ -343,7 +344,7 @@ test('comparison reports actual marginal outcomes at 1, 3 and 5 years, including
 
 test('project imports replace the construction anchor, and operation affects GDP, potential and debt once', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
-  const p = { ...P, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
+  const p = { ...P, productionModel: 'cobbDouglas' as const, capacityPriceSensitivity: 0, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0 };
   const c = { ...INDUSTRY_CASE, annualSalesPerInvestment: 1, capexImportShare: .3, lag: 2 };
   const policy = preset('semiconductors', { duration: 1, trade: { kind: 'industry', assumptions: c } });
   const noSales = { ...policy, trade: { kind: 'industry' as const, assumptions: { ...c, annualSalesPerInvestment: 0 } } };
@@ -938,7 +939,7 @@ test('published annual GDP responses are reproduced at fixed baseline prices wit
 
 test('CPI level response is differenced into inflation and is not used as the GDP deflator', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
-  const p = { ...P, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0 };
+  const p = { ...P, capacityPriceSensitivity: 0, electricity: { ...P.electricity, demandGrowth: 0 }, baselineInflation: 0, baselineRealGrowth: 0 };
   const result = simulate(initial, [preset('public-investment', { kind: 'permanent', annualCost: initial.macro.nominalGdp * .01 })], 5, p);
   const cpi = [.0015, .0037, .0054, .0067, .0076], deflator = [.0019, .0045, .0066, .0082, .0094];
   let cpiIndex = 1;

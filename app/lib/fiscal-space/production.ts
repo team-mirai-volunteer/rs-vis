@@ -29,14 +29,23 @@ export function leontief(inputs: Inputs, coefficients: Inputs = { capital: 1, la
   for (const { k, value } of capacities) { utilization[k] = actual / value; remainingSlack[k] = value - actual; }
   return { maximum: capacities[0].value, binding: capacities[0].k, second: capacities[1].k, utilization, remainingSlack };
 }
+export function productionIndex(inputs: Inputs, p: ModelParameters): number {
+  return p.productionModel === 'leontief' ? leontief(inputs).maximum
+    : p.productionModel === 'ces' ? ces(inputs, p.weights, p.cesSigma) : cobbDouglas(inputs, p.cobbWeights);
+}
+
 export function productionCapacity(state: EconomyState, p: ModelParameters, _horizon: number): ProductionResult {
   void _horizon; // Kept for callers; time never changes the production function.
-  const { inputs } = state.production;
-  const potential = state.macro.potentialGdp;
-  const l = leontief(inputs, undefined, state.macro.realGdp / potential);
+  const anchor = state.production.basePotentialGdp ?? state.macro.potentialGdp;
+  const productivity = state.production.labourProductivity;
+  const inputs = { ...state.production.inputs, labour: state.production.inputs.labour * productivity };
+  const normal = state.production.normalInputs;
+  const potential = normal ? anchor * state.production.tfp * productionIndex({ ...normal, labour: normal.labour * productivity }, p) : state.macro.potentialGdp;
+  const scale = anchor * state.production.tfp;
+  const l = leontief(inputs, undefined, state.macro.realGdp / scale);
   const c = ces(inputs, p.weights, p.cesSigma), d = cobbDouglas(inputs, p.cobbWeights);
   const maximum = { leontief: l.maximum, ces: c, cobbDouglas: d }[p.productionModel];
-  return { leontief: l.maximum * potential, ces: c * potential, cobbDouglas: d * potential,
-    maximum: maximum * potential, binding: l.binding, second: l.second,
+  return { potential, leontief: l.maximum * scale, ces: c * scale, cobbDouglas: d * scale,
+    maximum: maximum * scale, binding: l.binding, second: l.second,
     utilization: l.utilization, remainingSlack: l.remainingSlack };
 }

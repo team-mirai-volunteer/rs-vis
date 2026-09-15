@@ -1,5 +1,18 @@
 import { test, expect } from '@playwright/test';
 
+test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
+  await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.01兆円');
+  await expect(page.getByTestId('recommended-envelope')).toHaveText('13.61兆円');
+  const sensitivity = page.getByTestId('cpi-limit-sensitivity');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('35.60兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('54.30兆円');
+});
+
 test('neutral input, editable amounts, model conditions and shared URL restore the same result', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -50,9 +63,57 @@ test('mobile controls stay near the top and an invalid shared URL is explained',
   await expect(page.getByText('共有条件を復元できません。初期状態を表示しています。')).toBeVisible();
   const panel = page.getByRole('region', { name: '政策の操作パネル' });
   expect(await panel.evaluate(el => el.getBoundingClientRect().top + window.scrollY)).toBeLessThan(650);
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
+  await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
+  await expect(page.getByRole('region', { name: '次の1兆円の政策比較表', exact: true })).toBeVisible();
+  const projection = page.getByRole('region', { name: '5年間の推計表', exact: true });
+  await expect(projection).toBeVisible();
+  // Measure only after the worker results and both wide tables exist.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await projection.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => projection.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
   await expect(page.getByTestId('budget-combined')).toHaveCount(0);
   await expect(page.getByRole('img', { name: /5年推移/ })).toContainText('ここから先は仮定に基づく試算');
+});
+
+test('pending results are visible, data dialog is lazy, and tables remain keyboard accessible', async ({ page }) => {
+  await page.addInitScript(() => {
+    const post = Worker.prototype.postMessage;
+    Worker.prototype.postMessage = function (message, options) {
+      setTimeout(() => post.call(this, message, options as StructuredSerializeOptions), 700);
+    };
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await expect(page.locator('[data-source-key]')).toHaveCount(0);
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
+  await expect(page.getByTestId('calculation-status')).toContainText('結果は直前の条件');
+  await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
+  await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
+  await expect(page.getByTestId('calculation-status')).toBeEmpty();
+  await expect(page.getByRole('region', { name: '結果を左右する前提' })).toContainText('評価期間中一定');
+  await expect(page.locator('[data-constraint]').first()).toHaveAttribute('data-constraint', 'inflation');
+  await expect(page.getByTestId('fiscal-vintage').first()).toContainText('分子2024年／分母2026Q2');
+  await page.getByRole('button', { name: 'データについて', exact: true }).click();
+  await expect(page.locator('[data-source-key]').first()).toBeAttached();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-source-key]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'データについて', exact: true })).toBeFocused();
+  // Exercise expanded detail tables, including those absent from the initial viewport.
+  await page.locator('main details').evaluateAll(nodes => nodes.forEach(node => { (node as HTMLDetailsElement).open = true; }));
+  const inaccessible = await page.locator('main table').evaluateAll(tables => tables.flatMap(table => {
+    const wrapper = table.closest('[class*="overflow"]');
+    if (!wrapper || wrapper.scrollWidth <= wrapper.clientWidth + 1) return [];
+    return wrapper.getAttribute('tabindex') === '0' && wrapper.getAttribute('role') === 'region' && wrapper.getAttribute('aria-label')
+      ? [] : [table.textContent?.slice(0, 70)];
+  }));
+  expect(inaccessible).toEqual([]);
+  await expect(page.locator('main th:not([scope])')).toHaveCount(0);
+  expect(await page.locator('main summary').evaluateAll(nodes => nodes.every(n => n.getBoundingClientRect().height >= 24))).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 
 test('worker calculation keeps partial loads unevaluated and restores project conversions from the URL', async ({ page }) => {

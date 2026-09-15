@@ -1,7 +1,8 @@
 import type { EconomyState, ModelParameters, Policy, PolicyComparison } from '@/types/fiscal-space';
 import { POWER_TECHNOLOGIES, powerComponents } from './policy-trade';
-import { projectResponses, projectNetOutput } from './project-response';
-import { hasCommercialSupply, supplyTotal } from './supply';
+import { projectResponses } from './project-response';
+import { hasCommercialSupply } from './supply';
+import { policyProduction } from './policy-production';
 
 /** Annual capacity at commissioning of the additional one-year investment.
  * This is an engineering / supply scenario at initial prices, not a forecast
@@ -26,10 +27,7 @@ export function investmentAtCommissioning(initial: EconomyState, current: Policy
     const exports = delta('exports'), substitution = delta('substitution'), operatingImports = delta('operatingImports');
     const imports = operatingImports - substitution;
     result.trade = { exports, imports, substitution, operatingImports, tradeBalance: exports - imports };
-    const potential = (flows: typeof withProject) => flows.reduce((sum, r) => sum + Math.max(0, projectNetOutput(r)), 0);
-    result.supply = potential(withProject) - potential(withoutProject);
-  } else if (supply) {
-    result.supply = supplyTotal(initial, [...current, incremental], startYear, p) - supplyTotal(initial, current, startYear, p);
   }
+  result.supply = policyProduction(initial, [...current, incremental], startYear, p).potential - policyProduction(initial, current, startYear, p).potential;
   return result;
 }

@@ -8,7 +8,7 @@ type Sensitivity = ModelParameters;
 function ConnectionConditions({ value, onChange }: { value: ModelParameters; onChange: (v: ModelParameters) => void }) {
   const change = <K extends keyof ModelParameters>(key: K, n: ModelParameters[K]) => onChange({ ...value, [key]: n });
   return <details><summary className="cursor-pointer font-bold">GDPギャップ・金利・消費税の接続条件</summary>
-    <p className="my-3 text-xs">ギャップゼロで公表反応に一致。GDP反応は exp(−需要感度×初期ギャップ)、税直接効果を除く物価水準反応は exp(物価感度×初期ギャップ) 倍（指数の範囲は−1〜1）。基準インフレには政策なしのギャップ×傾きを加えます。未推定の感度仮定で、公表モデルの再推計ではありません。0で元の線形反応を比較できます。</p>
+    <p className="my-3 text-xs">ギャップゼロ・稼働率価格補正0で公表反応に一致。GDP反応は exp(−需要感度×初期ギャップ)、税直接効果を除く物価水準反応は exp(物価感度×初期ギャップ) 倍（指数の範囲は−1〜1）。基準インフレには政策なしのギャップ×傾きを加えます。未推定の感度仮定で、公表モデルの再推計ではありません。0で元の線形反応を比較できます。</p>
     <div className="grid gap-4 md:grid-cols-2">
       <RangeField label="名目GDPに対する税収弾性値" value={value.taxRevenueElasticity} min={0} max={2} step={.1} unit="" onChange={n => change('taxRevenueElasticity', n)} />
       <RangeField label="税収への反映ラグ" value={value.taxCollectionLag} min={0} max={3} step={1} unit="年" onChange={n => change('taxCollectionLag', n)} />
@@ -36,10 +36,19 @@ export function Calibration({ value, onChange }: { value: Sensitivity; onChange:
       {Object.entries(REFERENCES).map(([id, r]) => <option key={id} value={id}>{r.name}</option>)}
     </select></label>
     <p className="text-xs leading-relaxed">{ref.note} <a className="text-primary-accent underline" href={ref.url} target="_blank" rel="noreferrer">原資料</a>。主表と制約評価は公表期間（{ref.years}年）内に限定します。経済財政モデルの1年限りの政府支出は公表表①を使用。2〜4年の支出は専用の公表実験がないため、継続実験の開始・終了を重ねる線形近似です。1年実験との一致は保証されず、終了後にGDPが基準を下回る場合があります。期間別の実証値ではありません。</p>
-    <div className="overflow-x-auto"><table className="w-full min-w-[420px] text-right text-xs"><caption className="mb-2 text-left">初年度の実質GDP増加額 / 財政措置額（感度倍率を掛ける前）</caption><thead><tr><th className="p-2 text-left">参照条件</th><th className="p-2">政府支出</th><th className="p-2">所得税減税</th><th className="p-2">法人税減税</th></tr></thead><tbody>{Object.entries(REFERENCES).map(([id, r]) => <tr key={id} className="border-t border-mirai-border"><th className="p-2 text-left font-medium">{r.name}</th>{[r.government.gdp[0], r.household.gdp[0], r.corporate.gdp[0]].map((n, i) => <td key={i} className="p-2 tabular-nums">{n.toFixed(2)}</td>)}</tr>)}</tbody></table></div>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="参照モデルの初年度乗数"><table className="w-full min-w-[420px] text-right text-xs"><caption className="mb-2 text-left">初年度の実質GDP増加額 / 財政措置額（感度倍率を掛ける前）</caption><thead><tr><th scope="col" className="p-2 text-left">参照条件</th><th scope="col" className="p-2">政府支出</th><th scope="col" className="p-2">所得税減税</th><th scope="col" className="p-2">法人税減税</th></tr></thead><tbody>{Object.entries(REFERENCES).map(([id, r]) => <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2 text-left font-medium">{r.name}</th>{[r.government.gdp[0], r.household.gdp[0], r.corporate.gdp[0]].map((n, i) => <td key={i} className="p-2 tabular-nums">{n.toFixed(2)}</td>)}</tr>)}</tbody></table></div>
     <p className="text-xs leading-relaxed">社会保険料は本人・事業主の双方を軽減（初期配分は折半）。本人分は所得税、事業主分は法人税減税の反応を代用します。現金給付も所得税の代理です。消費税は2026年モデルの表⑤を符号反転し、税率ポイントと年額を換算します。2022年モデルでは需要を所得税で代用し、直接価格効果を別途加えます。その他の支出は共通の政府支出反応が基準です。</p>
     <p className="text-xs leading-relaxed">住民税減税は個人の所得に比例する負担軽減として、所得税減税の需要・就労反応を代用します。住民税固有の乗数ではなく、均等割・徴収時期・自治体別の歳入補填や歳出削減は未反映です。</p>
     <ConnectionConditions value={value} onChange={onChange} />
+    <details open><summary className="cursor-pointer font-bold">輸入価格・国内価格・歳出の連動（感度仮定）</summary>
+      <div className="mt-3 grid gap-4 md:grid-cols-3">
+        <RangeField label="輸入エネルギー費のCPI転嫁係数" value={value.energyPricePassThrough} min={0} max={1} step={.05} unit="" onChange={n => change('energyPricePassThrough', n)} />
+        <RangeField label="輸入価格上昇分の国内価格への転嫁率" value={value.energyDomesticPricePassThrough * 100} min={0} max={100} step={10} unit="%" onChange={n => change('energyDomesticPricePassThrough', n / 100)} />
+        <RangeField label="既存歳出のCPI連動率" value={value.expenditurePriceIndexation * 100} min={0} max={100} step={10} unit="%" onChange={n => change('expenditurePriceIndexation', n / 100)} />
+      </div>
+      <p className="mt-3 text-xs">輸入費増分/GDPからCPIへの波及と、国内価格転嫁で回収できない輸入価格上昇分による名目付加価値の減少を分離します。既定の国内転嫁率50%・歳出連動率100%は実証値ではありません。連動率100%では既存歳出を当年の累積CPIで実質維持し、0%では基準の名目歳出経路を維持します。追加政策の名目年額は固定です。給付・調達・賃金別の連動制度や反映ラグは未推計です。</p>
+      <p className="mt-2 text-xs">交易条件による所得変化は輸入価格上昇による支払増を国内価格で実質化した近似です。公表SNAの交易利得・実質GDIの再現ではなく、所得減から消費・実質GDPへの二次波及は未推計です。<a className="underline" href="https://www5.cao.go.jp/keizai3/2012/1222nk/n12_2_2.html" target="_blank" rel="noreferrer">内閣府：GDPデフレーターと交易条件</a></p>
+    </details>
     <details><summary className="cursor-pointer font-bold">この乗数はどこまで信用できる？</summary><p className="mt-2 text-xs leading-relaxed">2つの公表モデルが近い値でも、実際の政策効果の独立した検証にはなりません。日本の政府支出を分析した<a className="text-primary-accent underline" href="https://www.aeaweb.org/articles?id=10.1257/mac.20170131" target="_blank" rel="noreferrer">宮本・Nguyen・Sergeyev（2018）</a>は、金利の下限制約下で当期乗数1.5、それ以外で0.6と推定しています。これは四半期の当期反応で、上表の年間値とは期間が異なります。景気・金融政策、恒久か一時か、対象者、推定方法によって結果が変わるため、数値だけを混ぜて平均したり信頼区間にしたりしていません。</p></details>
     <details><summary className="cursor-pointer font-bold">乗数と本人・事業主の反応を変える</summary><div className="mt-4 grid gap-4 md:grid-cols-2">
       <RangeField label="GDP乗数の感度倍率" value={value.multiplierScale} min={0} max={3} step={.1} unit="倍" onChange={n => change('multiplierScale', n)} />

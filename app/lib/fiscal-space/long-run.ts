@@ -1,7 +1,7 @@
 import type { EconomyState, ModelParameters, Policy, Simulation } from '@/types/fiscal-space';
 import { financeDebt, rollover } from './debt';
-import { supplyTotal } from './supply';
-import { projectNetOutput, projectResponses } from './project-response';
+import { policyProduction } from './policy-production';
+import { investmentPricePath } from './investment-price';
 
 export interface LongRunAssumptions { years: number; realGrowth: number; inflation: number; rate: number; realization: number }
 export const LONG_RUN: LongRunAssumptions = { years: 30, realGrowth: .01, inflation: .02, rate: .03, realization: .5 };
@@ -15,8 +15,20 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     Object.values(c).some(x => !Number.isFinite(x)) || c.realGrowth <= -1 || c.inflation <= -1 || c.rate < 0 || c.realization < 0 || c.realization > 1) throw new RangeError('Invalid long-run scenario');
   const start = short.steps.at(-1)!, base = baseline.steps.at(-1)!;
   const initialPrice = initial.macro.nominalGdp / initial.macro.realGdp;
-  const configured = (year: number) => c.realization * (supplyTotal(initial, policies, year, p) + projectResponses(initial, policies, year, p).reduce((s, x) => s + projectNetOutput(x), 0));
+  const shortPrices = investmentPricePath(initial, p);
+  const shortYears = short.steps.length;
+  const terminalPrice = base.state.macro.nominalGdp / base.state.macro.realGdp;
+  // Keep already-paid vintages unchanged. Future nominal budgets buy quantities
+  // at the common no-policy price at the start of their own payment year.
+  const prices = (paid: number) => paid <= shortYears ? shortPrices(paid)
+    : terminalPrice * (1 + c.inflation) ** (paid - shortYears - 1);
+  const configured = (year: number) => {
+    const potential = base.state.macro.potentialGdp * (1 + c.realGrowth) ** Math.max(0, year - shortYears);
+    return c.realization * (policyProduction(initial, policies, year, p, potential, prices).potential - potential);
+  };
   const startBenefit = configured(start.state.year);
+  const relativeCpi = short.steps.reduce((index, step, i) => index * (1 + step.state.macro.inflation)
+    / (1 + baseline.steps[i].state.macro.inflation), 1);
   let portfolio = structuredClone(start.state.debtPortfolio), basePortfolio = structuredClone(base.state.debtPortfolio);
   const rows = [];
   const nominalHistory = [initial.macro.nominalGdp, ...short.steps.map(s => s.state.macro.nominalGdp)];
@@ -36,7 +48,11 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     const cost = active.reduce((s, x) => s + x.annualCost, 0);
     nominalHistory.push(nominal); baseNominalHistory.push(baseNominal);
     const basePb = revenue(baseNominalHistory, year) + base.state.fiscal.otherPrimaryRevenue * fiscalTrend - base.state.fiscal.primaryExpenditure * fiscalTrend;
-    const pb = basePb + (revenue(nominalHistory, year) - revenue(baseNominalHistory, year)) - cost;
+    // Carry the short-run CPI effect into indexed existing expenditure, using
+    // the same explicit five-year fade as other short-run price deviations.
+    const indexedExpenditure = base.state.fiscal.primaryExpenditure * fiscalTrend
+      * ((1 + (relativeCpi - 1) * fade) ** p.expenditurePriceIndexation - 1);
+    const pb = basePb + (revenue(nominalHistory, year) - revenue(baseNominalHistory, year)) - cost - indexedExpenditure;
     const rolled = rollover(portfolio, year, c.rate, p.newDebtMaturity);
     const baseRolled = rollover(basePortfolio, year, c.rate, p.newDebtMaturity);
     const interestRevenue = base.state.fiscal.interestRevenue * fiscalTrend;

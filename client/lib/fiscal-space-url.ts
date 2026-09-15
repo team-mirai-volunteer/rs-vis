@@ -2,8 +2,9 @@ import { defaults, type FiscalForm } from './fiscal-space-form';
 import { PARAMETERS, POLICIES } from '@/app/lib/fiscal-space/assumptions';
 import { EMPTY_PROJECT_BASIS, effectiveLoad } from '@/app/lib/fiscal-space/policy-load';
 import { powerCase } from '@/app/lib/fiscal-space/policy-trade';
+import { validateScenarioNumber } from './fiscal-space-ranges';
 
-export const FISCAL_MODEL_VERSION = '2026-09-15.3';
+export const FISCAL_MODEL_VERSION = '2026-09-15.5';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
   dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'],
@@ -16,6 +17,7 @@ function shape(value: unknown, template: unknown, path: string): void {
   if (typeof template === 'number' || template === null) {
     if (value === null && template === null) return;
     if (typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value) > 1e16) throw new Error(path);
+    validateScenarioNumber(value, template, path);
     if (/\.(lag|lifetime|duration|years|taxCollectionLag|newDebtMaturity)$/.test(path) &&
       (!Number.isInteger(value) || value < 0 || value > 100)) throw new Error(path);
     return;
@@ -47,7 +49,15 @@ function shape(value: unknown, template: unknown, path: string): void {
 export function decodeScenario(hash: string): FiscalForm {
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
+    const calibration = payload.form.calibration;
+    if (calibration && typeof calibration === 'object' && !Array.isArray(calibration)) {
+      for (const key of ['energyDomesticPricePassThrough', 'expenditurePriceIndexation', 'capacityPriceSensitivity', 'capacityPressureStart', 'referenceCapacityRatio'] as const) {
+        if (!Object.hasOwn(calibration, key)) Object.assign(calibration, { [key]: PARAMETERS[key] });
+      }
+    }
+  }
   const template = defaults();
   const technologies = ['solar', 'nuclear', 'hydro'] as const;
   template.trade.mix = { solar: 1, nuclear: 0, hydro: 0 };
@@ -66,6 +76,8 @@ export function decodeScenario(hash: string): FiscalForm {
   if (![1, 3, 5].includes(form.horizon)) throw new Error('Invalid horizon');
   range(form.gap, -10, 3); range(form.inflation, -3, 10); range(form.reserve, 0, 50);
   range(form.rateShock, 0, 300); range(form.energyShock, 0, 100);
+  range(form.calibration.capacityPriceSensitivity, 0, .1); range(form.calibration.capacityPressureStart, 0, .99); range(form.calibration.referenceCapacityRatio, 1.001, 2);
+  for (const key of ['energyPricePassThrough', 'energyDomesticPricePassThrough', 'expenditurePriceIndexation'] as const) range(form.calibration[key], 0, 1);
   range(form.longRun.years, 6, 100);
   for (const amount of Object.values(form.amounts)) range(amount, 0, 100);
   for (const settings of Object.values(form.policySettings)) range(settings.duration, 1, 10);
