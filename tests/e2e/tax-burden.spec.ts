@@ -25,9 +25,8 @@ test('tax prototype: reform, shared conditions, actual revenue, unavailable stat
   await page.getByRole('button', { name: '年齢で見る', exact: true }).click();
   await expect(page.getByRole('heading', { name: '同じ所得階層の人が、年齢とともにどれだけ負担するか' })).toBeVisible();
   await page.getByRole('button', { name: '税目×年齢×年収', exact: true }).click();
-  // 10 panels: the nine always-shown items plus 法人税の転嫁 (the default incidence assumption turns it on).
-  // 公的年金の受給 is not among them: against the year's own income it would be a flat -100%.
-  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(10);
+  // 11 panels: the ten always-shown items plus 法人税の転嫁 (the default incidence assumption turns it on).
+  await expect(page.getByRole('table', { name: /ヒートマップ/ })).toHaveCount(11);
   await expect(page.getByRole('heading', { name: '税目ごとに分解する' })).toBeVisible();
   expect(errors).toEqual([]);
 });

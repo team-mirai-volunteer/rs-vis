@@ -60,7 +60,7 @@ export function TaxHeatmap({ grid, hasConsumption, reformed, denominator }: { gr
   const item: TaxItem = 'net';
   const label = TAX_ITEMS.find(t => t.id === item)!.label;
   const available = availableTaxItems(grid, hasConsumption, denominator);
-  const items = available.filter(t => t.id !== 'net' && !(denominator === 'income' && t.id === 'pensionReceipt'));
+  const items = available.filter(t => t.id !== 'net');
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);
   // Child items switch off at an age that comes from the assumed birth years, not from the rules themselves.
   const cells = grid[0]?.cells ?? [];
@@ -91,7 +91,8 @@ export function TaxHeatmap({ grid, hasConsumption, reformed, denominator }: { gr
         {items.some(t => t.id === 'corporateTax') && <li>法人税の転嫁は、左パネルで置いた仮定です。全国の法人所得課税のうち賃金に転嫁される分を、賃金に比例して配分しています。給与のある年齢には所得に関わらずほぼ一定の率でかかり、年金期には出ません。</li>}
         {denominator === 'career'
           ? <li>公的年金の受給は65歳以降に現役期年収の40〜80%相当の受け取りとなり、純負担は負に転じる。現役期年収が高いほど年金の対年収比は小さい（基礎年金が定額、報酬比例に上限があるため）。</li>
-          : <li>年金だけの年でも純負担は正のままで、現役期の半分前後（本モデルでは10〜17%）。所得税・住民税はほぼ0でも、医療保険料と介護保険料が年金から引かれ続けるためです。分母を現役期年収に切り替えると、受け取る年金が負担を上回るので同じ年が大きな負のセルになります。どちらも同じ金額の別の見方です。</li>}
+          : <><li>年金だけの年でも純負担は正のままで、現役期の半分前後（本モデルでは10〜17%）。所得税・住民税はほぼ0でも、医療保険料と介護保険料が年金から引かれ続けるためです。分母を現役期年収に切り替えると、受け取る年金が負担を上回るので同じ年が大きな負のセルになります。どちらも同じ金額の別の見方です。</li>
+            <li>この分母では「公的年金の受給」の表は総収入に占める年金の割合を表します（年金だけの年は-100%、働きながら受け取る年は途中の値）。純負担率には足し込まれません。年金を負担のマイナスとして差し引いた見方は、分母を現役期年収に切り替えると出ます。</li></>}
       </ul>
     </div>
   </div>;
