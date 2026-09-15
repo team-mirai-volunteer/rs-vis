@@ -89,10 +89,12 @@ function defaultSortDir(key: SortKey): SortDir {
 
 const PAGE_SIZE = 50;
 const COLUMN_WIDTH_STORAGE_KEY = 'subcontracts-column-widths';
+const COLUMN_LABELS = ['PID', '事業名', '省庁', '担当組織', '会計区分', '予算額', '執行額', '直接支出合計', '支出額合計',
+  '支出額合計 − 直接支出合計', '執行額 − 直接支出合計', 'ブロック', '直接支出', '再委託', '間接経費', '別財源', '支出先', '階層', '分岐', '最大分岐', '合流', '最大合流', '構造'];
 const DEFAULT_COL_WIDTHS = [
   56,    // PID
   280,   // 事業名
-  72,    // 省庁
+  160,   // 省庁（正式名称を表示）
   240,   // 担当組織
   88,    // 会計区分
   88,    // 予算額
@@ -138,7 +140,7 @@ const MIN_COL_WIDTHS = [
   48,
   72,
   56,
-];
+].map((width, index) => Math.max(width, [...COLUMN_LABELS[index]].length * 12 + 36));
 
 function loadColumnWidths(): number[] {
   if (typeof window === 'undefined') return DEFAULT_COL_WIDTHS;
@@ -502,7 +504,7 @@ function SubcontractsPageInner() {
             align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start',
           )}
         >
-          <span className="min-w-0 whitespace-normal break-words leading-4" style={{ textAlign: align }}>{children}</span>
+          <span className="shrink-0 whitespace-nowrap leading-4" style={{ textAlign: align }}>{children}</span>
           <SortIndicator k={sort} />
         </Button>
         <Button
@@ -517,7 +519,7 @@ function SubcontractsPageInner() {
             resizingColumnRef.current = {
               index: columnIndex,
               startX: e.clientX,
-              startWidth: columnWidths[columnIndex],
+              startWidth: displayColumnWidths[columnIndex],
             };
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
@@ -558,7 +560,10 @@ function SubcontractsPageInner() {
   const TD_CLASS = 'text-mirai-text-secondary';
   const dash = <span className="text-mirai-text-placeholder">—</span>;
 
-  const tableWidth = columnWidths.reduce((sum, width) => sum + width, 0);
+  // 旧保存値や手動リサイズでも見出し・省庁名が欠けない幅を確保する。
+  const ministryWidth = Math.max(160, ...graphs.map(g => [...g.ministry].length * 12 + 20));
+  const displayColumnWidths = columnWidths.map((width, i) => Math.max(width, MIN_COL_WIDTHS[i], i === 2 ? ministryWidth : 0));
+  const tableWidth = displayColumnWidths.reduce((sum, width) => sum + width, 0);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -692,7 +697,7 @@ function SubcontractsPageInner() {
           <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-xs">
             <table className="border-collapse text-xs" style={{ width: tableWidth, minWidth: '100%', tableLayout: 'fixed' }}>
               <colgroup>
-                {columnWidths.map((width, i) => (
+                {displayColumnWidths.map((width, i) => (
                   <col key={i} style={{ width }} />
                 ))}
               </colgroup>
