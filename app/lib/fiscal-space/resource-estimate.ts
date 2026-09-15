@@ -83,7 +83,8 @@ export function resourcePowerBalance(year: number, extraDemandGw: number, extraS
       ? summer.find(s => s.region === r.region)!.demandGw[index] / totalDemand : Number(c.region === r.region);
     const demandGw = r.demandGw[index] * demandScale + extraDemandGw * share;
     const supplyGw = r.supplyGw[index] * capacityScale + extraSupplyGw * share;
-    return { region: r.region, season: r.season, demandGw, supplyGw, utilization: demandGw / supplyGw };
+    const season = r.region === '沖縄' && index < 2 ? '最小予備率断面' : r.season;
+    return { region: r.region, season, demandGw, supplyGw, utilization: demandGw / supplyGw };
   });
   const binding = rows.reduce((a, b) => a.utilization >= b.utilization ? a : b);
   return { referenceYear: reference.powerStartYear + index, rows, ...binding,
@@ -123,6 +124,6 @@ export function resourceRecords(c: ResourceAssumptions, policies: Policy[] = [])
       { key: `resourcePower.${r.region}.${r.season}.${2026 + i}.supply`, value: r.supplyGw[i] },
     ].map(x => ({ ...x, unit: 'GW', referenceYear: `${2026 + i}年度見通し`, sourceName: 'OCCTO 2026年度供給計画 別紙2 表2-1〜2-4',
       sourceUrl: reference.sources['occto-2026.pdf'].url, publishedAt: '2026-03-30', status: 'verified' as const,
-      uncertaintyNote: '公表の見通しであり実績ではない。連系線融通前の8月・一部地域の1月断面。月内の最小余力や確率的供給信頼度は再現しない。追加政策の地域配分と供給倍率は別の仮定。' }))))),
+      uncertaintyNote: '公表の見通しであり実績ではない。連系線融通前の8月・一部地域の1月断面。ただし沖縄の2026・2027年度は最小予備率断面。全月の最小余力や確率的供給信頼度は再現しない。追加政策の地域配分と供給倍率は別の仮定。' }))))),
   ];
 }

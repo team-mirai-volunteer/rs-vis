@@ -37,7 +37,9 @@ test('OCCTO regional seasons remain separate; extra load and supply conserve nat
   const tokyo = base.rows.find(r => r.region === '東京')!;
   assert.equal(tokyo.demandGw, 55.01); assert.equal(tokyo.supplyGw, 63.3);
   assert.equal(base.rows.length, 13);
-  close(base.nationalDemandGw, base.rows.filter(r => r.season === '8月').reduce((s, r) => s + r.demandGw, 0));
+  close(base.nationalDemandGw, base.rows.filter(r => r.season !== '1月').reduce((s, r) => s + r.demandGw, 0));
+  assert.equal(base.rows.find(r => r.region === '沖縄')!.season, '最小予備率断面');
+  assert.equal(resourcePowerBalance(2, 0, 0, RESOURCE_DEFAULTS).rows.find(r => r.region === '沖縄')!.season, '8月');
   const added = resourcePowerBalance(0, 1, 2, RESOURCE_DEFAULTS);
   close(added.nationalDemandGw - base.nationalDemandGw, 1);
   close(added.nationalSupplyGw - base.nationalSupplyGw, 2);

@@ -56,7 +56,7 @@ export function ResourceEstimation({ result, value, onChange }: {
         <caption className="text-left">電力制約が最も厳しい{power.referenceYear}年度（追加予算を反映）</caption>
         <thead><tr>{['地域・断面', '需要GW', '供給GW（融通前）', '利用率'].map(h => <th scope="col" key={h} className="py-2">{h}</th>)}</tr></thead>
         <tbody>{power.rows.map(r => <tr key={`${r.region}-${r.season}`} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.region}・{r.season}</th><td>{r.demandGw.toFixed(2)}</td><td>{r.supplyGw.toFixed(2)}</td><td>{percent(r.utilization)}</td></tr>)}</tbody>
-      </table></div>}
+      </table><p className="mt-2 text-xs">沖縄の2026・2027年度は、公表表の注記に従い最小予備率断面を使用します。全国集計もこの指定断面を含み、厳密な同時刻合計ではありません。</p></div>}
     </div></details>
   </section>;
 }
