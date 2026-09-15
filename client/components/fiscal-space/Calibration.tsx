@@ -13,6 +13,7 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <div className="space-y-2">
         <RangeField label="名目GDPに対する税収弾性値" value={value.taxRevenueElasticity} min={0} max={2} step={.1} unit="" onChange={n => change('taxRevenueElasticity', n)} />
         <p className="text-xs">名目GDPが1%増えたとき、税・社会保険料収入が約{value.taxRevenueElasticity.toFixed(1)}%増える想定です（減税分を引く前）。入力した値を評価期間全体に適用します。</p>
+        <p className="text-xs">初期値は比較用の1.3。政府の後年度試算は従来1.1、<a className="underline" href="https://www.mof.go.jp/policy/budget/topics/outlook/sy2026a.htm" target="_blank" rel="noreferrer">現在は1.2</a>です。<a className="underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">財務省答弁の実績ベースの値は1.7（2015〜2024年度）</a>。期間によって変わり、将来も1.7になるという推定ではありません。</p>
       </div>
       <RangeField label="税収への反映ラグ" value={value.taxCollectionLag} min={0} max={3} step={1} unit="年" onChange={n => change('taxCollectionLag', n)} />
       <RangeField label="ギャップに対する需要感度" value={value.gapDemandSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapDemandSensitivity', n)} />
@@ -25,17 +26,20 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="消費税の価格転嫁率" value={value.consumptionTax.passThrough * 100} min={0} max={100} step={10} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, passThrough: n / 100 })} />
       <RangeField label="表⑤から分離する直接CPI効果" value={value.consumptionTax.referenceDirectCpi} min={0} max={1} step={.01} unit="%/税率pt" onChange={n => change('consumptionTax', { ...value.consumptionTax, referenceDirectCpi: n })} />
     </div>
-    <p className="mt-3 text-xs">税収弾性値は、対象税目や期間に合わせて設定する仮定です。このモデルでは社会保険料を含む収入全体に適用し、短期と中期で値を切り替える計算はしていません。<a className="text-primary-accent underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">参考：税収弾性値についての財務金融委員会答弁</a></p>
+    <p className="mt-3 text-xs">上記の政府の税収弾性値と、このモデルの収入の範囲は異なります。このモデルでは社会保険料を含む一般政府の税・社会負担収入全体に同じ値を適用する仮定を置きます。社会保険料の弾性値まで1.7と実証されたわけではなく、税目別・短期と中期の違いは未反映です。</p>
     <p className="mt-3 text-xs">長期金利は表①〜⑤の同じ年額・期間の反応を借換・新発債へ渡します。基準借換金利と外生ショックは財政計算の感度で、GDPへの追加反応は未推計。2022年モデルの金利反応は未接続です。</p>
     <p className="mt-2 text-xs">消費税は対象品目を一つの税率で近似。標準税率品目・軽減税率品目を想定するときは対象CPI比率・減収額・税率を併せて変更してください。1ポイント3.5兆円・対象85%・税率10%は換算仮定です。表⑤の直接CPI効果0.78%、デフレーター0.50%を分離する仮定を置き、転嫁率を掛けた直接価格効果に置換します。終了時は直接値下がりが消え、復税による反動が出ます。税率ゼロを超える減税は入力・探索対象外です。</p>
+    <p className="mt-2 text-xs">価格転嫁率100%は減税分がすべて値下げになる比較基準です。<a className="underline" href="https://www.boj.or.jp/mopo/outlook/gor1807a.htm" target="_blank" rel="noreferrer">日銀も増税の機械的な試算では完全転嫁を仮定</a>していますが、減税の実績値ではありません。<a className="underline" href="https://www.ifo.de/cesifo/publikationen/2021/working-paper/pass-through-temporary-vat-rate-cuts-evidence-german-supermarket" target="_blank" rel="noreferrer">ドイツの2020年の一時減税を調べた研究ではスーパーの転嫁率は約70%</a>でした。日本全体への適用は未検証です。50%・70%・100%などで比較してください。</p>
+    <p className="mt-2 text-xs">この設定が変えるのはCPI・GDPデフレーターの直接価格効果と、それに伴う名目GDP・税収などです。実質GDP・輸出入・雇用の公表反応は再推計しません。転嫁されない減税分が企業利益や消費に及ぼす効果、減税と復税で転嫁率が異なる可能性は未反映です。0〜100%は比較範囲であり、100%を超える転嫁を経済的に否定するものではありません。</p>
   </details>;
 }
-export function Calibration({ value, onChange }: { value: Sensitivity; onChange: (value: Sensitivity) => void }) {
+export function Calibration({ value, onChange, embedded = false }: { value: Sensitivity; onChange: (value: Sensitivity) => void; embedded?: boolean }) {
   const change = <K extends keyof Sensitivity>(key: K, n: Sensitivity[K]) => onChange({ ...value, [key]: n });
   const ref = REFERENCES[value.referenceModel];
-  return <Card><CardHeader><h2 className="text-lg font-bold">乗数・労働反応の条件</h2>
+  return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">乗数・労働反応の条件</h2>}
     <p className="text-sm leading-relaxed">公表モデルの年次反応を比較条件に使います。観測された因果効果や「正解の係数」を意味しません。</p>
   </CardHeader><CardContent className="space-y-4 text-sm">
+    <p className="text-xs leading-relaxed">公表モデル以外の係数は、効果の大きさを比べるための仮定です。消費税の対象CPI比率85%・価格転嫁率100%、既存歳出のCPI連動率100%などは、日本全体の実績から推定した初期値ではありません。各項目の説明とともに変更してください。</p>
     <label className="block space-y-2"><span>参照するマクロモデル</span><select className={fieldClass} value={value.referenceModel} onChange={e => change('referenceModel', e.target.value as ReferenceModel)}>
       {Object.entries(REFERENCES).map(([id, r]) => <option key={id} value={id}>{r.name}</option>)}
     </select></label>
@@ -56,6 +60,7 @@ export function Calibration({ value, onChange }: { value: Sensitivity; onChange:
     <details><summary className="cursor-pointer font-bold">この乗数はどこまで信用できる？</summary><p className="mt-2 text-xs leading-relaxed">2つの公表モデルが近い値でも、実際の政策効果の独立した検証にはなりません。日本の政府支出を分析した<a className="text-primary-accent underline" href="https://www.aeaweb.org/articles?id=10.1257/mac.20170131" target="_blank" rel="noreferrer">宮本・Nguyen・Sergeyev（2018）</a>は、金利の下限制約下で当期乗数1.5、それ以外で0.6と推定しています。これは四半期の当期反応で、上表の年間値とは期間が異なります。景気・金融政策、恒久か一時か、対象者、推定方法によって結果が変わるため、数値だけを混ぜて平均したり信頼区間にしたりしていません。</p></details>
     <details><summary className="cursor-pointer font-bold">乗数と本人・事業主の反応を変える</summary><div className="mt-4 grid gap-4 md:grid-cols-2">
       <RangeField label="GDP乗数の感度倍率" value={value.multiplierScale} min={0} max={3} step={.1} unit="倍" onChange={n => change('multiplierScale', n)} />
+      <p className="text-xs">感度倍率は実質GDPの公表反応に掛けます。物価・輸出入・雇用の公表反応を同時に再推計する設定ではありません。初期値1倍でも、GDPギャップや供給制約によって実現する効果は変わります。</p>
       <RangeField label="社会保険料軽減の本人配分" value={value.employeeReliefShare * 100} min={0} max={100} step={10} unit="%" onChange={n => change('employeeReliefShare', n / 100)} />
       <RangeField label="手取り賃金に対する労働時間の弾力性" value={value.hoursElasticity} min={0} max={1} step={.1} unit="" onChange={n => change('hoursElasticity', n)} />
       <RangeField label="手取り賃金に対する労働参加の弾力性" value={value.participationElasticity} min={0} max={1} step={.1} unit="" onChange={n => change('participationElasticity', n)} />

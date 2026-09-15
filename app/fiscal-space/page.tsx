@@ -11,7 +11,7 @@ import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/S
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
-import { ClipboardCheck, Info, X } from 'lucide-react';
+import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
 import { POLICIES, TRILLION } from '@/app/lib/fiscal-space/assumptions';
@@ -51,9 +51,14 @@ const MemoResourceEstimation = memo(ResourceEstimation);
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
   const [shareError, setShareError] = useState('');
+  const [controlsOpen, setControlsOpen] = useState(false);
   const dataDialog = useRef<HTMLDialogElement>(null);
   const powerDialog = useRef<HTMLDialogElement>(null);
+  const calibrationDialog = useRef<HTMLDialogElement>(null);
+  const supplyDialog = useRef<HTMLDialogElement>(null);
   const openPowerSettings = useCallback(() => powerDialog.current?.showModal(), []);
+  const openCalibrationSettings = useCallback(() => calibrationDialog.current?.showModal(), []);
+  const openSupplySettings = useCallback(() => supplyDialog.current?.showModal(), []);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { completed, error, pending, retry } = useFiscalCalculation(form);
   useEffect(() => {
@@ -103,11 +108,11 @@ export default function FiscalSpacePage() {
         <Info aria-hidden="true" />データについて
       </Button>
     </AppHeader>
-    <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-10 pt-5">
+    <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
       <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力を考える</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">財政余力シミュレータ（試作）。減税、公共投資、研究、エネルギー。使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
       <ShareScenario form={form} onPreset={change.preset} error={shareError} />
       <div className="contents" data-testid="calculation-status" aria-live="polite">
-        {pending && <div className="fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg">
+        {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg lg:bottom-3 lg:top-auto">
           <p role="status">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>
           <button type="button" className="mt-1 min-h-6 text-primary-accent underline" onClick={retry}>計算をやり直す</button>
         </div>}
@@ -120,12 +125,25 @@ export default function FiscalSpacePage() {
       {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{result.totalYen / TRILLION}兆円。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">
+          <Button variant="outline" className="mb-2 w-full justify-between border-mirai-border bg-card shadow-soft lg:hidden"
+            aria-expanded={controlsOpen} aria-controls="fiscal-policy-controls" onClick={() => setControlsOpen(open => !open)}>
+            <span className="flex items-center gap-2"><SlidersHorizontal aria-hidden="true" />{controlsOpen ? '政策パネルを閉じる' : '政策を調整'}</span>
+            <span className="tabular-nums">{(totalPolicyCostYen(form.amounts, form.calibration) / TRILLION).toLocaleString('ja-JP', { maximumFractionDigits: 1 })}兆円/年</span>
+          </Button>
+          <div id="fiscal-policy-controls" className={controlsOpen ? 'block' : 'hidden lg:block'}
+            onKeyDown={e => {
+              if (e.key === 'Escape' && controlsOpen) {
+                setControlsOpen(false);
+                document.querySelector<HTMLButtonElement>('[aria-controls="fiscal-policy-controls"]')?.focus();
+              }
+            }}>
         <MemoControls
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
-          policies={policies} onPowerSettings={openPowerSettings}
+          policies={policies} onPowerSettings={openPowerSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
           horizon={Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
@@ -133,12 +151,14 @@ export default function FiscalSpacePage() {
           onAmount={change.amount} onHorizon={change.horizon} onPolicyKind={change.kind} onPolicyDuration={change.duration}
           onRateShock={change.rate} onEnergyShock={change.energy} onReserve={change.reserve} onThreshold={change.threshold}
           onGap={change.gap} onInflation={change.inflation} onConstruction={change.construction} onFirmCapacity={change.firm} onReset={change.reset} />
-        {result && calculationForm ? <div className="min-w-0 space-y-5" aria-busy={pending}>
+          </div>
+        </aside>
+        <div className="min-w-0 space-y-5" aria-busy={pending}>
+        {result && calculationForm ? <>
           <CalculationOverview result={result} latest={calculationForm.dataset === 'latest'} />
-        </div> : <p className="rounded-xl border border-mirai-border bg-card p-5">{error
+        </> : <p className="rounded-xl border border-mirai-border bg-card p-5">{error
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
-      </div>
       {result && <>
       <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit}
         rows={result.modelSensitivity} initial={result.initial}
@@ -152,15 +172,39 @@ export default function FiscalSpacePage() {
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>
       <MemoJapanBaseline dataset={form.dataset} onDataset={change.dataset} />
       <MemoBurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onCorporateShare={change.corporate} />
-      <MemoCalibration value={form.calibration} onChange={change.calibration} />
-      <MemoSupplyConditions value={form.supply} onChange={change.supply} />
       {result && <>
       <MemoElectricityBaseline value={form.calibration.electricity} onChange={change.electricity} baseline={result.baseline} projection={result.projection} />
       <MemoPolicyLoads policies={loadedPolicies} onChange={change.load} />
       <MemoPolicyTrade policies={result.policies} value={form.trade} onChange={change.trade} />
       <MemoProjection simulation={result.projection} baseline={result.baseline} peaksByYear={result.peaksByYear} shocks={result.shocks} parameters={result.p} latest={calculationForm?.dataset === 'latest'} />
       </>}
+        </div>
+      </div>
     </main>
+    <dialog ref={supplyDialog} aria-labelledby="supply-settings-title"
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id="supply-settings-title" className="text-lg font-bold">政策別の供給力・長期条件</h2>
+        <Button variant="ghost" size="icon" aria-label="供給力・長期条件を閉じる" onClick={() => supplyDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-3 p-3 sm:p-5">
+        <p className="text-sm">変更はすぐに計算へ反映されます。</p>
+        <MemoSupplyConditions value={form.supply} onChange={change.supply} embedded />
+        <Button variant="outline" onClick={() => supplyDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
+    <dialog ref={calibrationDialog} aria-labelledby="calibration-settings-title"
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id="calibration-settings-title" className="text-lg font-bold">乗数・労働反応の条件</h2>
+        <Button variant="ghost" size="icon" aria-label="乗数・労働反応の設定を閉じる" onClick={() => calibrationDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-3 p-3 sm:p-5">
+        <p className="text-sm">変更はすぐに計算へ反映されます。</p>
+        <MemoCalibration value={form.calibration} onChange={change.calibration} embedded />
+        <Button variant="outline" onClick={() => calibrationDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
     <dialog ref={powerDialog} aria-labelledby="power-settings-title"
       className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
