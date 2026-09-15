@@ -94,24 +94,24 @@ const DEFAULT_COL_WIDTHS = [
   280,   // 事業名
   72,    // 省庁
   240,   // 担当組織
-  80,    // 会計区分
+  88,    // 会計区分
   88,    // 予算額
   88,    // 執行額
-  104,   // 直接支出合計
+  112,   // 直接支出合計
   96,    // 支出額合計
-  100,   // 支出計−直接
+  108,   // 支出計−直接
   96,    // 執行−直接
-  76,    // ブロック
-  80,    // 直接支出
-  68,    // 再委託
-  80,    // 間接経費
-  68,    // 別財源
-  68,    // 支出先
-  56,    // 階層
-  56,    // 分岐
-  80,    // 最大分岐
-  56,    // 合流
-  80,    // 最大合流
+  88,    // ブロック
+  88,    // 直接支出
+  76,    // 再委託
+  88,    // 間接経費
+  76,    // 別財源
+  76,    // 支出先
+  64,    // 階層
+  64,    // 分岐
+  88,    // 最大分岐
+  64,    // 合流
+  88,    // 最大合流
   64,    // 構造
 ];
 const MIN_COL_WIDTHS = [
@@ -468,9 +468,9 @@ function SubcontractsPageInner() {
   }
 
   function SortIndicator({ k }: { k: SortKey }) {
-    if (sortKey !== k) return <ArrowUpDown aria-hidden="true" className="ml-1 size-3 shrink-0 text-mirai-text-placeholder" />;
+    if (sortKey !== k) return <ArrowUpDown aria-hidden="true" className="size-3 shrink-0 text-mirai-text-placeholder" />;
     const Icon = sortDir === 'asc' ? ArrowUp : ArrowDown;
-    return <Icon aria-hidden="true" className="ml-1 size-3 shrink-0 text-primary" />;
+    return <Icon aria-hidden="true" className="size-3 shrink-0 text-primary" />;
   }
 
   function SortHeader({
@@ -489,19 +489,20 @@ function SubcontractsPageInner() {
     return (
       <th
         style={{ ...thStyle, textAlign: align }}
-        className="sticky top-0 z-[2] overflow-hidden whitespace-nowrap border-b border-border bg-mirai-surface px-2 py-2 text-xs font-bold text-mirai-text-subtle"
+        className="sticky top-0 z-[2] overflow-hidden border-b border-border bg-mirai-surface py-2 pl-2 pr-3 text-xs font-bold text-mirai-text-subtle"
         title={title}
+        scope="col"
         aria-sort={sortAria(sort)}
       >
         <Button
           variant="ghost"
           onClick={() => toggleSort(sort)}
           className={cn(
-            'h-auto w-full gap-0.5 rounded-md p-0 pr-2 text-xs font-bold text-inherit hover:bg-transparent hover:text-primary-accent',
+            'h-auto min-w-0 w-full gap-0.5 rounded-md p-0 text-xs font-bold text-inherit has-[>svg]:px-0 hover:bg-transparent hover:text-primary-accent',
             align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start',
           )}
         >
-          <span>{children}</span>
+          <span className="min-w-0 whitespace-normal break-words text-balance leading-4" style={{ textAlign: align }}>{children}</span>
           <SortIndicator k={sort} />
         </Button>
         <Button
