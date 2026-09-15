@@ -14,7 +14,7 @@ import { money, percent, points } from '../client/components/fiscal-space/format
 test('neutral defaults and complete shared scenarios round-trip both datasets and optional project settings', () => {
   for (const dataset of ['2024', 'latest'] as const) {
     const form = defaults(dataset);
-    assert.equal(form.calibration.taxRevenueElasticity, 1.7);
+    assert.equal(form.calibration.taxRevenueElasticity, 1.1);
     assert(Object.values(form.amounts).every(v => v === 0));
     assert.equal(form.calibration.hoursElasticity, P.hoursElasticity);
     assert.deepEqual(decodeScenario(encodeScenario(form)), form);
@@ -76,7 +76,7 @@ test('the three-year reference never returns extrapolated five-year comparison o
 
 test('the envelope audit exposes withdrawal GDP, actual peak year and a conditional CPI approximation', () => {
   const initial = initialEconomy('latest');
-  const policy = { ...POLICIES.find(x => x.id === 'public-investment')!, duration: 3, annualCost: T };
+  const policy = { ...POLICIES.find(x => x.id === 'public-investment')!, duration: 3, annualCost: T, load: { sectorUtilizationPerTrillion: 0, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0, lag: 0, lifetime: 1, depreciation: 0 } };
   const mix = [{ policy, weight: 1 }];
   const estimate = estimateFiscalSpace(initial, mix, THRESHOLDS, 5, P);
   const audit = auditFiscalSpace(initial, mix, estimate, THRESHOLDS, 5, P, NO_SHOCK);
@@ -84,6 +84,7 @@ test('the envelope audit exposes withdrawal GDP, actual peak year and a conditio
   assert.equal(audit.cpi.year, 2);
   assert(audit.cpiApproximation && audit.cpiApproximation.slope > 0);
   const blocked = estimateFiscalSpace(initialEconomy('2024'), mix, THRESHOLDS, 5, P);
-  assert.equal(blocked.status, 'baseline-violated');
-  assert(blocked.constraints.some(x => x.id === 'inflation' && x.year === 0 && x.status === 'violated'));
+  assert.equal(blocked.status, 'boundary');
+  assert(blocked.theoreticalMaximum > 0);
+  assert(blocked.constraints.every(x => x.year > 0));
 });

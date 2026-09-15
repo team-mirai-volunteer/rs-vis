@@ -15,14 +15,14 @@ export function ConstraintMeters({ constraints, baseline = [], sensitivity, late
   return <Card><CardHeader>
     <h2 className="text-lg font-bold">次の1兆円で、どの制約が動く？</h2>
     <p className="text-sm">同じ配分・期間で年額を1兆円増やしたときの、期間内ピーク利用率の変化が大きい順です。境界までの金額や厳密な微分ではありません。バーは現在の水準、縦線100%は設定上限で、危険確率ではありません。</p>
-    <p className="text-xs">年0がピークの制約は、将来年が変化しても差が0になる場合があります。配分未入力・消費税や社会保険料の軽減限度にかかる場合は感応度を計算できません。</p>
+    <p className="text-xs">年1以降の将来経路だけを比較します。年0は観測値として別表示します。配分未入力・消費税や社会保険料の軽減限度にかかる場合は感応度を計算できません。</p>
   </CardHeader><CardContent className="space-y-4">
     {evaluated.map(r => {
       const label = r.status === 'violated' ? '閾値違反' : r.utilization >= .8 ? '上限に近い・設定内' : '設定内';
       const base = baseline.find(b => b.id === r.id);
       const change = delta(r.id);
       return <div key={r.id} className="space-y-1" data-constraint={r.id}>
-        <div className="flex justify-between gap-2 text-sm"><strong>{r.label}</strong><span>{percent(r.utilization, 1)}・{label}</span></div>
+        <div className="flex justify-between gap-2 text-sm"><strong>{r.label}<span className="ml-2 rounded bg-mirai-surface-warm px-1 text-xs font-normal">{['capacity', 'sector', 'energy'].includes(r.id) ? '能力・余力に仮定を含む' : '閾値は仮定'}</span></strong><span>{percent(r.utilization, 1)}・{label}</span></div>
         <p className="text-sm font-medium">{change === null ? '追加1兆円の感応度：未計算' : Math.abs(change) < 1e-10
           ? '追加1兆円：ピーク利用率はこの配分では動かない'
           : `追加1兆円：${points(change)} / 兆円${Math.abs(change) < .000005 ? '（表示桁未満の変化）' : ''}`}</p>
@@ -39,6 +39,8 @@ export function ConstraintMeters({ constraints, baseline = [], sensitivity, late
           {r.year === 0 && ' ピークは政策実施前です。将来の変化がないという意味ではありません。'}
         </p>
         {['debt', 'interestGdp', 'gfn'].includes(r.id) && <FiscalVintageBadge latest={latest} projected={r.year > 0} />}
+        {r.id === 'labour' && <p className="text-xs">稼働率ではなく、1 − 失業率に相当する人数比です。上限99.5%は失業率0.5%を下限とする仮定です。</p>}
+        {r.id === 'debt' && <p className="text-xs">280%という既定閾値は出典のある持続可能性基準ではありません。この期間で境界に達しないことは、長期の債務持続性の検証にはなりません。</p>}
         <details><summary className="cursor-pointer text-sm text-primary-accent">なぜ？ 計算根拠を見る</summary><p className="mt-2 text-sm">{r.explanation}</p></details>
       </div>;
     })}

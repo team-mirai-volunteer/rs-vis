@@ -12,6 +12,11 @@ import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified
 const CANVAS = '[data-testid="unified-canvas"]';
 const RENDER_TIMEOUT = 60_000;
 
+test('GIGA budget label retains the initial budget when spending is larger', async ({ page }) => {
+  await openPage(page, 'year=2024&b=initial&sel=project-budget-1503');
+  await expect(page.getByTestId('unified-label').filter({ hasText: 'GIGA' }).filter({ hasText: '5.08億円' })).toBeVisible();
+});
+
 /** ページを開いて図が出るまで待つ。ページエラーは呼び出し側で検証できるよう配列に集める */
 async function openPage(page: Page, query = 'year=2024'): Promise<string[]> {
   const pageErrors: string[] = [];

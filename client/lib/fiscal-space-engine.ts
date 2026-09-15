@@ -85,8 +85,20 @@ export function createFiscalEngine() {
       return { ...row, space };
     });
     const shocks = rateShockComparison(initial, allocated, p);
-    const peaksByYear = projection.steps.map(step => evaluateConstraints(step, form.thresholds)
-      .sort((a, b) => b.utilization - a.utilization)[0].label);
+    const probeProjection = canProbe ? simulate(initial, probePolicies, publishedYears, p, shock) : undefined;
+    const peaksByYear = projection.steps.map((step, i) => {
+      if (!probeProjection) return '感応度未計算';
+      const rows = constraintSensitivity({ initial: projection.initial, steps: [step] },
+        { initial: probeProjection.initial, steps: [probeProjection.steps[i]] }, form.thresholds)
+        .filter(r => !((r.id === 'sector' || r.id === 'energy') && step.coverage?.[r.id] === false))
+        .sort((a, b) => (b.delta ?? -Infinity) - (a.delta ?? -Infinity));
+      return !rows[0] || Math.abs(rows[0].delta ?? 0) < 1e-10 ? 'この配分では動かない' :
+        evaluateConstraints(step, form.thresholds).find(c => c.id === rows[0].id)!.label;
+    });
+    const taxElasticitySensitivity = [...new Set([1, 1.1, 1.7, p.taxRevenueElasticity])].sort().map(elasticity => {
+      const path = simulate(initial, allocated, horizon, { ...p, taxRevenueElasticity: elasticity }, shock);
+      return { elasticity, debtGdp: path.steps[horizon - 1].metrics.grossDebtGdp, taxRevenue: path.steps[horizon - 1].state.fiscal.taxRevenue };
+    });
     const modelSensitivity = Object.entries(MODEL_LABELS).map(([id, label]) => {
       const parameters = { ...p, productionModel: id as ModelParameters['productionModel'] };
       const path = simulate(initial, allocated, horizon, parameters, shock);
@@ -95,7 +107,7 @@ export function createFiscalEngine() {
       return { label, initialMaximum: path.initial.production.maximum,
         potentialEffect: last.state.macro.potentialGdp - base.steps[horizon - 1].state.macro.potentialGdp,
         gdpEffect: last.state.macro.realGdp - base.steps[horizon - 1].state.macro.realGdp,
-        cpiPeak: Math.max(...[path.initial, ...path.steps].map(constraintInflation)),
+        cpiPeak: Math.max(...path.steps.map(constraintInflation)),
         capacityPriceAdjustment: last.demand.capacityPriceAdjustment,
         space: estimateFiscalSpace(initial, mix, form.thresholds, horizon, parameters, shock) };
     });
@@ -121,7 +133,7 @@ export function createFiscalEngine() {
       ? Array.from({ length: publishedYears }, (_, i) => i + 1).map(duration => {
         const variants = allocated.map(policy => policy.kind === 'permanent' ? policy : { ...policy, duration });
         const path = simulate(initial, variants, publishedYears, p, shock);
-        const peak = [path.initial, ...path.steps].reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
+        const peak = path.steps.reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
         return { duration, year: publishedYears,
           cost: path.steps.reduce((sum, step) => sum + step.policyCost, 0),
           gdpEffect: path.steps[publishedYears - 1].state.macro.realGdp - baseline.steps[publishedYears - 1].state.macro.realGdp,
@@ -136,7 +148,7 @@ export function createFiscalEngine() {
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
-      estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear,
+      estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity,
       modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, durationSensitivity, records };
   };
 }

@@ -11,6 +11,8 @@ import type { UnifiedColumn, UnifiedNode, UnifiedProgramKind } from './unified-b
 
 /** 表示ノードに添える詳細。元ノードの属性をそのまま持ち、集約・畳み込みの情報を足す */
 export interface UnifiedViewDetails extends Omit<UnifiedNode, 'id' | 'name' | 'value' | 'col'> {
+  /** Outgoing spending flow, which can exceed the selected budget basis. */
+  spendingFlow?: number;
   column: UnifiedColumn;
   /** TopN から溢れた分をまとめたノードか */
   aggregated?: boolean;

@@ -267,6 +267,7 @@ export default function QualityPage() {
       ...i,
       execAmount: i.execAmount ?? 0,
       priorExecutionRate: rates?.[i.pid] ?? null,
+      priorUnusedRatio: history?.priorUnusedRatios?.[i.pid] ?? null,
     }));
     return new Map(buildPolicyEvaluations(items).map(p => [p.pid, p]));
   }, [data, history]);

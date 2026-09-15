@@ -26,6 +26,7 @@ import { SEMICONDUCTOR_CASE } from '../app/lib/fiscal-space/policy-trade';
 import { electricityBaseline, ELECTRICITY_BASELINE } from '../app/lib/fiscal-space/electricity-baseline';
 import { adjustEnergyCpi, JULY_2026_ENERGY_ADJUSTMENT } from '../app/lib/fiscal-space/energy-cpi';
 
+const ZERO_LOAD = { sectorUtilizationPerTrillion: 0, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0, lag: 0, lifetime: 1, depreciation: 0 };
 const preset = (id: string, overrides: Partial<Policy> = {}): Policy => ({ ...POLICIES.find(p => p.id === id)!, ...overrides });
 const near = (a: number, b: number, tolerance = 1e-10) => assert(Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(a), Math.abs(b)), `${a} ≈ ${b}`);
 const last = (policies: Policy[]) => simulate(initialEconomy(), policies).steps[9];
@@ -560,7 +561,7 @@ test('external stress compounds FX and world prices and raises inflation only on
 test('retained envelope can breach the configured CPI ceiling under conditional yen depreciation', () => {
   const initial = initialEconomy('latest');
   const weights: Record<string, number> = { 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 };
-  const mix = POLICIES.map(policy => ({ policy, weight: weights[policy.id] ?? 0 }));
+  const mix = POLICIES.map(policy => ({ policy: { ...policy, load: ZERO_LOAD }, weight: weights[policy.id] ?? 0 }));
   const estimate = estimateFiscalSpace(initial, mix, THRESHOLDS, 10, P, NO_SHOCK);
   const audit = auditFiscalSpace(initial, mix, estimate, THRESHOLDS, 10, P, NO_SHOCK);
   assert(audit.cpi.peak < THRESHOLDS.inflation);
@@ -633,7 +634,7 @@ test('context observations keep periods and definitions separate from forecasts'
 test('envelope audit evaluates retained amount, estimates reference FX, and compares CPI thresholds', () => {
   const initial = initialEconomy('latest');
   const weights: Record<string, number> = { 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 };
-  const mix = POLICIES.map(policy => ({ policy, weight: weights[policy.id] ?? 0 }));
+  const mix = POLICIES.map(policy => ({ policy: { ...policy, load: ZERO_LOAD }, weight: weights[policy.id] ?? 0 }));
   const estimate = estimateFiscalSpace(initial, mix, THRESHOLDS, 10, P, NO_SHOCK);
   const audit = auditFiscalSpace(initial, mix, estimate, THRESHOLDS, 10, P, NO_SHOCK);
   const path = simulate(initial, allocateMix(mix, estimate.recommendedEnvelope), 10, P, NO_SHOCK);
@@ -710,21 +711,21 @@ test('sufficient lagged growth can offset short-run investment debt', () => {
   assert.equal(growth.steps[0].state.macro.potentialGdp, baseline.steps[0].state.macro.potentialGdp);
 });
 test('stricter thresholds reduce the fiscal envelope', () => {
-  const mix = [{ policy: preset('cash'), weight: 1 }];
+  const mix = [{ policy: preset('cash', { load: ZERO_LOAD }), weight: 1 }];
   const broad = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10);
   const strict = estimateFiscalSpace(initialEconomy('latest'), mix, { ...THRESHOLDS, inflation: .021 }, 10);
   assert(strict.theoreticalMaximum < broad.theoreticalMaximum);
 });
 test('public investment and tax cuts have distinct policy-specific limits', () => {
-  const a = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('public-investment'), weight: 1 }], THRESHOLDS, 10);
-  const b = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('income-tax'), weight: 1 }], THRESHOLDS, 10);
+  const a = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('public-investment', { load: ZERO_LOAD }), weight: 1 }], THRESHOLDS, 10);
+  const b = estimateFiscalSpace(initialEconomy('latest'), [{ policy: preset('income-tax', { load: ZERO_LOAD }), weight: 1 }], THRESHOLDS, 10);
   assert(a.theoreticalMaximum > 0); assert(b.theoreticalMaximum > 0);
   assert.notEqual(a.theoreticalMaximum, b.theoreticalMaximum);
 });
 test('the binding constraint switches when inflation tolerance tightens', () => {
   // Isolate the response to policy from the historical year-0 CPI observation.
   const state = initialEconomy(); state.macro.inflation = P.baselineInflation;
-  const mix = [{ policy: preset('public-investment'), weight: 1 }];
+  const mix = [{ policy: preset('public-investment', { load: ZERO_LOAD }), weight: 1 }];
   const base = estimateFiscalSpace(state, mix, { ...THRESHOLDS, inflation: .04 }, 10);
   const tight = estimateFiscalSpace(state, mix, { ...THRESHOLDS, inflation: .02001 }, 10);
   assert.notEqual(base.constraints[0].id, tight.constraints[0].id);
@@ -752,18 +753,18 @@ test('simulation is pure and mix order does not change results', () => {
   for (let i = 0; i < 10; i++) near(a.steps[i].state.macro.realGdp, b.steps[i].state.macro.realGdp);
 });
 test('search distinguishes initial violations, empty mixes and search cap', () => {
-  const mix = [{ policy: preset('cash'), weight: 1 }];
-  // The 2024 observed CPI of 2.7% already exceeds the new default ceiling.
+  const mix = [{ policy: preset('cash', { load: ZERO_LOAD }), weight: 1 }];
+  // Observed year zero stays visible but does not veto future policy years.
   const historical = estimateFiscalSpace(initialEconomy('2024'), mix, THRESHOLDS, 10);
-  assert.equal(historical.status, 'baseline-violated');
-  assert.equal(historical.recommendedEnvelope, 0);
+  assert.equal(historical.status, 'boundary');
+  assert(historical.recommendedEnvelope > 0);
   assert.equal(estimateFiscalSpace(initialEconomy('latest'), mix, { ...THRESHOLDS, debt: 1 }, 10).status, 'baseline-violated');
   assert.equal(estimateFiscalSpace(initialEconomy('latest'), [], THRESHOLDS, 10).status, 'empty-mix');
   const cap = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10, { ...P, searchCap: T / 100 });
   assert.equal(cap.status, 'search-cap'); near(cap.emergencyReserve + cap.recommendedEnvelope, cap.theoreticalMaximum);
 });
 test('safe endpoint and a nearby violation bracket the reported boundary', () => {
-  const mix = [{ policy: preset('public-investment'), weight: 1 }];
+  const mix = [{ policy: preset('public-investment', { load: ZERO_LOAD }), weight: 1 }];
   const r = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10);
   assert.equal(r.status, 'boundary');
   assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum)), THRESHOLDS).every(c => c.status !== 'violated'));
@@ -777,7 +778,7 @@ test('surpluses retire principal and accumulate assets only after full retiremen
 test('invalid inputs fail explicitly', () => {
   assert.throws(() => simulate(initialEconomy(), [preset('cash', { annualCost: NaN })]));
   assert.throws(() => simulate(initialEconomy(), [], 0));
-  assert.throws(() => allocateMix([{ policy: preset('cash'), weight: -1 }], T));
+  assert.throws(() => allocateMix([{ policy: preset('cash', { load: ZERO_LOAD }), weight: -1 }], T));
   assert.throws(() => ces(initialEconomy().production.inputs, P.weights, 0));
   assert.throws(() => simulate(initialEconomy(), [], 10, { ...P, investmentDepreciation: 2 }));
   const invalid = initialEconomy(); invalid.energy.importedEnergy = 0;

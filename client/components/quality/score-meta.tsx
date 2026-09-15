@@ -98,7 +98,7 @@ export const COL_DESC: Record<string, string> = {
 
   執行額: `実際に支出した額。2-1 CSV の「執行額(合計)」。
 
-予算額との差が不用額です。不用額は総合点には影響しません。`,
+歳出予算現額から執行額と翌年度繰越額を差し引いた残額が不用額です。不用額は総合点には影響しません。`,
 
   支出先合計: `支出先データ（5-1）の金額を単純に合計したもの。
 
@@ -155,7 +155,7 @@ export const ACTION_CLS = 'bg-mirai-surface-teal text-primary-accent';
 export const UNUSED_TREND_META: Record<PolicyEvaluation['unusedTrend'], { label: string; cls: string }> = {
   persistent: { label: '2年連続で不用率が上位帯（構造的な計上過大）', cls: 'text-orange-600' },
   single:     { label: '当年度のみ不用が大きい（前年度は正常水準）',   cls: 'text-amber-600' },
-  unknown:    { label: '当年度の不用は大きいが前年度実績が無く判定不能', cls: 'text-mirai-text-muted' },
+  unknown:    { label: '繰越または前年度の実績が未確認のため傾向は判定不能', cls: 'text-mirai-text-muted' },
   normal:     { label: '不用率は上位帯に達していない',               cls: 'text-mirai-text-muted' },
 };
 

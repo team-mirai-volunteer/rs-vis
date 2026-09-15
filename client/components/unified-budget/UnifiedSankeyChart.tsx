@@ -798,6 +798,7 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
       )}
       <div className="font-semibold text-mirai-text">{node.name}</div>
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
+      {d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
       {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}
       {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-mirai-text-subtle">項: {d.sectionName}</div>}

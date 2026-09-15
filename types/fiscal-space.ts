@@ -141,7 +141,7 @@ export interface ProjectionStep {
 export interface Simulation { initial: ProjectionStep; steps: ProjectionStep[] }
 export interface FiscalSpaceEstimate {
   theoreticalMaximum: number; emergencyReserve: number; recommendedEnvelope: number;
-  status: 'boundary' | 'baseline-violated' | 'search-cap' | 'revenue-cap' | 'empty-mix';
+  status: 'boundary' | 'baseline-violated' | 'search-cap' | 'revenue-cap' | 'empty-mix' | 'unevaluated';
   limitingPolicy?: string;
   constraints: ConstraintResult[]; evaluations: number; tolerance: number;
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };

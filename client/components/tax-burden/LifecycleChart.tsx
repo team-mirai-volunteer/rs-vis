@@ -36,7 +36,7 @@ export function LifecycleChart({ years, base, state, selectedAge, onSelectAge }:
   return <div>
     <p className="mb-2 text-xs text-mirai-text-secondary">上：{state.denominator === 'career'
       ? `（税・本人保険料${state.includeConsumption ? '・消費税推計' : ''} − 現金給付 − 公的年金の受給）÷ 現役期の世帯年収。年金は負担のマイナスとして扱うため、受給期は負の値（受け取り超過）になる。`
-      : `（税・本人保険料${state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ その年の総収入（給与＋年金）。年金は分母に入る。`}下：総収入と可処分所得（年額）。</p>
+      : `（税・本人保険料${state.includeConsumption ? '・消費税推計' : ''} − 現金給付）÷ その年の総収入（給与＋年金）。年金は分母に入る。`}下：総収入と現金ベースの可処分所得（年額）。法人税の転嫁推計と消費税は可処分所得から控除しません。</p>
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年齢別の負担率と可処分所得（左右にスクロール可能）">
       <svg viewBox={`0 0 830 ${totalHeight}`} className="w-full min-w-[640px]" role="img" aria-labelledby={`${id}-title`}
         onPointerDown={event => {

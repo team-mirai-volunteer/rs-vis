@@ -13,7 +13,7 @@ export const CONSTRAINTS: ConstraintDefinition[] = [
     explain: s => `CPI総合${pct(s.state.macro.inflation)}、消費税直接効果を除くCPI${pct(s.taxAdjustedInflation ?? s.state.macro.inflation)}の両方を同じ上限で判定。税効果の分離とGDPギャップ感度は仮定。供給上限の追加圧力は${pct(s.inflationPressure)}。水準効果の年次比からインフレ率を計算。` },
   { id: 'capacity', label: '最大GDP能力', measure: s => s.state.macro.realGdp / s.production.maximum,
     explain: () => '実質GDP÷選択した生産モデルの最大GDP。全期間で同じモデルを使用。年数だけでモデルや投入指数を変えません。' },
-  { id: 'labour', label: '労働', measure: s => s.state.labour.employment / s.state.labour.labourForce,
+  { id: 'labour', label: '就業者 / 労働力人口', measure: s => s.state.labour.employment / s.state.labour.labourForce,
     explain: () => '必要雇用÷労働力。公表モデルの人数の反応を使用。追加感度を設定すると本人の時間・参加、事業主の雇用需要も変化。時間増で同じ労働量を少ない人数で満たす近似。1超は充足できない要求。' },
   { id: 'sector', label: '産業別能力', measure: s => Math.max(...Object.values(s.state.labour.sectorUtilization)),
     explain: s => {
@@ -38,11 +38,11 @@ export function evaluateConstraints(step: ProjectionStep, thresholds: Thresholds
       explanation: d.explain(step) + (d.id === 'energy' && step.coverage?.energy === false ? ' 政策による追加電力負荷は一部または全部が未評価です。' : '') };
   });
 }
-/** One peak observation per constraint, including year zero. Never average away a violation. */
+/** Policy years only. Year zero remains available as an observed initial condition. */
 export function peakConstraints(simulation: Simulation, thresholds: Thresholds): ConstraintResult[] {
   const peaks = new Map<string, ConstraintResult>();
   const incomplete = new Set<string>();
-  for (const step of [simulation.initial, ...simulation.steps]) for (const r of evaluateConstraints(step, thresholds)) {
+  for (const step of simulation.steps) for (const r of evaluateConstraints(step, thresholds)) {
     if (r.coverageComplete === false) incomplete.add(r.id);
     const old = peaks.get(r.id);
     const priority = { safe: 0, unevaluated: 1, violated: 2 };

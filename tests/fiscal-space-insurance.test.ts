@@ -24,7 +24,7 @@ test('insurance relief cannot exceed either contributor base, including split en
 
 test('loose macro constraints still stop the fixed-share search at the insurance revenue base', () => {
   const thresholds = Object.fromEntries(Object.keys(THRESHOLDS).map(key => [key, 100])) as typeof THRESHOLDS;
-  const r = estimateFiscalSpace(initialEconomy('latest'), [{ policy, weight: 1 }], thresholds, 5);
+  const r = estimateFiscalSpace(initialEconomy('latest'), [{ policy: { ...policy, load: { sectorUtilizationPerTrillion: 0, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0, lag: 0, lifetime: 1, depreciation: 0 } }, weight: 1 }], thresholds, 5);
   assert.equal(r.status, 'revenue-cap');
   assert.equal(r.limitingPolicy, 'social-insurance');
   assert.equal(r.theoreticalMaximum, 78_732_200_000_000);
