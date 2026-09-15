@@ -7,6 +7,8 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${process.env.FISCAL_SPACE_BASE_URL ?? 'http://localhost:3107'}/fiscal-space`);
+  await page.waitForFunction(() => [...document.querySelectorAll('main input')].every(el => Object.keys(el).some(k => k.startsWith('__reactProps$'))));
+  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   const commonFirst = page.locator('[data-electricity-year="1"] [data-electricity="common"]');
   await expect(commonFirst).toHaveText('0.045兆円');
   await page.getByLabel('共通の電力需要増加率', { exact: true }).fill('1');
@@ -24,7 +26,7 @@ try {
   await expect(page.getByLabel('太陽光・投資配分', { exact: true })).toHaveValue('40');
   await expect(page.getByTestId('power-investment-total')).toHaveText('0.0兆円／年');
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
-  await page.getByText('ほかの7政策を追加する', { exact: true }).click();
+  await page.getByText('ほかの8政策を追加する', { exact: true }).click();
   await page.getByLabel('発電設備投資・数値で入力', { exact: true }).fill('1');
   await expect(page.getByTestId('power-investment-total')).toHaveText('1.0兆円／年');
   await expect(page.getByTestId('annual-total')).toHaveText('16.0兆円');

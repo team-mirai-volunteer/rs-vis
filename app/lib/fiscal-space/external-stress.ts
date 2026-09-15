@@ -1,4 +1,5 @@
 import type { Simulation, SourceValue } from '@/types/fiscal-space';
+import { constraintInflation } from './constraints';
 
 export const IMPORT_COST_SOURCE = 'https://www.boj.or.jp/mopo/outlook/gor2601b.pdf';
 export const FX_RISK_SOURCE = 'https://www.boj.or.jp/mopo/outlook/gor2604b.pdf';
@@ -22,13 +23,13 @@ export function externalStress(path: Simulation, fx: number, foreignPrice: numbe
   const values = [fx, foreignPrice, inflationLimit, ...Object.values(assumptions)];
   if (values.some(v => !Number.isFinite(v)) || fx < 0 || foreignPrice < 0 ||
       Object.values(assumptions).some(v => v < 0 || v > 1)) throw new RangeError('Invalid stress assumptions');
-  const peak = path.steps.reduce((a, b) => a.state.macro.inflation >= b.state.macro.inflation ? a : b);
+  const peak = path.steps.reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
   const importPrice = (1 + fx * assumptions.importFxExposure) * (1 + foreignPrice) - 1;
   const priceLevel = importPrice * assumptions.cpiPass;
   const years = path.steps.map(s => {
     const currentLevel = s.state.year >= peak.state.year ? priceLevel : 0;
     const previousLevel = s.state.year > peak.state.year ? priceLevel : 0;
-    return { year: s.state.year, inflation: (1 + s.state.macro.inflation) * (1 + currentLevel) / (1 + previousLevel) - 1 };
+    return { year: s.state.year, inflation: (1 + constraintInflation(s)) * (1 + currentLevel) / (1 + previousLevel) - 1 };
   });
   const cpiPeak = Math.max(path.initial.state.macro.inflation, ...years.map(s => s.inflation));
   const importBill = peak.state.external.imports * importPrice;

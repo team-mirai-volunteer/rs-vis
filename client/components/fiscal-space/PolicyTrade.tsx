@@ -2,7 +2,7 @@ import type { Policy } from '@/types/fiscal-space';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { POLICY_TRADE_CHANNELS, POWER_TECHNOLOGIES, POWER_SOURCE, POWER_DETAIL_SOURCE, SEMICONDUCTOR_SOURCE,
   industryTrade, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
-import { fieldClass, money, percent } from './format';
+import { fieldClass, money } from './format';
 import { PROJECT_POLICY_IDS } from '@/app/lib/fiscal-space/project-response';
 
 function Numeric({ label, value, onChange, min = 0, max = 100, step = .1, unit = '' }: {
@@ -11,10 +11,8 @@ function Numeric({ label, value, onChange, min = 0, max = 100, step = .1, unit =
   return <label className="block text-xs"><span>{label}{unit && `（${unit}）`}</span><input type="number" className={`${fieldClass} mt-1`} min={min} max={max} step={step} value={value ?? ''} placeholder="未推計"
     onChange={e => { if (e.target.value === '') onChange(null); else if (Number.isFinite(e.target.valueAsNumber)) onChange(Math.max(min, Math.min(max, e.target.valueAsNumber))); }} /></label>;
 }
-export interface TradeForm { selected: string; industry: Record<string, IndustryTradeCase>; power: PowerCase; mix?: Record<PowerTechnology, number>; powerCases?: Record<PowerTechnology, PowerCase> }
-export function configuredPower(value: TradeForm): PowerCase {
-  return value.mix ? { ...value.power, mix: (Object.keys(POWER_TECHNOLOGIES) as PowerTechnology[]).map(technology => ({ share: value.mix![technology], assumptions: value.powerCases?.[technology] ?? powerCase(technology) })) } : value.power;
-}
+export { configuredPower, type TradeForm } from '@/client/lib/fiscal-space-trade';
+import { configuredPower, type TradeForm } from '@/client/lib/fiscal-space-trade';
 export function PolicyTrade({ policies, value, onChange }: { policies: Policy[]; value: TradeForm; onChange: (v: TradeForm) => void }) {
   const selected = policies.find(p => p.id === value.selected)!;
   const channel = POLICY_TRADE_CHANNELS[selected.id];

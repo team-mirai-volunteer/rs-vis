@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev              # Dev server (localhost:3000, Turbopack)
 npm run build            # Production build（prebuildで.gzを自動展開）
 npm run lint             # ESLint チェック
-npx tsc --noEmit         # TypeScript 型チェック
+npm run typecheck       # TypeScript 型チェック（データ展開不要）
+npm test                # 全ドメイン・API単体テスト
 ```
 
 データパイプライン・JSON生成コマンドは `/pipeline` スキルを参照。
@@ -17,7 +18,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 
 日本の2024年度予算・支出データをインタラクティブなSankey図で可視化する Next.js アプリ。
 
-**公開ページ**: `/`（トップ。各ビューへの入口）、`/budget-sankey`（メイン・統合ビュー。メニュー名「サンキー図」。会計→所管→項→目→事業→支出先を 1 本のサンキーで見る。「RSのみ」プリセットが旧 `/sankey-svg` 相当。`/sankey-svg` は旧パラメータを写してここへリダイレクト）、`/subcontracts`、`/mof-budget-overview`（URL直打ち）、`/quality`（URL直打ち）、`/project-bubble`（URL直打ち・事業バブルチャート＝意味的2次元配置）、`/budget-sankey`（メニュー名「統合ビュー」。MOF予算書の会計→所管→項→目とRS事業→支出先を1本のサンキーで見る追加ビュー。設計: `docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md`）
+**公開ページ**: `/`（トップ。各ビューへの入口）、`/budget-sankey`（メイン・統合ビュー。メニュー名「サンキー図」。会計→所管→項→目→事業→支出先を 1 本のサンキーで見る。「RSのみ」プリセットが旧 `/sankey-svg` 相当。`/sankey-svg` は旧パラメータを写してここへリダイレクト）、`/subcontracts`、`/mof-budget-overview`（URL直打ち）、`/quality`（URL直打ち）、`/project-bubble`（URL直打ち・事業バブルチャート＝意味的2次元配置）、`/fiscal-space`（財政余力の条件比較）、`/tax-burden`（税・社会保険料の負担比較）
 
 **Key Statistics**: 151.12兆円 総予算 / 5,003事業 / 26,823支出先（予算年度2023実績・再委託先含む）
 
@@ -29,6 +30,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 | Domain Logic | `app/lib/` | Pure Sankey生成。HTTP・React禁止 |
 | API Layer | `app/api/` | HTTPハンドラ。ロジックは `app/lib/` に委譲 |
 | UI Components | `client/components/` / `components/` | 再利用可能UI。直接APIコール禁止（`components/` はフィルタUI等の共通部品） |
+| Client State / IO | `client/hooks/` / `client/lib/` | UI状態・ブラウザIO・API取得。経済計算はドメインへ委譲 |
 | Pages | `app/*/page.tsx` | 状態管理・API呼び出し・レイアウトのみ |
 | Types | `types/` | 全レイヤー共通の型定義 |
 
@@ -37,7 +39,7 @@ npx tsc --noEmit         # TypeScript 型チェック
 - **データ単位**: 全金額は **1円単位**（千円単位ではない）。総予算 = 151,120,000,000,000円
 - **「その他」vs「その他の支出先」**: 別ノード。"その他" = 支出先名が「その他」(~26兆円)、"その他の支出先" = TopN以外集計(~51兆円)
 - **Import alias**: `@/*` はリポジトリルートにマップ（例: `@/types/structured`）
-- **データ圧縮**: `.gz` のみGit管理（~11MB）、ビルド時に自動展開（~96MB）
+- **データ圧縮**: `.gz` をGit管理し、ビルド時に自動展開。容量はデータ追加で変動するため固定値を記載しない
 
 ## Skills（作業別エントリーポイント）
 
@@ -57,7 +59,7 @@ GitHub 連携済み（2026-09-12 に `infra/terraform/` の Terraform で作成�
 `prebuild` フックが `.gz` → `.json` を自動展開する。
 プロジェクト・環境変数の変更は Terraform で行う（手順は infra/terraform/README.md）。
 Supabase はプロジェクト `marumie-rssystem`（ref `igtulishrosqdukrrixx`、東京）を作成済みで、
-接続情報は Terraform が Vercel 環境変数へ自動配布する。スキーマは `supabase/schema.sql`（適用済み）。
+接続情報は Terraform が Vercel 環境変数へ自動配布する。基礎スキーマは `supabase/schema.sql`。列権限の追加修正は `supabase/migrations/20260915_comments_column_privileges.sql` を別途適用する（この作業では本番未適用）。
 
 ### 事業コメント機能（AIインタビュー）
 

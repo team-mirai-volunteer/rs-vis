@@ -1,5 +1,6 @@
 import type { SourceValue } from '@/types/fiscal-space';
 import type { JapanDataset } from './japan-data';
+import { adjustEnergyCpi, JULY_2026_ENERGY_ADJUSTMENT } from './energy-cpi';
 
 // Observations for comparison only. Do not carry these into future policy forecasts.
 export const CONTEXT_CHECKED = '2026-09-15';
@@ -32,6 +33,11 @@ export function japanContext(dataset: JapanDataset): Record<string, SourceValue>
     cpi('coreCoreCpi', latest ? .019 : .024, 'コアコア＝生鮮食品及びエネルギーを除く総合。加工食品は含む'),
     cpi('foodCpi', latest ? .035 : .043, '10大費目の「食料」。生鮮食品・加工食品・酒類・外食を含む全国平均'),
     cpi('energyCpi', latest ? .006 : .038, '電気代・都市ガス代・プロパンガス・灯油・ガソリン。補助金・税制の影響を含み、輸入エネルギー価格とは異なる'),
+    ...(latest ? [{ key: 'context.energyPolicyAdjustedCpi', value: adjustEnergyCpi(JULY_2026_ENERGY_ADJUSTMENT), unit: '比率（前年同月比）',
+      referenceYear: '2026年7月・政策効果調整後の参考推計', publishedAt: '2026-08-21',
+      sourceName: '総務省 全国CPIの政策寄与度から換算', sourceUrl: CPI_LATEST, status: 'estimated' as const,
+      uncertaintyNote: '補助金とガソリン暫定税率廃止を合わせた公表政策効果の調整。補助金のみではない。当月の総合CPI寄与−0.35%、前年剥落分＋0.13%、エネルギーウエイト749/10000、当月指数102.2、前年総合指数100.1、エネルギー前年比0.6%を使用。当月と前年の指数水準をともに調整して前年比を再計算。公表丸め値からの近似で約3.4%。補助金を今廃止した場合の値上がり予測ではなく、将来のモデルCPIには代入しない。2024年平均は同じ範囲の両年調整額を未取得。',
+    }] : []),
     food('calorieSelfSufficiency', latest ? .37 : .38, '供給熱量（カロリー）ベース。摂取熱量ベースとは異なる'),
     food('valueSelfSufficiency', latest ? .66 : .64, '生産額（金額）ベース。国内価格の上昇でも高まるため、供給量の増加とは限らない'),
   ];

@@ -11,8 +11,6 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QualityScoreItem } from '@/app/lib/api/quality-scores-loader';
-import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
-import type { ProjectDetail } from '@/types/project-details';
 import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { useScoreDetailData } from '@/client/hooks/useScoreDetailData';
@@ -20,7 +18,7 @@ import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
-  RecommendationBadge, ActionBadge, PersistentUnusedMark, fmtRaw,
+  RecommendationBadge, ActionBadge, fmtRaw,
 } from '@/client/components/quality/score-meta';
 
 /**
@@ -30,6 +28,8 @@ import {
  */
 /** ヘッダ下の「▼ 事業内容」等の開閉リンク。Button の link variant を 11px の細字に寄せる */
 const TOGGLE_LINK_CLS = 'text-[11px] font-normal no-underline hover:underline hover:text-primary-accent';
+
+const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, undefined, undefined];
 
 function breakOnSeparators(text: string): string {
   return text
@@ -61,7 +61,6 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
   // 法人番号列（index 2）は13桁＋gBizINFOアイコンが入るため 130 まで広げる（旧ダイアログと同じ）
-  const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, undefined, undefined];
   const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
 
@@ -131,7 +130,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
       }
       return recipientSortDir === 'desc' ? -cmp : cmp;
     });
-  }, [recipients, recipientSearch, recipientSortField, recipientSortDir]);
+  }, [recipients, recipientSearch, recipientSortField, recipientSortDir, item.spendNetTotal]);
 
   function handleRecipientSort(field: typeof recipientSortField) {
     if (recipientSortField === field) {

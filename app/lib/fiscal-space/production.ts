@@ -29,13 +29,13 @@ export function leontief(inputs: Inputs, coefficients: Inputs = { capital: 1, la
   for (const { k, value } of capacities) { utilization[k] = actual / value; remainingSlack[k] = value - actual; }
   return { maximum: capacities[0].value, binding: capacities[0].k, second: capacities[1].k, utilization, remainingSlack };
 }
-export function productionCapacity(state: EconomyState, p: ModelParameters, horizon: number): ProductionResult {
+export function productionCapacity(state: EconomyState, p: ModelParameters, _horizon: number): ProductionResult {
+  void _horizon; // Kept for callers; time never changes the production function.
   const { inputs } = state.production;
   const potential = state.macro.potentialGdp;
   const l = leontief(inputs, undefined, state.macro.realGdp / potential);
   const c = ces(inputs, p.weights, p.cesSigma), d = cobbDouglas(inputs, p.cobbWeights);
-  const nearWeight = clamp((horizon - 1) / 4), longWeight = clamp((horizon - 5) / 5);
-  const maximum = horizon <= 5 ? l.maximum * (1 - nearWeight) + c * nearWeight : c * (1 - longWeight) + d * longWeight;
+  const maximum = { leontief: l.maximum, ces: c, cobbDouglas: d }[p.productionModel];
   return { leontief: l.maximum * potential, ces: c * potential, cobbDouglas: d * potential,
     maximum: maximum * potential, binding: l.binding, second: l.second,
     utilization: l.utilization, remainingSlack: l.remainingSlack };

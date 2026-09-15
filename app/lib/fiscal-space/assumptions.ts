@@ -8,6 +8,9 @@ export const SECTOR_LABELS: Record<Sector, string> = { general: '全産業', con
 export const INPUT_LABELS = { capital: '設備', labour: '労働', energy: 'エネルギー', materials: '中間財' };
 /** Future paths and response coefficients are scenarios, not observed statistics. */
 export const PARAMETERS: ModelParameters = {
+  taxRevenueElasticity: 1, taxCollectionLag: 0,
+  productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
+  consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
   electricity: { ...ELECTRICITY_BASELINE },
   referenceModel: 'ef2026', multiplierScale: 1,
   hoursElasticity: 0, participationElasticity: 0, netLabourIncomeShare: .4,
@@ -63,6 +66,7 @@ const policy = (id: string, name: string, overrides: Partial<Policy>): Policy =>
  * Demand responses and their explicitly documented proxies live in calibration.ts. */
 export const POLICIES: Policy[] = [
   policy('income-tax', '所得税減税', { channel: 'tax', kind: 'permanent' }),
+  policy('resident-tax', '住民税減税', { channel: 'tax', kind: 'permanent' }),
   policy('consumption-tax', '消費税減税', { channel: 'tax', kind: 'permanent' }),
   policy('social-insurance', '社会保険料減税', { channel: 'tax', kind: 'permanent' }),
   policy('cash', '現金給付', {}),
@@ -89,7 +93,7 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
     'liquidityAdjustedNetDebt', 'principal', 'importBill', 'exports', 'imports', 'tradeBalance', 'goodsBalance',
     'servicesBalance', 'primaryIncomeBalance', 'secondaryIncomeBalance', 'currentAccount', 'niip', 'essentialImports',
     'annualCost', 'searchCap', 'searchStep', 'searchTolerance', 'interestRevenue', 'otherPrimaryRevenue'];
-  const years = ['year', 'maturityYear', 'duration', 'implementationLag', 'newDebtMaturity'];
+  const years = ['year', 'maturityYear', 'duration', 'implementationLag', 'newDebtMaturity', 'taxCollectionLag'];
   const gw = ['firmCapacity', 'peakDemand', 'renewableInstalledCapacity', 'renewableFirmContribution'];
   if (typeof data === 'number') {
     const source = japanSources(dataset)[prefix];
@@ -101,7 +105,16 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
     }
     const omittedPolicyEffect = prefix.startsWith('policies.') && ['energyDemand', 'potentialGdpEffect', 'capitalEffect', 'tfpEffect', 'energyCapacityEffect', 'labourProductivityEffect'].includes(leaf) && data === 0;
     return [{ key: prefix, value: data,
-    unit: prefix.startsWith('thresholds.') ? '比率（1 = 100%）' : yenFields.includes(leaf) ? '円' :
+    unit: leaf === 'budgetTrillion' ? '年0価格・兆円' :
+      ['workerYears', 'sectorWorkerCapacity'].includes(leaf) ? '人年' :
+      ['constructionPeakMw', 'operatingPeakMw'].includes(leaf) ? 'MW' :
+      leaf === 'annualOperatingGwh' ? 'GWh/年' :
+      leaf === 'revenuePerPoint' ? '円/税率1%ポイント' :
+      ['referenceDirectCpi', 'referenceDirectDeflator'].includes(leaf) ? '%/税率1%ポイント' :
+      ['peakGwPerTrillion', 'operatingPeakGwPerTrillion'].includes(leaf) ? 'GW/年0価格1兆円' :
+      leaf === 'sectorUtilizationPerTrillion' ? '稼働率の増分/年0価格1兆円' :
+      ['lag', 'lifetime', 'years'].includes(leaf) ? '年' :
+      prefix.startsWith('thresholds.') ? '比率（1 = 100%）' : yenFields.includes(leaf) ? '円' :
       years.includes(leaf) ? '年' : gw.includes(leaf) ? 'GW' :
       ['labourForce', 'employment', 'unemployment'].includes(leaf) ? '人' : leaf === 'hoursWorked' ? '時間/年' : '無次元（比率・指数・係数）',
     referenceYear: prefix.startsWith('initial.') ? '選択した初期状態の仮定' : 'シナリオ設定', sourceName: omittedPolicyEffect ? '未同定の効果は加算しない設定' : 'モデル仮定（未検証）', sourceUrl: null, status: 'assumption',

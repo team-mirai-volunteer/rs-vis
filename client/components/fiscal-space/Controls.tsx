@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ConstraintDefinition, Policy, PolicyKind, Thresholds } from '@/types/fiscal-space';
@@ -8,16 +8,18 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
   label: string; value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
 }) {
   const id = useId();
+  const [empty, setEmpty] = useState(false);
+  const clamp = (n: number) => Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8));
   return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
-    <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={Number(value.toFixed(6))}
-      onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8))); }}
+    <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={empty ? '' : Number(value.toFixed(6))}
+      onBlur={() => setEmpty(false)} onChange={e => { setEmpty(e.target.value === ''); const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
       className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>
-    <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(e.target.valueAsNumber)} className="w-full accent-primary" />
+    <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="w-full accent-primary" />
   </div>;
 }
-export function Controls({ policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
+export function Controls({ consumptionTaxMax = 35, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
   onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
-  policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
+  consumptionTaxMax?: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   gap: number; inflation: number; construction: number; firmCapacity: number;
   onAmount: (id: string, n: number) => void; onPolicyDuration: (id: string, n: number) => void;
@@ -27,7 +29,7 @@ export function Controls({ policies, amounts, total, horizon, maxHorizon = 5, ra
 }) {
   const primaryIds = ['social-insurance', 'rd', 'grid', 'defence', 'childcare', 'public-investment'];
   const policyField = (policy: Policy) => <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
-    <RangeField label={policy.name} value={amounts[policy.id] ?? 0} min={0} max={100} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    <RangeField label={policy.name} value={Math.min(amounts[policy.id] ?? 0, policy.id === 'consumption-tax' ? consumptionTaxMax : Infinity)} min={0} max={policy.id === 'consumption-tax' ? consumptionTaxMax : 100} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
     <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
       {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
     </select></label>
@@ -36,6 +38,7 @@ export function Controls({ policies, amounts, total, horizon, maxHorizon = 5, ra
         <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
           onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
     {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
+    {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
   </div>;
   return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="self-start lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
@@ -43,18 +46,19 @@ export function Controls({ policies, amounts, total, horizon, maxHorizon = 5, ra
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4 border-t border-mirai-border pt-4">
         {policies.filter(policy => primaryIds.includes(policy.id)).map(policyField)}
-        <details><summary className="cursor-pointer text-sm font-bold">ほかの7政策を追加する</summary><div className="mt-4 space-y-4">{policies.filter(policy => !primaryIds.includes(policy.id)).map(policyField)}</div></details>
+        <details><summary className="cursor-pointer text-sm font-bold">ほかの{policies.filter(policy => !primaryIds.includes(policy.id)).length}政策を追加する</summary><div className="mt-4 space-y-4">{policies.filter(policy => !primaryIds.includes(policy.id)).map(policyField)}</div></details>
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の限界財政枠を計算します。</p>}
       </div>
       <details className="border-t border-mirai-border pt-4"><summary className="cursor-pointer text-sm font-bold">経済状態・評価条件を変える</summary><div className="mt-4 space-y-4">
         <p className="text-xs leading-relaxed">年0は選択したデータの初期状態。GDPギャップは（実際−潜在）÷潜在。マイナスが需要不足、プラスが需要超過で、公表値と同じ符号です。建設利用率と確実電力供給は仮定です。</p>
         <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
         <RangeField label="CPI総合・初期インフレ率（年0）" value={inflation} min={-3} max={10} step={.1} unit="%" onChange={onInflation} />
-        <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準インフレ率は2%、前年の乖離が翌年に残る割合は25%という別の仮定です。</p>
+        <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準物価にはGDPギャップ感度も加わります。「乗数・労働反応の条件」で変更できます。</p>
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
         <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
-        <RangeField label="市場金利ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
+        <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
+        <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />
         <RangeField label="緊急時留保率" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>

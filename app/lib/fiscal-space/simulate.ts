@@ -3,13 +3,15 @@ import { NO_SHOCK, PARAMETERS, SECTORS } from './assumptions';
 import { allocateDemand } from './demand';
 import { financeDebt, fiscalMetrics, rollover } from './debt';
 import { positive, productionCapacity } from './production';
-import { REFERENCES, taxLabourSupply } from './calibration';
+import { REFERENCES, taxLabourSupply, consumptionTaxLimit } from './calibration';
+import { policyLoads } from './policy-load';
 import { projectResponses, projectNetOutput } from './project-response';
 import { supplyTotal } from './supply';
 import { electricityBaseline } from './electricity-baseline';
 
 const sectorZeros = () => Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
 const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0,
+  directTaxPriceEffect: 0, directTaxDeflatorEffect: 0, longRateEffect: 0,
   domesticSubstitution: 0, projectEnergyNetImports: 0,
   priceLevelEffect: 0, deflatorLevelEffect: 0, employmentEffect: 0, labourForceEffect: 0, hoursEffect: 0, details: [] });
 
@@ -39,6 +41,14 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
     if (value && typeof value === 'object') Object.values(value).forEach(checkFinite);
   };
   checkFinite(initial);
+  checkFinite(p);
+  if (p.taxRevenueElasticity < 0 || p.taxRevenueElasticity > 3 || !Number.isInteger(p.taxCollectionLag) || p.taxCollectionLag < 0 || p.taxCollectionLag > 5) throw new RangeError('Invalid tax revenue sensitivity');
+  if (!['leontief', 'ces', 'cobbDouglas'].includes(p.productionModel)) throw new RangeError('Invalid production model');
+  for (const n of [p.gapDemandSensitivity, p.gapPriceSensitivity, p.gapInflationSlope]) if (n < 0) throw new RangeError('Invalid gap sensitivity');
+  positive(p.consumptionTax.revenuePerPoint, 'tax revenue per point');
+  positive(p.consumptionTax.baseRate, 'base consumption tax rate');
+  for (const n of [p.consumptionTax.cpiShare, p.consumptionTax.passThrough]) if (n < 0 || n > 1) throw new RangeError('Invalid tax price assumptions');
+  if (policies.filter(x => x.id === 'consumption-tax').reduce((sum, x) => sum + x.annualCost, 0) > consumptionTaxLimit(p) + 1) throw new RangeError('Consumption tax cut exceeds the configured tax base');
   if (Math.abs(initial.debtPortfolio.reduce((s, b) => s + b.principal, 0) - initial.fiscal.grossDebt) > 1) throw new RangeError('Debt portfolio must reconcile to gross debt');
   for (const value of [...Object.values(p).filter(v => typeof v === 'number'), ...Object.values(shock)]) {
     if (!Number.isFinite(value)) throw new RangeError('Parameters must be finite');
@@ -63,9 +73,10 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
   const cohorts: { due: number; realCost: number; policy: Policy }[] = [];
   const steps: ProjectionStep[] = [];
   const taxRate = initial.fiscal.taxRevenue / initial.macro.nominalGdp;
-  const marketRate = p.marketRate + shock.marketRateDelta;
+  const baseMarketRate = p.marketRate + shock.marketRateDelta;
   let previousPriceEffect = 0, previousDeflatorEffect = 0, previousUnderlyingInflation = initial.macro.inflation;
   let commonPriceIndex = 1, previousCommonFuelIncrease = 0;
+  let previousTaxAdjustedPrice = 0;
   for (let t = 1; t <= horizon; t++) {
     const year = initial.year + t;
     const active = policies.filter(policy => policy.kind === 'permanent' || t <= policy.duration);
@@ -111,7 +122,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const demand = allocateDemand(state, policies, p, t, initial);
     const policyCost = active.reduce((s, policy) => s + policy.annualCost, 0);
     const inflationPressure = demand.prices / autonomousReal * p.inflationPassThrough;
-    const sectorDemand = sectorZeros();
+    const { sectorDemand, peakGw, coverage } = policyLoads(initial, policies, t, p);
     let energyDemandIncrease = 0;
     for (const policy of active) {
       const intensity = policy.annualCost / priceBefore / autonomousReal;
@@ -129,7 +140,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.energy.domesticSupply = initial.energy.domesticSupply * (1 + energyAddition);
     state.energy.importedEnergy = Math.max(0, state.energy.primaryDemand - state.energy.domesticSupply);
     state.energy.firmCapacity = initial.energy.firmCapacity * (1 + energyAddition) + projects.reduce((sum, project) => sum + project.firmGw, 0);
-    state.energy.peakDemand = initial.energy.peakDemand * (1 + p.electricity.peakGrowth) ** t * (1 + energyDemandIncrease / initial.energy.primaryDemand);
+    state.energy.peakDemand = initial.energy.peakDemand * (1 + p.electricity.peakGrowth) ** t * (1 + energyDemandIncrease / initial.energy.primaryDemand) + peakGw;
     state.energy.reserveMargin = (state.energy.firmCapacity - state.energy.peakDemand) / state.energy.peakDemand;
     const baselineEnergyBill = initial.energy.importBill * priceBefore;
     state.energy.importBill = baselineEnergyBill * state.energy.importedEnergy / initial.energy.importedEnergy * (1 + shock.energyPriceChange);
@@ -140,10 +151,17 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     // The common fuel path is a level: only its annual change adds inflation.
     const energyPricePressure = (Math.max(0, energyImportIncrease - commonFuelIncrease) - (t > 1 ? baselineEnergyBill * shock.energyPriceChange : 0)
       + commonFuelIncrease - previousCommonFuelIncrease) / (autonomousReal * priceBefore) * p.energyPricePassThrough;
-    const underlyingInflation = p.baselineInflation + inflationPressure + energyPricePressure + p.inflationPersistence * (previousUnderlyingInflation - p.baselineInflation);
+    // Baseline gap only: the policy response already embeds its own gap/price channel.
+    const baselineGap = baselineReal / baselinePotential - 1;
+    const gapInflation = p.gapInflationSlope * baselineGap;
+    const underlyingInflation = p.baselineInflation + gapInflation + inflationPressure + energyPricePressure + p.inflationPersistence * (previousUnderlyingInflation - p.baselineInflation);
+    const taxAdjustedPrice = demand.priceLevelEffect;
+    demand.priceLevelEffect += demand.directTaxPriceEffect;
+    demand.deflatorLevelEffect += demand.directTaxDeflatorEffect;
     positive(1 + demand.priceLevelEffect, 'consumer price level');
     positive(1 + demand.deflatorLevelEffect, 'GDP deflator level');
     const inflation = (1 + underlyingInflation) * (1 + demand.priceLevelEffect) / (1 + previousPriceEffect) - 1;
+    const taxAdjustedInflation = (1 + underlyingInflation) * (1 + taxAdjustedPrice) / (1 + previousTaxAdjustedPrice) - 1;
     const realGdp = autonomousReal + demand.realOutput;
     const nominalGdp = realGdp * priceBefore * (1 + underlyingInflation) * (1 + demand.deflatorLevelEffect) / (1 + previousDeflatorEffect);
     state.macro = { nominalGdp, realGdp, potentialGdp: potential, inflation,
@@ -151,11 +169,16 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
       nominalWageGrowth: p.baselineRealGrowth + inflation * p.wageInflationPassThrough,
       realGrowth: realGdp / previous.macro.realGdp - 1, nominalGrowth: nominalGdp / previous.macro.nominalGdp - 1 };
     state.labour.wageGrowth = state.macro.nominalWageGrowth;
+    // Monetary tightening in the published GDP/CPI response is already included.
+    // Pass its long yield to new/rolled debt without applying a second GDP shock.
+    const marketRate = Math.max(0, baseMarketRate + demand.longRateEffect);
     const rolled = rollover(previous.debtPortfolio, year, marketRate, p.newDebtMaturity);
     const fiscalTrend = ((1 + p.baselineRealGrowth) * (1 + p.baselineInflation)) ** t;
     const taxCut = active.filter(x => x.channel === 'tax').reduce((s, x) => s + x.annualCost, 0);
     const expenditure = active.filter(x => x.channel === 'expenditure').reduce((s, x) => s + x.annualCost, 0);
-    state.fiscal.taxRevenue = taxRate * nominalGdp - taxCut;
+    const revenueYear = t - p.taxCollectionLag;
+    const revenueBase = revenueYear <= 0 ? initial.macro.nominalGdp : revenueYear === t ? nominalGdp : steps[revenueYear - 1].state.macro.nominalGdp;
+    state.fiscal.taxRevenue = initial.fiscal.taxRevenue * (revenueBase / initial.macro.nominalGdp) ** p.taxRevenueElasticity - taxCut;
     state.fiscal.otherPrimaryRevenue = initial.fiscal.otherPrimaryRevenue * fiscalTrend;
     state.fiscal.interestRevenue = initial.fiscal.interestRevenue * fiscalTrend;
     state.fiscal.primaryExpenditure = initial.fiscal.primaryExpenditure * fiscalTrend + expenditure;
@@ -192,6 +215,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
     steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+      taxAdjustedInflation, refinancingRate: marketRate, referenceRateEffect: demand.longRateEffect, coverage,
       electricity: { demandTwh: electricity.demandTwh, thermalTwh: electricity.thermalTwh, thermalIncreaseTwh: electricity.thermalIncreaseTwh,
         commonFuelIncrease, operatingImportReduction: demand.projectEnergyNetImports === 0 ? 0 : -demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange) },
       outputGap: (realGdp - potential) / potential, maximumGap: (realGdp - production.maximum) / production.maximum,
@@ -200,6 +224,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
         p.stockFlowAdjustmentRatio + financed.assetAccumulation / nominalGdp) });
     previous = state;
     previousPriceEffect = demand.priceLevelEffect; previousDeflatorEffect = demand.deflatorLevelEffect;
+    previousTaxAdjustedPrice = taxAdjustedPrice;
     previousUnderlyingInflation = underlyingInflation;
     previousCommonFuelIncrease = commonFuelIncrease;
     commonPriceIndex *= 1 + p.baselineInflation + p.inflationPersistence ** t * (initial.macro.inflation - p.baselineInflation);
