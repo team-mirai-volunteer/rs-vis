@@ -11,7 +11,7 @@ import type { NextConfig } from "next";
  *   React の既定エスケープ + react-markdown（生HTML非描画）が一次防御
  * - style-src 'unsafe-inline': コンポーネント内 <style> タグ（chat-markdown 等）と
  *   インライン style 属性に必要
- * - 外部フォント・外部画像・worker は不使用（実測）のため許可しない
+ * - 外部フォント・外部画像は許可しない。財政計算のworkerは自オリジンのみ
  */
 const CSP_HEADER = [
   "default-src 'self'",
@@ -20,6 +20,7 @@ const CSP_HEADER = [
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self' https://openrouter.ai",
+  "worker-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -27,6 +28,9 @@ const CSP_HEADER = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  // Keep parallel local checks from sharing a running server's build artifacts.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
+  turbopack: { root: process.cwd() },
   async headers() {
     // dev は HMR/React Refresh が eval・ws を使うため付与しない（本番のみ）
     if (process.env.NODE_ENV !== 'production') return [];

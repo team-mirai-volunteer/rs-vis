@@ -56,7 +56,7 @@ export function AppHeader({
                 className={cn(
                   'whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition-colors',
                   isCurrent
-                    ? 'bg-mirai-surface-teal font-bold text-primary-accent'
+                    ? 'bg-mirai-surface-teal font-bold text-mirai-text'
                     : 'font-medium text-mirai-text-subtle hover:bg-mirai-surface hover:text-mirai-text'
                 )}
               >

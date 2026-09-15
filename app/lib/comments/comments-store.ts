@@ -71,7 +71,9 @@ export async function insertComment(
       pid: input.pid,
       year: input.year,
       body: input.body,
-      transcript: input.transcript,
+      // Interview history is transient: posting the summary does not authorize
+      // retaining the user's full conversation (which may contain personal data).
+      transcript: null,
       status: input.status,
       ip_hash: input.ipHash,
     })

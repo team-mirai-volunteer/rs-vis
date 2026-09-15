@@ -131,11 +131,12 @@ export function useKouMokuDetail(params: KouMokuDetailParams): { rows: KouMokuRo
     setRows(null);
     setError(false);
 
+    const ids: string[] | undefined = sectionIdsKey ? JSON.parse(sectionIdsKey) : undefined;
     const request =
       mode === 'section' && sectionId !== undefined
         ? fetchSectionRows(fiscalYear, sectionId)
-        : mode === 'sections' && sectionIds !== undefined
-          ? fetchSectionsRows(fiscalYear, sectionIds)
+        : mode === 'sections' && ids !== undefined
+          ? fetchSectionsRows(fiscalYear, ids)
           : projectId !== undefined && budgetType !== undefined
             ? fetchProjectRows(fiscalYear, projectId, budgetType)
             : null;

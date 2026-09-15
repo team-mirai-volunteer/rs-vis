@@ -1,9 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import raw from '../scripts/data/tax-burden-params-2025.json';
-import consumptionRaw from '../public/data/tax-burden-consumption-2024.json';
-import oecdRaw from '../public/data/tax-burden-oecd-2025.json';
-import incidenceRaw from '../public/data/tax-burden-incidence.json';
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import type { ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters } from '../types/tax-burden';
 import { baseReform, initialTaxState, MODEL_VERSION, TAX_ITEMS } from '../app/lib/tax-burden/households';
 import { availableTaxItems, cellRate } from '../app/lib/tax-burden/heatmap-items';
@@ -16,6 +15,11 @@ import { japanOverlayRates, oecdOverlayRates, overlayAddOn } from '../app/lib/ta
 import { encodeTaxState, decodeTaxState } from '../app/lib/tax-burden/reform-url';
 
 const p = raw as unknown as TaxParameters;
+// Read tracked inputs directly; a clean checkout must not depend on prebuild.
+const compressed = (name: string) => JSON.parse(gunzipSync(readFileSync(new URL(`../public/data/${name}.json.gz`, import.meta.url))).toString('utf8'));
+const consumptionRaw: unknown = compressed('tax-burden-consumption-2024');
+const oecdRaw: unknown = compressed('tax-burden-oecd-2025');
+const incidenceRaw: unknown = compressed('tax-burden-incidence');
 const consumption = consumptionRaw as unknown as ConsumptionDataset;
 const oecd = oecdRaw as unknown as OecdDataset;
 const incidence = incidenceRaw as unknown as IncidenceDataset;

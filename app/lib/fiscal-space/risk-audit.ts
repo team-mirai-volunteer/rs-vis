@@ -4,6 +4,8 @@ import { allocateMix, estimateFiscalSpace } from './search';
 import { simulate } from './simulate';
 import { externalStress, STRESS_ASSUMPTIONS } from './external-stress';
 import { fiscalExternal } from './fiscal-external';
+import { constraintInflation } from './constraints';
+import { TRILLION } from './assumptions';
 
 /** Diagnose the displayed envelope, not the separate policy amount in the controls.
  * An unmodelled risk must never become a zero, a pass, or a claimed safe exchange rate.
@@ -12,18 +14,33 @@ export function auditFiscalSpace(initial: EconomyState, mix: PolicyShare[], esti
   thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock) {
   const path = simulate(initial, allocateMix(mix, estimate.recommendedEnvelope), horizon, p, shock);
   const baseline = simulate(initial, [], horizon, p, shock);
-  const peak = [path.initial, ...path.steps].reduce((a, b) => a.state.macro.inflation >= b.state.macro.inflation ? a : b);
+  const peak = [path.initial, ...path.steps].reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
   const baseAtPeak = peak.state.year === initial.year ? baseline.initial : baseline.steps[peak.state.year - initial.year - 1];
   const cpiLimits = [...new Set([thresholds.inflation, .035, .03, .025])].sort((a, b) => b - a);
+  const binding = estimate.constraints.find(c => c.status === 'violated');
+  // A one-trillion secant at the actual crossing year is an explanation aid,
+  // not an alternative solver: peak switching and supply caps can be nonlinear.
+  const probe = simulate(initial, allocateMix(mix, Math.min(TRILLION, estimate.theoreticalMaximum)), horizon, p, shock);
+  const crossingYear = binding?.id === 'inflation' ? binding.year : undefined;
+  const baseCpi = crossingYear ? constraintInflation(baseline.steps[crossingYear - initial.year - 1]) : undefined;
+  const probeCpi = crossingYear ? constraintInflation(probe.steps[crossingYear - initial.year - 1]) : undefined;
+  const probeAmount = Math.min(TRILLION, estimate.theoreticalMaximum);
+  const slope = baseCpi !== undefined && probeCpi !== undefined && probeAmount > 0
+    ? (probeCpi - baseCpi) / (probeAmount / TRILLION) : 0;
   return {
     safety: 'unassessed' as const,
     amount: estimate.recommendedEnvelope,
+    terminalGdpEffect: path.steps[horizon - 1].state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp,
+    cpiApproximation: slope > 0 && baseCpi !== undefined ? {
+      year: crossingYear, baseline: baseCpi, slope,
+      amount: (thresholds.inflation - baseCpi) / slope * TRILLION,
+    } : undefined,
     gdpShare: estimate.recommendedEnvelope / initial.macro.nominalGdp,
     referenceScale: estimate.recommendedEnvelope / initial.macro.nominalGdp / .01,
     extrapolatedYears: Math.max(0, horizon - REFERENCES[p.referenceModel].years),
     initialCapacityHeadroom: path.initial.production.maximum / initial.macro.realGdp - 1,
-    cpi: { peak: peak.state.macro.inflation, year: peak.state.year,
-      policyDifference: peak.state.macro.inflation - baseAtPeak.state.macro.inflation, limit: thresholds.inflation },
+    cpi: { peak: constraintInflation(peak), year: peak.state.year,
+      policyDifference: constraintInflation(peak) - constraintInflation(baseAtPeak), limit: thresholds.inflation },
     fiscalExternal: fiscalExternal(initial, allocateMix(mix, estimate.recommendedEnvelope), path, baseline, p),
     referenceModel: p.referenceModel,
     energyPriceShock: shock.energyPriceChange,

@@ -7,6 +7,7 @@ export function RiskAudit({ audit }: { audit: FiscalRiskAudit }) {
   return <div role="region" aria-label="留保後の枠の物価・為替リスク" className="space-y-3 border-t border-mirai-border pt-4 text-xs leading-relaxed">
     <h3 className="text-sm font-bold">この追加枠で、物価・為替は耐えられる？</h3>
     <p>下の診断は<strong>{money(audit.amount, 1)}を追加した場合</strong>のものです。入力中の年間総額とは別に計算しています。</p>
+    <p>CPI判定と為替ストレスは、総合CPIと消費税の直接効果を除いたCPIのうち厳しい方を使用します。</p>
     <dl className="grid gap-3 sm:grid-cols-3">
       <div><dt className="font-bold">CPI上昇率（モデル内）</dt><dd data-testid="envelope-cpi" className="mt-1">最大 {percent(audit.cpi.peak)}・年{audit.cpi.year}</dd><dd>同じ年の政策なしとの差 {points(audit.cpi.policyDifference)}</dd><dd>許容上限は {percent(audit.cpi.limit)} という設定</dd></div>
       <div><dt className="font-bold">円レート</dt><dd className="mt-1 font-bold">公表モデルの反応から推計</dd><dd>下表に年次の変化率を表示。信認低下による追加の円安は別の感度条件です。</dd></div>

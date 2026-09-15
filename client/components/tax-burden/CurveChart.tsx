@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo } from 'react';
+import { useId, useMemo, useCallback } from 'react';
 import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
 import { HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
@@ -30,9 +30,9 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   const curve = state.showOecd ? oecd?.curves[state.household] ?? null : null;
   const oecdYear = oecd?.years['2025'];
   // OECD publishes dual-earner couples only at fixed earnings points (100+67% and 100+100% of the average wage), never as a curve.
-  const points = state.showOecd && !curve && oecdYear?.averageWageJpy
+  const points = useMemo(() => state.showOecd && !curve && oecdYear?.averageWageJpy
     ? oecdYear.points.filter(pt => pt.household === state.household).map(pt => ({ ...pt, income: oecdYear.averageWageJpy! * pt.awRatioTotal }))
-    : [];
+    : [], [state.showOecd, curve, oecdYear, state.household]);
   const oecdMissing = state.showOecd && oecd && !curve && points.length === 0;
   // OECD publishes income tax, employee contributions and cash benefits only. When the consumption tax or the
   // corporate-tax incidence is switched on, the same two items are added to the OECD lines as well, so that the
@@ -51,7 +51,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
       japanWithout: at(japan, false), oecdWithout: at(average, false),
     };
   }, [consumption, incidence, oecd, state.includeConsumption, state.consumptionAssumption, state.corporateShare]);
-  const adjustCurve = (japanAt: (income: number) => number, oecdAt: (income: number) => number) => {
+  const adjustCurve = useCallback((japanAt: (income: number) => number, oecdAt: (income: number) => number) => {
     if (!curve) return null;
     const income = (i: number) => curve.averageWageJpy * curve.awRatio[i];
     return {
@@ -60,11 +60,11 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
       min: curve.min.map((v, i) => v + oecdAt(income(i))),
       max: curve.max.map((v, i) => v + oecdAt(income(i))),
     };
-  };
-  const shownCurve = useMemo(() => adjustCurve(overlay.japanAt, overlay.oecdAt), [curve, overlay]);
+  }, [curve]);
+  const shownCurve = useMemo(() => adjustCurve(overlay.japanAt, overlay.oecdAt), [adjustCurve, overlay]);
   const axisCurve = useMemo(() => ({
     ceiling: adjustCurve(overlay.japanWith, overlay.oecdWith), floor: adjustCurve(overlay.japanWithout, overlay.oecdWithout),
-  }), [curve, overlay]);
+  }), [adjustCurve, overlay]);
   const shownPoints = useMemo(() => points.map(pt => ({
     ...pt,
     japan: pt.japan === null ? null : pt.japan + overlay.japanAt(pt.income),

@@ -3,7 +3,7 @@
  * API（app/api/projects/[pid]/comments）とクライアント（client/lib/comments）で使う。
  */
 
-/** インタビュー1発言。LLM へ渡す履歴と、保存する transcript の両方でこの形 */
+/** インタビュー1発言。LLM へ渡す履歴と、投稿条件を確認する一時データ */
 export interface InterviewTurn {
   role: 'user' | 'assistant';
   content: string;
@@ -30,7 +30,7 @@ export interface PostProjectCommentRequest {
   year: string;
   /** 公開する意見本文（インタビューから整形・本人が確認済み） */
   body: string;
-  /** インタビュー全文（非公開） */
+  /** インタビュー全文（投稿条件の確認用・DBには保存しない） */
   transcript: InterviewTurn[];
 }
 
@@ -49,7 +49,7 @@ export const COMMENT_BODY_MAX_CHARS = 1000;
 export const INTERVIEW_MAX_USER_TURNS = 8;
 /** インタビュー1発言の入力上限 */
 export const INTERVIEW_INPUT_MAX_CHARS = 500;
-/** 保存する transcript の上限（assistant 含む発言数） */
+/** 送信する transcript の上限（assistant 含む発言数） */
 export const TRANSCRIPT_MAX_TURNS = INTERVIEW_MAX_USER_TURNS * 2 + 2;
 /** レート制限: ip_hash あたりの投稿数 / 時 */
 export const COMMENT_RATE_LIMIT_PER_HOUR = 5;

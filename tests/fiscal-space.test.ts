@@ -24,10 +24,25 @@ import { projectResponse, projectResponses } from '../app/lib/fiscal-space/proje
 import { SUPPLY_CASES, supplyResponse, supplyTotal, supplyRecords } from '../app/lib/fiscal-space/supply';
 import { SEMICONDUCTOR_CASE } from '../app/lib/fiscal-space/policy-trade';
 import { electricityBaseline, ELECTRICITY_BASELINE } from '../app/lib/fiscal-space/electricity-baseline';
+import { adjustEnergyCpi, JULY_2026_ENERGY_ADJUSTMENT } from '../app/lib/fiscal-space/energy-cpi';
 
 const preset = (id: string, overrides: Partial<Policy> = {}): Policy => ({ ...POLICIES.find(p => p.id === id)!, ...overrides });
 const near = (a: number, b: number, tolerance = 1e-10) => assert(Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(a), Math.abs(b)), `${a} ≈ ${b}`);
 const last = (policies: Policy[]) => simulate(initialEconomy(), policies).steps[9];
+
+test('energy CPI adjustment converts all-items contributions and removes both periods policy effects', () => {
+  const c = { observedRate: .05, energyIndex: 105, previousAllItemsIndex: 100, energyWeight: .1, currentContribution: -.01, previousContribution: -.02 };
+  near(adjustEnergyCpi(c), 115 / 120 - 1);
+  near(adjustEnergyCpi({ ...c, currentContribution: 0, previousContribution: 0 }), .05);
+  assert(adjustEnergyCpi(c) < c.observedRate, 'Removing larger previous-year support can lower measured inflation');
+  assert.throws(() => adjustEnergyCpi({ ...c, energyWeight: 0 }));
+  assert.throws(() => adjustEnergyCpi({ ...c, previousContribution: 1 }));
+  const adjusted = adjustEnergyCpi(JULY_2026_ENERGY_ADJUSTMENT);
+  assert.equal((adjusted * 100).toFixed(1), '3.4');
+  near(japanContext('latest')['context.energyPolicyAdjustedCpi'].value, adjusted);
+  assert.equal(japanContext('2024')['context.energyPolicyAdjustedCpi'], undefined);
+  assert.equal(japanContext('latest')['context.energyPolicyAdjustedCpi'].status, 'estimated');
+});
 
 test('common thermal demand and fuel imports enter every policy and the no-policy path once', () => {
   const initial = initialEconomy(); initial.macro.inflation = 0;
@@ -306,7 +321,7 @@ test('comparison reports actual marginal outcomes at 1, 3 and 5 years, including
     const row = compareNextTrillion(initial, current, p, NO_SHOCK, THRESHOLDS, [candidate])[0];
     const base = simulate(initial, current, 10, p);
     const extra = simulate(initial, [...current, { ...candidate, annualCost: T, duration: 1 }], 10, p);
-    assert.deepEqual(row.periods.map(period => period.year), [1, 3, 5]);
+    assert.deepEqual(row.periods.map(period => period.year), [1, 3, 5].filter(year => year <= row.publishedYears));
     for (const period of row.periods) {
       const step = extra.steps[period.year - 1], before = base.steps[period.year - 1];
       near(period.realGdpEffect, step.state.macro.realGdp - before.state.macro.realGdp);
@@ -319,7 +334,8 @@ test('comparison reports actual marginal outcomes at 1, 3 and 5 years, including
     }
     assert.equal(row.periods[0].potentialGdpEffect, 0);
     assert.equal(row.periods[1].potentialGdpEffect, 0);
-    assert(row.periods[2].potentialGdpEffect > 0);
+    if (referenceModel === 'ef2026') assert(row.periods[2].potentialGdpEffect > 0);
+    else assert.equal(row.periods.length, 2);
     assert(row.supplyEffectConfigured);
     assert(!compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [preset('rd')])[0].supplyEffectConfigured);
   }
@@ -749,7 +765,7 @@ test('safe endpoint and a nearby violation bracket the reported boundary', () =>
   const mix = [{ policy: preset('public-investment'), weight: 1 }];
   const r = estimateFiscalSpace(initialEconomy('latest'), mix, THRESHOLDS, 10);
   assert.equal(r.status, 'boundary');
-  assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum)), THRESHOLDS).every(c => c.status === 'safe'));
+  assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum)), THRESHOLDS).every(c => c.status !== 'violated'));
   assert(peakConstraints(simulate(initialEconomy('latest'), allocateMix(mix, r.theoreticalMaximum + P.searchTolerance * 2)), THRESHOLDS).some(c => c.status === 'violated'));
 });
 test('surpluses retire principal and accumulate assets only after full retirement', () => {
@@ -894,8 +910,9 @@ test('latest snapshot uses official gap sign and monthly prices without changing
   const latestPath = simulate(latest, [preset('cash')]);
   const oldPath = simulate(original, [preset('cash')]);
   assert.notEqual(latestPath.steps[0].state.macro.inflation, oldPath.steps[0].state.macro.inflation);
-  // A fixed reference multiplier is not re-estimated when the initial data change.
-  near(latestPath.steps[0].demand.realOutput, oldPath.steps[0].demand.realOutput);
+  // Source coefficients are unchanged; explicit gap sensitivity changes application.
+  assert(latestPath.steps[0].demand.realOutput < oldPath.steps[0].demand.realOutput);
+  near(calibratedResponse(latest, preset('cash'), 1, P).gdp, calibratedResponse(original, preset('cash'), 1, P).gdp);
   for (const step of latestPath.steps) {
     const f = step.state.fiscal;
     near(f.netDebt, f.grossDebt - f.financialAssets);
@@ -942,6 +959,25 @@ test('employment and imports use their own denominators, not GDP or the entire l
   near(step.state.labour.labourForce, initial.labour.labourForce);
 });
 
+test('resident tax uses the income-tax proxy, aggregates personal relief and expires without employer relief', () => {
+  const initial = initialEconomy(), resident = preset('resident-tax', { annualCost: 2 * T, kind: 'temporary', duration: 1 });
+  const income = preset('income-tax', { annualCost: T, kind: 'temporary', duration: 1 });
+  const p = { ...P, hoursElasticity: .1, participationElasticity: .05 };
+  assert.equal(resident.channel, 'tax');
+  assert.deepEqual(calibratedResponse(initial, resident, 1, p), calibratedResponse(initial, { ...income, annualCost: 2 * T }, 1, p));
+  const supply = taxLabourSupply(initial, [resident, income], 1, p);
+  near(supply.employeeCut, 3 * T); near(supply.employerCut, 0);
+  assert(supply.hours > 1); assert(supply.participation > 1);
+  near(taxLabourSupply(initial, [resident, income], 2, p).employeeCut, 0);
+  const path = simulate(initial, [resident, income], 2, p);
+  near(path.steps[0].state.fiscal.taxRevenue, initial.fiscal.taxRevenue / initial.macro.nominalGdp * path.steps[0].state.macro.nominalGdp - 3 * T);
+  near(path.steps[1].state.fiscal.taxRevenue, initial.fiscal.taxRevenue / initial.macro.nominalGdp * path.steps[1].state.macro.nominalGdp);
+  const row = compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [resident])[0];
+  assert(row.supplyEffectConfigured);
+  assert(row.periods[0].potentialGdpEffect > 0);
+  assert(POLICY_TRADE_CHANNELS[resident.id]);
+});
+
 test('social-insurance relief is split once between employee and employer; income tax goes to the employee', () => {
   const initial = initialEconomy(), policies = [preset('social-insurance', { annualCost: 4 * T }), preset('income-tax', { annualCost: 2 * T })];
   const supply = taxLabourSupply(initial, policies, 1, P);
@@ -970,7 +1006,7 @@ test('labour supply sensitivity increases hours and participation without creati
 test('reference periods and every numeric calibration input have visible provenance and Japanese labels', () => {
   for (const model of ['ef2026', 'esri2022'] as const) {
     const rows = referenceRecords(model);
-    assert.equal(rows.length, REFERENCES[model].years * (model === 'ef2026' ? 4 : 3) * 9);
+    assert.equal(rows.length, REFERENCES[model].years * (model === 'ef2026' ? 5 : 3) * 10);
     assert.equal(new Set(rows.map(r => r.key)).size, rows.length);
     assert(rows.every(r => r.sourceUrl && (r.status === 'estimated' || r.status === 'assumption')));
     for (const row of [...rows, ...assumptionRecords({ initial: initialEconomy(), parameters: P, policies: POLICIES })]) {

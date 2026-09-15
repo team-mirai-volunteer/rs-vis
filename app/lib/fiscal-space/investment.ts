@@ -13,9 +13,9 @@ export function investmentAtCommissioning(initial: EconomyState, current: Policy
   if (!project && (!supply || supply.kind === 'childcare')) return undefined;
   const components = project?.kind === 'power' ? powerComponents(project.assumptions) : undefined;
   // For a mix, show the first year when every allocated technology has started.
-  const startYear = 1 + (components ? Math.max(...components.map(x => x.assumptions.lag)) : project?.assumptions.lag ?? supply!.lag);
+  const startYear = 1 + (components ? Math.max(...components.map(x => x.assumptions.lag)) : project?.assumptions.lag ?? supply?.lag ?? 0);
   const lifetime = components ? Math.min(...components.map(x => POWER_TECHNOLOGIES[x.assumptions.technology].lifetime))
-    : project?.kind === 'industry' ? project.assumptions.lifetime : supply!.lifetime;
+    : project?.kind === 'industry' ? project.assumptions.lifetime : supply?.lifetime ?? 1;
   const result: NonNullable<PolicyComparison['investment']> = { startYear, lifetime };
   if (components && components.length > 1) result.timings = components.map(x => ({ name: POWER_TECHNOLOGIES[x.assumptions.technology].name, startYear: x.assumptions.lag + 1, lifetime: POWER_TECHNOLOGIES[x.assumptions.technology].lifetime }));
   if (commercial || supply?.kind === 'grid') {
