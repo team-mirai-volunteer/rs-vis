@@ -2,7 +2,8 @@
 
 import { useId, useMemo, useCallback } from 'react';
 import type { BurdenResult, ConsumptionDataset, IncidenceDataset, OecdDataset, TaxParameters, TaxState } from '@/types/tax-burden';
-import { HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
+import { BASE_REFORM, HOUSEHOLDS, isReformed } from '@/app/lib/tax-burden/households';
+import { estimatedConsumptionTax } from '@/app/lib/tax-burden/consumption-tax';
 import { curveSeries } from '@/app/lib/tax-burden/simulate';
 import { japanOverlayRates, oecdOverlayRates, overlayAddOn } from '@/app/lib/tax-burden/oecd-overlay';
 
@@ -75,8 +76,14 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
   // Axis bounds are taken from both toggle positions at once: the consumption tax only adds, so the top comes from
   // the with-consumption rate and the bottom from the rate without it. Switching the toggle then moves the lines,
   // never the grid.
-  const inScope = [...series.flatMap(s => s.points), ...(reform ?? [])].filter(p => !p.outOfScope);
-  const ceilingValues = inScope.map(p => p.netRateWithConsumption ?? p.netRate).filter((v): v is number => v !== null);
+  // 改革案のカーブは目盛りの計算に入れない。入れると税率スライダーを動かすたびに格子が動いて、
+  // 線がどれだけ動いたのかが読めなくなる。基準制度の側だけで枠を決め、はみ出す分は図の外に出す。
+  const inScope = series.flatMap(s => s.points).filter(p => !p.outOfScope);
+  // 上端は「消費税を現行税率で足したとき」の値で決める。トグルの有無でも、消費税率のスライダーでも
+  // 目盛りが動かないよう、改革案の税率ではなく現行の10%・8%で計算する。
+  const consumptionShare = (p: BurdenResult) => p.income > 0 && consumption
+    ? estimatedConsumptionTax(consumption, p.income, BASE_REFORM.standardVat, BASE_REFORM.reducedVat, state.consumptionAssumption) / p.income : 0;
+  const ceilingValues = inScope.map(p => p.netRate === null ? null : p.netRate + consumptionShare(p)).filter((v): v is number => v !== null);
   const floorValues = inScope.map(p => p.netRate).filter((v): v is number => v !== null);
   const oecdSpan = (c: typeof shownCurve) => (c ? [...c.min, ...c.max, ...c.oecdAverage, ...c.japan.filter((v): v is number => v !== null)] : []).map(v => v / 100);
   const pointSpan = (oecdAt: (income: number) => number) =>
@@ -214,7 +221,7 @@ export function CurveChart({ state, params, consumption, oecd, incidence, onInco
           </tr>)}</tbody></table></div>
       </div>}
       {oecdMissing && <p role="status" className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs">「{householdLabel}」に対応するOECDの公表値がありません。家族構成を変えるとOECD比較を表示します。</p>}
-      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円、フルタイムの最低賃金なら年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）に届かない帯です。ここでは厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算しますが、生活保護・無保険・被扶養者のどれになるかで実際の負担は大きく変わるため参考値として薄く描いています。これより上は被用者保険に入るので計算が確定します。縦軸の範囲を超える値は図の外に出ます。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。`}{state.showOecd && oecd && overlayNote}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
+      <p className="mt-3 text-xs leading-relaxed text-mirai-text-subtle">薄線は就労者の給与が被用者保険の賃金要件（年{Math.round(params.employeeInsuranceThreshold / 10000)}万円、フルタイムの最低賃金なら年{Math.round(params.minimumAnnualWage / 10000).toLocaleString('ja-JP')}万円）に届かない帯です。ここでは厚生年金・健康保険ではなく国民年金（所得が低ければ申請免除）と国民健康保険で計算しますが、生活保護・無保険・被扶養者のどれになるかで実際の負担は大きく変わるため参考値として薄く描いています。これより上は被用者保険に入るので計算が確定します。縦軸の目盛りは基準制度のカーブで決めるので、税率を動かしても格子は動きません（改革案が上下にはみ出す分は図の外に出ます）。この境目で保険料が段差になるのが「106万円の壁」です。年収がごく低い側で負担率がまた上がっていくのは、国民健康保険の均等割が所得に関わらず人数分かかるためで、軽減は最大7割、単身でも年約{Math.round((params.lifecycle.nationalHealth.basicPerCapita + params.lifecycle.nationalHealth.supportPerCapita + params.lifecycle.nationalHealth.carePerCapita) * 0.3 / 1000) / 10}万円が残ります。実際にはこの水準は生活保護の対象になり国保の適用から外れますが、本モデルは生活保護を扱っていません。{curve && `OECDの帯と線は Taxing Wages ${curve.year}（平均賃金比50〜250%、日本の平均賃金 ${Math.round(curve.averageWageJpy / 10000).toLocaleString('ja-JP')}万円）。OECD平均は${curve.averageSource.startsWith('OECD aggregate') ? 'OECD公表の集計値' : '加盟国の単純平均'}。`}{points.length > 0 && `OECDの定点は Taxing Wages 2025（日本の平均賃金 ${Math.round(oecdYear!.averageWageJpy! / 10000).toLocaleString('ja-JP')}万円）で、平均は加盟${points[0].countries}か国の単純平均。`}{state.showOecd && oecd && overlayNote}{state.includeConsumption && '消費税は家計調査（二人以上の勤労者世帯）の年収十分位別支出構成からの推計で、単身世帯にも同じ構成比を当てています。'}</p>
     </div>
   );
 }
