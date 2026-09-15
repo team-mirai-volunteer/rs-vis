@@ -99,8 +99,8 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const projects = projectResponses(initial, policies, t, p);
     const capacity = policyProduction(initial, policies, t, p, baselinePotential);
     const potential = capacity.potential, energyAddition = capacity.manualEnergy;
-    // Only post-reference realization enters autonomous output; project
-    // operations remain in demand, exactly once.
+    // Commissioned public capital enters with explicit utilization and overlap
+    // assumptions. Other generic supply retains its post-reference ramp.
     const realized = policyProduction(initial, policies, t, p, baselinePotential, undefined, true, false);
     const autonomousReal = baselineReal + (realized.potential - baselinePotential) * initial.macro.realGdp / initial.macro.potentialGdp;
     const state = structuredClone(previous);
@@ -229,6 +229,11 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
     steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+      publicCapital: policies.some(policy => policy.supply?.kind === 'capital') ? {
+        stock: capacity.publicCapitalStock, potentialBenefit: capacity.publicCapitalBenefit,
+        realizedBenefit: realized.publicCapitalBenefit * initial.macro.realGdp / initial.macro.potentialGdp,
+        demandEffect: demand.details.filter(d => policies.some(policy => policy.id === d.policyId && policy.supply?.kind === 'capital')).reduce((sum, d) => sum + d.realOutput, 0),
+      } : undefined,
       resourcePower, estimatedLoads: policies.some(policy => policy.load?.estimated),
       importPriceEffects: { domesticPriceRecovery, gdpDeflatorLevelEffect: energyDeflatorEffect,
         tradingIncomeChange, realDomesticIncome: realGdp + tradingIncomeChange, expenditureIndex },

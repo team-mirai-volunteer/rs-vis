@@ -109,6 +109,14 @@ export function createFiscalEngine() {
       return { loadScale, space };
     }) : [];
     const longRun = longRunScenario(initial, allocated, projection, baseline, p, form.longRun);
+    const publicCapitalSensitivity = allocated.some(policy => policy.supply?.kind === 'capital' && policy.supply.realizationRate !== undefined)
+      ? [0, .5, 1].map(overlap => {
+        const variants = allocated.map(policy => policy.supply?.kind === 'capital'
+          ? { ...policy, supply: { ...policy.supply, referenceOverlap: overlap } } : policy);
+        const last = simulate(initial, variants, horizon, p, shock).steps[horizon - 1];
+        return { overlap, benefit: last.publicCapital?.realizedBenefit ?? 0,
+          gdpEffect: last.state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp };
+      }) : [];
     const durationSensitivity = allocated.some(policy => policy.kind !== 'permanent')
       ? Array.from({ length: publishedYears }, (_, i) => i + 1).map(duration => {
         const variants = allocated.map(policy => policy.kind === 'permanent' ? policy : { ...policy, duration });
@@ -129,7 +137,7 @@ export function createFiscalEngine() {
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear,
-      modelSensitivity, resourceSensitivity, longRun, durationSensitivity, records };
+      modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, durationSensitivity, records };
   };
 }
 

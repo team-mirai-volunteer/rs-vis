@@ -8,6 +8,7 @@ export interface SupplyCase {
   additionality: number; lag: number; depreciation: number; lifetime: number;
   yield: number; unitCost: number; employment: number;
   maintenanceRate?: number; maintenanceImportShare?: number; generationOverlapShare?: number;
+  serviceShare?: number; realizationRate?: number; rampYears?: number; referenceOverlap?: number;
 }
 
 /** Reference-informed scenarios, not Japanese causal policy coefficients.
@@ -15,10 +16,11 @@ export interface SupplyCase {
  * A separately configured commercial project supersedes these pathways. */
 export const SUPPLY_CASES: Record<string, { label: string; source: string; evidence: string; formula: string; settings: SupplyCase }> = {
   'public-investment': {
-    label: '公共資本の蓄積', source: 'https://www.imf.org/external/pubs/ft/weo/2014/02/pdf/c3.pdf',
-    evidence: 'IMF（2014）掲載の全国公共資本の産出弾力性0.122を参考。日本の追加事業の推定値ではない。公共資本/GDP=1.2、純追加性50%、供用2年後・減耗3%は比較条件。維持更新・既存投資の置換を純追加性で控除。',
+    label: '公共資本の蓄積', source: 'https://www.imf.org/-/media/websites/imf/imported-flagship-issues/external/pubs/ft/weo/2014/02/pdf/_c3pdf.pdf',
+    evidence: 'IMF（2014）表3.1掲載の国が設置する公共資本の短期産出弾力性0.122を参考。日本の追加事業の推定値ではない。公共資本/GDP=1.2、純追加性50%、供用2年後・減耗3%は比較条件。維持更新・既存投資の置換を純追加性で控除。生産性経路の割合、供用後の稼働と公表反応との重複は別の未推定条件。',
     formula: '潜在GDP × [(1＋実効資本増分÷基準公共資本)^0.122−1]。基準公共資本＝初期実質GDP×1.2。',
-    settings: { kind: 'capital', additionality: .5, lag: 2, depreciation: .03, lifetime: 40, yield: .122, unitCost: 1.2, employment: 0 },
+    settings: { kind: 'capital', additionality: .5, lag: 2, depreciation: .03, lifetime: 40, yield: .122, unitCost: 1.2, employment: 0,
+      serviceShare: 1, realizationRate: .5, rampYears: 3, referenceOverlap: .5 },
   },
   rd: {
     label: '研究知識の蓄積', source: 'https://www.rieti.go.jp/jp/publications/pdp/13p010.pdf',
@@ -69,12 +71,18 @@ export function effectiveSupplyStock(initial: EconomyState, policy: Policy, year
     c.additionality < 0 || c.additionality > 1 || c.depreciation < 0 || c.depreciation > 1 ||
     !Number.isInteger(c.lag) || c.lag < 0 || !Number.isInteger(c.lifetime) || c.lifetime < 1 ||
     c.unitCost <= 0 || c.yield < 0 || c.yield > 1 || c.employment < 0 || c.employment > 1) throw new RangeError('Invalid supply scenario');
+  for (const key of ['serviceShare', 'realizationRate', 'referenceOverlap'] as const) {
+    if (c[key] !== undefined && (c[key]! < 0 || c[key]! > 1)) throw new RangeError(`Invalid capital ${key}`);
+  }
+  if (c.rampYears !== undefined && (!Number.isInteger(c.rampYears) || c.rampYears < 1 || c.rampYears > 10)) throw new RangeError('Invalid capital ramp');
   let stock = 0;
   for (let paid = 1; paid <= year; paid++) {
     const age = year - paid - c.lag;
     if ((policy.kind === 'permanent' || paid <= policy.duration) && age >= 0 && age < c.lifetime) {
       const referenceYears = REFERENCES[p.referenceModel].years;
-      const realization = realized ? Math.min(1, Math.max(0, (year - paid + 1 - referenceYears) / (10 - referenceYears))) : 1;
+      const realization = !realized ? 1 : c.kind === 'capital' && c.realizationRate !== undefined
+        ? c.realizationRate * Math.min(1, (age + 1) / (c.rampYears ?? 1))
+        : Math.min(1, Math.max(0, (year - paid + 1 - referenceYears) / (10 - referenceYears)));
       stock += policy.annualCost / prices(paid) * c.additionality * (1 - c.depreciation) ** age * realization;
     }
   }
@@ -109,24 +117,35 @@ function supplyFromStock(initial: EconomyState, c: SupplyCase, stock: number, p:
  * conversion assumptions, not re-estimated effects for each selected model. */
 export function supplyInputs(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false, prices = investmentPricePath(initial, p)) {
   const result = { capital: 1, labour: 1, energy: 1, materials: 1, tfp: 1 };
+  const publicCapital = { stock: 0, capital: 0, tfp: 1 };
   const pooled = new Map<string, { c: SupplyCase; stock: number }>();
   for (const policy of policies) {
     const c = policy.supply;
     if (!c || c.kind === 'grid' || hasCommercialSupply(policy)) continue;
-    const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment]);
+    const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment, c.serviceShare, c.realizationRate, c.rampYears, c.referenceOverlap]);
     const stock = effectiveSupplyStock(initial, policy, year, p, realized, prices);
     pooled.set(key, { c, stock: (pooled.get(key)?.stock ?? 0) + stock });
   }
   for (const { c, stock } of pooled.values()) {
     if (c.kind === 'capital') {
-      result.capital += Math.expm1(c.yield / .35 * Math.log1p(stock / (initial.macro.realGdp * c.unitCost)));
+      // Public infrastructure is distinct from private equipment. Its services
+      // can improve productivity of all inputs, including a scarce input.
+      const overlap = realized ? (c.referenceOverlap ?? 0) * Math.max(0, 1 - Math.max(0, year - REFERENCES[p.referenceModel].years) / 5) : 0;
+      const gain = Math.expm1(c.yield * Math.log1p(stock / (initial.macro.realGdp * c.unitCost))) * (1 - overlap);
+      const share = c.serviceShare ?? 0;
+      const capital = Math.expm1(Math.log1p(gain) * (1 - share) / .35);
+      result.capital += capital;
+      publicCapital.capital += capital;
+      publicCapital.tfp *= (1 + gain) ** share;
+      publicCapital.stock += stock;
     } else if (c.kind === 'education' || c.kind === 'childcare') {
       const people = stock / (c.unitCost / (initial.macro.nominalGdp / initial.macro.realGdp)) * c.employment;
       const effect = c.kind === 'education' ? Math.expm1(c.yield) : c.yield;
       result.labour += Math.min(people * effect / initial.labour.employment, .1);
     } else result.tfp += stock * c.yield / initial.macro.potentialGdp;
   }
-  return result;
+  result.tfp *= publicCapital.tfp;
+  return { ...result, publicCapital };
 }
 
 /** Pooled reference output only; selected-model supply uses supplyInputs. */
@@ -144,12 +163,12 @@ export function supplyTotal(initial: EconomyState, policies: Policy[], year: num
 }
 
 export function supplyRecords(cases: Record<string, SupplyCase>): SourceValue[] {
-  const labels: Record<string, string> = { additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算', maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益' };
+  const labels: Record<string, string> = { additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算', maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益', serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率' };
   return Object.entries(cases).flatMap(([id, c]) => Object.entries(c).filter(([, v]) => typeof v === 'number').map(([key, value]) => ({
     key: `supply.${id}.${key}`, value: value as number,
-    unit: key === 'lag' || key === 'lifetime' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
+    unit: key === 'lag' || key === 'lifetime' || key === 'rampYears' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
     referenceYear: `政策別供給シナリオ・${labels[key]}`, sourceName: SUPPLY_CASES[id].label,
     sourceUrl: SUPPLY_CASES[id].source, status: 'assumption' as const,
-    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を設備、教育・保育を有効労働、燃料節約を有効エネルギーに換算して選択した生産関数で再計算。設備0.35・エネルギー0.15の固定参照弾力性は換算仮定。係数・時期は変更可能な条件で、信頼区間ではない。`,
+    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を公共サービスによる生産性と設備量、教育・保育を有効労働、燃料節約を有効エネルギーに換算して選択した生産関数で再計算。設備0.35・エネルギー0.15の固定参照弾力性は換算仮定。公共資本の既定は生産性経路100%、純追加資本の稼働割合50%、供用後3年の立上がり、公表期間内の便益重複控除50%。係数・時期は変更可能な条件で、信頼区間ではない。`,
   })));
 }

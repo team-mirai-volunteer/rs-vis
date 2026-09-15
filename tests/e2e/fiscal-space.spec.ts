@@ -1,5 +1,31 @@
 import { test, expect } from '@playwright/test';
 
+test('public investment shows commissioned benefits separately and overlap controls change GDP', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
+  const benefit = page.getByTestId('public-capital-benefit');
+  await expect(benefit.locator('summary')).toContainText('0.25兆円');
+  await expect(benefit).not.toHaveAttribute('open', '');
+  await expect(page.getByTestId('input-overview')).toContainText('-5.01兆円');
+  await benefit.locator('summary').click();
+  const detail = page.getByRole('region', { name: '公共投資の需要効果と供用後便益', exact: true });
+  await expect(detail.getByRole('row').last()).toContainText('1.50兆円');
+  await expect(detail.getByRole('row').last()).toContainText('-5.27兆円');
+  await page.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();
+  const overlap = page.getByLabel('公共資本・公表反応との重複控除率', { exact: true });
+  await overlap.fill('100');
+  await expect(benefit.locator('summary')).toContainText('0.00兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-5.27兆円');
+  await overlap.fill('0');
+  await expect(benefit.locator('summary')).toContainText('0.51兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-4.76兆円');
+  await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
+  const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(url);
+  await expect(benefit.locator('summary')).toContainText('0.51兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-4.76兆円');
+});
+
 test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();

@@ -64,5 +64,13 @@ export function policyProduction(initial: EconomyState, policies: Policy[], year
   const production = { inputs, normalInputs, basePotentialGdp: baselinePotential,
     tfp: initial.production.tfp * factors.tfp, labourProductivity: initial.production.labourProductivity };
   const capacity = productionCapacity({ ...initial, production }, p, year);
-  return { production, manualEnergy, ...capacity };
+  // Re-evaluate the same function without the public-capital increment. This
+  // attributes its contribution once, preserving interaction with other inputs.
+  let publicCapitalBenefit = 0;
+  if (factors.publicCapital.capital > 0 || factors.publicCapital.tfp > 1) {
+    const without = { ...production, tfp: production.tfp / factors.publicCapital.tfp,
+      normalInputs: { ...normalInputs, capital: normalInputs.capital * (factors.capital - factors.publicCapital.capital) / factors.capital } };
+    publicCapitalBenefit = capacity.potential - productionCapacity({ ...initial, production: without }, p, year).potential;
+  }
+  return { production, manualEnergy, publicCapitalBenefit, publicCapitalStock: factors.publicCapital.stock, ...capacity };
 }

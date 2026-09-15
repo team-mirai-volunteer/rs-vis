@@ -235,9 +235,8 @@ test('next-trillion public capital pools residual stocks across spending duratio
   }
   const delta = supplyTotal(s, [q, extra], 3, P) - supplyTotal(s, [q], 3, P);
   assert(delta < supplyTotal(s, [extra], 3, P));
-  // The old .122 output elasticity is the Cobb reference conversion only.
-  // Leontief has no gain from extra nonbinding capital in this initial state.
-  near(compareNextTrillion(s, [q], P, NO_SHOCK, THRESHOLDS, [extra])[0].investment!.supply!, 0);
+  // Public services augment productivity; apply the concave function to the pooled stock once.
+  near(compareNextTrillion(s, [q], { ...P, baselineRealGrowth: 0 }, NO_SHOCK, THRESHOLDS, [extra])[0].investment!.supply!, delta);
   const comparison = compareNextTrillion(s, [q], { ...P, productionModel: 'cobbDouglas', baselineRealGrowth: 0 }, NO_SHOCK, THRESHOLDS, [extra])[0];
   near(comparison.investment!.supply!, delta);
 });
@@ -362,8 +361,8 @@ test('congestion changes CPI below the hard ceiling, is zero without policy, and
   strong.steps.forEach((step, i) => near(step.demand.capacityPriceAdjustment, results[0].steps[i].demand.capacityPriceAdjustment * 2));
 });
 
-test('long-run public investment and commissioning use the selected production function', () => {
-  const s = initial(), capital = policy('public-investment', { kind: 'permanent', annualCost: T, supply: SUPPLY_CASES['public-investment'].settings });
+test('equipment-only public investment and commissioning use the selected production function', () => {
+  const s = initial(), capital = policy('public-investment', { kind: 'permanent', annualCost: T, supply: { ...SUPPLY_CASES['public-investment'].settings, serviceShare: 0 } });
   const run = (productionModel: typeof P.productionModel) => {
     const p = { ...flat, productionModel };
     return longRunScenario(s, [capital], simulate(s, [capital], 5, p), simulate(s, [], 5, p), p, { ...LONG_RUN, realGrowth: 0 });
@@ -385,5 +384,8 @@ test('displayed 15-trillion model comparison exposes supply and CPI differences 
   near(leontief.gdpEffect, result.projection.steps[4].state.macro.realGdp - result.baseline.steps[4].state.macro.realGdp);
   form.amounts['public-investment'] = 1;
   const invested = createFiscalEngine()(form).modelSensitivity;
-  assert(invested[1].potentialEffect > invested[0].potentialEffect);
+  near(invested[1].potentialEffect, invested[0].potentialEffect);
+  form.supply['public-investment'].serviceShare = 0;
+  const equipment = createFiscalEngine()(form).modelSensitivity;
+  assert(equipment[1].potentialEffect > equipment[0].potentialEffect);
 });
