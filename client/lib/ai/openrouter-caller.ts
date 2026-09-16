@@ -14,7 +14,7 @@ export const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/cha
 /** キー情報エンドポイント（認証必須）。/api/v1/models は認証不要の公開APIのため接続テストに使えない（実測: 無効キーでも200） */
 export const OPENROUTER_KEY_INFO_URL = 'https://openrouter.ai/api/v1/key';
 /** サーバモード（route.ts）と同じ既定モデル */
-export const DEFAULT_BYOK_MODEL = 'google/gemini-3.5-flash';
+export const DEFAULT_BYOK_MODEL = 'openai/gpt-5.6-luna';
 
 const LLM_TIMEOUT_MS = 60_000;
 const RETRY_WAIT_MS = 10_000;
