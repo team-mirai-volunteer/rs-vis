@@ -16,13 +16,13 @@ function PeriodValues({ row, field }: { row: PolicyComparison; field: Field }) {
   const format = field === 'inflationPressure' ? points : field === 'debtGdp' ? percent : amount;
   return <div className="space-y-1 tabular-nums" data-metric={field}>{row.periods.map(period =>
     <div key={period.year} className="flex items-baseline gap-x-1" data-year={period.year}>
-      <span className="w-[2em] shrink-0 text-mirai-text-subtle">{period.year}年</span><span className="whitespace-nowrap">{!configured || period.year > row.publishedYears ? '未推計' : format(period[field])}</span>
+      <span className="w-[2em] shrink-0 text-mirai-text-subtle">{period.year}年</span><span className="whitespace-nowrap">{!configured ? '未推計' : format(period[field])}{configured && period.year > row.publishedYears && <span className="ml-1 text-mirai-text-subtle" title="公表期間外の延長計算">†</span>}</span>
     </div>)}</div>;
 }
 
 export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizon: number }) {
   return <Card><CardHeader><h2 className="text-lg font-bold">次の1兆円を何に使うか</h2>
-    <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年で比較します。金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
+    <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年{horizon > 5 && '・10・15年'}で比較します。{horizon > 5 && '†付きの年は公表期間を超える延長計算（公表反応の末尾を据え置き）で、公表推計ではありません。'}金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
     <p className="text-xs leading-relaxed">経済財政モデルは5年、短期日本経済モデルは3年までの公表反応を使用。公表期間外や未設定の供給・代替経路は「未推計」です。国内代替は輸入品・燃料を国産品・国内発電で置き換える額で、稼働前はゼロになります。</p>
     <p className="text-xs">追加1兆円が減収対象の収入を超える政策は比較から除いています。金額は0.01兆円単位に丸めています。表示桁は推定精度ではなく、係数や事業条件の不確実性はこれより大きい可能性があります。</p>
     <p className="text-xs leading-relaxed">「実現供給便益」は評価期間の最終年に実質GDPへ届く供給効果です。研究・教育・系統など資本以外の供給経路は公表期間後に立ち上がる設計のため、{horizon}年評価では0になります。潜在GDP列には計上され、能力制約の判定には効きます。この設計上、成長投資は短期では物価コストだけが枠に入ります。</p>
@@ -61,7 +61,7 @@ export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizo
     {rows.filter(row => row.policy.id === 'generation').map(row => <section key={row.policy.id} className="space-y-2" aria-labelledby="power-trade-breakdown-heading">
       <h3 id="power-trade-breakdown-heading" className="font-bold">発電投資の貿易収支：燃料削減とその他の変化</h3>
       <p className="text-xs">主表と同じ1年限り・追加1兆円、各年価格の兆円／年です。稼働効果は火力燃料の削減から運転時輸入を引いた額で、送電網との重複・利用制約を反映。「その他」は建設・所得増による輸入、輸出変化、価格変化等を含む残差で、建設設備の輸入額そのものではありません。</p>
-      <div className="overflow-x-auto" role="region" aria-label="発電投資の貿易収支内訳" tabIndex={0}><table className="w-full min-w-[550px] text-left text-xs tabular-nums"><thead><tr>{['時点', '発電・送電網の稼働効果', 'その他の変化', '貿易収支の合計'].map(label => <th scope="col" className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.periods.map(period => <tr key={period.year} data-power-breakdown={period.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{period.year}年</th>{[period.energyOperatingTradeEffect, period.tradeBalanceEffect - period.energyOperatingTradeEffect, period.tradeBalanceEffect].map((v, i) => <td key={i} className="p-2">{period.year > row.publishedYears || !row.investment?.trade ? '未推計' : amount(v)}</td>)}</tr>)}</tbody></table></div>
+      <div className="overflow-x-auto" role="region" aria-label="発電投資の貿易収支内訳" tabIndex={0}><table className="w-full min-w-[550px] text-left text-xs tabular-nums"><thead><tr>{['時点', '発電・送電網の稼働効果', 'その他の変化', '貿易収支の合計'].map(label => <th scope="col" className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.periods.map(period => <tr key={period.year} data-power-breakdown={period.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{period.year}年</th>{[period.energyOperatingTradeEffect, period.tradeBalanceEffect - period.energyOperatingTradeEffect, period.tradeBalanceEffect].map((v, i) => <td key={i} className="p-2">{!row.investment?.trade ? '未推計' : amount(v)}{row.investment?.trade && period.year > row.publishedYears && '†'}</td>)}</tr>)}</tbody></table></div>
       <p className="text-xs">追加投資をしない比較経路にも、需要増・非化石電源の減少による火力燃料輸入を共通条件で計上しています。共通額はこの差分表では相殺され、増強で不要になる燃料は稼働効果として控除します。火力の新設費や時間帯別の供給不足は別途推計が必要です。</p>
     </section>)}
     <section className="space-y-3" aria-labelledby="investment-effects-heading">

@@ -71,7 +71,7 @@ export function validateScenarioNumber(value: number, template: number | null, p
   else if (name.startsWith('inputs.')) bounds = [1, 1.5];
   else if (name.startsWith('thresholds.')) bounds = THRESHOLD_BOUNDS[key as ConstraintId];
   else if (name.startsWith('policySettings.') && key === 'duration') bounds = [1, 10];
-  else if (name === 'horizon') bounds = [1, 5];
+  else if (name === 'horizon') bounds = [1, 15];
   else bounds = root[name];
   if (!bounds && template !== null) bounds = [template, template];
   if (!bounds || value < bounds[0] || value > bounds[1]) throw new Error(`Out of range: ${path}`);

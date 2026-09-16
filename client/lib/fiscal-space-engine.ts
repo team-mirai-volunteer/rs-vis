@@ -22,6 +22,8 @@ import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensiti
 import { estimatePolicyLoad, resourcePowerBalance, resourceRecords, validateResourceAssumptions } from '@/app/lib/fiscal-space/resource-estimate';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
+/** Optional evaluation horizon past the published years, so commissioning around year 11 (new nuclear) is visible. */
+export const EXTENDED_HORIZON = 15;
 
 /** One bounded cache per worker. It never stores a history of user scenarios. */
 export function createFiscalEngine() {
@@ -38,7 +40,10 @@ export function createFiscalEngine() {
     initial.energy.reserveMargin = (form.firmCapacity - initial.energy.peakDemand) / initial.energy.peakDemand;
     const p = { ...form.calibration, reserveShare: form.reserve / 100, resourceModel: form.resource };
     const publishedYears = REFERENCES[p.referenceModel].years;
-    const horizon = Math.min(form.horizon, publishedYears);
+    // 15 years is an explicit extension past the published multipliers (constant tail);
+    // shorter horizons stay within the published years.
+    const horizon = form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, publishedYears);
+    const simulationYears = Math.max(publishedYears, horizon);
     const shock = {
       marketRateDelta: form.rateShock / 10000,
       energyPriceChange: form.energyShock / 100,
@@ -60,8 +65,8 @@ export function createFiscalEngine() {
     const allocated = policies.filter(policy => policy.annualCost > 0);
     const mix = policies.map(policy => ({ policy, weight: policy.annualCost }));
     const totalYen = allocated.reduce((sum, policy) => sum + policy.annualCost, 0);
-    const projection = simulate(initial, allocated, publishedYears, p, shock);
-    const baseline = simulate(initial, [], publishedYears, p, shock);
+    const projection = simulate(initial, allocated, simulationYears, p, shock);
+    const baseline = simulate(initial, [], simulationYears, p, shock);
     const generation = allocated.find(policy => policy.id === 'generation');
     const powerTimeline = generation ? projection.steps.slice(0, horizon).map((step, i) => {
       const base = baseline.steps[i];
@@ -92,13 +97,13 @@ export function createFiscalEngine() {
         estimateFiscalSpace(initial, [{ policy, weight: 1 }], form.thresholds, horizon, p, shock)])) };
     }
     const spaces = cache.singleSpaces;
-    const comparison = compareNextTrillion(initial, allocated, p, shock, form.thresholds, policies).map(row => {
+    const comparison = compareNextTrillion(initial, allocated, p, shock, form.thresholds, policies, horizon).map(row => {
       const space = spaces.get(row.policy.id);
       if (!space) throw new Error('Missing policy comparison');
       return { ...row, space };
     });
     const shocks = rateShockComparison(initial, allocated, p);
-    const probeProjection = canProbe ? simulate(initial, probePolicies, publishedYears, p, shock) : undefined;
+    const probeProjection = canProbe ? simulate(initial, probePolicies, simulationYears, p, shock) : undefined;
     const peaksByYear = projection.steps.map((step, i) => {
       if (!probeProjection) return '感応度未計算';
       const rows = constraintSensitivity({ initial: projection.initial, steps: [step] },

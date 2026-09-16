@@ -140,7 +140,8 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準物価にはGDPギャップ感度も加わります。「乗数・労働反応の条件」で変更できます。</p>
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
-        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select aria-label="制約の評価期間" className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間</option>)}</select></label>
+        <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select aria-label="制約の評価期間" className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間（公表期間内）</option>)}<option value={15}>15年間（公表期間{maxHorizon}年を超える延長）</option></select>
+          <span className="block text-xs text-mirai-text-subtle">15年は公表乗数の末尾を据え置いた延長計算です。新設原子力（11年目稼働）など公表期間後に立ち上がる投資を同じ画面で見るための条件で、公表推計ではありません。</span></label>
         <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />

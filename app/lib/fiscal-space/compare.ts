@@ -10,8 +10,11 @@ import { loadCoverage } from './policy-load';
 import { CONSTRAINTS } from './constraints';
 
 /** Marginal one-year 1tn addition on top of the current mix; investment payoffs can arrive later. */
-export function compareNextTrillion(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK, thresholds: Thresholds = THRESHOLDS, candidates: Policy[] = POLICIES) {
-  const horizon = REFERENCES[p.referenceModel].years;
+export function compareNextTrillion(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK, thresholds: Thresholds = THRESHOLDS, candidates: Policy[] = POLICIES,
+  evaluationYears?: number) {
+  // Beyond the published years the step responses hold their last value: an explicit
+  // extrapolation the UI must label, never another observed multiplier.
+  const horizon = Math.max(REFERENCES[p.referenceModel].years, evaluationYears ?? 0);
   const baseline = simulate(initial, current, horizon, p, shock);
   // Omit a full extra trillion when it would exceed the remaining revenue base.
   return candidates.filter(policy => current.filter(x => x.id === policy.id).reduce((sum, x) => sum + x.annualCost, 0) + TRILLION <= policyReliefLimit(policy.id, p)).map(policy => {
@@ -44,7 +47,7 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
         : ['income-tax', 'resident-tax', 'social-insurance'].includes(policy.id) ? '負担軽減中の労働時間・参加。1年限りの追加軽減は2年目以降には終了。'
         : SUPPLY_UNAVAILABLE[policy.id] ?? '供給経路の条件が必要',
       investment: investmentAtCommissioning(initial, current, incremental, p),
-      periods: ([1, 3, 5] as const).filter(year => year <= horizon).map(year => {
+      periods: [1, 3, 5, 10, 15].filter(year => year <= horizon).map(year => {
         const step = projection.steps[year - 1], base = baseline.steps[year - 1];
         // Match simulate.ts's nominal import accounting, including the energy
         // price shock. Use each path's PREVIOUS deflator, not current CPI.

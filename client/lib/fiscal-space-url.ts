@@ -119,7 +119,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   shape(payload.form, template, 'form');
   const form = payload.form as FiscalForm;
   const range = (v: number, min: number, max: number) => { if (v < min || v > max) throw new Error('Out of range'); };
-  if (![1, 3, 5].includes(form.horizon)) throw new Error('Invalid horizon');
+  if (![1, 3, 5, 15].includes(form.horizon)) throw new Error('Invalid horizon');
   range(form.gap, -10, 3); range(form.inflation, -3, 10); range(form.reserve, 0, 50);
   range(form.rateShock, 0, 300); range(form.energyShock, 0, 100);
   range(form.calibration.capacityPriceSensitivity, 0, .1); range(form.calibration.capacityPressureStart, 0, .99); range(form.calibration.referenceCapacityRatio, 1.001, 2);

@@ -109,3 +109,23 @@ test('difference chart scale always includes zero and nice ticks', () => {
   assert(mixed.low <= -3.6e12 && mixed.low < 0 && mixed.high >= 12.7e12);
   assert(mixed.ticks.includes(0));
 });
+
+// Extended horizon: an explicit extrapolation that lets late commissioning enter the same evaluation.
+test('15-year horizon extends the simulation, adds 10/15-year comparison periods and shows late supply', () => {
+  const engine = createFiscalEngine();
+  const f = defaults(); f.amounts.rd = 3; f.horizon = 15;
+  const r = engine(f);
+  assert.equal(r.horizon, 15);
+  assert.equal(r.projection.steps.length, 15);
+  assert.equal(r.riskAudit.extrapolatedYears, 10);
+  const rd = r.comparison.find(row => row.policy.id === 'rd')!;
+  assert.deepEqual(rd.periods.map(p => p.year), [1, 3, 5, 10, 15]);
+  // Non-capital supply ramps only after the published years: zero realized at 5, positive at 15.
+  const five = defaults(); five.amounts.rd = 3; five.horizon = 5;
+  near(engine(five).comparison.find(row => row.policy.id === 'rd')!.realizedSupplyEffect, 0);
+  assert(rd.realizedSupplyEffect > 0);
+  assert.equal(r.longRun[0].year, 16);
+  assert.deepEqual(decodeScenarioDetailed(encodeScenario(f)).form.horizon, 15);
+  const g = defaults(); g.horizon = 5;
+  assert.equal(engine(g).projection.steps.length, 5);
+});

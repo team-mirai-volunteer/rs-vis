@@ -28,6 +28,7 @@ import { PolicyTrade } from '@/client/components/fiscal-space/PolicyTrade';
 import { PowerMix } from '@/client/components/fiscal-space/PowerMix';
 import { ElectricityBaseline } from '@/client/components/fiscal-space/ElectricityBaseline';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
+import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
 import { SupplyConditions } from '@/client/components/fiscal-space/SupplyConditions';
 import type { PolicyKind, Thresholds } from '@/types/fiscal-space';
 
@@ -90,7 +91,7 @@ export default function FiscalSpacePage() {
     threshold: (id: keyof Thresholds, n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } })),
     cpiLimit: (n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, inflation: n } })),
     inputs: (v: FiscalForm['inputs']) => update('inputs', v), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
-    calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: Math.min(f.horizon, REFERENCES[v.referenceModel].years),
+    calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: f.horizon === EXTENDED_HORIZON ? f.horizon : Math.min(f.horizon, REFERENCES[v.referenceModel].years),
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
@@ -155,7 +156,7 @@ export default function FiscalSpacePage() {
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
           policies={policies} onPowerSettings={openPowerSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
-          horizon={Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
+          horizon={form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
           definitions={CONSTRAINTS}
