@@ -272,8 +272,9 @@ test('default substitution starts at commissioning, reports commissioning capaci
   assert.equal(semi.periods[1].domesticSubstitution, 0);
   assert(simulate(initial, [semiconductor], 4, P).steps[3].demand.domesticSubstitution > 0);
   near(semi.investment!.trade!.substitution, expectedSemi);
-  near(semi.investment!.trade!.operatingImports, expectedSemi);
-  near(semi.investment!.trade!.imports, 0);
+  const expectedOperating = T / deflator * SEMICONDUCTOR_CASE.annualSalesPerInvestment! * .5 * SEMICONDUCTOR_CASE.operatingImportShare;
+  near(semi.investment!.trade!.operatingImports, expectedOperating);
+  near(semi.investment!.trade!.imports, expectedOperating - expectedSemi);
   near(semi.investment!.trade!.tradeBalance, semi.investment!.trade!.exports - semi.investment!.trade!.imports);
   assert.equal(power.periods[0].domesticSubstitution, 0);
   assert(power.periods[1].domesticSubstitution > 0);

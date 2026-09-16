@@ -1,7 +1,7 @@
 import type { Policy } from '@/types/fiscal-space';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { POLICY_TRADE_CHANNELS, POWER_TECHNOLOGIES, POWER_SOURCE, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, SEMICONDUCTOR_SOURCE,
-  industryTrade, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
+  industryTrade, industryImportBreakEven, INDUSTRY_TRADE_REFERENCE, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
 import { fieldClass, money } from './format';
 import { PROJECT_POLICY_IDS } from '@/app/lib/fiscal-space/project-response';
 
@@ -75,13 +75,15 @@ export function PolicyTrade({ policies, value, onChange }: { policies: Policy[];
           <Numeric label="支出から稼働まで（仮定）" value={industry.lag} max={30} step={1} unit="年" onChange={n => { if (n !== null) changeIndustry('lag', Math.round(n)); }} />
           <Numeric label="稼働後の便益期間（仮定）" value={industry.lifetime} min={1} max={50} step={1} unit="年" onChange={n => { if (n !== null) changeIndustry('lifetime', Math.round(n)); }} />
         </div>
-        <p>半導体の初期売上/設備比は<a className="underline" href={SEMICONDUCTOR_FINANCIAL_SOURCE} target="_blank" rel="noreferrer">TSMC 2024年連結決算</a>の売上2,894,307,699÷期末純有形固定資産3,234,980,070（双方千台湾ドル）≒0.895。年間設備投資で割ってはいません。日本の補助金収益率ではなく、既存の海外企業を参考にした条件です。新設工場・技術世代・再調達価格との差があり、純追加性50%・年間減耗10%・15年寿命を仮定。官民投資の倍率は付けません。輸出50%・国内置換50%・輸入原価25%・稼働遅れ3年も仮定です。研究開発は売上未設定なら知識蓄積の供給モデルを使い、売上を設定するとそちらへ切り替えます。</p>
+        <p>半導体の初期売上/設備比は<a className="underline" href={SEMICONDUCTOR_FINANCIAL_SOURCE} target="_blank" rel="noreferrer">TSMC 2024年連結決算</a>の売上2,894,307,699÷期末純有形固定資産3,234,980,070（双方千台湾ドル）≒0.895。年間設備投資で割ってはいません。日本の補助金収益率ではなく、既存の海外企業を参考にした条件です。新設工場・技術世代・再調達価格との差があり、純追加性50%・年間減耗10%・15年寿命を仮定。官民投資の倍率は付けません。稼働遅れ3年も仮定です。研究開発は売上未設定なら知識蓄積の供給モデルを使い、売上を設定するとそちらへ切り替えます。</p>
+        {selected.id === 'semiconductors' && <p><a className="underline" href={INDUSTRY_TRADE_REFERENCE.sourceUrl} target="_blank" rel="noreferrer">2020年全国産業連関表・電子デバイス部門</a>を参考に、初期値は輸出69.2%、国内販売の輸入置換59.7%、供給網全体の輸入原価19.3%。輸入原価は直接調達13.2%に国内仕入先の輸入を含めた比例配分による推計で、関税・輸入品商品税は除きます。置換59.7%は国内市場の輸入割合を代用した仮定で、投資の因果効果ではありません。2020年の部門平均と新設半導体工場には品種・技術・調達構成の違いがあります。建設時輸入は別途未推計です。</p>}
+        <p>現在の条件で、稼働後の原材料等の輸入を国内代替が上回るには、{industryImportBreakEven(industry) === null || industryImportBreakEven(industry)! > 1 ? '国内販売の輸入置換だけでは不足します。' : `国内販売の${(industryImportBreakEven(industry)! * 100).toFixed(1)}%超の輸入置換が必要です。`}建設・所得増等による輸入は別に加わります。主表の産業投資内訳では、置換率0%・100%の条件も比較できます。</p>
         <div className="overflow-x-auto" role="region" aria-label="政策固有の輸出入試算" tabIndex={0}><table className="w-full min-w-[680px] text-right tabular-nums"><thead><tr>{['年', '輸出増', '輸入の国内代替', '運転時輸入', '建設時輸入', '収支差', '事業の国内付加価値'].map(h => <th scope="col" key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{years.map(year => { const r = industryTrade(selected, year, industry); return <tr key={year} className="border-t border-mirai-border"><th className="p-2" scope="row">{year}</th>{[r.exports, r.substitution, r.operatingImports, r.capexImports, r.tradeBalance, r.domesticValueAdded].map((n, i) => <td key={i}>{tradeMoney(n)}</td>)}</tr>; })}</tbody></table></div>
         <p>収支差＝輸出増＋輸入代替−運転時輸入−建設時輸入。輸出販売と国内販売を分け、同じ製品を輸出と国内代替の両方へ数えません。国内付加価値は売上−輸入原価で、国内取引を含む供給網全体の粗い近似。既存事業の置換・研究の失敗・輸入原価以外の海外支払は未反映で、GDPの純増とは異なります。</p>
       </>}
     </div></details>
     <details><summary className="cursor-pointer font-bold">本体への反映方法と推計の限界</summary><div className="mt-2 space-y-2">
-      <p>建設時は、公表モデルの初年度輸入反応を基準に、輸入割合を変更した後の国内支出に比例してGDP・物価・雇用等の反応を補正します。元の輸入反応には間接需要も含まれるため、直接調達割合の厳密な推定ではありません。産業連関表の部門別係数への校正は未完了です。</p>
+      <p>建設時は、公表モデルの初年度輸入反応を基準に、輸入割合を変更した後の国内支出に比例してGDP・物価・雇用等の反応を補正します。元の輸入反応には間接需要も含まれるため、直接調達割合の厳密な推定ではありません。建設時輸入の部門別校正は未完了です。半導体の稼働時輸入原価は2020年の電子デバイス部門から推計しますが、政府支出の共通反応には引き続き代理モデルとしての不確実性が残ります。</p>
       <p>本体では支出年ごとに基準経路の物価で実質化し、稼働までの遅れと便益期間を適用します。以下の事業表は価格固定の直接効果なので、本体の名目輸出入とは金額が異なります。稼働後の追加売上・燃料置換は共通マクロ反応を超える効果と仮定しており、案件ごとの純追加性を実証したものではありません。</p>
       <p>輸入代替は全政策を合算し、発電は基準年のエネルギー輸入額、その他は残りの輸入額を上限にします。これは輸入額が負にならないための上限で、品種別の市場規模・立地・電力系統の制約ではありません。円相場の反応、世界需要、政策別の雇用・価格転嫁、海外での報復措置は追加販売に連動して再推計していません。</p>
       <p>送電網は再エネの有効利用による燃料節約を国内代替へ反映し、保守費を控除します。追加再エネと重複し得る便益は設定割合に応じて控除します。これは地域・時間別の系統計算ではありません。公共投資・減税・給付・医療・教育・保育・防衛は、分野固有の輸出・代替効果が未算入です。</p>
