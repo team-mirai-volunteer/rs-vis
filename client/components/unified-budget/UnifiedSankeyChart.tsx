@@ -22,10 +22,10 @@ import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT } from '@/client/lib/unified-flow-scale';
 import { UnifiedSearch } from './UnifiedSearch';
+import type { ReactNode } from 'react';
 import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
-import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
-import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
+import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
@@ -44,7 +44,8 @@ const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;
 const ZOOM_MIN = 0.3;
 /** 左上の検索クラスタが占める高さ（top 12px + 検索ボックス 34px + 余白 8px）。サイドパネルはこの下から始める */
-const SEARCH_ROW_PX = 54;
+const SEARCH_ROW_PX = 54; // sm 未満: 左上の検索ピルの行
+const CONTROL_ROW_PX = 60; // sm 以上: 左上の表示数カード（1行）の行。詳細パネルはこの下から
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
@@ -73,6 +74,10 @@ export function UnifiedSankeyChart({
   rsAmountKind,
   hasSpending = true,
   scoreStatus = 'idle',
+  searchAddon,
+  searchPopover,
+  searchTrailing,
+  sidePanelTopOffset,
 }: {
   nodes: UnifiedViewNode[];
   links: SankeyLink[];
@@ -87,6 +92,14 @@ export function UnifiedSankeyChart({
   onFilterChange: (next: UnifiedViewFilter) => void;
   filterOpen: boolean;
   onToggleFilterOpen: () => void;
+  /** 検索ピル内「絞込」の右に並べる同体裁のボタン（AI絞り込みなど） */
+  searchAddon?: ReactNode;
+  /** 検索クラスタの直下に開くポップオーバー（AI絞り込み） */
+  searchPopover?: ReactNode;
+  /** 検索ピルの右に並べる道具（表示設定の歯車）。sm 以上で使う */
+  searchTrailing?: ReactNode;
+  /** 詳細パネルの上端（px）。左上に置いたコントロール行の実高さをページ側で測って渡す。未指定なら固定値 */
+  sidePanelTopOffset?: number;
   fontPx?: number;
   flowScale?: number;
   labelDensity?: LabelDensity;
@@ -122,7 +135,8 @@ export function UnifiedSankeyChart({
   const [showMinimap, setShowMinimap] = useState(false);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
-  const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
+  // 既定幅 520px・上限 960px（sm 未満はボトムシートになり幅は使わない）。上端はコントロール行の下
+  const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width, defaultWidth: 520, maxWidth: 960 });
   // 浮島の左右余白ぶんを含む。スマホ幅ではパネルがボトムシートになり横幅を取らない
   const panelOpenWidth =
     selectedId !== null && !sidePanel.collapsed && viewport.width >= 640 ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0;
@@ -176,6 +190,7 @@ export function UnifiedSankeyChart({
       ),
     [visible, width, viewport.height, viewport.width, fontPx, flowScale, labelDensity, displayColumnIndex]
   );
+
 
   const minimapH = Math.round(MINIMAP_W * (layout.contentHeight / (width || 1)));
 
@@ -563,27 +578,32 @@ export function UnifiedSankeyChart({
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} />}
 
-      {/* 検索クラスタは左上に固定。サイドパネルはこの下（SEARCH_ROW_PX）から始まるので押しのけない */}
-      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5">
+      {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
+      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-1.5 sm:left-auto sm:right-3">
         <UnifiedSearch
           nodes={browseNodes}
           onSelect={onSelect}
           filterOpen={filterOpen}
           onToggleFilter={onToggleFilterOpen}
           filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} hasSpending={hasSpending} scoreStatus={scoreStatus} />}
+          trailing={searchAddon}
+          filterActive={hasActiveUnifiedFilter(filter)}
+          onClearFilter={() => onFilterChange(UNIFIED_FILTER_DEFAULT)}
         />
-        <HierarchyFilterClearButton active={hasActiveUnifiedFilter(filter)} onClear={() => onFilterChange(UNIFIED_FILTER_DEFAULT)} />
+        {searchTrailing}
       </div>
+      {/* 検索クラスタの直下に開くポップオーバー（AI絞り込み）。左の詳細パネルとは重ならない */}
+      {searchPopover && <div data-pan-disabled="true" className="absolute left-3 top-14 z-[220] sm:top-11 sm:left-auto sm:right-3">{searchPopover}</div>}
 
       {selectedId !== null && (
         <SidePanelChrome
           side="left"
-          topOffset={SEARCH_ROW_PX}
+          topOffset={sidePanelTopOffset ?? (viewport.width >= 640 ? CONTROL_ROW_PX : SEARCH_ROW_PX)}
           open={!sidePanel.collapsed}
           onToggle={sidePanel.toggleCollapsed}
           width={sidePanel.effectiveWidth}
           minWidth={200}
-          maxWidth={800}
+          maxWidth={960}
           onResizeStart={sidePanel.onResizeStart}
           isResizing={sidePanel.isResizing}
           onResetWidth={sidePanel.resetWidth}
@@ -744,7 +764,8 @@ export function UnifiedSankeyChart({
         </SidePanelChrome>
       )}
 
-      {/* 左下: ミニマップ（表示設定はコントロールパネルの右へ移した） */}
+
+      {/* 左下: ミニマップ */}
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">

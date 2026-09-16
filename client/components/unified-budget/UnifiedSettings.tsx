@@ -48,9 +48,10 @@ export function UnifiedSettings({
   /** 年度・純計などの要約。パネル末尾に小さく出す */
   summary?: string;
   /** 歯車の置き場所。パネルはボタンから離れる側（右上なら下、左下なら上）へ開く */
-  placement?: 'top-right' | 'bottom-left';
+  placement?: 'top-right' | 'bottom-left' | 'top-auto' | 'bottom-right';
+  // 'top-auto': sm 未満は右上（右揃え）、sm 以上は左上（左揃え）に置かれる前提でパネルの寄せを切り替える
 }) {
-  const popoverPos = placement === 'top-right' ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1';
+  const popoverPos = placement === 'top-right' ? 'top-full right-0 mt-1' : placement === 'top-auto' ? 'top-full right-0 mt-1 sm:left-0 sm:right-auto' : placement === 'bottom-right' ? 'bottom-full right-0 mb-1' : 'bottom-full left-0 mb-1';
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -70,7 +71,7 @@ export function UnifiedSettings({
   }, [open]);
 
   return (
-    <div ref={rootRef} data-pan-disabled="true" className={`pointer-events-auto relative flex ${placement === 'top-right' ? 'items-start' : 'items-end'}`}>
+    <div ref={rootRef} data-pan-disabled="true" className={`pointer-events-auto relative flex ${placement === 'bottom-left' || placement === 'bottom-right' ? 'items-end' : 'items-start'}`}>
       <Button
         variant="outline"
         size="icon"
