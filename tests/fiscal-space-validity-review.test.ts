@@ -129,3 +129,21 @@ test('15-year horizon extends the simulation, adds 10/15-year comparison periods
   const g = defaults(); g.horizon = 5;
   assert.equal(engine(g).projection.steps.length, 5);
 });
+
+// Grid fuel savings are domestic value added and must not vanish behind a Leontief labour bottleneck.
+test('grid savings raise potential GDP identically under every production function', () => {
+  const engine = createFiscalEngine();
+  const potential = new Map<string, number>();
+  for (const productionModel of ['leontief', 'ces', 'cobbDouglas'] as const) {
+    const f = defaults(); f.amounts.grid = 3; f.horizon = 15; f.calibration = { ...f.calibration, productionModel };
+    const r = engine(f);
+    const last = r.projection.steps.at(-1)!, base = r.baseline.steps.at(-1)!;
+    potential.set(productionModel, last.state.macro.potentialGdp - base.state.macro.potentialGdp);
+    assert(r.comparison.find(row => row.policy.id === 'grid')!.realizedSupplyEffect > 0);
+  }
+  const values = [...potential.values()];
+  assert(values.every(v => v > 5e10));
+  near(values[0], values[1], 1e-6); near(values[0], values[2], 1e-6);
+  const five = defaults(); five.amounts.grid = 3;
+  near(engine(five).comparison.find(row => row.policy.id === 'grid')!.realizedSupplyEffect, 0); // Commissions in year 6.
+});

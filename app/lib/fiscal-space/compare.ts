@@ -6,6 +6,7 @@ import { policyReliefLimit } from './policy-limits';
 import { hasCommercialSupply, SUPPLY_CASES, SUPPLY_UNAVAILABLE } from './supply';
 import { investmentAtCommissioning } from './investment';
 import { policyProduction } from './policy-production';
+import { projectNetOutput, projectResponses } from './project-response';
 import { loadCoverage } from './policy-load';
 import { CONSTRAINTS } from './constraints';
 
@@ -87,7 +88,11 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
       realizedSupplyEffect: (() => {
         const basePotential = initial.macro.potentialGdp * (1 + p.baselineRealGrowth) ** horizon;
         const realized = (policies: Policy[]) => policyProduction(initial, policies, horizon, p, basePotential, undefined, true, false).potential;
-        return (realized([...current, incremental]) - realized(current)) * initial.macro.realGdp / initial.macro.potentialGdp;
+        // Commercial projects (industry, power, grid) realize their operating output through
+        // the demand path, so add the incremental policy's net operating output at the horizon.
+        const project = projectResponses(initial, [...current, incremental], horizon, p).at(-1)!;
+        return (realized([...current, incremental]) - realized(current)) * initial.macro.realGdp / initial.macro.potentialGdp
+          + Math.max(0, projectNetOutput(project));
       })(),
       mainCapacity: `${consumed[0].label} (${consumed[0].delta >= 0 ? '+' : ''}${(consumed[0].delta * 100).toFixed(3)}ポイント)` +
         (unknownLoads.length ? `。${unknownLoads.join('・')}の追加負荷は未評価` : '') };

@@ -46,7 +46,10 @@ export function policyProduction(initial: EconomyState, policies: Policy[], year
     // This is one gain subject to two limits, not two benefits from the same plant.
     energy += Math.min(firmNet, initial.macro.potentialGdp * Math.expm1(.15 * Math.log1p(firmGw / initial.energy.firmCapacity)));
     factors.capital += Math.expm1(Math.log1p(industry / initial.macro.potentialGdp) / .35);
-    factors.energy += Math.expm1(Math.log1p(energy / initial.macro.potentialGdp) / .15);
+    // Net fuel savings replace imports with domestic value added at unchanged primary
+    // inputs, so they scale value added (TFP) rather than the energy input index. An
+    // energy-input bridge vanished under Leontief whenever labour was the bottleneck.
+    factors.tfp *= 1 + energy / initial.macro.potentialGdp;
   }
   if (includeTax) {
     const labour = taxLabourSupply(initial, policies, year, p);
