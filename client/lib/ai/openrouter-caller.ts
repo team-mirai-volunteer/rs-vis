@@ -53,6 +53,8 @@ async function callOnce(opts: OpenRouterCallerOptions, messages: LlmMessage[], t
         messages,
         tools,
         tool_choice: 'auto',
+        // 推論モデルの思考量は low に固定（コストと応答時間）。対応しないモデルでは無視される
+        reasoning: { effort: 'low' },
         temperature: 0.2,
       }),
       signal: opts.signal ? AbortSignal.any([timeoutSignal, opts.signal]) : timeoutSignal,

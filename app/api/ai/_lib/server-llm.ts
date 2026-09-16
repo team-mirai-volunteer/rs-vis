@@ -13,6 +13,12 @@ import type { LlmCaller, LlmMessage, LlmToolDef } from '@/app/lib/ai/chat-core';
 export const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
 /** サーバー側 LLM の既定モデル（コスト制約）。SANKEY_AI_CHAT_MODEL で差し替え可能 */
 export const DEFAULT_SERVER_MODEL = 'openai/gpt-5.6-luna';
+/** 推論モデルの思考量。コストと応答時間を抑えるため既定 low（SANKEY_AI_CHAT_REASONING_EFFORT で変更。'none' で送らない） */
+export const DEFAULT_REASONING_EFFORT = 'low';
+export function reasoningEffort(): 'low' | 'medium' | 'high' | null {
+  const v = process.env.SANKEY_AI_CHAT_REASONING_EFFORT || DEFAULT_REASONING_EFFORT;
+  return v === 'low' || v === 'medium' || v === 'high' ? v : null;
+}
 /** LLM 1 呼び出しのタイムアウト。無料モデルは長い生成で 30 秒を超えることがあるため既定 60 秒 */
 export const LLM_TIMEOUT_MS = Number(process.env.SANKEY_AI_CHAT_LLM_TIMEOUT_MS) || 60_000;
 /** 429/一過性障害のリトライ待機の既定値（上流が待機時間を提案しない場合） */
@@ -70,6 +76,8 @@ async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSig
         model,
         messages: llmMessages,
         ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
+        // OpenRouter の推論制御。対応しないモデルでは無視される
+        ...(reasoningEffort() ? { reasoning: { effort: reasoningEffort() } } : {}),
         temperature: 0.2,
       }),
       // クライアント切断（abortSignal）でも上流呼び出しを即中断する（従量課金の無駄呼び出し防止）
