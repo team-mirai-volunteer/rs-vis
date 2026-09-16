@@ -4,48 +4,50 @@ import { peakConstraints } from './constraints';
 import { simulate } from './simulate';
 import { externalStress } from './external-stress';
 
-export type StressId = 'cpiCeiling' | 'fx' | 'energyPrice' | 'rate';
+export type StressId = 'cpiCeiling' | 'importPrice' | 'energyPrice' | 'rate';
 export type StressSelection = Record<StressId, boolean>;
-/** Yen per foreign-currency unit, +5%. 10% exceeded a 2.5% ceiling with zero policy under the 0.13 pass-through. */
-export const FX_STRESS = .05;
+/** Import price index, +3%. The in-model channel is import prices -> CPI (0.13 pass-through), of which
+ * FX is only one driver. With a 2.5% ceiling and ~2.05% no-policy CPI the ceiling absorbs at most
+ * ~3.5% (0.45pt / 0.13) with zero policy, so 5% or 10% moves were never survivable. */
+export const IMPORT_PRICE_STRESS = .03;
 
 /** Interpretable stresses replace an arbitrary percentage haircut. Each magnitude is
- * itself an assumption, but "survives a 5% yen depreciation" is a checkable claim
+ * itself an assumption, but "survives a 3% import-price rise" is a checkable claim
  * where "minus 20%" is not. Magnitudes reuse the existing sensitivity tables. */
 export const STRESSES: Record<StressId, { label: string; short: string; note: string }> = {
   cpiCeiling: { label: '許容インフレ −0.3ポイント', short: 'CPI上限−0.3pt', note: 'CPI許容上限を0.3ポイント引き下げて再探索。政策なしのCPIとの余裕が縮む条件。' },
-  fx: { label: '円安5%', short: '円安5%', note: '判定用CPIのピーク年に、輸入価格への転嫁100%・CPI水準への転嫁0.13で円安5%（CPI水準+0.65pt）が重なっても上限内に収まる額。為替の需要・GDP反応は未推計。' },
+  importPrice: { label: '輸入物価 +3%', short: '輸入物価+3%', note: '判定用CPIのピーク年に輸入物価3%上昇（CPI水準+0.39pt、転嫁0.13）が重なっても上限内に収まる額。円安・海外価格のどちらでも同じ経路。為替の需要・GDP反応は未推計。' },
   energyPrice: { label: '輸入エネルギー価格 +20%', short: 'エネルギー+20%', note: '本体の輸入エネルギー価格ショックを20ポイント上乗せして再探索。' },
   rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。公表GDP・CPI反応は変えない。' },
 };
 // Nothing selected by default: every stress amount is still computed and shown, so the
 // user chooses what the envelope must survive with the consequences visible. With a 2.5%
-// CPI ceiling and ~2.05% no-policy CPI, even a 5% yen fall (+0.65pt CPI) leaves no room at all.
-export const DEFAULT_STRESSES: StressSelection = { cpiCeiling: false, fx: false, energyPrice: false, rate: false };
+// CPI ceiling and ~2.05% no-policy CPI, import prices above ~3.5% leave no room at all.
+export const DEFAULT_STRESSES: StressSelection = { cpiCeiling: false, importPrice: false, energyPrice: false, rate: false };
 
 export interface StressRow { id: StressId; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
 
-/** FX has no in-model demand response, so it is judged on the CPI path of each candidate
- * amount. Same scan-then-bisect discipline as estimateFiscalSpace, same step and tolerance. */
-function fxEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock, cap: number): StressRow {
+/** Import prices have no in-model demand response, so they are judged on the CPI path of each
+ * candidate amount. Same scan-then-bisect discipline as estimateFiscalSpace, same step and tolerance. */
+function importPriceEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock, cap: number): StressRow {
   const violated = (amount: number) => {
     const path = simulate(initial, allocateMix(mix, amount), horizon, p, shock);
     const peaks = peakConstraints(path, thresholds, p.inflationRule);
-    return peaks.some(c => c.status === 'violated') || externalStress(path, FX_STRESS, 0, thresholds.inflation).exceeds;
+    return peaks.some(c => c.status === 'violated') || externalStress(path, 0, IMPORT_PRICE_STRESS, thresholds.inflation).exceeds;
   };
-  if (cap <= 0) return { id: 'fx', label: STRESSES.fx.label, amount: 0, status: 'empty-mix', selected: false };
-  if (violated(0)) return { id: 'fx', label: STRESSES.fx.label, amount: 0, status: 'baseline-violated', binding: '物価（円安5%込み）', selected: false };
+  if (cap <= 0) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: 0, status: 'empty-mix', selected: false };
+  if (violated(0)) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: 0, status: 'baseline-violated', binding: '物価（輸入物価+3%込み）', selected: false };
   let low = 0, high = Math.min(p.searchStep, cap);
   while (!violated(high)) {
     low = high;
-    if (high >= cap) return { id: 'fx', label: STRESSES.fx.label, amount: cap, status: 'boundary', selected: false };
+    if (high >= cap) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: cap, status: 'boundary', selected: false };
     high = Math.min(cap, high + p.searchStep);
   }
   while (high - low > p.searchTolerance) {
     const mid = (low + high) / 2;
     if (violated(mid)) high = mid; else low = mid;
   }
-  return { id: 'fx', label: STRESSES.fx.label, amount: low, status: 'boundary', binding: '物価（円安5%込み）', selected: false };
+  return { id: 'importPrice', label: STRESSES.importPrice.label, amount: low, status: 'boundary', binding: '物価（輸入物価+3%込み）', selected: false };
 }
 
 export function stressRows(initial: EconomyState, mix: PolicyShare[], base: FiscalSpaceEstimate, thresholds: Thresholds, horizon: number,
@@ -56,7 +58,7 @@ export function stressRows(initial: EconomyState, mix: PolicyShare[], base: Fisc
     if (id === 'cpiCeiling') return row(id, estimateFiscalSpace(initial, mix, { ...thresholds, inflation: Math.max(.0001, thresholds.inflation - .003) }, horizon, p, shock));
     if (id === 'energyPrice') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, energyPriceChange: shock.energyPriceChange + .2 }));
     if (id === 'rate') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, marketRateDelta: shock.marketRateDelta + .01 }));
-    return { ...fxEnvelope(initial, mix, thresholds, horizon, p, shock, base.theoreticalMaximum), selected: selection[id] };
+    return { ...importPriceEnvelope(initial, mix, thresholds, horizon, p, shock, base.theoreticalMaximum), selected: selection[id] };
   });
 }
 
