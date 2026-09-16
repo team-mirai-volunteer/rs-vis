@@ -100,12 +100,12 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
   });
 }
 
-export function rateShockComparison(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS) {
-  const horizon = REFERENCES[p.referenceModel].years;
+export function rateShockComparison(initial: EconomyState, current: Policy[], p: ModelParameters = PARAMETERS, evaluationYears?: number) {
+  const horizon = Math.max(REFERENCES[p.referenceModel].years, evaluationYears ?? 0);
   const baseline = simulate(initial, current, horizon, p);
   return [100, 200, 300].map(bp => {
     const projection = simulate(initial, current, horizon, p, { ...NO_SHOCK, marketRateDelta: bp / 10000 });
-    return { bp, years: [1, 3, 5].filter(year => year <= horizon).map(year => ({ year,
+    return { bp, years: [1, 3, 5, 10, 15].filter(year => year <= horizon).map(year => ({ year,
       interestIncrease: projection.steps[year - 1].state.fiscal.interestPayments - baseline.steps[year - 1].state.fiscal.interestPayments })) };
   });
 }

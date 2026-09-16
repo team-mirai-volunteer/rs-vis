@@ -105,7 +105,7 @@ export function createFiscalEngine() {
       if (!space) throw new Error('Missing policy comparison');
       return { ...row, space };
     });
-    const shocks = rateShockComparison(initial, allocated, p);
+    const shocks = rateShockComparison(initial, allocated, p, horizon);
     const probeProjection = canProbe ? simulate(initial, probePolicies, simulationYears, p, shock) : undefined;
     const peaksByYear = projection.steps.map((step, i) => {
       if (!probeProjection) return '感応度未計算';
@@ -141,7 +141,8 @@ export function createFiscalEngine() {
         : estimateFiscalSpace(initial, variantMix, form.thresholds, horizon, { ...p, resourceModel: c }, shock);
       return { loadScale, space };
     }) : [];
-    const longRun = longRunScenario(initial, allocated, projection, baseline, p, form.longRun);
+    // The long-run closure starts after the last evaluated year; keep at least five years of it.
+    const longRun = longRunScenario(initial, allocated, projection, baseline, p, { ...form.longRun, years: Math.max(form.longRun.years, horizon + 5) });
     const publicCapitalSensitivity = allocated.some(policy => policy.supply?.kind === 'capital' && policy.supply.realizationRate !== undefined)
       ? [0, .5, 1].map(overlap => {
         const variants = allocated.map(policy => policy.supply?.kind === 'capital'
@@ -151,13 +152,13 @@ export function createFiscalEngine() {
           gdpEffect: last.state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp };
       }) : [];
     const durationSensitivity = allocated.some(policy => policy.kind !== 'permanent')
-      ? Array.from({ length: publishedYears }, (_, i) => i + 1).map(duration => {
+      ? Array.from({ length: Math.min(10, horizon) }, (_, i) => i + 1).map(duration => {
         const variants = allocated.map(policy => policy.kind === 'permanent' ? policy : { ...policy, duration });
-        const path = simulate(initial, variants, publishedYears, p, shock);
+        const path = simulate(initial, variants, horizon, p, shock);
         const peak = path.steps.reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
-        return { duration, year: publishedYears,
+        return { duration, year: horizon,
           cost: path.steps.reduce((sum, step) => sum + step.policyCost, 0),
-          gdpEffect: path.steps[publishedYears - 1].state.macro.realGdp - baseline.steps[publishedYears - 1].state.macro.realGdp,
+          gdpEffect: path.steps[horizon - 1].state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp,
           cpi: constraintInflation(peak), peakYear: peak.state.year,
         };
       }) : [];
