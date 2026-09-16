@@ -28,6 +28,7 @@ export interface QualityScoreItem {
   cnEmpty: number;
   cnFillRatio: number | null;
   budgetAmount: number;
+  carryoverToNext?: number | null;
   // 生JSONで null になりうる（gapRatio が number|null なのと同源。highlights.ts も null ガード済み）
   execAmount: number | null;
   spendTotal: number;
@@ -181,6 +182,9 @@ export function loadQualityScores(year: QualityYear): QualityScoresResponse {
     items = items.map(i => ({ ...i, budgetAmount: requests.get(i.pid) ?? 0, execAmount: null }));
   }
   attachDuration(items, year);
+  const graph = isRequestYear(year) ? null : tryReadDataJson<GraphData>(`sankey-svg-${sourceYear}-graph.json`);
+  const budgets = new Map(graph?.nodes.filter(n => n.type === 'project-budget').map(n => [String(n.projectId), n.budgetSummary]));
+  items = items.map(i => ({ ...i, carryoverToNext: budgets.get(i.pid)?.carryoverToNext ?? null }));
 
   const ministries = [...new Set(items.map(i => i.ministry))].sort();
   const scored = items.filter(i => i.totalScore !== null);

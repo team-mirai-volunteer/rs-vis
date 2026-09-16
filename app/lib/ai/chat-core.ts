@@ -81,6 +81,8 @@ export interface SankeyChatAgentResult {
 
 /** LLM 呼び出しの往復上限（1往復で複数ツールが並列に呼ばれうる。深掘りツール追加により探索が長引きうるため6→8） */
 const MAX_LLM_ROUNDS = 8;
+/** この往復数以降は、結果のある条件が手元にあれば「確定かテキスト回答のみ」を促す */
+const NUDGE_AFTER_ROUNDS = 3;
 /** ツール実行回数の上限（1リクエストあたりのコスト上限を構造的に抑える。深掘りモード（search→detail→...）は往復が増えるため8→10） */
 const MAX_TOOL_CALLS = 10;
 /** interpretation（解釈宣言）の切り詰め文字数 */
@@ -382,7 +384,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '### A. フィルタ要求（図の表示条件を変えたい）',
     '1. 要求を SankeyQuery に翻訳し run_sankey_query で実行する',
     '2. 結果を確認する: 0件なら条件を緩める（正規表現 | で類義語を足す、金額条件を外す等）。search_projects / search_recipients で実際の語彙を調べてもよい（search_projects は scope=details で概要・目的・現状課題も検索できる。事業名で0件のときに試すと、計上のねじれ（別府省庁に計上されたシステム等）も拾える）。多すぎるなら金額下限などで絞る',
-    '3. 妥当な結果になったら submit_result で確定する（message に何をどう絞って何件マッチしたかを書く）',
+    '3. 妥当な結果（1件以上）になったら、追加の探索はせず直ちに submit_result で確定する（message に何をどう絞って何件マッチしたかを書く）。run_sankey_query は通常1〜2回で十分',
     '- 表示件数や並び順の要望（「上位5件だけ」等）は view で表現できる。ユーザーが言及しない限り view は省略する',
     '',
     '### B. データへの質問（金額・内訳・品質スコア・再委託構造・年度比較・使途等を知りたい）',
@@ -524,8 +526,17 @@ export async function runSankeyChatAgentCore(
   ];
 
   let toolCalls = 0;
+  // 直前に結果（1件以上）が出た run_sankey_query。往復上限まで submit_result が呼ばれなくても、
+  // 探索を繰り返すだけのモデルのために、この条件を適用して返す（「解釈できない」で終えない）
+  let lastGood: SankeyChatResult | null = null;
+  let nudged = false;
   for (let round = 0; round < MAX_LLM_ROUNDS; round++) {
     emitProgress(onProgress, { kind: 'llm_round', round: round + 1 });
+    if (!nudged && round >= NUDGE_AFTER_ROUNDS && lastGood) {
+      // ツール呼び出しを繰り返すモデルへの強い後押し。以降は確定かテキスト回答のみを求める
+      messages.push({ role: 'system', content: 'これ以上の探索はしないでください。直前に結果が出た条件で submit_result を呼ぶか、条件化できない理由をテキストで短く答えてください。' });
+      nudged = true;
+    }
     const assistant = await callLlm(messages, TOOLS);
     messages.push(assistant);
     const calls = assistant.tool_calls ?? [];
@@ -550,9 +561,13 @@ export async function runSankeyChatAgentCore(
           switch (call.function.name) {
             case 'run_sankey_query': {
               const { errors, result } = await executor.executeQuery((args.query ?? args) as SankeyQuery, year);
+              if (!errors && result && result.summary.projects.count > 0) lastGood = result;
               payload = errors
                 ? { errors }
-                : { appliedQuery: result!.query, summary: result!.summary };
+                : { appliedQuery: result!.query, summary: result!.summary,
+                  hint: result!.summary.projects.count > 0
+                    ? 'この結果が要求に合っていれば、追加の探索はせず submit_result で確定してください。'
+                    : '0件です。条件を緩めて（正規表現の別表記・金額下限を外す等）もう一度 run_sankey_query してください。' };
               break;
             }
             case 'search_projects':
@@ -637,6 +652,14 @@ export async function runSankeyChatAgentCore(
     }
   }
 
-  // 往復上限まで確定しなかった: ユーザー決定事項により「解釈できなかった」旨の返信で終える
+  // 往復上限まで確定しなかった。結果のあった条件が一度でも出ていればそれを適用する（探索を繰り返すだけの
+  // モデルへの安全網）。無ければユーザー決定事項により「解釈できなかった」旨の返信で終える
+  if (lastGood) {
+    return {
+      message: `${lastGood.summary.projects.count}事業がマッチしました。AIが最終確定しなかったため、最後に結果のあった条件を適用しています。`,
+      result: lastGood,
+      toolCalls,
+    };
+  }
   return { message: GIVE_UP_MESSAGE, toolCalls };
 }

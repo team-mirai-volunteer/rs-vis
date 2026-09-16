@@ -23,10 +23,11 @@ import {
   INTERVIEW_INPUT_MAX_CHARS,
   INTERVIEW_MAX_USER_TURNS,
 } from '@/types/project-comments';
-import { loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
+import { deleteByokSettings, loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
 import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openrouter-caller';
 import {
   fetchProjectDetailForInterview,
+  isServerInterviewEnabled,
   nextInterviewerTurn,
   submitOpinion,
   summarizeOpinion,
@@ -54,6 +55,8 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   const [step, setStep] = useState<Step>('loading');
   const [context, setContext] = useState<InterviewProjectContext>(initialContext);
   const [settings, setSettings] = useState<ByokSettings | null>(null);
+  /** サイト提供 AI が使えるか。キー未登録でもインタビューを進められる */
+  const [serverAvailable, setServerAvailable] = useState(false);
   const [turns, setTurns] = useState<InterviewTurn[]>([]);
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -79,16 +82,22 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [saved, detail] = await Promise.all([
+      const [saved, detail, server] = await Promise.all([
         loadByokSettings().catch(() => null),
         initialContext.detail === undefined
           ? fetchProjectDetailForInterview(initialContext.pid, initialContext.year)
           : Promise.resolve(initialContext.detail),
+        isServerInterviewEnabled(),
       ]);
       if (cancelled) return;
       setContext(prev => ({ ...prev, detail }));
+      setServerAvailable(server);
       if (saved) {
         setSettings(saved);
+        setStep('interview');
+      } else if (server) {
+        // キー未登録でもサイト提供 AI で進める（会話本文はサーバーを経由する）
+        setSettings(null);
         setStep('interview');
       } else {
         setStep('key');
@@ -98,7 +107,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   }, [initialContext]);
 
   // インタビュアーの発話を取得する（turns の末尾が user、または空のとき）
-  const askInterviewer = useCallback(async (current: InterviewTurn[], s: ByokSettings, ctx: InterviewProjectContext) => {
+  const askInterviewer = useCallback(async (current: InterviewTurn[], s: ByokSettings | null, ctx: InterviewProjectContext) => {
     const aborter = new AbortController();
     abortRef.current = aborter;
     setThinking(true);
@@ -122,12 +131,12 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
 
   // インタビュー開始時に冒頭の問いかけを取る
   useEffect(() => {
-    if (step === 'interview' && settings && turns.length === 0 && !thinking && !error) {
+    if (step === 'interview' && (settings || serverAvailable) && turns.length === 0 && !thinking && !error) {
       void askInterviewer([], settings, context);
     }
     // context.detail の後着で再実行しないよう、開始条件のみに依存させる
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, settings]);
+  }, [step, settings, serverAvailable]);
 
   // ログ末尾へ自動スクロール
   useEffect(() => {
@@ -147,7 +156,8 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   }, [onClose]);
 
   const handleSaveKey = async () => {
-    const apiKey = keyInput.trim();
+    // 保存済みのキーがあれば空欄のまま再利用できる（モデル名だけ直す操作を想定）
+    const apiKey = keyInput.trim() || settings?.apiKey || '';
     if (!apiKey) return;
     const s: ByokSettings = { apiKey, model: modelInput.trim() || DEFAULT_BYOK_MODEL };
     try {
@@ -155,13 +165,39 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
     } catch {
       // IndexedDB が使えない環境でもこのダイアログ内では続行できる
     }
+    abortRef.current?.abort();
     setSettings(s);
     setKeyInput('');
+    setKeyTestMsg(null);
+    setTurns([]);
+    setError(null);
     setStep('interview');
   };
 
+  /** 誤ったモデル名などで進めなくなったときに設定へ戻る。キーは保持し、モデル欄に現在値を出す */
+  const handleOpenSettings = () => {
+    abortRef.current?.abort();
+    setThinking(false);
+    setModelInput(settings?.model ?? '');
+    setKeyInput('');
+    setKeyTestMsg(null);
+    setError(null);
+    setStep('key');
+  };
+
+  const handleForgetSettings = async () => {
+    try { await deleteByokSettings(); } catch { /* 保存されていなければ何もしない */ }
+    setSettings(null);
+    setModelInput('');
+    setKeyInput('');
+    setKeyTestMsg(null);
+    setTurns([]);
+    setError(null);
+    setStep('key');
+  };
+
   const handleTestKey = async () => {
-    const apiKey = keyInput.trim();
+    const apiKey = keyInput.trim() || settings?.apiKey || '';
     if (!apiKey) return;
     setKeyTesting(true);
     setKeyTestMsg(null);
@@ -172,7 +208,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || thinking || !settings || reachedMax) return;
+    if (!text || thinking || !(settings || serverAvailable) || reachedMax) return;
     const next: InterviewTurn[] = [...turns, { role: 'user', content: text.slice(0, INTERVIEW_INPUT_MAX_CHARS) }];
     setTurns(next);
     setInput('');
@@ -181,7 +217,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   };
 
   const handleSummarize = async () => {
-    if (!settings || userTurnCount < MIN_TURNS_TO_SUMMARIZE) return;
+    if (!(settings || serverAvailable) || userTurnCount < MIN_TURNS_TO_SUMMARIZE) return;
     abortRef.current?.abort();
     const aborter = new AbortController();
     abortRef.current = aborter;
@@ -246,6 +282,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
             </div>
             <div className="truncate text-xs text-mirai-text-subtle" title={context.projectName}>
               {context.projectName}
+              {step !== 'loading' && step !== 'key' && <span className="ml-2">・{settings ? 'あなたのキーで実行（会話はサーバーに送られません）' : 'サイト提供のAIで実行（会話はサーバーを経由）'}</span>}
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="閉じる" className="shrink-0 text-mirai-text-subtle hover:bg-card">
@@ -267,23 +304,39 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               利用上限（クレジット制限）を設定したキーの使用をおすすめします。
               キーは <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">openrouter.ai/keys</a> で発行できます。
             </p>
+            {settings && (
+              <p className="m-0 rounded-md bg-mirai-surface-teal px-2.5 py-1.5 text-xs">
+                保存済みのキーがあります。キー欄を空のままにすると、そのキーを使ってモデル名だけ更新します。現在のモデル: <code>{settings.model}</code>
+              </p>
+            )}
             <label className="block">
-              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">APIキー</span>
+              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">APIキー{settings && '（変更しない場合は空欄）'}</span>
               <input type="password" value={keyInput} onChange={e => setKeyInput(e.target.value)} autoComplete="off"
-                placeholder="sk-or-v1-..." className={INPUT_CLASS} />
+                placeholder={settings ? '保存済みのキーを使う' : 'sk-or-v1-...'} className={INPUT_CLASS} />
             </label>
             <label className="block">
               <span className="mb-[3px] block text-[11px] text-mirai-text-muted">モデル（空欄なら {DEFAULT_BYOK_MODEL}）</span>
               <input type="text" value={modelInput} onChange={e => setModelInput(e.target.value)} placeholder={DEFAULT_BYOK_MODEL} className={INPUT_CLASS} />
+              <span className="mt-[3px] block text-[11px] text-mirai-text-muted">OpenRouter のモデルID（例: {DEFAULT_BYOK_MODEL}）。存在しないIDだと AI が応答できません。</span>
             </label>
             {keyTestMsg && (
               <div className={cn('text-xs', keyTestMsg === '接続できました' ? 'text-primary-accent' : 'text-destructive')}>{keyTestMsg}</div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleTestKey} disabled={!keyInput.trim() || keyTesting} className="border-mirai-border">
+            <div className="flex flex-wrap justify-end gap-2">
+              {settings && (
+                <Button variant="outline" size="sm" onClick={handleForgetSettings} className="mr-auto border-mirai-border text-destructive">
+                  保存済みの設定を削除
+                </Button>
+              )}
+              {!settings && serverAvailable && (
+                <Button variant="outline" size="sm" onClick={() => { setTurns([]); setError(null); setStep('interview'); }} className="mr-auto border-mirai-border">
+                  キー無しでサイト提供のAIを使う
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleTestKey} disabled={(!keyInput.trim() && !settings) || keyTesting} className="border-mirai-border">
                 {keyTesting ? 'テスト中...' : '接続テスト'}
               </Button>
-              <Button variant="default" size="sm" onClick={handleSaveKey} disabled={!keyInput.trim()}>
+              <Button variant="default" size="sm" onClick={handleSaveKey} disabled={!keyInput.trim() && !settings}>
                 保存して始める
               </Button>
             </div>
@@ -311,10 +364,11 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               )}
               {error && (
                 <div className="flex flex-wrap items-center gap-2 self-stretch rounded-xl border border-destructive/30 bg-stance-against-bg px-2.5 py-1.5 text-xs text-destructive">
-                  <span>{error}</span>
-                  {turns.length === 0 && settings && (
+                  <span>{error}<span className="ml-1 text-mirai-text-muted">（{settings ? `モデル: ${settings.model}` : 'サイト提供のAI'}）</span></span>
+                  {turns.length === 0 && (settings || serverAvailable) && (
                     <Button variant="outline" size="xs" onClick={() => void askInterviewer([], settings, context)} className="border-mirai-border">再試行</Button>
                   )}
+                  <Button variant="outline" size="xs" onClick={handleOpenSettings} className="border-mirai-border">キー・モデルを変える</Button>
                 </div>
               )}
             </div>
@@ -332,6 +386,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-mirai-text-muted">
                   {input.length}/{INTERVIEW_INPUT_MAX_CHARS}字 ・ 発言 {userTurnCount}/{INTERVIEW_MAX_USER_TURNS}
+                  {' ・ '}<button type="button" onClick={handleOpenSettings} className="underline underline-offset-2 hover:text-mirai-text">設定</button>
                 </span>
                 <span className="flex-1" />
                 <Button variant="outline" size="sm" onClick={handleSummarize}

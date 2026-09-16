@@ -31,7 +31,7 @@ export function externalStress(path: Simulation, fx: number, foreignPrice: numbe
     const previousLevel = s.state.year > peak.state.year ? priceLevel : 0;
     return { year: s.state.year, inflation: (1 + constraintInflation(s)) * (1 + currentLevel) / (1 + previousLevel) - 1 };
   });
-  const cpiPeak = Math.max(path.initial.state.macro.inflation, ...years.map(s => s.inflation));
+  const cpiPeak = Math.max(...years.map(s => s.inflation));
   const importBill = peak.state.external.imports * importPrice;
   const exportReceipts = peak.state.external.exports * fx * assumptions.exportFxExposure;
   return { fx, foreignPrice, importPrice, priceLevel, foodPriceLevel: importPrice * assumptions.foodPass,

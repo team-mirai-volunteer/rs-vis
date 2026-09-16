@@ -123,6 +123,72 @@
 }
 
 @layer components {
+  /* 全画面の単一つまみスライダー。論理方向の寸法で縦ズームにも対応する。 */
+  .policy-range {
+    -webkit-appearance: none;
+    appearance: none;
+    block-size: 1.5rem;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .policy-range::-webkit-slider-runnable-track {
+    block-size: 6px;
+    inline-size: 100%;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--mirai-progress-track);
+  }
+
+  .policy-range::-moz-range-track,
+  .policy-range::-moz-range-progress {
+    block-size: 6px;
+    inline-size: 100%;
+    border: 0;
+    border-radius: 9999px;
+    background: var(--mirai-progress-track);
+  }
+
+  .policy-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-block-start: -5px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .policy-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  .policy-range:disabled {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  .policy-range-vertical::-webkit-slider-runnable-track {
+    width: 6px;
+    height: 100%;
+  }
+
+  .policy-range-vertical::-webkit-slider-thumb {
+    margin: 0 0 0 -5px;
+  }
+
+  .policy-range-vertical::-moz-range-track,
+  .policy-range-vertical::-moz-range-progress {
+    width: 6px;
+    height: 100%;
+  }
+
   /* メイングラデーション（hero / プライマリ CTA）。1 画面 1 箇所を目安に */
   .bg-mirai-gradient {
     background-image: linear-gradient(

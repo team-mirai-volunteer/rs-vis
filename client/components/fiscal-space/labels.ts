@@ -9,10 +9,10 @@ const LABELS: Record<string, string> = {
   consumptionTax: '消費税率変更', revenuePerPoint: '税率1ポイントの減収額', cpiShare: '対象品目のCPI比率', baseRate: '対象品目の基準税率', passThrough: '価格転嫁率',
   referenceDirectCpi: '表⑤から分離する直接CPI効果', referenceDirectDeflator: '表⑤から分離する直接デフレーター効果', longRate: '長期金利の変化',
   longRun: '長期シナリオ', years: '評価年数', rate: '借換金利', realization: '便益実現率',
-  basis: '事業計画の負荷換算', budgetTrillion: '基準事業の公費額', workerYears: '追加人員', sectorWorkerCapacity: '産業の年間人員能力', constructionPeakMw: '当年の追加ピーク', operatingPeakMw: '稼働後の系統ピーク寄与', annualOperatingGwh: '年間電力量', annualLoadFactor: '年間負荷率', peakCoincidence: '系統ピークとの同時発生係数',
-  load: '追加負荷の原単位', sectorUtilizationPerTrillion: '支出1兆円の産業稼働率増分', peakGwPerTrillion: '支出1兆円の当年ピーク電力', operatingPeakGwPerTrillion: '投資1兆円の稼働後ピーク電力',
+  basis: '事業計画の負荷換算', budgetTrillion: '基準事業の公費額', workerYears: '追加人員', sectorWorkerCapacity: '産業の年間人員能力', constructionPeakMw: '当年の追加ピーク', operatingPeakMw: '稼働後の系統ピーク寄与', annualOperatingGwh: '稼働後の年間電力量', annualConstructionGwh: '支出年の年間電力量', annualLoadFactor: '年間負荷率', peakCoincidence: '系統ピークとの同時発生係数',
+  load: '追加負荷の原単位', sectorUtilizationPerTrillion: '支出1兆円の産業稼働率増分', peakGwPerTrillion: '支出1兆円の当年ピーク電力', operatingPeakGwPerTrillion: '投資1兆円の稼働後ピーク電力', annualGwhPerTrillion: '支出1兆円の当年電力量', operatingAnnualGwhPerTrillion: '投資1兆円の稼働後年間電力量',
   lag: '稼働までの年数', lifetime: '稼働期間', depreciation: '年間減耗率',
-  generationTwh: '基準発電量', thermalShare: '基準火力割合', demandGrowth: '電力需要増加率', peakGrowth: 'ピーク需要増加率', nonThermalDecline: '既存非化石発電量の減少率', plannedNonThermalTwh: '既定の非化石発電年間追加量', fuelImportYenPerKwh: '火力燃料輸入単価',
+  generationTwh: '基準発電量', thermalShare: '基準火力割合', demandGrowth: '電力需要増加率', peakGrowth: 'ピーク需要増加率', nonThermalDecline: '既存非化石発電量の減少率', plannedNonThermalTwh: '既定の非化石発電年間追加量', fuelImportYenPerKwh: '火力燃料輸入単価', structuralUnemployment: '構造的失業率（仮定）', inflationRule: '物価判定の集約方式', marginalThermalShare: '政策追加電力の火力供給割合',
   powerMix: '電源構成', solar: '太陽光', nuclear: '原子力', hydro: '水力',
   maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益',
   energyCpi: 'エネルギーCPI', energyPolicyAdjustedCpi: 'エネルギーCPI・政策効果調整後（参考）', exchangeRate: '為替レート（円／ドル）',
@@ -66,12 +66,13 @@ const LABELS: Record<string, string> = {
   essentialImportShare: '追加輸入に占める必需品の割合', wageInflationPassThrough: '物価の賃金への波及率',
   cesSigma: '投入要素の代替弾力性', weights: '代替弾力性一定モデルの投入比重',
   cobbWeights: 'コブ＝ダグラス型の投入比重', searchCap: '探索上限額', searchStep: '探索間隔',
-  searchTolerance: '境界探索の分解能', reserveShare: '緊急時留保率',
+  searchTolerance: '境界探索の分解能', reserveShare: '定率控除（現在は0・ストレス控除に置換）', stresses: '参考上限が耐えるストレス', cpiCeiling: '許容インフレ−0.3pt', importPrice: '輸入物価+3%', energyPrice: '輸入エネルギー+20%',
   marketRateDelta: '市場金利の変化幅', energyPriceChange: '輸入エネルギー価格の変化率', realGrowthDelta: '実質成長率の変化幅',
 };
 
 /** Translate display names only; keep source keys and model identifiers stable. */
 export function inputLabel(key: string, policies: Policy[]): string {
+  if (key.startsWith('personalTaxRevenue.')) return `減税対象税収 / ${key.includes('resident-tax') ? '個人住民税の所得割' : '所得税'}`;
   const tradeLabels: Record<string, string> = { importFxExposure: '輸入価格への円安転嫁', exportFxExposure: '輸出受取の円換算割合', cpiPass: 'CPI水準への転嫁', foodPass: '食品価格水準への転嫁',
     annualSalesPerInvestment: '投資あたり年間売上', capexImportShare: '建設費の輸入割合', exportShare: '売上の輸出割合', domesticReplacementShare: '国内販売の輸入置換割合', operatingImportShare: '輸入原価割合',
     lag: '稼働までの年数', lifetime: '便益期間', capexPerKw: '設備容量あたり建設費', capacityFactor: '設備利用率', curtailment: '出力制御率', thermalReplacement: '火力置換割合',

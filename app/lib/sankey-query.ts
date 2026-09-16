@@ -9,6 +9,7 @@
  *   （page.tsx parseSearchParams / URL同期エフェクトの短縮キーと1対1。キーを変更する場合は両方を更新すること）
  */
 import type { RawNode, RawEdge } from '@/types/sankey-svg';
+import { compileSearchPattern, MAX_REGEX_PATTERN_LENGTH } from './search-pattern';
 import type {
   SankeyQuery,
   SankeyQueryFilter,
@@ -30,8 +31,7 @@ export const SANKEY_QUERY_DEFAULTS = {
 export const TOP_MINISTRY_MAX = 37;
 export const TOP_PROJECT_MAX = 300;
 export const TOP_RECIPIENT_MAX = 300;
-/** 正規表現パターン長の上限（ReDoS 最小対策） */
-export const MAX_REGEX_PATTERN_LENGTH = 128;
+export { MAX_REGEX_PATTERN_LENGTH } from './search-pattern';
 
 const ACCOUNT_CATEGORY_KEYS: readonly AccountCategoryKey[] = ['general', 'special', 'both', 'none'];
 
@@ -63,7 +63,7 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
         return null;
       }
       try {
-        new RegExp(q, 'i');
+        compileSearchPattern(q);
       } catch (e) {
         errors.push(`${label}.query が正規表現として不正です: ${e instanceof Error ? e.message : String(e)}`);
         return null;
@@ -94,7 +94,9 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
 
   const accountCategories = (() => {
     const input_ = input.filter?.accountCategories;
-    if (input_ == null) return [...ACCOUNT_CATEGORY_KEYS];
+    // 省略・null・空配列はいずれも「会計区分で絞らない」。スキーマの全項目を埋めて送るモデルは
+    // 空配列を渡してくるため、これを「該当なし」と解釈すると全事業が消える
+    if (input_ == null || input_.length === 0) return [...ACCOUNT_CATEGORY_KEYS];
     const unknown = input_.filter(c => !ACCOUNT_CATEGORY_KEYS.includes(c));
     if (unknown.length > 0) {
       errors.push(`filter.accountCategories に未知の値があります: ${unknown.join(', ')}（有効値: ${ACCOUNT_CATEGORY_KEYS.join(' | ')}）`);
@@ -238,7 +240,7 @@ export function buildFilterExcludedIds(
   const maxSpending = maxSpendingYen ?? Infinity;
   const buildMatcher = (query: string, useRegex: boolean): ((name: string) => boolean) => {
     if (useRegex) {
-      try { const re = new RegExp(query, 'i'); return name => re.test(name); }
+      try { return compileSearchPattern(query); }
       catch { return () => false; }
     }
     const qLower = query.toLocaleLowerCase();

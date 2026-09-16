@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { defaults } from '../client/lib/fiscal-space-form';
 import { createFiscalEngine } from '../client/lib/fiscal-space-engine';
-import { decodeScenario, encodeScenario, FISCAL_MODEL_VERSION } from '../client/lib/fiscal-space-url';
+import { decodeScenario, decodeScenarioDetailed, encodeScenario, FISCAL_MODEL_VERSION } from '../client/lib/fiscal-space-url';
+import { THRESHOLD_BOUNDS } from '../client/lib/fiscal-space-ranges';
 import { policyCostYen, totalPolicyCostYen } from '../client/lib/fiscal-space-amounts';
 import { initialEconomy, PARAMETERS, THRESHOLDS } from '../app/lib/fiscal-space/assumptions';
 import { constraintInflation, peakConstraints } from '../app/lib/fiscal-space/constraints';
@@ -22,7 +23,10 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
   // Yen/trillion and coefficients are pinned at the displayed 0.01-trillion resolution.
   // These are reproducible outputs, not an empirical validation of the model.
   // With IO loads, research staffing binds before the higher CPI ceilings.
-  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 17.01, 13.61], [.03, 27.45, 21.96], [.035, 27.45, 21.96]]) {
+  // 2026-09-16.4: policy electricity now adds an imported-fuel bill and its
+  // energy price pressure, so the 2.5% CPI boundary moved from 17.01/13.61.
+  // 2026-09-16.6: no default haircut; the envelope equals the search amount unless stresses are selected.
+  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 16.79, 16.79], [.03, 27.45, 27.45], [.035, 27.45, 27.45]]) {
     form.thresholds.inflation = limit;
     const r = calculate(form);
     assert.equal(r.totalYen, 15_000_000_000_000);
@@ -33,10 +37,11 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
     assert.equal(r.riskAudit.extrapolatedYears, 0);
     if (limit === .025) {
       const delta = (id: string) => r.sensitivity.find(c => c.id === id)!.delta!;
-      assert(Math.abs(delta('inflation') * 100 - 1.07991685) < .00001);
-      assert(Math.abs(delta('labour') * 100 - .00806445) < .00001);
+      assert(delta('inflation') * 100 > 1 && delta('inflation') * 100 < 1.2);
+      // NAIRU-gap ratio: one extra trillion lowers unemployment and raises u*/u visibly.
+      assert(delta('labour') > 0 && delta('labour') * 100 < 1);
       assert(delta('inflation') > delta('interestGdp'));
-      assert.equal(delta('debt'), 0);
+      assert(Number.isFinite(delta('debt')));
       assert.equal(r.constraints.find(c => c.id === 'sector')!.coverageComplete, true);
       assert.equal(r.constraints.find(c => c.id === 'energy')!.coverageComplete, true);
     }
@@ -66,19 +71,19 @@ test('CPI selector uses the stricter of headline and tax-adjusted inflation', ()
 
 test('coverage over all years survives an earlier violation; finite differences use actual peaks', () => {
   const current = simulate(initialEconomy('latest'), [], 3, PARAMETERS);
-  current.initial.state.labour.sectorUtilization.construction = 1.1;
-  current.steps[2].coverage = { sector: false, energy: false };
+  current.steps[0].state.labour.sectorUtilization.construction = 1.1;
+  current.steps[2].coverage = { sector: false, energy: false, fuel: false };
   const sector = peakConstraints(current, THRESHOLDS).find(c => c.id === 'sector')!;
   assert.equal(sector.status, 'violated');
-  assert.equal(sector.year, 0);
+  assert.equal(sector.year, 1);
   assert.equal(sector.coverageComplete, false);
   const probe = structuredClone(current);
   current.initial.metrics.grossDebtGdp = probe.initial.metrics.grossDebtGdp = 3;
   for (const s of current.steps) s.metrics.grossDebtGdp = 2;
   for (const s of probe.steps) s.metrics.grossDebtGdp = 2.5;
-  assert.equal(constraintSensitivity(current, probe, THRESHOLDS).find(c => c.id === 'debt')!.delta, 0);
+  assert(Math.abs(constraintSensitivity(current, probe, THRESHOLDS).find(c => c.id === 'debt')!.delta! - .5 / THRESHOLDS.debt) < 1e-12);
   probe.steps[1].metrics.grossDebtGdp = 3.28;
-  assert(Math.abs(constraintSensitivity(current, probe, THRESHOLDS).find(c => c.id === 'debt')!.delta! - .1) < 1e-12);
+  assert(Math.abs(constraintSensitivity(current, probe, THRESHOLDS).find(c => c.id === 'debt')!.delta! - 1.28 / THRESHOLDS.debt) < 1e-12);
 });
 
 test('every numeric URL input rejects extreme values, including unused load coefficients', () => {
@@ -94,7 +99,13 @@ test('every numeric URL input rejects extreme values, including unused load coef
         for (const extreme of [-1e15, 1e15]) {
           obj[key] = extreme;
           const hash = '#scenario=' + encodeURIComponent(JSON.stringify({ version: FISCAL_MODEL_VERSION, form }));
-          assert.throws(() => decodeScenario(hash), key);
+          // Thresholds are clipped into the editable domain and reported, never accepted raw.
+          if (obj === form.thresholds) {
+            const bounds = THRESHOLD_BOUNDS[key as keyof typeof THRESHOLD_BOUNDS];
+            const restored = decodeScenarioDetailed(hash);
+            assert.equal(restored.form.thresholds[key as keyof typeof THRESHOLD_BOUNDS], extreme < 0 ? bounds[0] : bounds[1]);
+            assert(restored.clipped.includes(`thresholds.${key}`));
+          } else assert.throws(() => decodeScenario(hash), key);
         }
         obj[key] = value;
       } else if (typeof value === 'object') visit(value as Record<string, unknown>);

@@ -12,6 +12,11 @@ import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified
 const CANVAS = '[data-testid="unified-canvas"]';
 const RENDER_TIMEOUT = 60_000;
 
+test('GIGA budget label retains the initial budget when spending is larger', async ({ page }) => {
+  await openPage(page, 'year=2024&b=initial&sel=project-budget-1503');
+  await expect(page.getByTestId('unified-label').filter({ hasText: 'GIGA' }).filter({ hasText: '5.08億円' })).toBeVisible();
+});
+
 /** ページを開いて図が出るまで待つ。ページエラーは呼び出し側で検証できるよう配列に集める */
 async function openPage(page: Page, query = 'year=2024'): Promise<string[]> {
   const pageErrors: string[] = [];
@@ -31,7 +36,7 @@ function columnHeader(page: Page, label: string) {
 async function headerOrder(page: Page): Promise<string[]> {
   return page.locator(`${CANVAS} text`).evaluateAll(nodes =>
     nodes
-      .filter(n => /^(会計|所管|組織\/勘定|項|目|事業|事業\(支出\)|支出先)_\d{4}/.test(n.textContent ?? ''))
+      .filter(n => /^(歳入|会計|所管|組織\/勘定|項|目|事業|事業\(支出\)|支出先)_\d{4}/.test(n.textContent ?? ''))
       .map(n => ({ x: Number(n.getAttribute('x')), text: (n.textContent ?? '').split(' ')[0] }))
       .sort((a, b) => a.x - b.x)
       .map(n => n.text)
@@ -88,7 +93,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
     expect(await nodeCount(page)).toBeGreaterThan(0);
     // 既定プリセット「統合」の列（組織/勘定・目は畳まれている）
-    expect(await headerOrder(page)).toEqual(['会計_2024', '所管_2024', '項_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
+    expect(await headerOrder(page)).toEqual(['歳入_2024', '会計_2024', '所管_2024', '項_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
     // 事業列は「何年度の・何の額か」を添える
     await expect(columnHeader(page, '事業_2024').first()).toHaveText(/^事業_2024 (歳出予算現額|当初予算)$/);
     await expect(columnHeader(page, '支出先_2024').first()).toHaveText('支出先_2024 支出額');
@@ -235,7 +240,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
   test('preset RSのみ hides 会計 and starts with 所管; URL cols updates', async ({ page }) => {
     await openPage(page);
-    expect((await headerOrder(page))[0]).toBe('会計_2024');
+    expect((await headerOrder(page))[0]).toBe('歳入_2024');
 
     await page.getByLabel('表示プリセット').selectOption('rs');
     await expect(page.getByLabel('表示プリセット')).toHaveValue('rs');
@@ -317,20 +322,17 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const links = page.getByTestId('unified-link');
     await expect(links.first()).toBeAttached();
 
-    // 太いリボンから順に、ノードに隠れていない位置で hover を試す
-    const count = Math.min(await links.count(), 20);
-    let shown = false;
-    for (let i = 0; i < count && !shown; i++) {
-      const box = await links.nth(i).boundingBox();
-      if (!box || box.height < 8) continue;
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      shown = await page
-        .getByTestId('unified-link-tooltip')
-        .waitFor({ state: 'visible', timeout: 1_000 })
-        .then(() => true)
-        .catch(() => false);
-    }
-    expect(shown).toBe(true);
+    // 全ラベル表示ではリボンの外接矩形の中心が画面外になるため、画面内の実際の塗りを探す。
+    const point = await page.evaluate(() => {
+      for (let y = 150; y < innerHeight - 60; y += 12) {
+        for (let x = 30; x < innerWidth - 30; x += 12) {
+          if (document.elementFromPoint(x, y)?.getAttribute('data-testid') === 'unified-link') return { x, y };
+        }
+      }
+      return null;
+    });
+    expect(point).not.toBeNull();
+    await page.mouse.move(point!.x, point!.y);
     await expect(page.getByTestId('unified-link-tooltip')).toContainText('→');
   });
 });

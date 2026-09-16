@@ -14,6 +14,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { compileSearchPattern, SearchPatternError } from '@/app/lib/search-pattern';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { availableYears as mofBudgetAvailableYears, listSections } from '@/app/lib/api/mof-kou-loader';
 import { linkageAvailable, resolveLinks, linkageRsYear, linkageScope, linkageAmountKind } from '@/app/lib/api/mof-rs-kou-moku-linkage-loader';
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
     }
 
     const params = new URL(request.url).searchParams;
+    if (params.get('filterSectionRegex') === '1') compileSearchPattern(params.get('filterSection') ?? '');
     const rawYear = params.get('year');
     const year = rawYear ? Number(rawYear) : years[0];
     if (!years.includes(year)) {
@@ -150,6 +152,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
   } catch (error) {
+    if (error instanceof SearchPatternError) return NextResponse.json({ error: error.message }, { status: 400 });
     return serverErrorResponse('MOF Section RS Sankey API', error);
   }
 }

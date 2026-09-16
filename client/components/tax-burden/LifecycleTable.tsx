@@ -45,11 +45,11 @@ export function LifecycleTable({ years, state, selectedAge }: { years: Lifecycle
       <div className="overflow-x-auto"><table className="w-full text-xs tabular-nums" aria-label="年齢別の金額（年額）">
         <thead><tr className="text-mirai-text-secondary"><th scope="col" className="py-1 text-left font-normal">年齢</th>
           <th scope="col" className={head}>総収入</th><th scope="col" className={head}>うち年金</th><th scope="col" className={head}>税</th>
-          <th scope="col" className={head}>保険料</th><th scope="col" className={head}>給付</th><th scope="col" className={head}>可処分所得</th></tr></thead>
+          <th scope="col" className={head}>保険料</th><th scope="col" className={head}>給付</th><th scope="col" className={head}>可処分所得（現金）</th><th scope="col" className={head}>転嫁等を含む推計純負担</th></tr></thead>
         <tbody>{rows.map(y => <tr key={y.ageAt} className={rowClass(y)}>{rowHead(y)}
           <td className="whitespace-nowrap text-right">{yen(y.income)}</td><td className="whitespace-nowrap text-right">{yen(y.pensionIncome)}</td><td className="whitespace-nowrap text-right">{yen(tax(y))}</td>
           <td className="whitespace-nowrap text-right">{yen(premiums(y))}</td><td className="whitespace-nowrap text-right">{yen(y.benefits)}</td>
-          <td className="whitespace-nowrap text-right">{yen(y.disposable - consumption(y))}</td></tr>)}</tbody>
+          <td className="whitespace-nowrap text-right">{yen(y.disposable)}</td><td className="whitespace-nowrap text-right">{yen(y.netBurden + consumption(y))}</td></tr>)}</tbody>
       </table></div>
     </div>
   </div>;

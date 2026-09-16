@@ -4,6 +4,8 @@
  */
 
 export interface SankeyNode {
+  /** Drawing capacity only; value remains the amount used for display and filtering. */
+  layoutValue?: number;
   id: string;
   nodeColor?: string;
   name?: string;

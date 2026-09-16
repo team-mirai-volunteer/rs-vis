@@ -1,7 +1,8 @@
 /**
  * 統合ビュー（/budget-sankey）用の統合グラフ。
  *
- * 国の歳出予算（一般会計＋特別会計）を MOF予算書の階層（会計→所管→組織/勘定→項→目）で流し、
+ * 当初・補正・決算の同じ基準の税目・款別歳入を会計へ接続する。国の歳出予算（一般会計＋特別会計）は
+ * MOF予算書の階層（会計→所管→組織/勘定→項→目）で流し、
  * 目から RS事業（→ 支出）へ、RS事業が無い分は非事業支出の区分または「未突合」へ落とす。
  * 設計: docs/tasks/20260913_0428_財務省予算書とRS事業の完全統合サンキー設計.md（3章）
  * 生成: scripts/generate-unified-budget-graph.ts、検証: scripts/validate-unified-budget-graph.ts
@@ -21,6 +22,7 @@ import type { MofRsAmountKind } from './mof-rs-kou-moku-linkage';
 
 /** 列。左から右へ。ページ側は列単位で表示/非表示（畳み込み）できる */
 export type UnifiedColumn =
+  | 'revenue'
   | 'account'
   | 'ministry'
   | 'organization'
@@ -31,6 +33,7 @@ export type UnifiedColumn =
   | 'recipient';
 
 export const UNIFIED_COLUMNS: readonly UnifiedColumn[] = [
+  'revenue',
   'account',
   'ministry',
   'organization',
@@ -42,6 +45,7 @@ export const UNIFIED_COLUMNS: readonly UnifiedColumn[] = [
 ] as const;
 
 export const UNIFIED_COLUMN_LABELS: Record<UnifiedColumn, string> = {
+  revenue: '歳入',
   account: '会計',
   ministry: '所管',
   organization: '組織/勘定',
@@ -90,6 +94,12 @@ export interface UnifiedNode {
   name: string;
   /** 円 */
   value: number;
+  /** 歳入の区分。会計・勘定間の受入を新たな税収と混同しないため区別する */
+  revenueKind?: 'tax' | 'bond' | 'insurance' | 'internal-transfer' | 'other';
+  revenueCategory?: string;
+  /** 元予算書の歳入額。表示の絞り込み・按分とは別に保持する */
+  revenueAmount?: number;
+  revenueBasis?: UnifiedBasis;
   /** 事業列のみ。RS事業は 'rs'、擬似ノードは 'outside' */
   kind?: UnifiedProgramKind;
   /** account〜koumoku 列 */
@@ -250,6 +260,8 @@ export interface UnifiedGraphMetadata {
   eraLabel: string;
   unit: 'yen';
   generatedAt: string;
+  /** 接続した歳入の科目別CSVを収録したZIPの出典・ハッシュ */
+  revenueSources?: Array<{ url: string; sha256: string; retrievedOn: string }>;
   totals: {
     /** 会計列の合計（一般＋特別。会計間の繰入を含む重複込み） */
     gross: number;

@@ -8,7 +8,7 @@
  * 呼び出し側は qualitySourceYear() でシート年度に戻してから叩く。
  */
 
-import { SUPPORTED_YEARS, type SupportedYear } from './api-notes';
+import { SUPPORTED_YEARS, type SupportedYear } from '@/types/rs-year';
 
 export const QUALITY_YEARS = ['2024', '2025', '2026'] as const;
 export type QualityYear = (typeof QUALITY_YEARS)[number];

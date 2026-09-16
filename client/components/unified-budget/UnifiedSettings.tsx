@@ -5,13 +5,14 @@
  * 文字サイズ・ラベル表示・関連フォーカス・表示する列。
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import type { UnifiedColumn } from '@/types/unified-budget';
 import { UnifiedColumnToggles } from './UnifiedViewSelect';
+import { FLOW_SCALE_DEFAULT, FLOW_SCALE_MIN, FLOW_SCALE_MAX } from '@/client/lib/unified-flow-scale';
 
 const FONT_MIN = 8;
 const FONT_MAX = 20;
@@ -20,6 +21,8 @@ export function UnifiedSettings({
   fontPx,
   onFontPxChange,
   defaultFontPx,
+  flowScale,
+  onFlowScaleChange,
   labelDensity,
   onLabelDensityChange,
   focusRelated,
@@ -33,6 +36,8 @@ export function UnifiedSettings({
   fontPx: number;
   onFontPxChange: (value: number) => void;
   defaultFontPx: number;
+  flowScale: number;
+  onFlowScaleChange: Dispatch<SetStateAction<number>>;
   labelDensity: LabelDensity;
   onLabelDensityChange: (value: LabelDensity) => void;
   focusRelated: boolean;
@@ -43,9 +48,10 @@ export function UnifiedSettings({
   /** 年度・純計などの要約。パネル末尾に小さく出す */
   summary?: string;
   /** 歯車の置き場所。パネルはボタンから離れる側（右上なら下、左下なら上）へ開く */
-  placement?: 'top-right' | 'bottom-left';
+  placement?: 'top-right' | 'bottom-left' | 'top-auto' | 'bottom-right';
+  // 'top-auto': sm 未満は右上（右揃え）、sm 以上は左上（左揃え）に置かれる前提でパネルの寄せを切り替える
 }) {
-  const popoverPos = placement === 'top-right' ? 'top-full right-0 mt-1' : 'bottom-full left-0 mb-1';
+  const popoverPos = placement === 'top-right' ? 'top-full right-0 mt-1' : placement === 'top-auto' ? 'top-full right-0 mt-1 sm:left-0 sm:right-auto' : placement === 'bottom-right' ? 'bottom-full right-0 mb-1' : 'bottom-full left-0 mb-1';
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -65,7 +71,7 @@ export function UnifiedSettings({
   }, [open]);
 
   return (
-    <div ref={rootRef} data-pan-disabled="true" className={`relative flex ${placement === 'top-right' ? 'items-start' : 'items-end'}`}>
+    <div ref={rootRef} data-pan-disabled="true" className={`pointer-events-auto relative flex ${placement === 'bottom-left' || placement === 'bottom-right' ? 'items-end' : 'items-start'}`}>
       <Button
         variant="outline"
         size="icon"
@@ -108,6 +114,15 @@ export function UnifiedSettings({
               controlSmallFontPx={12}
               numberFontPx={12}
             />
+          </div>
+          <div>
+            <div className="mb-1 font-semibold">帯・ノードの太さ</div>
+            <FontSizeControls baseFontPx={flowScale}
+              setBaseFontPx={onFlowScaleChange}
+              markReplace={() => {}} isCompactWidth={false}
+              min={FLOW_SCALE_MIN} max={FLOW_SCALE_MAX} defaultValue={FLOW_SCALE_DEFAULT}
+              stepSize={.1} label="帯・ノードの太さ" suffix="倍" controlSmallFontPx={12} numberFontPx={12} />
+            <p className="mt-1 leading-relaxed text-mirai-text-subtle">金額比を保って太くします。下にはみ出した部分は図をドラッグして表示できます。</p>
           </div>
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" checked={labelDensity === 'all'} onChange={e => onLabelDensityChange(e.target.checked ? 'all' : 'major')} className="h-3.5 w-3.5 cursor-pointer accent-primary" />

@@ -17,11 +17,12 @@ const policy = POLICIES.find(p => p.id === 'public-investment');
 assert(policy);
 
 test('load coverage distinguishes missing, partial and explicitly zero assumptions', () => {
-  assert.deepEqual(loadCoverage(undefined), { sector: false, energy: false });
-  assert.deepEqual(loadCoverage(unknown), { sector: false, energy: false });
-  assert.deepEqual(loadCoverage({ ...unknown, sectorUtilizationPerTrillion: 0 }), { sector: true, energy: false });
-  assert.deepEqual(loadCoverage({ ...unknown, peakGwPerTrillion: 0 }), { sector: false, energy: false });
-  assert.deepEqual(loadCoverage({ ...unknown, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0 }), { sector: false, energy: true });
+  assert.deepEqual(loadCoverage(undefined), { sector: false, energy: false, fuel: false });
+  assert.deepEqual(loadCoverage(unknown), { sector: false, energy: false, fuel: false });
+  assert.deepEqual(loadCoverage({ ...unknown, sectorUtilizationPerTrillion: 0 }), { sector: true, energy: false, fuel: false });
+  assert.deepEqual(loadCoverage({ ...unknown, peakGwPerTrillion: 0 }), { sector: false, energy: false, fuel: false });
+  assert.deepEqual(loadCoverage({ ...unknown, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0 }), { sector: false, energy: true, fuel: false });
+  assert.deepEqual(loadCoverage({ ...unknown, annualGwhPerTrillion: 0, operatingAnnualGwhPerTrillion: 0 }), { sector: false, energy: false, fuel: true });
 });
 
 test('the marginal comparison also labels unknown loads instead of ranking them as zero', () => {
@@ -37,7 +38,9 @@ test('project units convert to pure additional per-trillion loads without double
     sectorWorkerCapacity: 500000, constructionPeakMw: 1000, annualOperatingGwh: 8760 };
   assert.deepEqual(loadFromProject(basis), {
     sectorUtilizationPerTrillion: .01, peakGwPerTrillion: .5, operatingPeakGwPerTrillion: null,
+    annualGwhPerTrillion: null, operatingAnnualGwhPerTrillion: 4380,
   });
+  assert.equal(loadFromProject({ ...basis, annualConstructionGwh: 100 }).annualGwhPerTrillion, 50);
   const complete = { ...basis, annualLoadFactor: .5, peakCoincidence: .75 };
   assert.equal(loadFromProject(complete).operatingPeakGwPerTrillion, .75);
   assert.equal(loadFromProject({ ...complete, operatingPeakMw: 400 }).operatingPeakGwPerTrillion, .2);
@@ -51,7 +54,7 @@ test('known partial loads affect constraints while unknown remaining loads stay 
   const p = { ...policy, annualCost: 1e12, load: { ...unknown, peakGwPerTrillion: 1000 } };
   const loads = policyLoads(initial, [p], 1, PARAMETERS);
   assert(loads.peakGw > 900);
-  assert.deepEqual(loads.coverage, { sector: false, energy: false });
+  assert.deepEqual(loads.coverage, { sector: false, energy: false, fuel: false });
   const constraints = peakConstraints(simulate(initial, [p], 5, PARAMETERS), THRESHOLDS);
   assert(constraints.some(c => c.id === 'energy' && c.status === 'violated'));
   assert(constraints.some(c => c.id === 'sector' && c.status === 'unevaluated'));

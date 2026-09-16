@@ -26,7 +26,7 @@ export function allocateDemand(state: EconomyState, policies: Policy[], p: Model
   const scale = positive > 0 ? Math.min(1, Math.max(0, maximum - state.macro.realGdp - negative) / positive) : 1;
   const result: DemandResult = { additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0, capacityPriceAdjustment: 0,
     directTaxPriceEffect: 0, directTaxDeflatorEffect: 0, longRateEffect: 0,
-    domesticSubstitution: 0, projectEnergyNetImports: 0,
+    domesticSubstitution: 0, projectOperatingImports: 0, projectEnergyNetImports: 0,
     priceLevelEffect: 0, deflatorLevelEffect: 0, employmentEffect: 0, labourForceEffect: 0, hoursEffect: 0, details: [] };
   for (const { policy, r, project, net } of responses) {
     const real = r.gdp > 0 ? r.gdp * scale : r.gdp;
@@ -37,6 +37,7 @@ export function allocateDemand(state: EconomyState, policies: Policy[], p: Model
     result.exports += r.exports + project.exports * operationScale;
     result.imports += r.imports + overflow * p.overflowImportShare + (project.operatingImports - project.substitution) * operationScale;
     result.domesticSubstitution += project.substitution * operationScale;
+    result.projectOperatingImports += project.operatingImports * operationScale;
     if (project.power) result.projectEnergyNetImports += (project.operatingImports - project.substitution) * operationScale;
     result.prices += overflow * (1 - p.overflowImportShare);
     result.additionalDemand += r.gdp + r.imports - r.exports - project.domesticOperatingCost * operationScale;

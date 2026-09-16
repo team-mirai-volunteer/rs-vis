@@ -14,7 +14,7 @@ export function auditFiscalSpace(initial: EconomyState, mix: PolicyShare[], esti
   thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock) {
   const path = simulate(initial, allocateMix(mix, estimate.recommendedEnvelope), horizon, p, shock);
   const baseline = simulate(initial, [], horizon, p, shock);
-  const peak = [path.initial, ...path.steps].reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
+  const peak = path.steps.reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
   const baseAtPeak = peak.state.year === initial.year ? baseline.initial : baseline.steps[peak.state.year - initial.year - 1];
   const cpiLimits = [...new Set([thresholds.inflation, .035, .03, .025])].sort((a, b) => b - a);
   const binding = estimate.constraints.find(c => c.status === 'violated');
@@ -29,6 +29,12 @@ export function auditFiscalSpace(initial: EconomyState, mix: PolicyShare[], esti
     ? (probeCpi - baseCpi) / (probeAmount / TRILLION) : 0;
   return {
     safety: 'unassessed' as const,
+    baselineSensitivity: [...new Set([.01, .015, .018, .02, .022, .025, p.baselineInflation])].sort((a, b) => a - b).map(inflation => {
+      const alternate = inflation === p.baselineInflation ? estimate : estimateFiscalSpace(initial, mix, thresholds, horizon, { ...p, baselineInflation: inflation }, shock);
+      return { inflation, amount: alternate.theoreticalMaximum, status: alternate.status, current: inflation === p.baselineInflation,
+        limitingPolicy: alternate.limitingPolicy,
+        binding: alternate.constraints.filter(c => c.status === 'violated').map(c => c.label) };
+    }),
     amount: estimate.recommendedEnvelope,
     terminalGdpEffect: path.steps[horizon - 1].state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp,
     cpiApproximation: slope > 0 && baseCpi !== undefined ? {
