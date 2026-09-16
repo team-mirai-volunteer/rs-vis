@@ -116,7 +116,7 @@ export interface DemandResult {
   capacityPriceAdjustment: number;
   directTaxPriceEffect: number; directTaxDeflatorEffect: number; longRateEffect: number;
   additionalDemand: number; realOutput: number; exports: number; imports: number; prices: number;
-  domesticSubstitution: number; projectEnergyNetImports: number;
+  domesticSubstitution: number; projectOperatingImports: number; projectEnergyNetImports: number;
   priceLevelEffect: number; deflatorLevelEffect: number; employmentEffect: number; labourForceEffect: number; hoursEffect: number;
   details: { policyId: string; cost: number; baseMultiplier: number; slackFactor: number;
     capacityFactor: number; domesticRetentionFactor: number; effectiveMultiplier: number; realOutput: number }[];
@@ -151,6 +151,7 @@ export interface PolicyComparisonPeriod {
   realGdpEffect: number; inflationPressure: number;
   exports: number; imports: number; tradeBalanceEffect: number; domesticSubstitution: number;
   energyOperatingTradeEffect: number;
+  industryImports?: { operating: number; substitution: number; other: number; noReplacement: number; fullReplacement: number };
   debtGdp: number; debtGdpChange: number; potentialGdpEffect: number;
 }
 export interface PolicyComparison {

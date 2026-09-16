@@ -14,7 +14,7 @@ import { resourcePowerBalance, validateResourceAssumptions } from './resource-es
 const sectorZeros = () => Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
 const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0, capacityPriceAdjustment: 0,
   directTaxPriceEffect: 0, directTaxDeflatorEffect: 0, longRateEffect: 0,
-  domesticSubstitution: 0, projectEnergyNetImports: 0,
+  domesticSubstitution: 0, projectOperatingImports: 0, projectEnergyNetImports: 0,
   priceLevelEffect: 0, deflatorLevelEffect: 0, employmentEffect: 0, labourForceEffect: 0, hoursEffect: 0, details: [] });
 
 export function snapshot(state: EconomyState, p: ModelParameters): ProjectionStep {

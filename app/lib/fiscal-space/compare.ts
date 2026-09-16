@@ -16,6 +16,14 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
   return candidates.filter(policy => current.filter(x => x.id === policy.id).reduce((sum, x) => sum + x.annualCost, 0) + TRILLION <= policyReliefLimit(policy.id, p)).map(policy => {
     const incremental: Policy = { ...policy, annualCost: TRILLION, duration: 1, kind: policy.kind === 'growth' ? 'growth' : 'temporary' };
     const projection = simulate(initial, [...current, incremental], horizon, p, shock);
+    // These are conditional scenarios, not a confidence interval. Re-run the
+    // full model so production constraints and nominal prices remain consistent.
+    const industryConditions = incremental.trade?.kind === 'industry' ? incremental.trade.assumptions : undefined;
+    const replacementScenarios = incremental.id === 'semiconductors' && industryConditions
+      && industryConditions.annualSalesPerInvestment !== null
+      ? [0, 1].map(domesticReplacementShare => simulate(initial, [...current, { ...incremental,
+        trade: { kind: 'industry' as const, assumptions: { ...industryConditions, domesticReplacementShare } },
+      }], horizon, p, shock)) : undefined;
     const first = projection.steps[0], baseFirst = baseline.steps[0], last = projection.steps[horizon - 1], baseLast = baseline.steps[horizon - 1];
     // Compare additional physical resource use relative to each configured threshold.
     const coverage = loadCoverage(policy.load);
@@ -42,9 +50,17 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
         // price shock. Use each path's PREVIOUS deflator, not current CPI.
         const previous = year === 1 ? initial : projection.steps[year - 2].state;
         const basePrevious = year === 1 ? initial : baseline.steps[year - 2].state;
+        const price = previous.macro.nominalGdp / previous.macro.realGdp;
+        const basePrice = basePrevious.macro.nominalGdp / basePrevious.macro.realGdp;
+        const operating = step.demand.projectOperatingImports * price - base.demand.projectOperatingImports * basePrice;
+        const substitution = step.demand.domesticSubstitution * price - base.demand.domesticSubstitution * basePrice;
+        const imports = step.state.external.imports - base.state.external.imports;
         const energyOperatingTradeEffect = -(step.demand.projectEnergyNetImports * previous.macro.nominalGdp / previous.macro.realGdp
           - base.demand.projectEnergyNetImports * basePrevious.macro.nominalGdp / basePrevious.macro.realGdp) * (1 + shock.energyPriceChange);
         return { year,
+          industryImports: replacementScenarios ? { operating, substitution, other: imports - operating + substitution,
+            noReplacement: replacementScenarios[0].steps[year - 1].state.external.imports - base.state.external.imports,
+            fullReplacement: replacementScenarios[1].steps[year - 1].state.external.imports - base.state.external.imports } : undefined,
           energyOperatingTradeEffect,
           realGdpEffect: step.state.macro.realGdp - base.state.macro.realGdp,
           inflationPressure: step.state.macro.inflation - base.state.macro.inflation,
