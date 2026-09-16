@@ -84,6 +84,9 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
  * CPI peak while the displayed outcome was the post-withdrawal trough. */
 function ThreePoints({ estimate, projection, baseline, horizon }: { estimate: FiscalSpaceEstimate; projection: Simulation; baseline: Simulation; horizon: number }) {
   const steps = projection.steps.slice(0, horizon);
+  // Without any policy there is no binding year; the fallback would just be the
+  // no-policy CPI drift (which peaks in the final year) and reads as a result.
+  if (estimate.status === 'empty-mix') return <p className="mt-3 text-sm" data-testid="three-points">政策額を入力すると、拘束年・実質GDP効果のピーク年・最終年の三時点を比較します。</p>;
   const gdpEffect = (i: number) => steps[i].state.macro.realGdp - baseline.steps[i].state.macro.realGdp;
   const cpiPeak = steps.reduce((a, b, i) => constraintInflation(steps[a]) >= constraintInflation(b) ? a : i, 0);
   const bindingYear = estimate.constraints.find(c => c.status === 'violated')?.year;
