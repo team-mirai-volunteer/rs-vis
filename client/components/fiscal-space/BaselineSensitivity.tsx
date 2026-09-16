@@ -22,6 +22,6 @@ export function BaselineSensitivity({ rows }: { rows: FiscalRiskAudit['baselineS
       <tbody>{rows.map(r => <tr key={r.inflation} className="border-t border-mirai-border"><th scope="row" className="p-2 text-left">{percent(r.inflation, 1)}{r.current && '（現在の設定）'}</th><td className="p-2 whitespace-nowrap">{r.status === 'unevaluated' ? '算出不可' : r.status === 'empty-mix' ? '—' : money(r.amount, 1)}</td><td className="p-2 text-left">{outcome(r)}</td></tr>)}</tbody>
     </table></div>
     <p className="text-xs">現在の観測値（年0）、許容する物価上昇率、政策の配分、その他の条件は固定しています。想定する物価上昇率に、GDPギャップなどの影響を加えて将来の物価を計算します。0円の行は、将来の想定と許容上限が両立しない条件です。</p>
-    <p className="text-xs">年額は任意控除前の合計で、入力額への上乗せ額ではありません。0.1兆円単位の表示は丸めた計算値です。この比較は予測の確かさや信頼区間を示しません。</p>
+    <p className="text-xs">年額はストレス控除前の探索額で、入力額への上乗せ額ではありません。0.1兆円単位の表示は丸めた計算値です。この比較は予測の確かさや信頼区間を示しません。</p>
   </div>;
 }

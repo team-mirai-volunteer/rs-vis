@@ -7,6 +7,8 @@ import { fieldClass, KIND_LABELS, money } from './format';
 import { personalTaxRevenue, SOCIAL_INSURANCE_REVENUE } from '@/app/lib/fiscal-space/policy-limits';
 import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
+import { STRESSES, type StressId, type StressSelection } from '@/app/lib/fiscal-space/stress-envelope';
+import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
 const CONDITIONS_KEY = 'fiscal-space:constraint-conditions-open';
@@ -60,11 +62,12 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
     </details>}
   </div>;
 });
-export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
-  structuralUnemployment, headline, onClose,
-  onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
+export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
+  structuralUnemployment, headline, onClose, stresses, onStress,
+  onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
-  rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
+  rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
+  stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
   gap: number; inflation: number; construction: number; firmCapacity: number;
   structuralUnemployment: number; headline?: string; onClose?: () => void;
   onPowerSettings: () => void;
@@ -72,7 +75,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onSupplySettings: () => void;
   onAmount: (id: string, n: number) => void; onPolicyDuration: (id: string, n: number) => void;
   onPolicyKind: (id: string, v: PolicyKind) => void; onHorizon: (n: number) => void; onRateShock: (n: number) => void; onEnergyShock: (n: number) => void;
-  onReserve: (n: number) => void; onThreshold: (id: keyof Thresholds, n: number) => void;
+  onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
   const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
@@ -101,6 +104,15 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
     </div>
     <CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
+      <fieldset className="flex items-center justify-between gap-2 text-sm" data-testid="horizon-toggle">
+        <legend className="sr-only">制約の評価期間</legend>
+        <span className="font-medium">評価期間</span>
+        <span className="flex overflow-hidden rounded-lg border border-mirai-border">
+          {[maxHorizon, EXTENDED_HORIZON].map(n => <button key={n} type="button" aria-pressed={horizon === n} onClick={() => onHorizon(n)}
+            className={`px-3 py-1 text-xs ${horizon === n ? 'bg-primary text-white' : 'bg-card'}`}>{n}年{n === EXTENDED_HORIZON ? '（延長）' : ''}</button>)}
+        </span>
+      </fieldset>
+      {horizon === EXTENDED_HORIZON && <p className="-mt-3 text-xs text-mirai-text-subtle">15年は公表乗数（{maxHorizon}年）の末尾を据え置いた延長計算。新設原子力（11年目稼働）などを同じ制約評価で見るための条件で、公表推計ではありません。</p>}
       <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border px-3 py-1.5" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer text-sm font-bold leading-tight [&::marker]:text-xs">予算を制約する条件<span className="block whitespace-nowrap text-[11px] font-normal leading-tight text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}% / 失業率 {(floor * 100).toFixed(1)}% / ギャップ {gap.toFixed(1)}%</span></summary>
         <div className="mt-2 space-y-3 pb-1">
@@ -108,6 +120,11 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
           <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
           <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
           <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
+          <fieldset className="space-y-1 text-xs" data-testid="stress-selection">
+            <legend className="font-medium">参考上限が耐えるべきストレス</legend>
+            <p className="text-mirai-text-subtle">選んだ条件すべてに耐える額を参考上限にします。何も選ばなければ探索額をそのまま表示します。控除率は入力せず、結果として表示します。</p>
+            {(Object.keys(STRESSES) as StressId[]).map(id => <label key={id} className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={stresses[id]} onChange={e => onStress(id, e.target.checked)} /><span>{STRESSES[id].label}<span className="block text-mirai-text-subtle">{STRESSES[id].note}</span></span></label>)}
+          </fieldset>
         </div>
       </details>
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
@@ -145,7 +162,6 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />
-        <RangeField label="任意の定率控除" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>
         {definitions.map(thresholdInput)}
         <Button variant="outline" onClick={() => economyDialog.current?.close()}>設定を閉じて結果を見る</Button>

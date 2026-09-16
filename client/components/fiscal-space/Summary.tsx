@@ -22,9 +22,14 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
   </section>;
   return <section id="fiscal-envelope" aria-label="財政余力の探索結果" className="scroll-mt-20 space-y-3">
     <Card><CardContent className="space-y-4 pt-5">
-      <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限（任意控除後）</h2>
+      <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限（選んだストレスに耐える額）</h2>
       <p className="text-3xl font-bold tabular-nums" data-testid="recommended-envelope-summary">{money(estimate.recommendedEnvelope, 1)} / 年</p>
-      <p className="text-sm">条件付きの参考値で、推奨額でも財政の上限でもありません。任意の定率控除{percent(estimate.reserveRule.share, 0)}後。控除前の探索額は <span data-testid="theoretical-maximum">{money(estimate.theoreticalMaximum, 1)}</span>、評価期間{horizon}年間。</p>
+      <p className="text-sm">条件付きの参考値で、推奨額でも財政の上限でもありません。ストレスなしの探索額は <span data-testid="theoretical-maximum">{money(estimate.theoreticalMaximum, 1)}</span>（実質的な控除 {percent(estimate.reserveRule.share, 0)}。控除率は入力ではなく結果）。評価期間{horizon}年間。</p>
+      {estimate.stress && estimate.stress.length > 0 && <div className="overflow-x-auto" role="region" aria-label="ストレス別の参考上限" tabIndex={0} data-testid="stress-table"><table className="w-full min-w-[460px] text-right text-sm tabular-nums">
+        <caption className="text-left text-xs">各ストレスを同じ配分に載せて再探索した額。チェックした条件の最小値を参考上限にします（「予算を制約する条件」で選択）。{estimate.stress.some(s => s.selected) ? '' : '現在は未選択のため、ストレスなしの探索額を表示しています。'}ストレスの大きさは仮定ですが、「何に耐えるか」として読める条件です。</caption>
+        <thead><tr><th scope="col" className="text-left">ストレス</th><th scope="col">耐える額／年</th><th scope="col" className="text-left">拘束</th><th scope="col" className="text-left">選択</th></tr></thead>
+        <tbody>{estimate.stress.map(row => <tr key={row.id} className={`border-t border-mirai-border ${row.selected ? '' : 'text-mirai-text-subtle'}`} data-stress={row.id} data-selected={row.selected}><th scope="row" className="py-1 text-left font-medium">{row.label}</th><td>{money(row.amount, 1)}{row.selected && row.amount <= estimate.recommendedEnvelope + 1 && ' ◀'}</td><td className="text-left text-xs">{row.status === 'baseline-violated' ? '政策なしで上限超過' : row.binding ?? '—'}</td><td className="text-left text-xs">{row.selected ? '採用' : '未選択'}</td></tr>)}</tbody>
+      </table></div>}
       {inflationAlone && approximation && <div className="rounded bg-mirai-surface-warm p-3 text-sm" data-testid="cpi-decomposition">
         <p className="font-bold">この条件では、CPI上限が単独で枠を決めています。</p>
         <p className="mt-1">近似：(上限{percent(riskAudit.cpi.limit, 3)} − 政策なしのCPI {percent(approximation.baseline, 3)}) ÷ {(approximation.slope * 100).toFixed(3)}ポイント/兆円 ≈ {money(approximation.amount)}（控除前）。年{approximation.year}における0〜1兆円の感応度から求めた説明用の式で、主表示は全制約の探索額です。</p>
@@ -40,9 +45,9 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
         <BaselineSensitivity rows={riskAudit.baselineSensitivity} />
         <p className="text-xs">この表は、今後の物価上昇の想定を変えた比較です。「次の1兆円」の表は、現在の想定のまま政策を追加した影響を比較します。債務以外の条件で増額が止まった行は、国債をどこまで増やせるかを示すものではありません。</p>
       </div></details>
-      <details><summary className="cursor-pointer text-sm font-bold">CPI上限別の感度と計算方法</summary><p className="mt-2 text-sm">設定した制約内での探索額 {money(estimate.theoreticalMaximum, 1)} ×（1 − 任意控除率{percent(estimate.reserveRule.share, 0)}）＝ 参考上限 {money(estimate.recommendedEnvelope, 1)}。任意の定率控除（年額{money(estimate.emergencyReserve)}）はストレスから推計した予備費ではありません。</p>
+      <details><summary className="cursor-pointer text-sm font-bold">CPI上限別の感度と計算方法</summary><p className="mt-2 text-sm">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)} に対し、選んだストレスに耐える最小額 {money(estimate.recommendedEnvelope, 1)} を参考上限とします（差 {money(estimate.emergencyReserve)}）。下表はストレスなしの探索額です。</p>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="CPI上限別の探索結果" data-testid="cpi-limit-sensitivity"><table className="w-full text-right text-sm">
-        <caption className="mb-2 text-left font-bold">CPI許容上限による感度（同じ配分・期間、任意控除後の年額）</caption>
+        <caption className="mb-2 text-left font-bold">CPI許容上限による感度（同じ配分・期間、ストレスなしの探索額）</caption>
         <thead><tr><th scope="col" className="text-left">CPI許容上限</th><th scope="col">同じ配分の参考上限</th><th scope="col" className="text-left">条件</th></tr></thead>
         <tbody>{[...riskAudit.sensitivity].sort((a, b) => a.limit - b.limit).map(row => <tr key={row.limit} className="border-t border-mirai-border">
           <th scope="row" className="py-2 text-left">{percent(row.limit, 1)}{row.current && '（現在）'}</th>
@@ -52,7 +57,7 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
       </table><p className="mt-2 text-xs">CPI上限だけを変え、全制約を再探索しています。表示桁は計算の丸めで、推定精度を表しません。上限の設定に強く依存する条件付きの値で、許容物価の推奨や信頼区間ではありません。</p></div></details>
       <details><summary className="cursor-pointer text-sm font-bold">この数字の読み方</summary><div className="mt-2 space-y-2 text-sm">
         <p>追加予算に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
-        <p>任意控除後の参考額を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加予算と国の一般会計予算」を参照してください。</p>
+        <p>参考上限（ストレス耐性額）を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加予算と国の一般会計予算」を参照してください。</p>
         <p><strong>安全性は未判定です。</strong> 産業内の職種・設備の偏り、地域間の電力融通、追加の為替ストレスは上限に十分反映できません。手入力の空欄は未評価です。参考上限は政策の推奨額や便益の評価ではありません。</p>
       </div></details>
 

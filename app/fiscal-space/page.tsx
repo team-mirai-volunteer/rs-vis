@@ -29,6 +29,7 @@ import { PowerMix } from '@/client/components/fiscal-space/PowerMix';
 import { ElectricityBaseline } from '@/client/components/fiscal-space/ElectricityBaseline';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
+import type { StressId } from '@/app/lib/fiscal-space/stress-envelope';
 import { SupplyConditions } from '@/client/components/fiscal-space/SupplyConditions';
 import type { PolicyKind, Thresholds } from '@/types/fiscal-space';
 
@@ -86,7 +87,8 @@ export default function FiscalSpacePage() {
     kind: (id: string, kind: PolicyKind) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], kind } } })),
     duration: (id: string, duration: number) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], duration } } })),
     horizon: (n: number) => update('horizon', n), rate: (n: number) => update('rateShock', n), energy: (n: number) => update('energyShock', n),
-    reserve: (n: number) => update('reserve', n), gap: (n: number) => update('gap', n), inflation: (n: number) => update('inflation', n),
+    stress: (id: StressId, on: boolean) => setForm(f => f.stresses[id] === on ? f : { ...f, stresses: { ...f.stresses, [id]: on } }),
+    gap: (n: number) => update('gap', n), inflation: (n: number) => update('inflation', n),
     construction: (n: number) => update('construction', n), firm: (n: number) => update('firmCapacity', n),
     threshold: (id: keyof Thresholds, n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } })),
     cpiLimit: (n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, inflation: n } })),
@@ -151,7 +153,7 @@ export default function FiscalSpacePage() {
         <MemoControls
           structuralUnemployment={form.calibration.structuralUnemployment} headline={headline}
           onClose={() => setControlsOpen(false)}
-          amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
+          amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} stresses={form.stresses} onStress={change.stress}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
@@ -161,7 +163,7 @@ export default function FiscalSpacePage() {
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
           definitions={CONSTRAINTS}
           onAmount={change.amount} onHorizon={change.horizon} onPolicyKind={change.kind} onPolicyDuration={change.duration}
-          onRateShock={change.rate} onEnergyShock={change.energy} onReserve={change.reserve} onThreshold={change.threshold}
+          onRateShock={change.rate} onEnergyShock={change.energy} onThreshold={change.threshold}
           onGap={change.gap} onInflation={change.inflation} onConstruction={change.construction} onFirmCapacity={change.firm} onReset={change.reset} />
           </div>
         </aside>

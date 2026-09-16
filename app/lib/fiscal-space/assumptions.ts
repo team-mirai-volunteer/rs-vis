@@ -27,7 +27,8 @@ export const PARAMETERS: ModelParameters = {
   essentialImportShare: .25, wageInflationPassThrough: .8, cesSigma: .8,
   weights: { capital: .3, labour: .4, energy: .15, materials: .15 },
   cobbWeights: { capital: .35, labour: .5, energy: .15 },
-  searchCap: 100 * TRILLION, searchStep: TRILLION, searchTolerance: .01 * TRILLION, reserveShare: .2,
+  // reserveShare 0: the displayed envelope is derived from selected stresses (stress-envelope.ts), not a percentage.
+  searchCap: 100 * TRILLION, searchStep: TRILLION, searchTolerance: .01 * TRILLION, reserveShare: 0,
 };
 // labour: structural / actual unemployment ratio. 1.25 with u* = 2.5% permits unemployment down to 2.0%.
 export const THRESHOLDS: Thresholds = { debt: 2.8, interestGdp: .065, interestTax: .3, gfn: .45,

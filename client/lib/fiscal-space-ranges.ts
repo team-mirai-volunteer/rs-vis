@@ -52,7 +52,7 @@ const root: Record<string, Bounds> = {
   'resource.loadScale': [.25, 2], 'resource.spendingShare': [0, 1], 'resource.priceIndex': [.8, 2],
   'resource.electricityPrice': [5, 50], 'resource.loadFactor': [.2, 1], 'resource.coincidence': [0, 1],
   'resource.operatingOutputRatio': [0, 2],
-  gap: [-10, 3], inflation: [-3, 10], reserve: [0, 50], rateShock: [0, 300], energyShock: [0, 100],
+  gap: [-10, 3], inflation: [-3, 10], rateShock: [0, 300], energyShock: [0, 100],
   construction: [70, 100], firmCapacity: [170, 250], corporateShare: [0, 1],
   'longRun.years': [6, 100], 'longRun.realGrowth': [-.01, .03], 'longRun.inflation': [0, .05],
   'longRun.rate': [0, .06], 'longRun.realization': [0, 1],

@@ -156,6 +156,8 @@ export interface FiscalSpaceEstimate {
   limitingPolicy?: string;
   constraints: ConstraintResult[]; evaluations: number; tolerance: number;
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };
+  /** Per-stress envelopes when the reserve is stress-based. */
+  stress?: { id: string; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }[];
 }
 export interface PolicyComparisonPeriod {
   year: number;

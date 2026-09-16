@@ -28,7 +28,7 @@ test('loose macro constraints still stop the fixed-share search at the insurance
   assert.equal(r.status, 'revenue-cap');
   assert.equal(r.limitingPolicy, 'social-insurance');
   assert.equal(r.theoreticalMaximum, 78_732_200_000_000);
-  assert.equal(r.recommendedEnvelope, 62_985_760_000_000);
+  assert.equal(r.recommendedEnvelope, 78_732_200_000_000); // reserveShare is 0; stresses are applied separately
 });
 
 test('worker clamps over-limit input and omits an impossible extra trillion; shared URLs reject it', () => {

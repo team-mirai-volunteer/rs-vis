@@ -7,6 +7,7 @@ import type { JapanDataset } from '@/app/lib/fiscal-space/japan-data';
 import type { Policy, PolicyKind } from '@/types/fiscal-space';
 import type { TradeForm } from './fiscal-space-trade';
 import { RESOURCE_DEFAULTS, resourcePowerBalance } from '@/app/lib/fiscal-space/resource-estimate';
+import { DEFAULT_STRESSES } from '@/app/lib/fiscal-space/stress-envelope';
 
 export const defaults = (dataset: JapanDataset = 'latest') => {
   const initial = initialEconomy(dataset);
@@ -14,7 +15,7 @@ export const defaults = (dataset: JapanDataset = 'latest') => {
   supply: Object.fromEntries(Object.entries(SUPPLY_CASES).map(([id, ref]) => [id, { ...ref.settings }])),
   trade: { selected: 'semiconductors', industry: Object.fromEntries(POLICIES.map(policy => [policy.id, { ...(policy.id === 'semiconductors' ? SEMICONDUCTOR_CASE : INDUSTRY_CASE) }])), power: powerCase('solar') } as TradeForm,
   policySettings: Object.fromEntries(POLICIES.map(policy => [policy.id, { kind: policy.kind, duration: policy.duration }])) as Record<string, { kind: PolicyKind; duration: number }>,
-  rateShock: 0, energyShock: 0, reserve: PARAMETERS.reserveShare * 100,
+  rateShock: 0, energyShock: 0, stresses: { ...DEFAULT_STRESSES },
   calibration: structuredClone(PARAMETERS),
   gap: Number(((initial.macro.realGdp / initial.macro.potentialGdp - 1) * 100).toFixed(1)),
   inflation: initial.macro.inflation * 100,

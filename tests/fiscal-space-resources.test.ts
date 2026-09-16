@@ -106,9 +106,10 @@ test('estimated industry loads bind the search and load uncertainty changes the 
   assert(r.projection.steps[0].resourcePower!.nationalDemandGw > r.baseline.steps[0].resourcePower!.nationalDemandGw);
   // The period's peak may occur after temporary spending ends, hiding this extra load in the peak difference.
   const bounds = r.resourceSensitivity.map(v => v.space.recommendedEnvelope / 1e12);
-  assert(Math.abs(bounds[0] - 10.6875) < .005);
-  assert(Math.abs(bounds[1] - 5.34375) < .005);
-  assert(Math.abs(bounds[2] - 3.5625) < .005);
+  // Pre-stress search amounts (the former 20% haircut is gone).
+  assert(Math.abs(bounds[0] - 13.359375) < .005);
+  assert(Math.abs(bounds[1] - 6.6796875) < .005);
+  assert(Math.abs(bounds[2] - 4.453125) < .005);
   assert(r.resourceSensitivity.every(v => v.space.constraints.some(c => c.id === 'sector' && c.status === 'violated')));
 });
 

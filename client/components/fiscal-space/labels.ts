@@ -66,7 +66,7 @@ const LABELS: Record<string, string> = {
   essentialImportShare: '追加輸入に占める必需品の割合', wageInflationPassThrough: '物価の賃金への波及率',
   cesSigma: '投入要素の代替弾力性', weights: '代替弾力性一定モデルの投入比重',
   cobbWeights: 'コブ＝ダグラス型の投入比重', searchCap: '探索上限額', searchStep: '探索間隔',
-  searchTolerance: '境界探索の分解能', reserveShare: '緊急時留保率',
+  searchTolerance: '境界探索の分解能', reserveShare: '定率控除（現在は0・ストレス控除に置換）', stresses: '参考上限が耐えるストレス', energyPrice: '輸入エネルギー+20%',
   marketRateDelta: '市場金利の変化幅', energyPriceChange: '輸入エネルギー価格の変化率', realGrowthDelta: '実質成長率の変化幅',
 };
 

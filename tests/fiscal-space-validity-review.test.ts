@@ -130,6 +130,36 @@ test('15-year horizon extends the simulation, adds 10/15-year comparison periods
   assert.equal(engine(g).projection.steps.length, 5);
 });
 
+// Stress-derived envelope replaces the arbitrary percentage haircut.
+test('envelope equals the search amount with no stress selected, and the minimum surviving amount when stresses are selected', () => {
+  const engine = createFiscalEngine();
+  const f = example();
+  const none = engine(f);
+  near(none.estimate.recommendedEnvelope, none.estimate.theoreticalMaximum);
+  assert.equal(none.estimate.reserveRule.method, 'stress-scenarios');
+  assert.equal(none.estimate.stress!.length, 4);
+  assert(none.estimate.stress!.every(s => !s.selected));
+  const energy = none.estimate.stress!.find(s => s.id === 'energyPrice')!;
+  assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
+  // With a 2.5% ceiling and ~2.05% no-policy CPI, +0.5pt inflation or a 10% yen fall leave no room at all.
+  for (const id of ['baselineInflation', 'fx']) assert.equal(none.estimate.stress!.find(s => s.id === id)!.status, 'baseline-violated');
+  f.stresses = { ...f.stresses, energyPrice: true };
+  const withEnergy = engine(f);
+  near(withEnergy.estimate.recommendedEnvelope, energy.amount, 1e-6);
+  near(withEnergy.estimate.reserveRule.share, 1 - energy.amount / none.estimate.theoreticalMaximum, 1e-6);
+  f.stresses = { ...f.stresses, fx: true };
+  near(engine(f).estimate.recommendedEnvelope, 0);
+});
+
+test('old links with a percentage reserve migrate to the stress selection and report it', () => {
+  const legacy = { ...defaults(), reserve: 20 } as Record<string, unknown>;
+  delete legacy.stresses;
+  const restored = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: legacy })));
+  assert.deepEqual(restored.form.stresses, { baselineInflation: false, fx: false, energyPrice: false, rate: false });
+  assert(restored.filled.some(k => k.startsWith('任意控除20%')));
+  assert.equal(restored.form.calibration.reserveShare, 0);
+});
+
 // Grid fuel savings are domestic value added and must not vanish behind a Leontief labour bottleneck.
 test('grid savings raise potential GDP identically under every production function', () => {
   const engine = createFiscalEngine();
