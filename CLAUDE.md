@@ -64,7 +64,7 @@ Supabase はプロジェクト `marumie-rssystem`（ref `igtulishrosqdukrrixx`�
 ### 事業コメント機能（AIインタビュー）
 
 - `NEXT_PUBLIC_SUPABASE_URL` と `SUPABASE_SERVICE_ROLE_KEY` が揃った環境でのみ有効（専用フラグ無し）。無ければ API は 404、UI は非表示
-- LLM は BYOK（訪問者の OpenRouter キー・ブラウザ直）。サーバは `app/api/projects/[pid]/comments` で保存・一覧のみ
+- LLM は BYOK（訪問者の OpenRouter キー・ブラウザ直）を優先。キー未登録でもサイト提供 AI が有効な環境（`app/api/ai/_lib/server-llm.ts` の `isServerAiEnabled`。Vercel では `SANKEY_AI_CHAT_ENABLED=1` とキーが必要）では `app/api/ai/interview` でサーバー側 LLM を使う（会話本文がサーバーを経由する旨を画面に表示）。保存・一覧は `app/api/projects/[pid]/comments`
 - 設計: `docs/tasks/20260828_1508_事業コメント機能（みらい議会ライク）設計.md`
 
 ## Agent の行動ルール

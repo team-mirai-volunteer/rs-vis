@@ -1,9 +1,11 @@
 /**
- * AIインタビューの実行（BYOK・ブラウザ側）。
+ * AIインタビューの実行。
  *
- * LLM は訪問者自身の OpenRouter キーで直接呼ぶ（client/lib/ai/openrouter-caller と同じ規律・
+ * BYOK: LLM は訪問者自身の OpenRouter キーで直接呼ぶ（client/lib/ai/openrouter-caller と同じ規律・
  * 同じ IndexedDB 保存キー）。インタビューの本文・キーは自サイトのサーバへ送らない。
- * サーバへ送るのは、本人が公開に同意した最終の意見本文と transcript だけ（submitOpinion）。
+ * サーバーモード（settings が null）: サイト提供 AI が有効な環境では /api/ai/interview で
+ * サーバー側の LLM を使う。この場合は会話本文がサーバーを経由する（画面の文言で明示する）。
+ * 意見の保存は両モード共通で、本人が公開に同意した最終の本文と transcript だけを送る（submitOpinion）。
  */
 import type { ProjectDetail } from '@/types/project-details';
 import type {
@@ -21,13 +23,34 @@ import {
   type SummarizedOpinion,
 } from '@/app/lib/comments/interview-prompt';
 
-export { LlmUpstreamError } from '@/client/lib/ai/openrouter-caller';
+import { LlmUpstreamError } from '@/client/lib/ai/openrouter-caller';
+export { LlmUpstreamError };
 export type { InterviewProjectContext } from '@/app/lib/comments/interview-prompt';
 
 interface RunOptions {
-  settings: ByokSettings;
+  /** null ならサーバーモード（/api/ai/interview） */
+  settings: ByokSettings | null;
   signal?: AbortSignal;
   onRetry?: (waitMs: number) => void;
+}
+
+/** サイト提供 AI でインタビューできるか（環境変数で有効な場合のみ 200） */
+export async function isServerInterviewEnabled(): Promise<boolean> {
+  try {
+    const res = await fetch('/api/ai/interview', { cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function callServer<T>(body: unknown, signal?: AbortSignal): Promise<T> {
+  const res = await fetch('/api/ai/interview', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal,
+  });
+  const data = await res.json().catch(() => null) as (T & { error?: string }) | null;
+  if (!res.ok) throw new LlmUpstreamError(data?.error ?? `AIが応答できませんでした（HTTP ${res.status}）`);
+  return data as T;
 }
 
 /** 次のインタビュアー発話を得る（turns が空なら冒頭の問いかけ） */
@@ -36,6 +59,10 @@ export async function nextInterviewerTurn(
   turns: InterviewTurn[],
   opts: RunOptions,
 ): Promise<string> {
+  if (!opts.settings) {
+    const r = await callServer<{ text: string }>({ kind: 'interview', context: ctx, turns }, opts.signal);
+    return r.text;
+  }
   const callLlm = createOpenRouterCaller({
     apiKey: opts.settings.apiKey,
     model: opts.settings.model,
@@ -53,6 +80,10 @@ export async function summarizeOpinion(
   turns: InterviewTurn[],
   opts: RunOptions,
 ): Promise<SummarizedOpinion> {
+  if (!opts.settings) {
+    const r = await callServer<{ body: string; stance: string | null }>({ kind: 'summarize', context: ctx, turns }, opts.signal);
+    return { body: r.body, stance: r.stance ?? undefined } as SummarizedOpinion;
+  }
   const callLlm = createOpenRouterCaller({
     apiKey: opts.settings.apiKey,
     model: opts.settings.model,
