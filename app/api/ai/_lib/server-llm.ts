@@ -54,9 +54,13 @@ export function serverModel(): string {
   return process.env.SANKEY_AI_CHAT_MODEL || DEFAULT_SERVER_MODEL;
 }
 
-/** 意見インタビュー用のモデル。未指定なら絞り込みと同じ（SANKEY_AI_INTERVIEW_MODEL で分離できる） */
+/**
+ * 意見インタビュー用の既定モデル。ツール往復の無い1回呼び出しでは、同じ会話記録の比較で luna の問いかけが最も
+ * 自然で、整形の出力トークンも lite の約1/5（コスト約1/10）だった。SANKEY_AI_INTERVIEW_MODEL で差し替え可能
+ */
+export const DEFAULT_INTERVIEW_MODEL = 'openai/gpt-5.6-luna';
 export function interviewModel(): string {
-  return process.env.SANKEY_AI_INTERVIEW_MODEL || serverModel();
+  return process.env.SANKEY_AI_INTERVIEW_MODEL || DEFAULT_INTERVIEW_MODEL;
 }
 
 /**
