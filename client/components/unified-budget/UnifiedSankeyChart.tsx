@@ -579,7 +579,7 @@ export function UnifiedSankeyChart({
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} />}
 
       {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
-      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-1.5 sm:left-auto sm:right-3">
+      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-1 sm:left-auto sm:right-3">
         <UnifiedSearch
           nodes={browseNodes}
           onSelect={onSelect}
