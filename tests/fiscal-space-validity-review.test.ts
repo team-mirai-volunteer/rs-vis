@@ -184,3 +184,17 @@ test('grid savings raise potential GDP identically under every production functi
   const five = defaults(); five.amounts.grid = 3;
   near(engine(five).comparison.find(row => row.policy.id === 'grid')!.realizedSupplyEffect, 0); // Commissions in year 6.
 });
+
+test('15-year horizon also extends duration sensitivity, rate shocks and the long-run start', () => {
+  const engine = createFiscalEngine();
+  const f = defaults(); f.amounts.rd = 3; f.amounts.grid = 3; f.horizon = 15; f.longRun = { ...f.longRun, years: 10 };
+  const r = engine(f);
+  assert.equal(r.durationSensitivity.length, 10);
+  assert(r.durationSensitivity.every(row => row.year === 15));
+  assert.deepEqual(r.shocks[0].years.map(y => y.year), [1, 3, 5, 10, 15]);
+  assert.equal(r.longRun[0].year, 16);
+  assert(r.longRun.at(-1)!.year >= 20);
+  const energy = r.constraints.find(c => c.id === 'energy')!;
+  assert(r.projection.steps[14].resourcePower?.referenceYear === 2035);
+  assert(energy.explanation.length > 0);
+});
