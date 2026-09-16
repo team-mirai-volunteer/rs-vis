@@ -59,6 +59,8 @@ export interface UnifiedViewFilter {
   /** 事業の支出額（事業(支出)列の値）の下限・上限。金額の文字列。空なら無し */
   spendingMin: string;
   spendingMax: string;
+  /** 事業ID（pid）の明示リスト（RS事業ノードのみ対象）。AI が集中度・注目シグナル等で選んだ事業を残すときに使う。空なら無し */
+  projectIds: string[];
   /** 事業名の絞り込み（RS事業ノードのみ対象）。空なら無し */
   projectQuery: string;
   /** projectQuery を正規表現（大文字小文字を区別しない）として扱う */
@@ -101,6 +103,7 @@ export const UNIFIED_FILTER_DEFAULT: UnifiedViewFilter = {
   budgetMax: '',
   spendingMin: '',
   spendingMax: '',
+  projectIds: [],
   projectQuery: '',
   projectRegex: false,
   recipientQuery: '',
@@ -127,6 +130,7 @@ export function hasActiveUnifiedFilter(f: UnifiedViewFilter): boolean {
     f.spendingMin.trim() !== '' ||
     f.spendingMax.trim() !== '' ||
     f.projectQuery.trim() !== '' ||
+    f.projectIds.length > 0 ||
     f.recipientQuery.trim() !== '' ||
     f.subcontract !== 'any' ||
     hasScoreRange(f.scoreO) ||

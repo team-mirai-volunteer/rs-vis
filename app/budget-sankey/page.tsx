@@ -121,6 +121,7 @@ function parseFilter(params: URLSearchParams): UnifiedViewFilter {
     budgetMax: params.get('fbmax') ?? '',
     spendingMin: params.get('fsmin') ?? '',
     spendingMax: params.get('fsmax') ?? '',
+    projectIds: (params.get('fpid') ?? '').split(',').map(v => v.trim()).filter(Boolean),
     projectQuery: params.get('fpq') ?? '',
     projectRegex: params.get('fpr') === '1',
     recipientQuery: params.get('frq') ?? '',
@@ -147,6 +148,9 @@ function serializeFilter(params: URLSearchParams, filter: UnifiedViewFilter): vo
   if (filter.projectQuery.trim()) {
     params.set('fpq', filter.projectQuery.trim());
     if (filter.projectRegex) params.set('fpr', '1');
+  }
+  if (filter.projectIds.length > 0) {
+    params.set('fpid', filter.projectIds.join(','));
   }
   if (filter.recipientQuery.trim()) {
     params.set('frq', filter.recipientQuery.trim());

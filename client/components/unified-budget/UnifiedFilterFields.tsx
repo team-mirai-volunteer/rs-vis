@@ -109,6 +109,12 @@ export function UnifiedFilterFields({
       {/* ---- /sankey-svg から移植: 事業単位の絞り込み ---- */}
       <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
         <div className="font-medium">事業（RS事業が対象。条件に合わない事業は事業(支出)・支出先ごと落とす）</div>
+        {filter.projectIds.length > 0 && (
+          <div className="flex items-center justify-between gap-2 rounded-md bg-mirai-surface-teal px-2 py-1" data-testid="ai-selected-projects">
+            <span>AI が選んだ {filter.projectIds.length} 事業だけを表示中（選び方は AI の応答を参照）</span>
+            <Button variant="link" size="xs" onClick={() => set({ projectIds: [] })}>解除</Button>
+          </div>
+        )}
         <RegexTextFilter
           label="事業名"
           note="RS事業の名前で絞り込む。`.*` で正規表現（大文字小文字を区別しない）"

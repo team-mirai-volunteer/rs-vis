@@ -11,7 +11,7 @@ import { UNIFIED_FILTER_DEFAULT, type UnifiedViewFilter } from '@/types/unified-
 /** AI が触るフィールドだけを既定へ戻す（利用者の手動条件は残す） */
 export const AI_FILTER_FIELDS = [
   'ministries', 'accountTypes', 'projectQuery', 'projectRegex', 'recipientQuery', 'recipientRegex', 'recipientIncludeSub',
-  'budgetMin', 'budgetMax', 'spendingMin', 'spendingMax', 'subcontract', 'subcontractMinDepth',
+  'budgetMin', 'budgetMax', 'spendingMin', 'spendingMax', 'subcontract', 'subcontractMinDepth', 'projectIds',
 ] as const satisfies readonly (keyof UnifiedViewFilter)[];
 
 type AiFilterField = (typeof AI_FILTER_FIELDS)[number];
@@ -51,6 +51,10 @@ export function applySankeyQueryToUnifiedFilter(current: UnifiedViewFilter, quer
   if (f.spending.min !== null || f.spending.max !== null) {
     next.spendingMin = yenToOkuText(f.spending.min); next.spendingMax = yenToOkuText(f.spending.max);
     parts.push(`支出 ${next.spendingMin || '0'}〜${next.spendingMax || ''}`);
+  }
+  if ((f.projectIds ?? []).length > 0) {
+    next.projectIds = [...f.projectIds];
+    parts.push(`AIが選んだ${f.projectIds.length}事業`);
   }
   if (f.subcontract.hasRedelegation) {
     next.subcontract = 'has';

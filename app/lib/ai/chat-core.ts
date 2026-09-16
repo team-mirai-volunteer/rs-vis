@@ -151,6 +151,13 @@ const SANKEY_QUERY_SCHEMA: Record<string, unknown> = {
           items: { type: 'string', enum: ['general', 'special', 'both', 'none'] },
           description: '含める会計区分（general=一般会計, special=特別会計, both=両方, none=区分情報なし）。省略=フィルタなし',
         },
+        projectIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            '事業ID（pid）の明示リスト。支出先の集中度・注目シグナル（get_highlights）・品質スコア・執行率のように名前や金額では表せない基準で選んだ事業を図に残すときに使う。' +
+            'ツール応答の pid をそのまま入れる（最大300件）。他の条件と AND。名前・金額で表せる要求には使わない',
+        },
         subcontract: {
           type: 'object',
           description: '再委託条件。「再委託がある事業だけ」「再々委託まである事業」のような要求に使う',
@@ -382,16 +389,23 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     'このアシスタントには2つのモードがある。要求の性質を見てどちらかを選ぶ:',
     '',
     '### A. フィルタ要求（図の表示条件を変えたい）',
+    '「〜の事業」「〜な事業を見たい/教えて/探して」のように、条件に当てはまる事業の集合を求める要求はすべてこのモード。列挙するだけで終えず、必ず図へ適用（submit_result）する。',
+    '- 名前・金額・府省庁・会計・再委託で表せる条件はそのまま filter に書く',
+    '- 「怪しい/気になる/無駄っぽい」「支出先が1社に集中」「評価スコアが低い」「執行率が低い/予算と執行の乖離」のように名前や金額で表せない基準は、' +
+    'get_highlights（metric: concentration / lowScoreHighBudget / execBudgetGap / otherRatio / spendingChange / subcontractDepth）や get_quality_scores で該当事業の pid を集め、' +
+    'filter.projectIds にその pid を入れて submit_result する。interpretation に「どの指標の上位何件を選んだか」を書き、message で上位3〜5件の事業名と値を短く挙げる。' +
+    '「怪しい」等は無駄の判定ではなく観測可能なシグナルであることを message に必ず添える',
+    '- 複合条件（「1000億円以上で支出先がほぼ1社」）は、金額条件で run_sankey_query した結果の summary.recipients.topShare1 や get_highlights(concentration) を使って pid を絞り、金額条件と projectIds を両方入れる',
     '1. 要求を SankeyQuery に翻訳し run_sankey_query で実行する',
     '2. 結果を確認する: 0件なら条件を緩める（正規表現 | で類義語を足す、金額条件を外す等）。search_projects / search_recipients で実際の語彙を調べてもよい（search_projects は scope=details で概要・目的・現状課題も検索できる。事業名で0件のときに試すと、計上のねじれ（別府省庁に計上されたシステム等）も拾える）。多すぎるなら金額下限などで絞る',
     '3. 妥当な結果（1件以上）になったら、追加の探索はせず直ちに submit_result で確定する（message に何をどう絞って何件マッチしたかを書く）。run_sankey_query は通常1〜2回で十分',
     '- 表示件数や並び順の要望（「上位5件だけ」等）は view で表現できる。ユーザーが言及しない限り view は省略する',
     '',
-    '### B. データへの質問（金額・内訳・品質スコア・再委託構造・年度比較・使途等を知りたい）',
+    '### B. データへの質問（特定の事業・支出先の金額・内訳・年度比較・使途など、事業の集合ではなく値を知りたい）',
     '- get_project_detail / get_quality_scores / get_recipient_detail / get_subcontract_chain / compare_years / search_spending で調べ、結果をテキストで日本語回答する。submit_result は呼ばない（図の条件は変わらない）',
     '- 「〜にいくら使われている？」「〜を受注しているのは誰？」のような使途起点の質問は search_spending を使う。回答時は amountDirect（直接支出）と amountSubcontract（再委託）を必ず分けて述べる',
     '- 「去年から増えた?」「年度でどう変わった?」型の質問は compare_years を使う。回答時は「事業年度Nのデータ=予算年度N-1の実績」の注記を必ず添える',
-    '- 「無駄遣いっぽいのを教えて」「気になる/面白い事業ない?」型の質問は get_highlights を使う。この種の質問はデータで断定できないため、必ず「無駄とは判定できないが、説明の薄さ・支出の急増・支出先の集中などのシグナルが観測された事業」というフレーミングで提示する。「無駄」「異常」という断定表現は使わず、multiSignal（複数シグナルに同時該当）や個々の指標名・数値を根拠として添えて紹介する',
+    '- 「無駄遣いっぽい/怪しい/気になる事業を教えて」型の要求はモード A で扱う: get_highlights（metric 省略）で multiSignal（複数指標に同時該当）の事業を取り、その pid を filter.projectIds に入れて submit_result する（multiSignal が無ければ各指標の上位を合わせる）。message では上位数件の事業名と該当シグナルを挙げ、「無駄・不正の判定ではなく、支出の急増・支出先の集中・再委託の深さ・記載と規模の乖離などの観測可能なシグナルに該当したもの」であることを必ず添える。テキストの列挙だけで終えない',
     '- run_sankey_query の結果にある summary.recipients.topShare1 / topShare3 は支出先集中度（上位1社/3社への集中割合）。「集中度が高い事業を探して」型の質問で使える（compare_years の要約には含まれない）',
     '- 数値・事実は必ずツール応答から転記する。ツールで確認していない数値を推測で書かない',
     '- **0件・除外の理由を推測で説明しない**: 「なぜこの事業がマッチしなかったのか」を述べるときは、条件を変えた run_sankey_query（金額下限を外す等）や search_projects で実測してから、トークンごとに「名前不一致 / 金額条件で除外 / マッチ」を切り分けて答える（実例: 事業名の表記ゆれで0件だったものを「予算未満で除外」と誤説明した事故がある）',

@@ -55,6 +55,11 @@ export interface SankeyQueryFilter {
   accountCategories?: AccountCategoryKey[];
   /** 再委託条件。省略 = フィルタなし */
   subcontract?: SankeySubcontractFilter;
+  /**
+   * 事業ID（pid）の明示リスト。名前や金額では表せない基準（支出先集中・注目シグナル・品質スコア・執行率など）
+   * で選んだ事業だけを残すときに使う。他の条件と AND。省略・空 = フィルタなし
+   */
+  projectIds?: string[];
 }
 
 /** 表示条件（TopN集約・ピン・フォーカス等、どう見せるか） */
@@ -99,6 +104,7 @@ export interface ResolvedSankeyQuery {
     spending: { min: number | null; max: number | null };
     accountCategories: AccountCategoryKey[];
     subcontract: { hasRedelegation: boolean; minDepth: number | null };
+    projectIds: string[];
   };
   view: {
     topMinistry: number;
