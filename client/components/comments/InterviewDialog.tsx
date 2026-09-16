@@ -23,7 +23,7 @@ import {
   INTERVIEW_INPUT_MAX_CHARS,
   INTERVIEW_MAX_USER_TURNS,
 } from '@/types/project-comments';
-import { loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
+import { deleteByokSettings, loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
 import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openrouter-caller';
 import {
   fetchProjectDetailForInterview,
@@ -147,7 +147,8 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
   }, [onClose]);
 
   const handleSaveKey = async () => {
-    const apiKey = keyInput.trim();
+    // 保存済みのキーがあれば空欄のまま再利用できる（モデル名だけ直す操作を想定）
+    const apiKey = keyInput.trim() || settings?.apiKey || '';
     if (!apiKey) return;
     const s: ByokSettings = { apiKey, model: modelInput.trim() || DEFAULT_BYOK_MODEL };
     try {
@@ -155,13 +156,39 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
     } catch {
       // IndexedDB が使えない環境でもこのダイアログ内では続行できる
     }
+    abortRef.current?.abort();
     setSettings(s);
     setKeyInput('');
+    setKeyTestMsg(null);
+    setTurns([]);
+    setError(null);
     setStep('interview');
   };
 
+  /** 誤ったモデル名などで進めなくなったときに設定へ戻る。キーは保持し、モデル欄に現在値を出す */
+  const handleOpenSettings = () => {
+    abortRef.current?.abort();
+    setThinking(false);
+    setModelInput(settings?.model ?? '');
+    setKeyInput('');
+    setKeyTestMsg(null);
+    setError(null);
+    setStep('key');
+  };
+
+  const handleForgetSettings = async () => {
+    try { await deleteByokSettings(); } catch { /* 保存されていなければ何もしない */ }
+    setSettings(null);
+    setModelInput('');
+    setKeyInput('');
+    setKeyTestMsg(null);
+    setTurns([]);
+    setError(null);
+    setStep('key');
+  };
+
   const handleTestKey = async () => {
-    const apiKey = keyInput.trim();
+    const apiKey = keyInput.trim() || settings?.apiKey || '';
     if (!apiKey) return;
     setKeyTesting(true);
     setKeyTestMsg(null);
@@ -267,23 +294,34 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               利用上限（クレジット制限）を設定したキーの使用をおすすめします。
               キーは <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">openrouter.ai/keys</a> で発行できます。
             </p>
+            {settings && (
+              <p className="m-0 rounded-md bg-mirai-surface-teal px-2.5 py-1.5 text-xs">
+                保存済みのキーがあります。キー欄を空のままにすると、そのキーを使ってモデル名だけ更新します。現在のモデル: <code>{settings.model}</code>
+              </p>
+            )}
             <label className="block">
-              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">APIキー</span>
+              <span className="mb-[3px] block text-[11px] text-mirai-text-muted">APIキー{settings && '（変更しない場合は空欄）'}</span>
               <input type="password" value={keyInput} onChange={e => setKeyInput(e.target.value)} autoComplete="off"
-                placeholder="sk-or-v1-..." className={INPUT_CLASS} />
+                placeholder={settings ? '保存済みのキーを使う' : 'sk-or-v1-...'} className={INPUT_CLASS} />
             </label>
             <label className="block">
               <span className="mb-[3px] block text-[11px] text-mirai-text-muted">モデル（空欄なら {DEFAULT_BYOK_MODEL}）</span>
               <input type="text" value={modelInput} onChange={e => setModelInput(e.target.value)} placeholder={DEFAULT_BYOK_MODEL} className={INPUT_CLASS} />
+              <span className="mt-[3px] block text-[11px] text-mirai-text-muted">OpenRouter のモデルID（例: {DEFAULT_BYOK_MODEL}）。存在しないIDだと AI が応答できません。</span>
             </label>
             {keyTestMsg && (
               <div className={cn('text-xs', keyTestMsg === '接続できました' ? 'text-primary-accent' : 'text-destructive')}>{keyTestMsg}</div>
             )}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={handleTestKey} disabled={!keyInput.trim() || keyTesting} className="border-mirai-border">
+            <div className="flex flex-wrap justify-end gap-2">
+              {settings && (
+                <Button variant="outline" size="sm" onClick={handleForgetSettings} className="mr-auto border-mirai-border text-destructive">
+                  保存済みの設定を削除
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={handleTestKey} disabled={(!keyInput.trim() && !settings) || keyTesting} className="border-mirai-border">
                 {keyTesting ? 'テスト中...' : '接続テスト'}
               </Button>
-              <Button variant="default" size="sm" onClick={handleSaveKey} disabled={!keyInput.trim()}>
+              <Button variant="default" size="sm" onClick={handleSaveKey} disabled={!keyInput.trim() && !settings}>
                 保存して始める
               </Button>
             </div>
@@ -311,10 +349,11 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               )}
               {error && (
                 <div className="flex flex-wrap items-center gap-2 self-stretch rounded-xl border border-destructive/30 bg-stance-against-bg px-2.5 py-1.5 text-xs text-destructive">
-                  <span>{error}</span>
+                  <span>{error}{settings && <span className="ml-1 text-mirai-text-muted">（モデル: {settings.model}）</span>}</span>
                   {turns.length === 0 && settings && (
                     <Button variant="outline" size="xs" onClick={() => void askInterviewer([], settings, context)} className="border-mirai-border">再試行</Button>
                   )}
+                  <Button variant="outline" size="xs" onClick={handleOpenSettings} className="border-mirai-border">キー・モデルを変える</Button>
                 </div>
               )}
             </div>
@@ -332,6 +371,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-mirai-text-muted">
                   {input.length}/{INTERVIEW_INPUT_MAX_CHARS}字 ・ 発言 {userTurnCount}/{INTERVIEW_MAX_USER_TURNS}
+                  {' ・ '}<button type="button" onClick={handleOpenSettings} className="underline underline-offset-2 hover:text-mirai-text">設定</button>
                 </span>
                 <span className="flex-1" />
                 <Button variant="outline" size="sm" onClick={handleSummarize}
