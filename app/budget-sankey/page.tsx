@@ -15,7 +15,7 @@
  * （設計 5.2）。
  */
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
@@ -73,6 +73,9 @@ const COL_KEY: Record<UnifiedColumn, string> = {
   recipient: 're',
 };
 const KEY_COL = Object.fromEntries(Object.entries(COL_KEY).map(([c, k]) => [k, c])) as Record<string, UnifiedColumn>;
+
+/** 事業詳細パネルの上端と左上カード行の下端の間隔(px) */
+const SIDE_PANEL_GAP_PX = 8;
 
 function parseColumns(raw: string | null): UnifiedColumn[] | null {
   if (!raw) return null;
@@ -211,18 +214,23 @@ function UnifiedBudgetSankeyContent() {
   // sm 以上: 表示数カードは左上、設定は右上の検索クラスタ内。sm 未満: 右上の 1 ボタンに両方を畳む。
   // CSS で隠すだけだと同じボタンが DOM に二重に存在するので、メディアクエリで出し分ける
   const wideControls = useMediaQuery('(min-width: 640px)');
-  // 左上のカード行は列数で折り返して高さが変わる。詳細パネルの上端をこの実高さに合わせて被らないようにする
+  // 左上のカード行は列数・データで折り返して高さが変わる。詳細パネルの上端をこの行の実下端（図コンテナ基準）に合わせて被らないようにする。
+  // ResizeObserver だけだと行の中身が後から増えたときに取りこぼすため、毎レンダーでも測り直す
   const controlsRowRef = useRef<HTMLDivElement>(null);
-  const [controlsHeight, setControlsHeight] = useState(0);
+  const [controlsBottom, setControlsBottom] = useState(0);
+  const measureControls = useCallback(() => {
+    const el = controlsRowRef.current;
+    setControlsBottom(el ? el.offsetTop + el.offsetHeight : 0);
+  }, []);
+  // 中身が後から増える分は毎レンダーの測り直しで、ウィンドウ幅などの変化は ResizeObserver で拾う
+  useLayoutEffect(measureControls);
   useEffect(() => {
     const el = controlsRowRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const update = () => setControlsHeight(el.offsetHeight);
-    update();
-    const observer = new ResizeObserver(update);
+    const observer = new ResizeObserver(measureControls);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [wideControls]);
+  }, [measureControls, wideControls]);
   /** sm 未満で表示数・設定を開いているか */
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [filter, setFilter] = useState<UnifiedViewFilter>(() => {
@@ -429,7 +437,7 @@ function UnifiedBudgetSankeyContent() {
             setFilterOpen(false);
           }} />}
         searchTrailing={wideControls ? settingsPanel('top-right') : undefined}
-        sidePanelTopOffset={wideControls && controlsHeight > 0 ? controlsHeight + 4 : undefined}
+        sidePanelTopOffset={wideControls && controlsBottom > 0 ? controlsBottom + SIDE_PANEL_GAP_PX : undefined}
         searchAddon={<Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
           onClick={() => { const next = !aiOpen; setAiOpen(next); if (next) setFilterOpen(false); }}
           className={cn('h-6 gap-1 px-1.5 text-[11px]', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>
@@ -461,7 +469,7 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>}
-      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-1 sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-[2px] sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         {!wideControls && settingsPanel('top-right')}
       </div>
