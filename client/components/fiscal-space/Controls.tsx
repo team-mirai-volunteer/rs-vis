@@ -101,9 +101,9 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
     </div>
     <CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
-      <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border p-3" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
-        <summary className="cursor-pointer text-sm font-bold">予算を制約する条件<span className="block whitespace-nowrap text-xs font-normal text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}%・失業率 {(floor * 100).toFixed(1)}%・ギャップ {gap.toFixed(1)}%</span></summary>
-        <div className="mt-3 space-y-3">
+      <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border px-3 py-1.5" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer text-sm font-bold leading-tight [&::marker]:text-xs">予算を制約する条件<span className="block whitespace-nowrap text-[11px] font-normal leading-tight text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}% / 失業率 {(floor * 100).toFixed(1)}% / ギャップ {gap.toFixed(1)}%</span></summary>
+        <div className="mt-2 space-y-3 pb-1">
           <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、この3つの条件と各政策の配分です。一度決めたら大きく変えない条件なので折りたたんでいます。ほかの条件は「詳細な条件」で変更できますが、既定の近傍では結論をほとんど動かしません。</p>
           <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
           <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
