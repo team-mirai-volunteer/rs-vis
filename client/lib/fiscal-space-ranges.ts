@@ -15,7 +15,7 @@ const calibration: Record<string, Bounds> = {
   'electricity.generationTwh': [1, 3000], 'electricity.thermalShare': [0, 1],
   'electricity.demandGrowth': [-.1, .1], 'electricity.peakGrowth': [-.1, .1],
   'electricity.nonThermalDecline': [0, 1], 'electricity.plannedNonThermalTwh': [0, 100],
-  'electricity.fuelImportYenPerKwh': [0, 50],
+  'electricity.fuelImportYenPerKwh': [0, 50], 'electricity.marginalThermalShare': [0, 1],
 };
 const supply: Record<string, Bounds> = {
   serviceShare: [0, 1], realizationRate: [0, 1], rampYears: [1, 10], referenceOverlap: [0, 1],
@@ -33,6 +33,7 @@ const power: Record<string, Bounds> = {
 };
 const load: Record<string, Bounds> = {
   sectorUtilizationPerTrillion: [0, .1], peakGwPerTrillion: [0, 10], operatingPeakGwPerTrillion: [0, 10],
+  annualGwhPerTrillion: [0, 1e5], operatingAnnualGwhPerTrillion: [0, 1e5], annualConstructionGwh: [0, 1e6],
   lag: [0, 15], lifetime: [1, 60], depreciation: [0, 1],
   budgetTrillion: [.01, 100], workerYears: [0, 1e7], sectorWorkerCapacity: [1, 1e8],
   constructionPeakMw: [0, 1e5], operatingPeakMw: [0, 1e5], annualOperatingGwh: [0, 1e6],

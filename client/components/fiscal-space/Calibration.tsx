@@ -19,6 +19,7 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="ギャップに対する需要感度" value={value.gapDemandSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapDemandSensitivity', n)} />
       <RangeField label="ギャップに対する物価感度" value={value.gapPriceSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapPriceSensitivity', n)} />
       <RangeField label="基準インフレのギャップ係数" value={value.gapInflationSlope} min={0} max={.2} step={.01} unit="" onChange={n => change('gapInflationSlope', n)} />
+      <p className="text-xs sm:col-span-2 lg:col-span-4">需要感度・物価感度を0にすると、初期GDPギャップの符号に関係なく公表反応を線形適用します（需要不足と需要超過で同じGDP・物価反応）。基準インフレのギャップ係数は政策なし経路のみに効き、政策が作るギャップには重ねません。</p>
       <RangeField label="基準借換金利" value={value.marketRate * 100} min={0} max={6} step={.1} unit="%" onChange={n => change('marketRate', n / 100)} />
       <RangeField label="消費税1ポイントの減収額" value={value.consumptionTax.revenuePerPoint / 1e12} min={1} max={5} step={.1} unit="兆円" onChange={n => change('consumptionTax', { ...value.consumptionTax, revenuePerPoint: n * 1e12 })} />
       <RangeField label="消費税対象品目のCPI比率" value={value.consumptionTax.cpiShare * 100} min={0} max={100} step={1} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, cpiShare: n / 100 })} />

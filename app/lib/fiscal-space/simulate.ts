@@ -111,7 +111,13 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const demand = allocateDemand(state, policies, p, t, initial, { real: baselineReal, potential: baselinePotential });
     const policyCost = active.reduce((s, policy) => s + policy.annualCost, 0);
     const inflationPressure = demand.prices / autonomousReal * p.inflationPassThrough;
-    const { sectorDemand, peakGw, coverage } = policyLoads(initial, policies, t, p);
+    const { sectorDemand, peakGw, annualGwh, coverage } = policyLoads(initial, policies, t, p);
+    // Policy electricity volume is a distinct physical fuel bill at the common
+    // fuel price path, like the generation fuel saving. It is not deducted from
+    // the published import response, which has no identified energy split.
+    const policyDemandTwh = annualGwh / 1000;
+    const policyFuelIncrease = policyDemandTwh * 1e9 * p.electricity.fuelImportYenPerKwh * p.electricity.marginalThermalShare
+      * commonPriceIndex * (1 + shock.energyPriceChange);
     let energyDemandIncrease = 0;
     for (const policy of active) {
       const intensity = policy.annualCost / priceBefore / autonomousReal;
@@ -144,7 +150,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const baselineEnergyBill = initial.energy.importBill * commonPriceIndex;
     state.energy.importBill = baselineEnergyBill * state.energy.importedEnergy / initial.energy.importedEnergy * (1 + shock.energyPriceChange);
     state.energy.importBill = Math.max(0, state.energy.importBill + demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange));
-    state.energy.importBill = Math.max(0, state.energy.importBill + commonFuelIncrease);
+    state.energy.importBill = Math.max(0, state.energy.importBill + commonFuelIncrease + policyFuelIncrease);
     const energyImportIncrease = state.energy.importBill - baselineEnergyBill;
     // A permanent price-level shock contributes to inflation once; new import demand contributes each year.
     // The common fuel path is a level: only its annual change adds inflation.
@@ -239,7 +245,8 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
         tradingIncomeChange, realDomesticIncome: realGdp + tradingIncomeChange, expenditureIndex },
       taxAdjustedInflation, refinancingRate: marketRate, referenceRateEffect: demand.longRateEffect, coverage,
       electricity: { demandTwh: electricity.demandTwh, thermalTwh: electricity.thermalTwh, thermalIncreaseTwh: electricity.thermalIncreaseTwh,
-        commonFuelIncrease, operatingImportReduction: demand.projectEnergyNetImports === 0 ? 0 : -demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange) },
+        commonFuelIncrease, operatingImportReduction: demand.projectEnergyNetImports === 0 ? 0 : -demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange),
+        policyDemandTwh, policyFuelIncrease },
       outputGap: (realGdp - potential) / potential, maximumGap: (realGdp - production.maximum) / production.maximum,
       // Acquisition of assets after full debt retirement is an SFA for gross (not net) debt.
       metrics: fiscalMetrics(state, rolled.maturingDebt, previous.fiscal.grossDebt, previous.macro.nominalGdp,

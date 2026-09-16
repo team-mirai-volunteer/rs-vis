@@ -42,6 +42,8 @@ export interface ProjectLoadBasis {
   constructionPeakMw: number | null;
   operatingPeakMw: number | null;
   annualOperatingGwh: number | null;
+  /** Electricity consumed in the spending year, for fuel imports; absent in older links. */
+  annualConstructionGwh?: number | null;
   annualLoadFactor: number | null;
   peakCoincidence: number | null;
 }
@@ -49,6 +51,9 @@ export interface PolicyLoad {
   sectorUtilizationPerTrillion: number | null;
   peakGwPerTrillion: number | null;
   operatingPeakGwPerTrillion: number | null;
+  /** Annual electricity per year-0 trillion yen; null or absent means unevaluated fuel imports. */
+  annualGwhPerTrillion?: number | null;
+  operatingAnnualGwhPerTrillion?: number | null;
   lag: number; lifetime: number; depreciation: number;
   basis?: ProjectLoadBasis;
   /** Generated from the versioned IO reference, never accepted from shared URLs. */
@@ -132,8 +137,9 @@ export interface ProjectionStep {
   estimatedLoads?: boolean;
   importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
   taxAdjustedInflation?: number; refinancingRate?: number; referenceRateEffect?: number;
-  coverage?: { sector: boolean; energy: boolean };
-  electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number };
+  coverage?: { sector: boolean; energy: boolean; fuel: boolean };
+  electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number;
+    policyDemandTwh: number; policyFuelIncrease: number };
   state: EconomyState; production: ProductionResult; demand: DemandResult; metrics: FiscalMetrics;
   outputGap: number; maximumGap: number; policyCost: number; maturingDebt: number;
   energyImportIncrease: number; inflationPressure: number; sectorDemand: Record<Sector, number>;

@@ -118,6 +118,8 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
       leaf === 'revenuePerPoint' ? '円/税率1%ポイント' :
       ['referenceDirectCpi', 'referenceDirectDeflator'].includes(leaf) ? '%/税率1%ポイント' :
       ['peakGwPerTrillion', 'operatingPeakGwPerTrillion'].includes(leaf) ? 'GW/年0価格1兆円' :
+      ['annualGwhPerTrillion', 'operatingAnnualGwhPerTrillion'].includes(leaf) ? 'GWh/年0価格1兆円' :
+      leaf === 'annualConstructionGwh' ? 'GWh/年' :
       leaf === 'sectorUtilizationPerTrillion' ? '稼働率の増分/年0価格1兆円' :
       ['lag', 'lifetime', 'years'].includes(leaf) ? '年' :
       prefix.startsWith('thresholds.') ? '比率（1 = 100%）' : yenFields.includes(leaf) ? '円' :

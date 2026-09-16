@@ -22,7 +22,9 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
   // Yen/trillion and coefficients are pinned at the displayed 0.01-trillion resolution.
   // These are reproducible outputs, not an empirical validation of the model.
   // With IO loads, research staffing binds before the higher CPI ceilings.
-  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 17.01, 13.61], [.03, 27.45, 21.96], [.035, 27.45, 21.96]]) {
+  // 2026-09-16.4: policy electricity now adds an imported-fuel bill and its
+  // energy price pressure, so the 2.5% CPI boundary moved from 17.01/13.61.
+  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 16.79, 13.43], [.03, 27.45, 21.96], [.035, 27.45, 21.96]]) {
     form.thresholds.inflation = limit;
     const r = calculate(form);
     assert.equal(r.totalYen, 15_000_000_000_000);
@@ -67,7 +69,7 @@ test('CPI selector uses the stricter of headline and tax-adjusted inflation', ()
 test('coverage over all years survives an earlier violation; finite differences use actual peaks', () => {
   const current = simulate(initialEconomy('latest'), [], 3, PARAMETERS);
   current.steps[0].state.labour.sectorUtilization.construction = 1.1;
-  current.steps[2].coverage = { sector: false, energy: false };
+  current.steps[2].coverage = { sector: false, energy: false, fuel: false };
   const sector = peakConstraints(current, THRESHOLDS).find(c => c.id === 'sector')!;
   assert.equal(sector.status, 'violated');
   assert.equal(sector.year, 1);

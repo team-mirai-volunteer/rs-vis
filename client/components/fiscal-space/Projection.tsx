@@ -5,7 +5,9 @@ import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { FiscalVintageBadge } from './ResultAssumptions';
 import { fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 
-export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false }: { step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean }) {
+export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
+  step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
+}) {
   const s = step.state;
   const longRun = s.year > publishedYears;
   const burden = s.fiscal.taxRevenue / s.macro.nominalGdp;
@@ -26,7 +28,9 @@ export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = fa
     ['稼働率による価格水準補正', points(step.demand.capacityPriceAdjustment), '政策による混雑の増分から参照条件の増分を控除。公表反応とは別の感度仮定'],
     ['輸入価格による実質所得変化（近似）', money(step.importPriceEffects?.tradingIncomeChange ?? 0), '数量固定・国内価格基準。所得から消費・生産への二次波及は未推計'],
     ['消費税直接効果を除くCPI', longRun ? '未推計' : percent(step.taxAdjustedInflation ?? s.macro.inflation), '総合CPIと両方を制約判定に使用。分離は仮定'],
-    ['借換・新発金利', percent(step.refinancingRate ?? 0), `うち公表政策反応 ${points(step.referenceRateEffect ?? 0)}`],
+    ['借換・新発金利', percent(step.refinancingRate ?? 0), referenceModel === 'esri2022'
+      ? '2022年短期モデルは長期金利の反応を公表しておらず未接続。基準借換金利＋外生ショックのみ'
+      : `うち公表政策反応 ${points(step.referenceRateEffect ?? 0)}。公表GDP・CPIに含まれる金融引締めは再加算しない`],
     ['輸入', longRun ? '未推計' : money(s.external.imports), longRun ? '事業の直接寄与は政策比較の詳細へ' : `政策なしとの差 ${money(s.external.imports - baseline.state.external.imports)}`],
     ['輸出', longRun ? '未推計' : money(s.external.exports), '公表モデルの輸出反応を反映。期間外の総合予測は非表示'],
     ['利払い / GDP', percent(step.metrics.interestGdp), '利払い / 税・社会負担収入 ' + percent(step.metrics.interestTax)],
