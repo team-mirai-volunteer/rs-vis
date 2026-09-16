@@ -3,7 +3,7 @@ import { INPUT_LABELS } from '@/app/lib/fiscal-space/assumptions';
 import { type LongRunAssumptions } from '@/app/lib/fiscal-space/long-run';
 import { RangeField } from './Controls';
 import { fieldClass, money, percent, points } from './format';
-import { constraintInflation } from '@/app/lib/fiscal-space/constraints';
+import { constraintInflation, unemploymentRate } from '@/app/lib/fiscal-space/constraints';
 import { BudgetReference } from './BudgetReference';
 
 import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
@@ -18,6 +18,7 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   return <section className="space-y-4 border-t border-mirai-border pt-5" aria-label="参考上限の感度">
     <h3 className="text-lg font-bold">生産能力とモデル別の参考上限</h3>
     <p className="text-sm">比較の基準：年0の実質GDP {money(initial.macro.realGdp)}、潜在GDP {money(initial.macro.potentialGdp)}。同じ投入条件を3つの生産モデルで比較します。</p>
+    <p className="text-sm" data-testid="input-index-consequence">レオンチェフでは最大GDP能力 ＝ 実質GDP × 最小の投入指数。現在の最小値は{Math.min(...Object.values(controlInputs)).toFixed(2)}（{(Object.keys(INPUT_LABELS) as (keyof Inputs)[]).filter(k => controlInputs[k] === Math.min(...Object.values(controlInputs))).map(k => INPUT_LABELS[k]).join('・')}）で、年0の物理的余力は{percent(rows[0] ? rows[0].initialMaximum / initial.macro.realGdp - 1 : 0, 2)}。この1つの数字が供給余力の総量を決めています。下のスライダーで下げると、拘束制約が最大GDP能力へ交代します。</p>
     <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
     <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。産業・電力の概算に含まれない制約もあるため、政策額の推奨値ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
@@ -47,7 +48,6 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
   total: number; horizon: number; incomplete: boolean;
   projection: Simulation; baseline: Simulation; policies: Policy[];
 }) {
-  const peak = projection.steps.slice(0, horizon).reduce((a, b) => constraintInflation(a) >= constraintInflation(b) ? a : b);
   const effect = projection.steps[horizon - 1].state.macro.realGdp - baseline.steps[horizon - 1].state.macro.realGdp;
   return <section data-testid="input-overview" className="rounded-xl border border-mirai-border bg-card p-5">
     <h2 className="mb-4 text-lg font-bold">追加予算と国の一般会計予算</h2>
@@ -55,9 +55,10 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
           <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
-          <div><h3 className="text-sm">同じ配分の探索上限（条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.theoreticalMaximum, 1)} / 年`}</p></div>
+          <div><h3 className="text-sm">同じ配分の参考上限（任意控除後・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
+            {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">控除前の探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
         </div>
-        {estimate.status !== 'unevaluated' && total > estimate.theoreticalMaximum && <p className="text-xs">設定した追加予算は、探索上限を{money(total - estimate.theoreticalMaximum, 1)}上回ります。</p>}
+        {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、任意控除後の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong></p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>
@@ -67,7 +68,7 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
       </div>
       <BudgetReference />
     </div>
-    <p className="mt-3 text-sm font-bold">追加予算による{horizon}年目の実質GDP効果：{money(effect)}（政策なしとの差）。判定用CPIピーク：年{peak.state.year}・{percent(constraintInflation(peak))}。</p>
+    <ThreePoints estimate={estimate} projection={projection} baseline={baseline} horizon={horizon} />
     <details className="mt-2"><summary className="cursor-pointer text-xs">計算上の注意</summary>
       <div className="mt-2 space-y-2 text-xs">
         {effect < 0 && <p>この条件では政策終了後の反動を含め、年{horizon}の実質GDPが政策なし経路を下回ります。</p>}
@@ -77,6 +78,29 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
     </details>
     <a href="#fiscal-envelope" className="mt-3 inline-block text-sm text-primary-accent underline">配分を拡大した場合の参考上限・生産能力を見る</a>
   </section>;
+}
+
+/** Binding year, GDP-effect peak year and terminal year side by side: the ceiling is set at the
+ * CPI peak while the displayed outcome was the post-withdrawal trough. */
+function ThreePoints({ estimate, projection, baseline, horizon }: { estimate: FiscalSpaceEstimate; projection: Simulation; baseline: Simulation; horizon: number }) {
+  const steps = projection.steps.slice(0, horizon);
+  const gdpEffect = (i: number) => steps[i].state.macro.realGdp - baseline.steps[i].state.macro.realGdp;
+  const cpiPeak = steps.reduce((a, b, i) => constraintInflation(steps[a]) >= constraintInflation(b) ? a : i, 0);
+  const bindingYear = estimate.constraints.find(c => c.status === 'violated')?.year;
+  const binding = bindingYear && bindingYear >= 1 && bindingYear <= horizon ? bindingYear - 1 : cpiPeak;
+  const gdpPeak = steps.reduce((a, _, i) => gdpEffect(i) > gdpEffect(a) ? i : a, 0);
+  const points = [
+    { key: 'binding', label: bindingYear ? `拘束年（${estimate.constraints.find(c => c.status === 'violated')!.label}）` : '判定用CPIのピーク年', index: binding },
+    { key: 'gdp', label: '実質GDP効果のピーク年', index: gdpPeak },
+    { key: 'terminal', label: `最終年（年${horizon}）`, index: horizon - 1 },
+  ];
+  return <div className="mt-3 overflow-x-auto" role="region" aria-label="拘束年・GDP効果ピーク年・最終年の比較" tabIndex={0} data-testid="three-points">
+    <table className="w-full min-w-[560px] text-right text-sm tabular-nums"><caption className="text-left text-xs">枠は最も厳しい年で決まり、結果は最終年で示されます。同じ年ではないため三時点を並べています。CPIは判定用（総合と消費税直接効果を除く指標の大きい方）。</caption>
+      <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">判定用CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th></tr></thead>
+      <tbody>{points.map(({ key, label, index }) => { const s = steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
+        <th scope="row" className="py-1 text-left font-medium">{label}</th><td>{s.state.year}</td><td>{percent(constraintInflation(s))}</td><td>{money(gdpEffect(index))}</td><td>{percent(unemploymentRate(s))}</td><td>{percent(s.metrics.grossDebtGdp, 1)}</td>
+      </tr>; })}</tbody></table>
+  </div>;
 }
 
 export function DurationSensitivity({ rows }: { rows: FiscalCalculation['durationSensitivity'] }) {
@@ -110,7 +134,7 @@ export function DurationSensitivity({ rows }: { rows: FiscalCalculation['duratio
 export function LongRun({ rows, value, onChange }: {
   rows: FiscalCalculation['longRun']; value: LongRunAssumptions; onChange: (v: LongRunAssumptions) => void;
 }) {
-  return <section className="space-y-4 rounded-xl border border-mirai-border bg-card p-5" aria-label="長期シナリオ">
+  return <section id="long-run" className="scroll-mt-20 space-y-4 rounded-xl border border-mirai-border bg-card p-5" aria-label="長期シナリオ">
     <h2 className="text-lg font-bold">長期の債務・供給力シナリオ</h2>
     <p className="text-sm">公表乗数の期間後は、下の成長率・物価・借換金利・便益実現率で条件付き計算します。公表モデルによる予測でも、長期の財政上限でもありません。恒久政策の費用は毎年残り、投資便益は稼働時期・耐用年数・減耗に従います。名目年額は固定し、短期終了後の各支出年の期首価格に長期物価を反映して購入量を計算します。過去に支出した投資の量は変えません。</p>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

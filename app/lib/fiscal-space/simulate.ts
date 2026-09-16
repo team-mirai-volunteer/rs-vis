@@ -23,7 +23,7 @@ export function snapshot(state: EconomyState, p: ModelParameters): ProjectionSte
     ? resourcePowerBalance(0, 0, 0, p.resourceModel,
       state.energy.firmCapacity / resourcePowerBalance(0, 0, 0, p.resourceModel).nationalSupplyGw) : undefined;
   return { state, production, demand: emptyDemand(), policyCost: 0,
-    resourcePower,
+    resourcePower, structuralUnemployment: p.structuralUnemployment,
     metrics: fiscalMetrics(state, state.debtPortfolio.filter(b => b.maturityYear <= state.year + 1).reduce((s, b) => s + b.principal, 0), state.fiscal.grossDebt, state.macro.nominalGdp),
     outputGap: (state.macro.realGdp - state.macro.potentialGdp) / state.macro.potentialGdp,
     maximumGap: (state.macro.realGdp - production.maximum) / production.maximum,
@@ -53,6 +53,8 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
   if (p.taxRevenueElasticity < 0 || p.taxRevenueElasticity > 3 || !Number.isInteger(p.taxCollectionLag) || p.taxCollectionLag < 0 || p.taxCollectionLag > 5) throw new RangeError('Invalid tax revenue sensitivity');
   if (!['leontief', 'ces', 'cobbDouglas'].includes(p.productionModel)) throw new RangeError('Invalid production model');
   for (const n of [p.gapDemandSensitivity, p.gapPriceSensitivity, p.gapInflationSlope]) if (n < 0) throw new RangeError('Invalid gap sensitivity');
+  if (!(p.structuralUnemployment > 0 && p.structuralUnemployment < .2)) throw new RangeError('Invalid structural unemployment');
+  if (!['peak', 'average'].includes(p.inflationRule)) throw new RangeError('Invalid inflation rule');
   positive(p.consumptionTax.revenuePerPoint, 'tax revenue per point');
   positive(p.consumptionTax.baseRate, 'base consumption tax rate');
   for (const n of [p.consumptionTax.cpiShare, p.consumptionTax.passThrough]) if (n < 0 || n > 1) throw new RangeError('Invalid tax price assumptions');
@@ -235,6 +237,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
     steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+      structuralUnemployment: p.structuralUnemployment,
       publicCapital: policies.some(policy => policy.supply?.kind === 'capital') ? {
         stock: capacity.publicCapitalStock, potentialBenefit: capacity.publicCapitalBenefit,
         realizedBenefit: realized.publicCapitalBenefit * initial.macro.realGdp / initial.macro.potentialGdp,

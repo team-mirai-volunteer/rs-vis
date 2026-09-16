@@ -2,10 +2,19 @@
  * Fields with no control stay at the versioned default. Unknown nullable fields fail closed.
  * These are input domains, not confidence intervals or plausibility judgements.
  */
+import type { ConstraintId } from '@/types/fiscal-space';
+
 type Bounds = readonly [number, number];
+/** Editable threshold domains (engine units). Shared by the controls and the URL decoder,
+ * so a link cannot carry an arbitrarily large ceiling that the screen would never allow. */
+export const THRESHOLD_BOUNDS: Record<ConstraintId, Bounds> = {
+  debt: [1, 4], interestGdp: [.01, .15], interestTax: [.05, 1], gfn: [.1, 1], inflation: [.005, .06],
+  capacity: [.8, 1.2], labour: [.8, 1.6], sector: [.8, 1.2], energy: [.8, 1.2], external: [.05, .6],
+};
 const calibration: Record<string, Bounds> = {
   taxRevenueElasticity: [0, 2], taxCollectionLag: [0, 3], multiplierScale: [0, 3],
   gapDemandSensitivity: [0, 10], gapPriceSensitivity: [0, 10], gapInflationSlope: [0, .2], marketRate: [0, .06],
+  structuralUnemployment: [.01, .05],
   hoursElasticity: [0, 1], participationElasticity: [0, 1], employeeReliefShare: [0, 1], employerDemandElasticity: [0, 1],
   netLabourIncomeShare: [.2, .7], employerLabourCostShare: [.3, .9],
   energyPricePassThrough: [0, 1], energyDomesticPricePassThrough: [0, 1], expenditurePriceIndexation: [0, 1],
@@ -60,7 +69,7 @@ export function validateScenarioNumber(value: number, template: number | null, p
   else if (name.startsWith('loads.')) bounds = load[key];
   else if (name.startsWith('amounts.')) bounds = [0, 100];
   else if (name.startsWith('inputs.')) bounds = [1, 1.5];
-  else if (name.startsWith('thresholds.')) bounds = [.0001, 100];
+  else if (name.startsWith('thresholds.')) bounds = THRESHOLD_BOUNDS[key as ConstraintId];
   else if (name.startsWith('policySettings.') && key === 'duration') bounds = [1, 10];
   else if (name === 'horizon') bounds = [1, 5];
   else bounds = root[name];

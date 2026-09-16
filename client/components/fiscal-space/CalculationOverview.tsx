@@ -16,7 +16,7 @@ export const CalculationOverview = memo(function CalculationOverview({ result, l
     <InputOverview total={result.totalYen} estimate={result.estimate} riskAudit={result.riskAudit} horizon={result.horizon} incomplete={result.constraints.some(x => x.coverageComplete === false)} projection={result.projection} baseline={result.baseline} policies={result.allocated} />
     <CurrentMetrics step={result.projection.steps[result.horizon - 1]} baseline={result.baseline.steps[result.horizon - 1]} referenceModel={result.p.referenceModel} publishedYears={REFERENCES[result.p.referenceModel].years} latest={latest} />
     <PublicCapital result={result} />
-    <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={latest} />
+    <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={latest} structuralUnemployment={result.p.structuralUnemployment} />
     <PowerTimeline rows={result.powerTimeline} />
     <ResultAssumptions result={result} latest={latest} />
     <p className="text-sm">{latest ? '財政比率の試算は2024年の財政額と最新GDPを組み合わせた初期条件です。同時点の観測値ではありません。' : '財政の初期値は2024年で揃えています。'}</p>

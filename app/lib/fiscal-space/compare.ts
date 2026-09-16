@@ -5,6 +5,7 @@ import { REFERENCES } from './calibration';
 import { policyReliefLimit } from './policy-limits';
 import { hasCommercialSupply, SUPPLY_CASES, SUPPLY_UNAVAILABLE } from './supply';
 import { investmentAtCommissioning } from './investment';
+import { policyProduction } from './policy-production';
 import { loadCoverage } from './policy-load';
 import { CONSTRAINTS } from './constraints';
 
@@ -78,6 +79,13 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
       tradeBalanceEffect: first.state.external.tradeBalance - baseFirst.state.external.tradeBalance,
       debtGdpAtHorizon: last.metrics.grossDebtGdp, debtGdpChangeAtHorizon: last.metrics.grossDebtGdp - baseLast.metrics.grossDebtGdp,
       potentialGdpEffect: last.state.macro.potentialGdp - baseLast.state.macro.potentialGdp,
+      // Realized (not potential) supply at the horizon, in year-0 real GDP. Non-capital
+      // supply cases ramp only after the published years, so this is zero by design there.
+      realizedSupplyEffect: (() => {
+        const basePotential = initial.macro.potentialGdp * (1 + p.baselineRealGrowth) ** horizon;
+        const realized = (policies: Policy[]) => policyProduction(initial, policies, horizon, p, basePotential, undefined, true, false).potential;
+        return (realized([...current, incremental]) - realized(current)) * initial.macro.realGdp / initial.macro.potentialGdp;
+      })(),
       mainCapacity: `${consumed[0].label} (${consumed[0].delta >= 0 ? '+' : ''}${(consumed[0].delta * 100).toFixed(3)}ポイント)` +
         (unknownLoads.length ? `。${unknownLoads.join('・')}の追加負荷は未評価` : '') };
     return row;

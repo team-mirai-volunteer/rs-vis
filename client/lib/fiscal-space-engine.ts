@@ -78,14 +78,14 @@ export function createFiscalEngine() {
     const inputExternal = fiscalExternal(initial, allocated, projection, baseline, p);
     const estimate = estimateFiscalSpace(initial, mix, form.thresholds, horizon, p, shock);
     const riskAudit = auditFiscalSpace(initial, mix, estimate, form.thresholds, horizon, p, shock);
-    const constraints = peakConstraints({ ...projection, steps: projection.steps.slice(0, horizon) }, form.thresholds);
-    const baselineConstraints = peakConstraints({ ...baseline, steps: baseline.steps.slice(0, horizon) }, form.thresholds);
+    const constraints = peakConstraints({ ...projection, steps: projection.steps.slice(0, horizon) }, form.thresholds, p.inflationRule);
+    const baselineConstraints = peakConstraints({ ...baseline, steps: baseline.steps.slice(0, horizon) }, form.thresholds, p.inflationRule);
     const probePolicies = totalYen > 0 ? allocated.map(policy => ({ ...policy,
       annualCost: policy.annualCost * (totalYen + TRILLION) / totalYen })) : [];
     const canProbe = probePolicies.length > 0 && probePolicies.every(policy =>
       policy.annualCost <= policyReliefLimit(policy.id, p));
     const sensitivity = constraintSensitivity({ ...projection, steps: projection.steps.slice(0, horizon) },
-      canProbe ? simulate(initial, probePolicies, horizon, p, shock) : undefined, form.thresholds);
+      canProbe ? simulate(initial, probePolicies, horizon, p, shock) : undefined, form.thresholds, p.inflationRule);
     const key = JSON.stringify([initial, policyConfigs, form.thresholds, horizon, p, shock]);
     if (cache?.key !== key) {
       cache = { key, singleSpaces: new Map(policyConfigs.map(policy => [policy.id,

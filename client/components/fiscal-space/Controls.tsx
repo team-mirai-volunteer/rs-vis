@@ -1,10 +1,20 @@
-import { memo, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { ConstraintDefinition, Policy, PolicyKind, Thresholds } from '@/types/fiscal-space';
 import { fieldClass, KIND_LABELS, money } from './format';
 import { personalTaxRevenue, SOCIAL_INSURANCE_REVENUE } from '@/app/lib/fiscal-space/policy-limits';
+import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
+import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
+
+const DETAILS_KEY = 'fiscal-space:advanced-open';
+function usePersistedOpen(key: string) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => { try { setOpen(window.localStorage.getItem(key) === '1'); } catch { /* per-viewer convenience only */ } }, [key]);
+  const change = (next: boolean) => { setOpen(next); try { window.localStorage.setItem(key, next ? '1' : '0'); } catch { /* ignore */ } };
+  return [open, change] as const;
+}
 
 export function RangeField({ label, value, min, max, step = 1, unit, onChange }: {
   label: string; value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
@@ -50,10 +60,12 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   </div>;
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
+  structuralUnemployment, headline, onPreset, onClose,
   onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   gap: number; inflation: number; construction: number; firmCapacity: number;
+  structuralUnemployment: number; headline?: string; onPreset: () => void; onClose?: () => void;
   onPowerSettings: () => void;
   onCalibrationSettings: () => void;
   onSupplySettings: () => void;
@@ -65,19 +77,50 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
-  return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="max-h-[45dvh] overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-2rem)]"><CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
+  const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);
+  const floor = permittedUnemploymentFloor(structuralUnemployment, thresholds.labour);
+  const thresholdInput = (d: ConstraintDefinition) => {
+    const [min, max] = THRESHOLD_BOUNDS[d.id];
+    if (d.id === 'labour') {
+      // The editable quantity is the permitted unemployment floor; the stored threshold is u*/floor.
+      const floorMin = structuralUnemployment / max, floorMax = structuralUnemployment / min;
+      return <label key={d.id} className="block text-xs">{d.label}：許容する失業率の下限（%）<input className={`${fieldClass} mt-1`} type="number" min={Number((floorMin * 100).toFixed(2))} max={Number((floorMax * 100).toFixed(2))} step={.1} value={Number((floor * 100).toFixed(2))}
+        onChange={e => { const n = e.target.valueAsNumber / 100; if (Number.isFinite(n) && n > 0) onThreshold('labour', Math.min(max, Math.max(min, structuralUnemployment / n))); }} />
+        <span className="mt-1 block text-mirai-text-subtle">構造的失業率{(structuralUnemployment * 100).toFixed(1)}%（仮定）を下回れる幅。上限比 {thresholds.labour.toFixed(2)}。</span></label>;
+    }
+    return <label key={d.id} className="block text-xs">{d.label} 上限（%）<input className={`${fieldClass} mt-1`} type="number" min={Number((min * 100).toFixed(2))} max={Number((max * 100).toFixed(2))} step={.1} value={Number((thresholds[d.id] * 100).toFixed(3))}
+      onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n > 0) onThreshold(d.id, Math.min(max, Math.max(min, n / 100))); }} />
+      <span className="mt-1 block text-mirai-text-subtle">入力範囲 {(min * 100).toFixed(1)}〜{(max * 100).toFixed(0)}%（共有URLも同じ範囲）</span></label>;
+  };
+  return <Card role="region" aria-label="政策の操作パネル" tabIndex={0} className="max-h-[35dvh] overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-2rem)]">
+    <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-mirai-border bg-card px-4 py-2 text-xs lg:hidden">
+      <span className="min-w-0 truncate tabular-nums" data-testid="controls-headline">{headline ?? '計算中'}</span>
+      {onClose && <Button variant="ghost" size="sm" aria-label="政策パネルを閉じる" onClick={onClose}><X aria-hidden="true" /></Button>}
+    </div>
+    <CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
+      <section aria-label="結論を動かす条件" data-testid="decisive-conditions" className="space-y-3 rounded-xl border border-mirai-border p-3">
+        <h3 className="text-sm font-bold">結論を動かす条件</h3>
+        <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、ほぼこの4つです。ほかの条件は下の詳細で変更できます。</p>
+        <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
+        <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
+        <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
+        <Button variant="outline" size="sm" className="w-full" onClick={onPreset}>例：社会保険料減税中心の15兆円配分</Button>
+      </section>
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4">
         {[...policies.filter(p => p.id === 'social-insurance'), ...policies.filter(p => p.id !== 'social-insurance')].map(policyField)}
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
       </div>
-      <div className="space-y-3 border-t border-mirai-border pt-4">
-        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => economyDialog.current?.showModal()}>経済状態・評価条件を変える</Button>
-        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
-        <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
-      </div>
+      <details className="border-t border-mirai-border pt-4" open={advancedOpen} onToggle={e => setAdvancedOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer text-sm font-bold">詳細な条件</summary>
+        <div className="mt-3 space-y-3">
+          <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => economyDialog.current?.showModal()}>経済状態・評価条件を変える</Button>
+          <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
+          <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
+        </div>
+      </details>
     </CardContent>
     <dialog ref={economyDialog} aria-labelledby={economyTitle}
       onKeyDown={e => { if (e.key === 'Escape') e.stopPropagation(); }}
@@ -100,7 +143,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />
         <RangeField label="任意の定率控除" value={reserve} min={0} max={50} step={5} unit="%" onChange={onReserve} />
         <p className="text-xs leading-relaxed">以下は政策判断のための仮の許容閾値です。科学的な危険ラインではありません。各指標がこの割合を超えると違反とします。</p>
-        {definitions.map(d => <label key={d.id} className="block text-xs">{d.label} 上限（%）<input className={`${fieldClass} mt-1`} type="number" min={.01} step={.1} value={Number((thresholds[d.id] * 100).toFixed(3))} onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n) && n > 0) onThreshold(d.id, n / 100); }} /></label>)}
+        {definitions.map(thresholdInput)}
         <Button variant="outline" onClick={() => economyDialog.current?.close()}>設定を閉じて結果を見る</Button>
       </div>
     </dialog>

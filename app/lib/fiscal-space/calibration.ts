@@ -145,6 +145,9 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
     }
     baselinePrice *= 1 + p.baselineInflation + p.inflationPersistence ** paid * (initial.macro.inflation - p.baselineInflation);
   }
+  // One scale for the whole published response (GDP, prices, trade, employment,
+  // long rate). Scaling GDP alone left CPI, and hence the envelope, unchanged.
+  for (const key of Object.keys(result) as (keyof ResponseProfile)[]) result[key] *= p.multiplierScale;
   // Split out a constant mechanical tax price level before any gap sensitivity.
   // This decomposition is a scenario, not separately identified by table 5.
   const active = policy.kind === 'permanent' || year <= policy.duration;
@@ -154,7 +157,7 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
     result.prices += taxPoints / 100 * p.consumptionTax.referenceDirectCpi * taxPriceFactor;
     result.deflator += taxPoints / 100 * p.consumptionTax.referenceDirectDeflator * taxPriceFactor;
   }
-  result.gdp *= initial.macro.realGdp * p.multiplierScale;
+  result.gdp *= initial.macro.realGdp;
   result.imports *= initial.external.imports / (initial.macro.nominalGdp / initial.macro.realGdp);
   result.exports *= initial.external.exports / (initial.macro.nominalGdp / initial.macro.realGdp);
   return { ...result,

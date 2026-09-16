@@ -29,7 +29,7 @@ export function estimateFiscalSpace(state: EconomyState, policyMix: PolicyShare[
   let evaluations = 0;
   const evaluate = (amount: number) => {
     evaluations++;
-    return peakConstraints(simulate(state, allocateMix(policyMix, amount), horizon, p, shock), constraints);
+    return peakConstraints(simulate(state, allocateMix(policyMix, amount), horizon, p, shock), constraints, p.inflationRule);
   };
   const base = evaluate(0);
   const result = (amount: number, status: FiscalSpaceEstimate['status'], peaks: FiscalSpaceEstimate['constraints']): FiscalSpaceEstimate => ({

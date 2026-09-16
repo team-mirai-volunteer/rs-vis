@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { defaults } from '../client/lib/fiscal-space-form';
 import { createFiscalEngine } from '../client/lib/fiscal-space-engine';
-import { decodeScenario, encodeScenario, FISCAL_MODEL_VERSION } from '../client/lib/fiscal-space-url';
+import { decodeScenario, decodeScenarioDetailed, encodeScenario, FISCAL_MODEL_VERSION } from '../client/lib/fiscal-space-url';
+import { THRESHOLD_BOUNDS } from '../client/lib/fiscal-space-ranges';
 import { policyCostYen, totalPolicyCostYen } from '../client/lib/fiscal-space-amounts';
 import { initialEconomy, PARAMETERS, THRESHOLDS } from '../app/lib/fiscal-space/assumptions';
 import { constraintInflation, peakConstraints } from '../app/lib/fiscal-space/constraints';
@@ -36,7 +37,8 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
     if (limit === .025) {
       const delta = (id: string) => r.sensitivity.find(c => c.id === id)!.delta!;
       assert(delta('inflation') * 100 > 1 && delta('inflation') * 100 < 1.2);
-      assert(delta('labour') > 0 && delta('labour') * 100 < .02);
+      // NAIRU-gap ratio: one extra trillion lowers unemployment and raises u*/u visibly.
+      assert(delta('labour') > 0 && delta('labour') * 100 < 1);
       assert(delta('inflation') > delta('interestGdp'));
       assert(Number.isFinite(delta('debt')));
       assert.equal(r.constraints.find(c => c.id === 'sector')!.coverageComplete, true);
@@ -96,7 +98,13 @@ test('every numeric URL input rejects extreme values, including unused load coef
         for (const extreme of [-1e15, 1e15]) {
           obj[key] = extreme;
           const hash = '#scenario=' + encodeURIComponent(JSON.stringify({ version: FISCAL_MODEL_VERSION, form }));
-          assert.throws(() => decodeScenario(hash), key);
+          // Thresholds are clipped into the editable domain and reported, never accepted raw.
+          if (obj === form.thresholds) {
+            const bounds = THRESHOLD_BOUNDS[key as keyof typeof THRESHOLD_BOUNDS];
+            const restored = decodeScenarioDetailed(hash);
+            assert.equal(restored.form.thresholds[key as keyof typeof THRESHOLD_BOUNDS], extreme < 0 ? bounds[0] : bounds[1]);
+            assert(restored.clipped.includes(`thresholds.${key}`));
+          } else assert.throws(() => decodeScenario(hash), key);
         }
         obj[key] = value;
       } else if (typeof value === 'object') visit(value as Record<string, unknown>);

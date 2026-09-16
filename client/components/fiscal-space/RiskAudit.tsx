@@ -2,6 +2,7 @@ import type { FiscalRiskAudit } from '@/app/lib/fiscal-space/risk-audit';
 import { money, percent, points } from './format';
 import { FX_RISK_SOURCE, IMPORT_COST_SOURCE } from '@/app/lib/fiscal-space/external-stress';
 import { FiscalExternal } from './FiscalExternal';
+import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 
 export function RiskAudit({ audit }: { audit: FiscalRiskAudit }) {
   return <div role="region" aria-label="任意控除後の枠の物価・為替リスク" className="space-y-3 border-t border-mirai-border pt-4 text-xs leading-relaxed">
@@ -15,7 +16,7 @@ export function RiskAudit({ audit }: { audit: FiscalRiskAudit }) {
     </dl>
     <FiscalExternal rows={audit.fiscalExternal} model={audit.referenceModel} label={`任意控除後の枠 ${money(audit.amount, 1)} / 年`} />
     <p>追加額はGDPの{percent(audit.gdpShare, 1)}。GDP比1%の公表実験に対して約{audit.referenceScale.toFixed(1)}倍の規模を比例計算しています。供給面も、通常の潜在GDPとは別に、現在の実質GDPを{percent(audit.initialCapacityHeadroom, 1)}上回る最大生産能力を仮定しています。これらの仮定が大きな追加枠を許容する要因です。画面の制約探索は参照モデルの公表期間内に限定しています。期間後の財政制約は検証していません。</p>
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="CPI上限別の任意控除後参考額"><table className="w-full min-w-[320px] text-left tabular-nums"><caption className="mb-1 text-left font-bold">CPIの許容上限だけを変えた場合</caption><thead><tr><th scope="col" className="p-2">許容上限</th><th scope="col" className="p-2">条件付き参考額（任意控除後）</th><th scope="col" className="p-2">条件</th></tr></thead><tbody>{audit.sensitivity.map(row => <tr key={row.limit} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{percent(row.limit, 1)}</th><td className="p-2">{money(row.amount, 1)}{row.status === 'search-cap' && '（暫定）'}</td><td className="p-2">{row.status === 'baseline-violated' ? '政策なしでも上限超過' : row.current ? '現在の設定' : '感度比較'}</td></tr>)}</tbody></table></div>
+    <p data-testid="fx-linkage">公表モデルのCPI反応には、参照モデル自身の為替反応（政府支出GDP比1%の継続で{REFERENCES[audit.referenceModel].years}年目 {REFERENCES[audit.referenceModel].government.exchangeRate.at(-1)!.toFixed(2)}%）が既に含まれており、本体では為替を別に加えません。下表の円安は、その内包分に<strong>追加して</strong>重なる外生ストレスです。参考上限は参照モデルが示す為替経路の範囲では一貫していますが、追加の円安には頑健ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="為替・輸入物価ストレス表" tabIndex={0}><table className="w-full min-w-[680px] text-right tabular-nums"><caption className="mb-2 text-left font-bold">同じ任意控除後の枠に円安が重なったら（数量固定・感度仮定）</caption><thead><tr>{['円/外貨の上昇', '円建て輸入価格', 'CPI上昇率の最大', '設定上限', '輸入支払増', '輸出受取増', '収支差'].map(h => <th scope="col" key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{audit.externalStress.map(r => <tr key={r.fx} className="border-t border-mirai-border"><th scope="row" className="p-2">{percent(r.fx, 0)}</th><td>{percent(r.importPrice, 1)}</td><td>{percent(r.cpiPeak)}</td><td className="font-bold">{r.exceeds ? '超過' : '範囲内'}</td><td>{money(r.importBill, 1)}</td><td>{money(r.exportReceipts, 1)}</td><td>{money(r.tradeBalance, 1)}</td></tr>)}</tbody></table></div>
     <p data-testid="fx-stress-conclusion">円安10%の感度例ではCPI最大<strong>{percent(audit.externalStress[2].cpiPeak)}</strong>。{audit.externalStress[2].exceeds ? '現在の任意控除後の枠は、この条件では物価上限を超えます。' : 'この条件では物価上限内ですが、為替の安全性を保証しません。'}</p>
     <details><summary className="cursor-pointer font-bold">為替ストレスの根拠・感度・限界</summary><div className="mt-2 space-y-2">

@@ -3,7 +3,7 @@ import type { ModelParameters, ProjectionStep, Simulation } from '@/types/fiscal
 import { money, percent, points } from './format';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { FiscalVintageBadge } from './ResultAssumptions';
-import { fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
+import { differenceChartScale, fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 
 export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
   step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
@@ -61,27 +61,49 @@ export function Projection({ simulation, baseline, peaksByYear, shocks, paramete
   const publishedYears = REFERENCES[parameters.referenceModel].years;
   const years = simulation.steps.length;
   const last = simulation.steps[years - 1], baseLast = baseline.steps[years - 1];
+  const baseSteps = [baseline.initial, ...baseline.steps];
+  // Primary chart: policy minus no-policy, anchored at zero. Levels of ~600tn on a
+  // truncated axis exaggerated the gap between three near-parallel lines.
+  const diff = (get: (s: ProjectionStep) => number) => steps.map((s, i) => get(s) - get(baseSteps[i]));
+  const diffSeries = { real: diff(s => s.state.macro.realGdp), potential: diff(s => s.state.macro.potentialGdp), maximum: diff(s => s.production.maximum) };
+  const d = differenceChartScale([...diffSeries.real, ...diffSeries.potential, ...diffSeries.maximum]);
   const values = steps.flatMap(s => [s.state.macro.realGdp, s.state.macro.potentialGdp, s.production.maximum]);
   const { low, high, ticks } = fiscalChartScale(values);
-  const x = (i: number) => 90 + i * 620 / years, y = (v: number) => 200 - (v - low) / (high - low) * 170;
-  const line = (get: (s: ProjectionStep) => number) => steps.map((s, i) => `${x(i)},${y(get(s))}`).join(' ');
+  const x = (i: number) => 90 + i * 620 / years;
+  const yLevel = (v: number) => 200 - (v - low) / (high - low) * 170;
+  const yDiff = (v: number) => 200 - (v - d.low) / (d.high - d.low) * 170;
+  const line = (get: (s: ProjectionStep) => number) => steps.map((s, i) => `${x(i)},${yLevel(get(s))}`).join(' ');
+  const diffLine = (series: number[]) => series.map((v, i) => `${x(i)},${yDiff(v)}`).join(' ');
   return <Card><CardHeader><h2 className="text-lg font-bold">{years}年間の状態遷移</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">グラフは基準年価格（兆円）。公表モデルの期間内でGDP・物価・輸出入・財政を比較します。政策固有の供給効果や事業条件には仮定を含みます。期間後の投資便益は「長期投資の稼働開始と年間効果」を参照してください。</p><p className="text-xs leading-relaxed">3年支出の政策は4年目に支出が止まり、公表反応の組み合わせではGDPが政策なし経路を下回る場合があります。研究・公共資本等の供給効果は、供用開始と減耗に応じて残ります。</p></CardHeader><CardContent className="space-y-5">
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="GDP経路のグラフ">
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="政策なしとの差のグラフ">
       {/* Data chart, not a decorative SVG icon. Equivalent values are available in the table. */}
-      <svg viewBox="0 0 750 245" className="w-full" role="img" aria-label={`${years}年推移（兆円）：実質GDP実線、潜在GDP破線、最大GDP点線。数値は直後の表を参照。`}>
+      <svg viewBox="0 0 750 245" className="w-full min-w-[600px]" role="img" data-testid="difference-chart" aria-label={`${years}年推移・政策なしとの差（兆円、ゼロ起点）：実質GDP実線、潜在GDP破線、最大GDP点線。数値は直後の表を参照。`}>
         <defs><pattern id="scenario-hatch" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="var(--mirai-border)" strokeWidth="1" /></pattern></defs>
         <rect x={x(.5)} y="30" width={710 - x(.5)} height="170" fill="url(#scenario-hatch)" />
         <line x1={x(.5)} x2={x(.5)} y1="30" y2="205" stroke="var(--mirai-text-subtle)" strokeDasharray="4 3" />
-        <text x={x(.5) + 8} y="19" fontSize="13" fill="var(--mirai-text)">ここから先は仮定に基づく試算</text>
-        {ticks.map((v, i) => { return <g key={i}><line x1="90" x2="710" y1={y(v)} y2={y(v)} stroke="var(--mirai-border)" /><text x="85" y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--mirai-text-subtle)">{(v / 1e12).toFixed(0)}兆円</text></g>; })}
-        <polyline points={line(s => s.state.macro.realGdp)} fill="none" stroke="var(--primary-accent)" strokeWidth="3" />
-        <polyline points={line(s => s.state.macro.potentialGdp)} fill="none" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="8 5" />
-        <polyline points={line(s => s.production.maximum)} fill="none" stroke="var(--stance-neutral)" strokeWidth="2" strokeDasharray="2 4" />
-        {steps.map((s, i) => <text key={s.state.year} x={x(i)} y="225" textAnchor="middle" fontSize="11" fill="var(--mirai-text-subtle)">{i}年</text>)}
+        <text x={x(.5) + 8} y="19" fontSize="13" fill="var(--mirai-text)">ここから先は仮定に基づく試算（政策なしとの差・0起点）</text>
+        {d.ticks.map((v, i) => <g key={i}><line x1="90" x2="710" y1={yDiff(v)} y2={yDiff(v)} stroke={v === 0 ? 'var(--mirai-text)' : 'var(--mirai-border)'} strokeWidth={v === 0 ? 1.5 : 1} /><text x="85" y={yDiff(v) + 4} textAnchor="end" fontSize="12" fill="var(--mirai-text-subtle)">{v > 0 ? '+' : ''}{(v / 1e12).toFixed(Math.abs(d.high - d.low) < 5e12 ? 1 : 0)}兆円</text></g>)}
+        <polyline points={diffLine(diffSeries.real)} fill="none" stroke="var(--primary-accent)" strokeWidth="3" />
+        <polyline points={diffLine(diffSeries.potential)} fill="none" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="8 5" />
+        <polyline points={diffLine(diffSeries.maximum)} fill="none" stroke="var(--stance-neutral)" strokeWidth="2" strokeDasharray="2 4" />
+        {steps.map((s, i) => <text key={s.state.year} x={x(i)} y="225" textAnchor="middle" fontSize="12" fill="var(--mirai-text-subtle)">{i}年</text>)}
       </svg>
     </div>
+    <p className="text-xs">実線：実質GDPの差 / 破線：潜在GDPの差 / 点線：選択モデルの最大GDPの差（政策なし経路との差、基準年価格・兆円、軸は0起点）。</p>
+    <details><summary className="cursor-pointer text-sm font-bold">水準のグラフ（軸は0から始まりません）</summary>
+      <div className="mt-2 overflow-x-auto" tabIndex={0} role="region" aria-label="GDP水準のグラフ">
+        <svg viewBox="0 0 750 245" className="w-full min-w-[600px]" role="img" aria-label={`${years}年推移の水準（兆円、軸下限${(low / 1e12).toFixed(0)}兆円で切断）：実質GDP実線、潜在GDP破線、最大GDP点線。`}>
+          <text x="90" y="19" fontSize="13" fill="var(--mirai-text)">軸は{(low / 1e12).toFixed(0)}兆円から。0起点ではないため差が拡大して見えます</text>
+          <path d="M84 206 l4 -6 l4 6 l4 -6" fill="none" stroke="var(--mirai-text)" strokeWidth="1.5" />
+          {ticks.map((v, i) => <g key={i}><line x1="90" x2="710" y1={yLevel(v)} y2={yLevel(v)} stroke="var(--mirai-border)" /><text x="85" y={yLevel(v) + 4} textAnchor="end" fontSize="12" fill="var(--mirai-text-subtle)">{(v / 1e12).toFixed(0)}兆円</text></g>)}
+          <polyline points={line(s => s.state.macro.realGdp)} fill="none" stroke="var(--primary-accent)" strokeWidth="3" />
+          <polyline points={line(s => s.state.macro.potentialGdp)} fill="none" stroke="var(--mirai-text)" strokeWidth="2" strokeDasharray="8 5" />
+          <polyline points={line(s => s.production.maximum)} fill="none" stroke="var(--stance-neutral)" strokeWidth="2" strokeDasharray="2 4" />
+          {steps.map((s, i) => <text key={s.state.year} x={x(i)} y="225" textAnchor="middle" fontSize="12" fill="var(--mirai-text-subtle)">{i}年</text>)}
+        </svg>
+      </div>
+    </details>
     <p className="text-sm">債務経路の仮定：名目GDPへの税収弾性値 {parameters.taxRevenueElasticity}、徴収ラグ {parameters.taxCollectionLag}年。債務/GDPの低下は分母の名目成長でも起こり、政策が自己財源化することを意味しません。</p>
-    <p className="text-xs">実線：実質GDP / 破線：潜在GDP / 点線：選択モデルの最大GDP（兆円）</p>
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${years}年間の推計表`}><table className="w-full min-w-[1440px] text-right text-xs tabular-nums"><caption className="mb-2 text-left">← 横にスクロールできます → 金額は兆円、率は%。GDPは基準年価格（名目GDPを除く）、輸出入は各年価格。国民負担は税・社会保険料の名目GDP比。</caption><thead><tr className="border-b border-mirai-border">{['年', '名目GDP', '実質GDP', '潜在GDP', '最大GDP', 'GDPギャップ', '最大GDPギャップ', 'CPI', '税直接効果を除くCPI', '借換金利', '輸出', '輸入', '債務/GDP', '利払/GDP', '資金調達/GDP', '基礎的収支/GDP', '債務安定に必要な収支/GDP', '国民負担/GDP', '追加1兆円で最も動く制約'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}>{h}</th>)}</tr></thead><tbody>
       {simulation.steps.map((s, i) => <tr key={s.state.year} className="border-b border-mirai-border last:border-0 hover:bg-mirai-surface-teal/60"><th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-card p-2">{s.state.year}年</th>{[
         money(s.state.macro.nominalGdp, 1), money(s.state.macro.realGdp, 1), money(s.state.macro.potentialGdp, 1), money(s.production.maximum, 1),
