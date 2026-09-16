@@ -29,8 +29,8 @@ export function ShareScenario({ form, onPreset, error, restore }: {
       <Button variant="outline" size="sm" onClick={share}>この条件のURLをコピー</Button>
       <Button variant="outline" size="sm" onClick={() => onPreset({
         ...Object.fromEntries(Object.keys(form.amounts).map(id => [id, 0])),
-        'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2,
-      })}>例：社会保険料減税中心の15兆円配分</Button>
+        'social-insurance': 15,
+      })}>例：社会保険料減税だけで15兆円</Button>
       <span data-testid="model-version">モデル {FISCAL_MODEL_VERSION}{calculatedOn && `・計算日 ${calculatedOn}`}</span>
     </div>
     {migrated && <p role="status" data-testid="restore-notice" className="rounded-lg bg-mirai-surface-warm p-2 text-xs">

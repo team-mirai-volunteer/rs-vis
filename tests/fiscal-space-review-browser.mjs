@@ -19,7 +19,7 @@ try {
   const y = await page.getByRole('region', { name: '政策の操作パネル' }).evaluate(el => el.getBoundingClientRect().top + scrollY);
   assert(y < 600, `Policy controls begin at ${y}px`);
   await expect(page.getByTestId('input-overview')).toContainText('0.00兆円');
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円');
   await expect(page.getByTestId('input-overview').getByRole('link', { name: '配分を拡大した場合の参考上限・生産能力を見る' })).toHaveAttribute('href', '#fiscal-envelope');
   await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(0);
@@ -39,7 +39,7 @@ try {
   await expect(result).toContainText('借換・新発金利');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   const models = page.getByRole('region', { name: '参考上限の感度' });
   await expect(models.locator('tbody tr')).toHaveCount(3);
   await page.getByLabel('使用する生産モデル').selectOption('ces');
@@ -58,7 +58,7 @@ try {
   await expect(page.getByTestId('annual-total')).toHaveText('25.0兆円');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => scrollTo(0, 0));
   await page.getByRole('button', { name: /^政策を調整/ }).click();
