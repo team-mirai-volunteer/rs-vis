@@ -42,7 +42,7 @@ test('PID 1503 budget survives repeated recomputation and the 1-billion-yen filt
   assert(Math.abs(program.value / 1e8 - 5.08) < .01);
   assert(program.layoutValue! > 2000e8);
   assert(view.nodes.some(n => n.id === program.id));
-  const filtered = applyFilter(view, { ...UNIFIED_FILTER_DEFAULT, budgetMax: '10億', includeCollapsedAccounts: true });
+  const filtered = applyFilter(view, { ...UNIFIED_FILTER_DEFAULT, budgetMax: '10億', projectIds: [], includeCollapsedAccounts: true });
   assert.equal(filtered.nodes.find(n => n.id === program.id)?.value, program.value);
   assert.equal(original.nodes.find(n => n.id === program.id)?.value, program.value, 'source graph is immutable');
   const ministry = toRsMinistryGraph(original).nodes.find(n => n.id === program.id)!;

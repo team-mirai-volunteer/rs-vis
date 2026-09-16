@@ -7,7 +7,7 @@ import type { ResolvedSankeyQuery } from '../types/sankey-query';
 const query = (filter: Partial<ResolvedSankeyQuery['filter']>): ResolvedSankeyQuery => ({
   year: '2025',
   filter: { projectName: null, recipientName: null, ministries: [], budget: { min: null, max: null }, spending: { min: null, max: null },
-    accountCategories: [], subcontract: { hasRedelegation: false, minDepth: null }, ...filter },
+    accountCategories: [], subcontract: { hasRedelegation: false, minDepth: null }, projectIds: [], ...filter },
   view: {} as ResolvedSankeyQuery['view'],
 });
 

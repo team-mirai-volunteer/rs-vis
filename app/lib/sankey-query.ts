@@ -139,6 +139,9 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
       spending: normalizeRange('filter.spending', input.filter?.spending),
       accountCategories,
       subcontract,
+      // "project-budget-123" のようなノード ID で渡されても pid に正規化する。件数は URL 長のため上限を置く
+      projectIds: [...new Set((Array.isArray(input.filter?.projectIds) ? input.filter!.projectIds! : [])
+        .map(v => String(v).trim().replace(/^project-(?:budget|spending)-/, '')).filter(v => /^\d{1,10}$/.test(v)))].slice(0, MAX_PROJECT_IDS),
     },
     view: {
       topMinistry: clampInt(v?.topMinistry, SANKEY_QUERY_DEFAULTS.topMinistry, 1, TOP_MINISTRY_MAX),
@@ -165,9 +168,13 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
   return { query, errors };
 }
 
+/** filter.projectIds の上限（URL 長・ツール引数の肥大を防ぐ） */
+export const MAX_PROJECT_IDS = 300;
+
 /** フィルタ条件が1つでも指定されているか */
 export function hasActiveFilter(filter: ResolvedSankeyQuery['filter']): boolean {
   return (
+    filter.projectIds.length > 0 ||
     filter.projectName != null ||
     filter.recipientName != null ||
     filter.ministries.length > 0 ||
@@ -231,7 +238,9 @@ export function buildFilterExcludedIds(
   const subMinDepth = filter.subcontract.minDepth ?? (filter.subcontract.hasRedelegation ? 2 : null);
   const hasSubcontract = subMinDepth != null;
   const hasExtraProject = excludeProject != null;
-  if (!hasBudget && !hasSpending && !hasProjectName && !hasRecipientName && !hasMinistry && !hasAccountFilter && !hasSubcontract && !hasExtraProject) return null;
+  const projectIdSet = new Set(filter.projectIds);
+  const hasProjectIds = projectIdSet.size > 0;
+  if (!hasBudget && !hasSpending && !hasProjectName && !hasRecipientName && !hasMinistry && !hasAccountFilter && !hasSubcontract && !hasExtraProject && !hasProjectIds) return null;
 
   const selectedMinistrySet = new Set(filter.ministries);
   const minBudget = minBudgetYen ?? -Infinity;
@@ -283,7 +292,8 @@ export function buildFilterExcludedIds(
         (n.subcontractRecipients ?? []).some(matchesRecipient!)
       );
       const failExtra = hasExtraProject && excludeProject!(n.projectId);
-      if (failBudget || failProjectName || failMinistry || failAccount || failSubcontract || failAnyRecipient || failExtra) { excluded.add(n.id); if (sn) excluded.add(sn.id); }
+      const failProjectIds = hasProjectIds && !projectIdSet.has(String(n.projectId));
+      if (failBudget || failProjectName || failMinistry || failAccount || failSubcontract || failAnyRecipient || failExtra || failProjectIds) { excluded.add(n.id); if (sn) excluded.add(sn.id); }
     } else if (n.type === 'recipient') {
       const failSpending = hasSpending && (n.value < minSpending || n.value > maxSpending);
       // includeSubcontract モードでは支出先ノードを名前で隠さない（事業単位判定のみ）
@@ -292,7 +302,7 @@ export function buildFilterExcludedIds(
     }
   }
   // Pass 2: 支出先・予算フィルタが有効な場合、残存支出先のない事業／孤立支出先を除外
-  if (hasSpending || hasBudget || hasMinistry || hasRecipientName || hasSubcontract || hasExtraProject) {
+  if (hasSpending || hasBudget || hasMinistry || hasRecipientName || hasSubcontract || hasExtraProject || hasProjectIds) {
     const projectsWithSurvivingRecipients = new Set(
       edges
         .filter(e => e.target.startsWith('r-') && !excluded.has(e.target))
@@ -764,6 +774,7 @@ export function sankeyQueryToUrlParams(query: ResolvedSankeyQuery): URLSearchPar
   // 再委託条件: 深さ下限指定は fsd、有無のみは fsr
   if (filter.subcontract.minDepth != null) p.set('fsd', String(filter.subcontract.minDepth));
   else if (filter.subcontract.hasRedelegation) p.set('fsr', '1');
+  if (filter.projectIds.length > 0) p.set('fpid', filter.projectIds.join(','));
   return p;
 }
 
@@ -808,6 +819,8 @@ export function sankeyQueryFromUrlParams(p: URLSearchParams): SankeyQuery {
   const fsdNum = fsd !== null ? parseInt(fsd, 10) : NaN;
   if (!isNaN(fsdNum)) filter.subcontract = { minDepth: fsdNum };
   else if (p.get('fsr') === '1') filter.subcontract = { hasRedelegation: true };
+  const fpid = p.get('fpid');
+  if (fpid) filter.projectIds = fpid.split(',').map(v => v.trim()).filter(Boolean);
   if (Object.keys(filter).length > 0) query.filter = filter;
 
   const view: SankeyQuery['view'] = {};

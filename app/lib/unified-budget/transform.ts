@@ -292,8 +292,10 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
 
   const hasRecipients = view.nodes.some(n => n.details.column === 'recipient');
   const hasRecipientQuery = recipientQuery !== '' && hasRecipients;
+  const projectIdSet = new Set(filter.projectIds.map(String));
+  const hasProjectIds = projectIdSet.size > 0;
 
-  if (!hasBudget && !hasSpending && !projectQuery && !hasRecipientQuery && !hasSubcontract && !hasScore) return view;
+  if (!hasBudget && !hasSpending && !projectQuery && !hasRecipientQuery && !hasSubcontract && !hasScore && !hasProjectIds) return view;
 
   const matchesProject = projectQuery ? buildNameMatcher(projectQuery, filter.projectRegex) : undefined;
   const matchesRecipient = hasRecipientQuery ? buildNameMatcher(recipientQuery, filter.recipientRegex) : undefined;
@@ -351,7 +353,8 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
           }
         }
       }
-      if (failBudget || failSpending || failName || failSubcontract || failAnyRecipient || failScore) dropProject(pid);
+      const failIds = hasProjectIds && !projectIdSet.has(String(pid));
+      if (failBudget || failSpending || failName || failSubcontract || failAnyRecipient || failScore || failIds) dropProject(pid);
     } else if (n.details.column === 'recipient') {
       // 支出先ノードを名前で落とす（再委託先を含むモードでは隠さない）
       if (matchesRecipient !== undefined && !includeSub && (matchesRecipient === null || !matchesRecipient(n.name))) remove.add(n.id);
