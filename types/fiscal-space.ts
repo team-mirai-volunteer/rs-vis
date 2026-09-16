@@ -158,7 +158,7 @@ export interface FiscalSpaceEstimate {
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };
 }
 export interface PolicyComparisonPeriod {
-  year: 1 | 3 | 5;
+  year: number;
   realGdpEffect: number; inflationPressure: number;
   exports: number; imports: number; tradeBalanceEffect: number; domesticSubstitution: number;
   energyOperatingTradeEffect: number;
