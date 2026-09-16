@@ -9,9 +9,14 @@ vercel_project_name = "marumie-rssystem"
 github_repo         = "team-mirai-volunteer/rs-vis"
 
 app_env_plain = {
-  # SANKEY_AI_CHAT_ENABLED      = "true"
-  # NEXT_PUBLIC_FEATURE_AI_CHAT = "true"
+  # サーバー側 LLM（サンキーAIチャット／インタビュー）を Vercel 上で有効化する。
+  # 未設定なら Vercel 上では無効（従量課金のため既定オフ）。値は "1" で判定される。
+  # SANKEY_AI_CHAT_ENABLED = "1"
 }
+
+# OpenRouter のキーは tfvars に書かず、環境変数で渡す:
+#   $env:TF_VAR_app_env_sensitive = '{"OPENROUTER_API_KEY":"sk-or-..."}'
+# SANKEY_AI_CHAT_API_KEY を置けばそちらが優先される（別プロバイダを使う場合）。
 
 # Supabase（2026-09-12 に作成済み。org ID は team-mirai の Supabase org）
 supabase_enabled         = true
