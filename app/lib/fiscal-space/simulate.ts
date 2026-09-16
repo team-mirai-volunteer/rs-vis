@@ -14,7 +14,7 @@ import { resourcePowerBalance, validateResourceAssumptions } from './resource-es
 const sectorZeros = () => Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
 const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0, capacityPriceAdjustment: 0,
   directTaxPriceEffect: 0, directTaxDeflatorEffect: 0, longRateEffect: 0,
-  domesticSubstitution: 0, projectEnergyNetImports: 0,
+  domesticSubstitution: 0, projectOperatingImports: 0, projectEnergyNetImports: 0,
   priceLevelEffect: 0, deflatorLevelEffect: 0, employmentEffect: 0, labourForceEffect: 0, hoursEffect: 0, details: [] });
 
 export function snapshot(state: EconomyState, p: ModelParameters): ProjectionStep {
@@ -23,7 +23,7 @@ export function snapshot(state: EconomyState, p: ModelParameters): ProjectionSte
     ? resourcePowerBalance(0, 0, 0, p.resourceModel,
       state.energy.firmCapacity / resourcePowerBalance(0, 0, 0, p.resourceModel).nationalSupplyGw) : undefined;
   return { state, production, demand: emptyDemand(), policyCost: 0,
-    resourcePower,
+    resourcePower, structuralUnemployment: p.structuralUnemployment,
     metrics: fiscalMetrics(state, state.debtPortfolio.filter(b => b.maturityYear <= state.year + 1).reduce((s, b) => s + b.principal, 0), state.fiscal.grossDebt, state.macro.nominalGdp),
     outputGap: (state.macro.realGdp - state.macro.potentialGdp) / state.macro.potentialGdp,
     maximumGap: (state.macro.realGdp - production.maximum) / production.maximum,
@@ -53,10 +53,12 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
   if (p.taxRevenueElasticity < 0 || p.taxRevenueElasticity > 3 || !Number.isInteger(p.taxCollectionLag) || p.taxCollectionLag < 0 || p.taxCollectionLag > 5) throw new RangeError('Invalid tax revenue sensitivity');
   if (!['leontief', 'ces', 'cobbDouglas'].includes(p.productionModel)) throw new RangeError('Invalid production model');
   for (const n of [p.gapDemandSensitivity, p.gapPriceSensitivity, p.gapInflationSlope]) if (n < 0) throw new RangeError('Invalid gap sensitivity');
+  if (!(p.structuralUnemployment > 0 && p.structuralUnemployment < .2)) throw new RangeError('Invalid structural unemployment');
+  if (!['peak', 'average'].includes(p.inflationRule)) throw new RangeError('Invalid inflation rule');
   positive(p.consumptionTax.revenuePerPoint, 'tax revenue per point');
   positive(p.consumptionTax.baseRate, 'base consumption tax rate');
   for (const n of [p.consumptionTax.cpiShare, p.consumptionTax.passThrough]) if (n < 0 || n > 1) throw new RangeError('Invalid tax price assumptions');
-  for (const id of ['consumption-tax', 'social-insurance']) {
+  for (const id of new Set(policies.map(x => x.id))) {
     if (policies.filter(x => x.id === id).reduce((sum, x) => sum + x.annualCost, 0) > policyReliefLimit(id, p) + 1)
       throw new RangeError(`${id} relief exceeds the revenue base`);
   }
@@ -111,7 +113,13 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const demand = allocateDemand(state, policies, p, t, initial, { real: baselineReal, potential: baselinePotential });
     const policyCost = active.reduce((s, policy) => s + policy.annualCost, 0);
     const inflationPressure = demand.prices / autonomousReal * p.inflationPassThrough;
-    const { sectorDemand, peakGw, coverage } = policyLoads(initial, policies, t, p);
+    const { sectorDemand, peakGw, annualGwh, coverage } = policyLoads(initial, policies, t, p);
+    // Policy electricity volume is a distinct physical fuel bill at the common
+    // fuel price path, like the generation fuel saving. It is not deducted from
+    // the published import response, which has no identified energy split.
+    const policyDemandTwh = annualGwh / 1000;
+    const policyFuelIncrease = policyDemandTwh * 1e9 * p.electricity.fuelImportYenPerKwh * p.electricity.marginalThermalShare
+      * commonPriceIndex * (1 + shock.energyPriceChange);
     let energyDemandIncrease = 0;
     for (const policy of active) {
       const intensity = policy.annualCost / priceBefore / autonomousReal;
@@ -144,7 +152,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const baselineEnergyBill = initial.energy.importBill * commonPriceIndex;
     state.energy.importBill = baselineEnergyBill * state.energy.importedEnergy / initial.energy.importedEnergy * (1 + shock.energyPriceChange);
     state.energy.importBill = Math.max(0, state.energy.importBill + demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange));
-    state.energy.importBill = Math.max(0, state.energy.importBill + commonFuelIncrease);
+    state.energy.importBill = Math.max(0, state.energy.importBill + commonFuelIncrease + policyFuelIncrease);
     const energyImportIncrease = state.energy.importBill - baselineEnergyBill;
     // A permanent price-level shock contributes to inflation once; new import demand contributes each year.
     // The common fuel path is a level: only its annual change adds inflation.
@@ -229,6 +237,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
     steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+      structuralUnemployment: p.structuralUnemployment,
       publicCapital: policies.some(policy => policy.supply?.kind === 'capital') ? {
         stock: capacity.publicCapitalStock, potentialBenefit: capacity.publicCapitalBenefit,
         realizedBenefit: realized.publicCapitalBenefit * initial.macro.realGdp / initial.macro.potentialGdp,
@@ -239,7 +248,8 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
         tradingIncomeChange, realDomesticIncome: realGdp + tradingIncomeChange, expenditureIndex },
       taxAdjustedInflation, refinancingRate: marketRate, referenceRateEffect: demand.longRateEffect, coverage,
       electricity: { demandTwh: electricity.demandTwh, thermalTwh: electricity.thermalTwh, thermalIncreaseTwh: electricity.thermalIncreaseTwh,
-        commonFuelIncrease, operatingImportReduction: demand.projectEnergyNetImports === 0 ? 0 : -demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange) },
+        commonFuelIncrease, operatingImportReduction: demand.projectEnergyNetImports === 0 ? 0 : -demand.projectEnergyNetImports * priceBefore * (1 + shock.energyPriceChange),
+        policyDemandTwh, policyFuelIncrease },
       outputGap: (realGdp - potential) / potential, maximumGap: (realGdp - production.maximum) / production.maximum,
       // Acquisition of assets after full debt retirement is an SFA for gross (not net) debt.
       metrics: fiscalMetrics(state, rolled.maturingDebt, previous.fiscal.grossDebt, previous.macro.nominalGdp,

@@ -3,14 +3,14 @@ import { SECTORS, TRILLION } from './assumptions';
 
 export const EMPTY_PROJECT_BASIS: ProjectLoadBasis = {
   budgetTrillion: 1, workerYears: null, sectorWorkerCapacity: null,
-  constructionPeakMw: null, operatingPeakMw: null, annualOperatingGwh: null,
+  constructionPeakMw: null, operatingPeakMw: null, annualOperatingGwh: null, annualConstructionGwh: null,
   annualLoadFactor: null, peakCoincidence: null,
 };
 
 /** Convert an explicit project scale, never public expenditure alone, into
  * load coefficients. Annual GWh do not by themselves identify peak demand. */
 export function loadFromProject(basis: ProjectLoadBasis): Pick<PolicyLoad,
-  'sectorUtilizationPerTrillion' | 'peakGwPerTrillion' | 'operatingPeakGwPerTrillion'> {
+  'sectorUtilizationPerTrillion' | 'peakGwPerTrillion' | 'operatingPeakGwPerTrillion' | 'annualGwhPerTrillion' | 'operatingAnnualGwhPerTrillion'> {
   if (Object.values(basis).some(v => v !== null && (!Number.isFinite(v) || v < 0)) ||
     basis.budgetTrillion <= 0 || basis.sectorWorkerCapacity === 0 ||
     (basis.annualLoadFactor !== null && (basis.annualLoadFactor <= 0 || basis.annualLoadFactor > 1)) ||
@@ -23,6 +23,8 @@ export function loadFromProject(basis: ProjectLoadBasis): Pick<PolicyLoad,
       ? basis.workerYears / basis.sectorWorkerCapacity / basis.budgetTrillion : null,
     peakGwPerTrillion: basis.constructionPeakMw === null ? null : basis.constructionPeakMw / 1000 / basis.budgetTrillion,
     operatingPeakGwPerTrillion: operatingGw === null ? null : operatingGw / basis.budgetTrillion,
+    annualGwhPerTrillion: basis.annualConstructionGwh == null ? null : basis.annualConstructionGwh / basis.budgetTrillion,
+    operatingAnnualGwhPerTrillion: basis.annualOperatingGwh === null ? null : basis.annualOperatingGwh / basis.budgetTrillion,
   };
 }
 
@@ -35,6 +37,8 @@ export function loadCoverage(load: PolicyLoad | undefined) {
   return {
     sector: !!c && c.sectorUtilizationPerTrillion !== null,
     energy: !!c && c.peakGwPerTrillion !== null && c.operatingPeakGwPerTrillion !== null,
+    // Annual electricity drives fuel imports; peak GW alone does not identify it.
+    fuel: !!c && (c.annualGwhPerTrillion ?? null) !== null && (c.operatingAnnualGwhPerTrillion ?? null) !== null,
   };
 }
 
@@ -42,16 +46,17 @@ export function loadCoverage(load: PolicyLoad | undefined) {
  * Spending-year loads and operating vintages have different lifetimes. */
 export function policyLoads(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters) {
   const sectorDemand = Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
-  let peakGw = 0;
-  const coverage = { sector: true, energy: true };
+  let peakGw = 0, annualGwh = 0;
+  const coverage = { sector: true, energy: true, fuel: true };
   for (const policy of policies.filter(x => x.annualCost > 0)) {
     const c = policy.load && effectiveLoad(policy.load);
     const known = loadCoverage(policy.load);
     coverage.sector &&= known.sector;
     coverage.energy &&= known.energy;
+    coverage.fuel &&= known.fuel;
     if (!c) continue;
     if ([c.sectorUtilizationPerTrillion, c.peakGwPerTrillion, c.operatingPeakGwPerTrillion,
-      c.lag, c.lifetime, c.depreciation].some(v => v !== null && (!Number.isFinite(v) || v < 0)) || c.depreciation > 1 ||
+      c.annualGwhPerTrillion ?? null, c.operatingAnnualGwhPerTrillion ?? null, c.lag, c.lifetime, c.depreciation].some(v => v !== null && (!Number.isFinite(v) || v < 0)) || c.depreciation > 1 ||
       !Number.isInteger(c.lag) || !Number.isInteger(c.lifetime) || c.lifetime < 1) throw new RangeError('Invalid policy load assumptions');
     if (c.estimated && (!Number.isFinite(c.priceIndex) || c.priceIndex! <= 0 ||
       !c.sectorLoads || SECTORS.some(s => !Number.isFinite(c.sectorLoads![s]) || c.sectorLoads![s] < 0))) {
@@ -66,12 +71,16 @@ export function policyLoads(initial: EconomyState, policies: Policy[], year: num
             for (const sector of SECTORS) sectorDemand[sector] += cost * c.sectorLoads[sector];
           } else sectorDemand[policy.sector] += cost * (c.sectorUtilizationPerTrillion ?? 0);
           peakGw += cost * (c.peakGwPerTrillion ?? 0);
+          annualGwh += cost * (c.annualGwhPerTrillion ?? 0);
         }
         const age = year - paid - c.lag;
-        if (age >= 0 && age < c.lifetime) peakGw += cost * (c.operatingPeakGwPerTrillion ?? 0) * (1 - c.depreciation) ** age;
+        if (age >= 0 && age < c.lifetime) {
+          peakGw += cost * (c.operatingPeakGwPerTrillion ?? 0) * (1 - c.depreciation) ** age;
+          annualGwh += cost * (c.operatingAnnualGwhPerTrillion ?? 0) * (1 - c.depreciation) ** age;
+        }
       }
       price *= 1 + p.baselineInflation + p.inflationPersistence ** paid * (initial.macro.inflation - p.baselineInflation);
     }
   }
-  return { sectorDemand, peakGw, coverage };
+  return { sectorDemand, peakGw, annualGwh, coverage };
 }

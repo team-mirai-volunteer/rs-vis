@@ -1,0 +1,18 @@
+{
+  "sourceUrl": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040187026&fileKind=0",
+  "sourceName": "令和2年産業連関表・生産者価格評価表・108部門",
+  "referenceYear": 2020,
+  "sectorCode": "321",
+  "sectorName": "電子デバイス",
+  "sha256": "8115f7f605e0c8dfa546bad1655a171b3c21a353a245a3af5e40c5924a2e5607",
+  "amountUnit": "10億円",
+  "production": 5369.6,
+  "exports": 3713.3,
+  "importsExcludingTax": 2457.6,
+  "domesticMarketExcludingImportTax": 4113.9,
+  "exportShare": 0.6915412693682956,
+  "domesticReplacementShare": 0.5973893385838256,
+  "directOperatingImportShare": 0.13221581723381526,
+  "operatingImportShare": 0.1928650497213598,
+  "method": "競争輸入型の比例配分。国内投入逆行列の321列を対角要素で割り、電子デバイス生産1円当たりの国内供給網輸入を算出。関税・輸入品商品税は海外支払から除外。国内置換率は国内市場の輸入浸透率を代用する仮定。"
+}

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend_Giga, Noto_Sans_JP } from "next/font/google";
 import { SITE_URL } from "@/app/lib/site-url";
+import { pageMetadata } from '@/app/lib/page-metadata';
+import { AppHeaderProvider } from '@/components/navigation/AppHeader';
 import "./globals.css";
 
 // 和文フォント。400（本文）/ 500（中肉）/ 700（見出し）を最低限ロード
@@ -21,8 +23,7 @@ const lexendGiga = Lexend_Giga({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "行政事業レビュー サンキー図 - 予算・支出可視化",
-  description: "行政事業レビューシステムの予算・支出データをサンキー図で可視化",
+  ...pageMetadata('/'),
 };
 
 export const viewport: Viewport = {
@@ -42,7 +43,7 @@ export default function RootLayout({
         className={`${notoSansJP.variable} ${lexendGiga.variable} font-sans antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
-        {children}
+        <AppHeaderProvider>{children}</AppHeaderProvider>
       </body>
     </html>
   );

@@ -1,5 +1,8 @@
-import type { ConstraintDefinition, ConstraintResult, ProjectionStep, Simulation, Thresholds } from '@/types/fiscal-space';
-import { SECTOR_LABELS } from './assumptions';
+import type { ConstraintDefinition, ConstraintResult, ModelParameters, ProjectionStep, Simulation, Thresholds } from '@/types/fiscal-space';
+import { PARAMETERS, SECTOR_LABELS } from './assumptions';
+
+export const unemploymentRate = (s: ProjectionStep) => s.state.labour.unemployment / s.state.labour.labourForce;
+const structural = (s: ProjectionStep) => s.structuralUnemployment ?? PARAMETERS.structuralUnemployment;
 
 const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
 export const constraintInflation = (s: ProjectionStep) => Math.max(s.state.macro.inflation, s.taxAdjustedInflation ?? s.state.macro.inflation);
@@ -13,8 +16,11 @@ export const CONSTRAINTS: ConstraintDefinition[] = [
     explain: s => `CPI総合${pct(s.state.macro.inflation)}、消費税直接効果を除くCPI${pct(s.taxAdjustedInflation ?? s.state.macro.inflation)}の両方を同じ上限で判定。税効果の分離とGDPギャップ感度は仮定。供給上限の追加圧力は${pct(s.inflationPressure)}。水準効果の年次比からインフレ率を計算。` },
   { id: 'capacity', label: '最大GDP能力', measure: s => s.state.macro.realGdp / s.production.maximum,
     explain: () => '実質GDP÷選択した生産モデルの最大GDP。全期間で同じモデルを使用。年数だけでモデルや投入指数を変えません。' },
-  { id: 'labour', label: '労働', measure: s => s.state.labour.employment / s.state.labour.labourForce,
-    explain: () => '必要雇用÷労働力。公表モデルの人数の反応を使用。追加感度を設定すると本人の時間・参加、事業主の雇用需要も変化。時間増で同じ労働量を少ない人数で満たす近似。1超は充足できない要求。' },
+  // NAIRU-gap ratio: structural / actual unemployment. 1 = at the structural rate; the
+  // threshold sets the permitted unemployment floor (u* / threshold). A level ratio of
+  // employment to labour force was a switch, not a gap: 0.995 never bound, 0.975 always did.
+  { id: 'labour', label: '労働需給（構造的失業率 ÷ 失業率）', measure: s => structural(s) / Math.max(1e-9, unemploymentRate(s)),
+    explain: s => `失業率${pct(unemploymentRate(s))}に対し構造的失業率${pct(structural(s))}を仮定。比が上限を超えると、許容する失業率下限を割り込む判定。構造的失業率は推定値ではなくシナリオ入力。公表モデルの人数反応を使用し、追加感度を設定すると本人の時間・参加、事業主の雇用需要も変化。` },
   { id: 'sector', label: '産業別能力', measure: s => Math.max(...Object.values(s.state.labour.sectorUtilization)),
     explain: s => {
       const sector = (Object.keys(s.state.labour.sectorUtilization) as (keyof typeof SECTOR_LABELS)[]).sort((a, b) => s.state.labour.sectorUtilization[b] - s.state.labour.sectorUtilization[a])[0];
@@ -22,7 +28,9 @@ export const CONSTRAINTS: ConstraintDefinition[] = [
       return `${SECTOR_LABELS[sector]}: 初期設定${pct(current - extra)}、追加負荷${pct(extra)}。${s.estimatedLoads ? '2020年産業連関表・雇用表からの6区分の人員負荷概算を含みます。初期の余力・価格換算は仮定で、設備能力の推計ではありません。' : '追加負荷は政策別の原単位の仮定から計算。'}${s.coverage?.sector === false ? '負荷係数が未設定の政策があり一部未評価。' : ''}`;
     } },
   { id: 'energy', label: '電力供給能力', measure: s => s.resourcePower?.utilization ?? s.state.energy.peakDemand / s.state.energy.firmCapacity,
-    explain: s => s.resourcePower ? `${s.resourcePower.referenceYear}年度見通し・${s.resourcePower.region}・${s.resourcePower.season}：需要${s.resourcePower.demandGw.toFixed(2)}GW÷供給${s.resourcePower.supplyGw.toFixed(2)}GW。地域・季節別の最大利用率。OCCTO公表の融通前供給力と追加負荷の概算。地域配分は仮定で、連系線融通・全月の最小余力は未評価。` : `ピーク${s.state.energy.peakDemand.toFixed(1)}GW÷確実供給${s.state.energy.firmCapacity.toFixed(1)}GW。予備率${pct(s.state.energy.reserveMargin)}。再エネ設備容量をそのまま供給能力に加えません。` },
+    explain: s => (s.resourcePower ? `${s.resourcePower.referenceYear}年度見通し・${s.resourcePower.region}・${s.resourcePower.season}：需要${s.resourcePower.demandGw.toFixed(2)}GW÷供給${s.resourcePower.supplyGw.toFixed(2)}GW。地域・季節別の最大利用率。OCCTO公表の融通前供給力と追加負荷の概算。地域配分は仮定で、連系線融通・全月の最小余力は未評価。${s.state.year > 10 ? `供給計画は${s.resourcePower.referenceYear}年度（公表最終年）の値を据え置き。` : ''}` : `ピーク${s.state.energy.peakDemand.toFixed(1)}GW÷確実供給${s.state.energy.firmCapacity.toFixed(1)}GW。予備率${pct(s.state.energy.reserveMargin)}。再エネ設備容量をそのまま供給能力に加えません。`)
+      + (s.electricity ? ` 政策の追加電力量${s.electricity.policyDemandTwh.toFixed(2)}TWh、火力燃料の輸入増${(s.electricity.policyFuelIncrease / 1e12).toFixed(3)}兆円（限界供給割合と燃料単価は仮定）。` : '')
+      + (s.coverage?.fuel === false ? '年間電力量が未設定の政策があり燃料輸入は一部未評価。' : '') },
   { id: 'external', label: '輸入圧力', measure: s => s.state.external.imports / s.state.macro.nominalGdp,
     explain: () => '財・サービス輸入費÷名目GDPを許容閾値と比較。第一次所得黒字で実物輸入制約を相殺しません。外貨調達可能性そのものの推定ではありません。' },
 ];
@@ -38,15 +46,23 @@ export function evaluateConstraints(step: ProjectionStep, thresholds: Thresholds
       explanation: d.explain(step) + (d.id === 'energy' && step.coverage?.energy === false ? ' 政策による追加電力負荷は一部または全部が未評価です。' : '') };
   });
 }
-/** One peak observation per constraint, including year zero. Never average away a violation. */
-export function peakConstraints(simulation: Simulation, thresholds: Thresholds): ConstraintResult[] {
+/** Policy years only. Year zero remains available as an observed initial condition. */
+export function peakConstraints(simulation: Simulation, thresholds: Thresholds, rule: ModelParameters['inflationRule'] = 'peak'): ConstraintResult[] {
   const peaks = new Map<string, ConstraintResult>();
   const incomplete = new Set<string>();
-  for (const step of [simulation.initial, ...simulation.steps]) for (const r of evaluateConstraints(step, thresholds)) {
+  for (const step of simulation.steps) for (const r of evaluateConstraints(step, thresholds)) {
     if (r.coverageComplete === false) incomplete.add(r.id);
     const old = peaks.get(r.id);
     const priority = { safe: 0, unevaluated: 1, violated: 2 };
     if (!old || priority[r.status] > priority[old.status] || (priority[r.status] === priority[old.status] && r.utilization > old.utilization)) peaks.set(r.id, r);
+  }
+  // Horizon-average CPI is an alternative aggregation of the same path, not a new model.
+  if (rule === 'average' && simulation.steps.length > 0) {
+    const inflation = peaks.get('inflation')!;
+    const average = simulation.steps.reduce((sum, step) => sum + constraintInflation(step), 0) / simulation.steps.length;
+    const utilization = average / thresholds.inflation;
+    peaks.set('inflation', { ...inflation, currentValue: average, utilization, status: utilization > 1 ? 'violated' : 'safe',
+      explanation: `評価期間${simulation.steps.length}年の判定用CPIの平均${pct(average)}を上限と比較（単年ピークは年${inflation.year}・${pct(inflation.currentValue)}）。` + inflation.explanation });
   }
   return [...peaks.values()].map(r => ({ ...r, coverageComplete: !incomplete.has(r.id) }))
     .sort((a, b) => b.utilization - a.utilization);

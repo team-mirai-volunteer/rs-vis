@@ -1,0 +1,15 @@
+{
+  "url": "https://www5.cao.go.jp/keizai3/econome/ef2rrrrrr-summary.pdf",
+  "retrievedOn": "2026-09-15",
+  "sourceSha256": "9a5b2202b8dfaad5231252bc35e2852f4ba26df51f8ac1b3d4b3f10ec2bd45a8",
+  "pdfPages": [
+    11,
+    12,
+    13
+  ],
+  "files": {
+    "rows.json": "45fd683a140990a3d94a8564439d5d266a45c047be2c50c352aa2d58c600426e",
+    "multiplier-pages.pdf": "4204b6d5c48b9891ea2e2ba66cf868418b6bdafa617f807102e8f66acf352b13"
+  },
+  "note": "Raw published experiment signs. Tax increases are negated in model. Labour-force and hours zeros are assumptions, absent from these tables."
+}

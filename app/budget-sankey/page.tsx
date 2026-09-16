@@ -15,7 +15,7 @@
  * （設計 5.2）。
  */
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
@@ -42,8 +42,12 @@ import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedVie
 import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
 import { Button } from '@/components/ui/button';
-import { SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal, Sparkles } from 'lucide-react';
+import { AiFilterChat } from '@/client/components/unified-budget/AiFilterChat';
+import { useMediaQuery } from '@/client/hooks/useMediaQuery';
+import { applySankeyQueryToUnifiedFilter } from '@/client/lib/unified-ai-filter';
 import { cn } from '@/lib/utils';
+import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT, parseFlowScale } from '@/client/lib/unified-flow-scale';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
@@ -58,6 +62,7 @@ const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${unifiedFileBa
 
 /** 列 → URL パラメータ名の短縮（t=TopN, o=表示位置） */
 const COL_KEY: Record<UnifiedColumn, string> = {
+  revenue: 'rv',
   account: 'ac',
   ministry: 'mi',
   organization: 'or',
@@ -193,8 +198,27 @@ function UnifiedBudgetSankeyContent() {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
   const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
+  const [flowScale, setFlowScale] = useState(() => parseFlowScale(searchParams.get('th')));
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
+  // AI 絞り込み（試作）: パネルの開閉。絞り込みパネルと同じ場所に重なるため排他（片方を開くと他方は閉じる）。
+  // 手動の絞り込み条件そのものは保持し、AI が設定した条件も同じ状態として既存の × で消す
+  const [aiOpen, setAiOpen] = useState(false);
+  // sm 以上: 表示数カードは左上、設定は右上の検索クラスタ内。sm 未満: 右上の 1 ボタンに両方を畳む。
+  // CSS で隠すだけだと同じボタンが DOM に二重に存在するので、メディアクエリで出し分ける
+  const wideControls = useMediaQuery('(min-width: 640px)');
+  // 左上のカード行は列数で折り返して高さが変わる。詳細パネルの上端をこの実高さに合わせて被らないようにする
+  const controlsRowRef = useRef<HTMLDivElement>(null);
+  const [controlsHeight, setControlsHeight] = useState(0);
+  useEffect(() => {
+    const el = controlsRowRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => setControlsHeight(el.offsetHeight);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [wideControls]);
   /** sm 未満で表示数・設定を開いているか */
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const [filter, setFilter] = useState<UnifiedViewFilter>(() => {
@@ -251,6 +275,8 @@ function UnifiedBudgetSankeyContent() {
   }, [base]);
   const effectiveColumns = useMemo(() => {
     const cols = visibleColumns.filter(c => availableColumns.includes(c));
+    // 税目から事業への架空の直接充当を作らないよう、歳入の接続先の会計は残す。
+    if (cols.includes('revenue') && !cols.includes('account')) return UNIFIED_COLUMNS.filter(c => c === 'account' || cols.includes(c));
     return cols.length > 0 ? cols : availableColumns.filter(c => c === 'ministry' || c === 'section' || c === 'program');
   }, [visibleColumns, availableColumns]);
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
@@ -292,12 +318,13 @@ function UnifiedBudgetSankeyContent() {
     if (selectedId) params.set('sel', selectedId);
     if (focusRelated) params.set('fr', '1');
     if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
-    if (labelDensity !== 'all') params.set('ld', labelDensity);
+    if (flowScale !== FLOW_SCALE_DEFAULT) params.set('th', String(Number((flowScale * FLOW_SCALE_BASE).toFixed(8))));
+    params.set('ld', labelDensity);
     serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -310,6 +337,7 @@ function UnifiedBudgetSankeyContent() {
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
       setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
+      setFlowScale(parseFlowScale(params.get('th')));
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
       setFilterOpen(params.get('ffp') === '1');
@@ -343,6 +371,24 @@ function UnifiedBudgetSankeyContent() {
     metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''
   } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
+  const settingsPanel = (placement: 'top-right' | 'top-auto') => (
+    <UnifiedSettings
+      placement={placement}
+      fontPx={fontPx}
+      onFontPxChange={setFontPx}
+      defaultFontPx={LABEL_FONT_PX_DEFAULT}
+      flowScale={flowScale}
+      onFlowScaleChange={setFlowScale}
+      labelDensity={labelDensity}
+      onLabelDensityChange={setLabelDensity}
+      focusRelated={focusRelated}
+      onFocusRelatedChange={setFocusRelated}
+      visibleColumns={effectiveColumns}
+      availableColumns={availableColumns}
+      onVisibleColumnsChange={setVisibleColumns}
+      summary={summary}
+    />
+  );
   return (
     <>
     <AppHeader position="fixed" current="/budget-sankey">
@@ -357,6 +403,7 @@ function UnifiedBudgetSankeyContent() {
       />
       <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} />
     </AppHeader>
+    <h1 className="sr-only">国の予算と支出の流れ</h1>
     <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-background">
       <UnifiedSankeyChart
         nodes={display.nodes}
@@ -371,8 +418,21 @@ function UnifiedBudgetSankeyContent() {
         filter={filter}
         onFilterChange={setFilter}
         filterOpen={filterOpen}
-        onToggleFilterOpen={() => setFilterOpen(v => !v)}
+        onToggleFilterOpen={() => { const next = !filterOpen; setFilterOpen(next); if (next) setAiOpen(false); }}
+        searchPopover={<AiFilterChat open={aiOpen} year={year} onClose={() => setAiOpen(false)}
+          onApply={result => {
+            setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
+            setFilterOpen(false);
+          }} />}
+        searchTrailing={wideControls ? settingsPanel('top-right') : undefined}
+        sidePanelTopOffset={wideControls && controlsHeight > 0 ? controlsHeight + 6 : undefined}
+        searchAddon={<Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
+          onClick={() => { const next = !aiOpen; setAiOpen(next); if (next) setFilterOpen(false); }}
+          className={cn('h-6 gap-1 px-1.5 text-[11px]', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>
+          <Sparkles aria-hidden="true" className="size-3" />AI
+        </Button>}
         fontPx={fontPx}
+        flowScale={flowScale}
         labelDensity={labelDensity}
         budgetYear={metadata.budgetYear}
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
@@ -383,10 +443,9 @@ function UnifiedBudgetSankeyContent() {
         hasSpending={metadata.hasSpending}
         scoreStatus={!scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
       />
-
-      {/* 右上: 表示数のコントロールパネルと、その右に表示設定（歯車）。
-          sm 未満では 1 ボタンに畳み、押すと下に縦に開く（カードが検索ボックスを覆わないように） */}
-      <div className="absolute right-3 top-3 z-30 sm:hidden">
+      {/* 表示数のコントロールパネル。sm 以上は左上（検索・AI・表示設定は右上）。
+          sm 未満では右上の 1 ボタンに表示設定と一緒に畳み、押すと下に縦に開く */}
+      {!wideControls && <div className="absolute right-3 top-3 z-30">
         <Button
           variant="outline"
           size="icon"
@@ -397,22 +456,10 @@ function UnifiedBudgetSankeyContent() {
         >
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
-      </div>
-      <div className={cn('absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:top-3 sm:flex sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      </div>}
+      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-1.5 sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
-        <UnifiedSettings
-          fontPx={fontPx}
-          onFontPxChange={setFontPx}
-          defaultFontPx={LABEL_FONT_PX_DEFAULT}
-          labelDensity={labelDensity}
-          onLabelDensityChange={setLabelDensity}
-          focusRelated={focusRelated}
-          onFocusRelatedChange={setFocusRelated}
-          visibleColumns={effectiveColumns}
-          availableColumns={availableColumns}
-          onVisibleColumnsChange={setVisibleColumns}
-          summary={summary}
-        />
+        {!wideControls && settingsPanel('top-right')}
       </div>
 
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}

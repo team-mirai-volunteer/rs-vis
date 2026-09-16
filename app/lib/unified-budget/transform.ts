@@ -1,3 +1,5 @@
+import { compileSearchPattern } from '../search-pattern';
+
 /**
  * 統合グラフ → 表示グラフ の変換（純関数。React・DOM に依存しない）。
  *
@@ -94,14 +96,19 @@ export function toRsMinistryGraph(view: UnifiedViewGraph): UnifiedViewGraph {
   const totalNode: UnifiedViewNode = { id: RS_TOTAL_ID, name: RS_TOTAL_NAME, value: total, type: 'account', details: { column: 'account' } };
   const ids = new Set(kept.map(n => n.id));
   for (const l of view.links) if (ids.has(l.source) && ids.has(l.target)) links.push(l);
-  return recomputeValues({ nodes: [totalNode, ...ministries, ...kept], links });
+  return recomputeValues({ nodes: [totalNode, ...ministries, ...kept.map(n => n.details.column === 'program'
+    ? { ...n, value: programValue(n) } : n)], links });
 }
 
 /** 辺から値を作り直す（変換のたびに呼ぶ） */
 export function recomputeValues(view: UnifiedViewGraph): UnifiedViewGraph {
+  // 所管などを絞って歳出先がなくなった会計に、歳入だけをぶら下げて残さない。
+  const hasOutgoing = new Set(view.links.map(l => l.source));
+  const emptyAccounts = new Set(view.nodes.filter(n => n.details.column === 'account' && !hasOutgoing.has(n.id)).map(n => n.id));
+  const links = emptyAccounts.size ? view.links.filter(l => !emptyAccounts.has(l.target)) : view.links;
   const inflow = new Map<string, number>();
   const outflow = new Map<string, number>();
-  for (const l of view.links) {
+  for (const l of links) {
     inflow.set(l.target, (inflow.get(l.target) ?? 0) + l.value);
     outflow.set(l.source, (outflow.get(l.source) ?? 0) + l.value);
   }
@@ -109,11 +116,15 @@ export function recomputeValues(view: UnifiedViewGraph): UnifiedViewGraph {
     .map(n => {
       const i = inflow.get(n.id) ?? 0;
       const o = outflow.get(n.id) ?? 0;
-      return { ...n, value: Math.max(i, o) };
+      const budget = n.details.column === 'program' && (n.details.kind === 'rs' || n.details.aggregated);
+      // 会計の表示額は歳出。積立等で歳入が多くても予算額に上書きしない。
+      const value = budget ? n.value : n.details.column === 'account' ? o : Math.max(i, o);
+      return { ...n, value, layoutValue: Math.max(value, i, o),
+        details: budget ? { ...n.details, spendingFlow: o } : n.details };
     })
-    .filter(n => n.value > 0);
+    .filter(n => (inflow.get(n.id) ?? 0) > 0 || (outflow.get(n.id) ?? 0) > 0);
   const ids = new Set(nodes.map(n => n.id));
-  return { nodes, links: view.links.filter(l => ids.has(l.source) && ids.has(l.target) && l.value > 0) };
+  return { nodes, links: links.filter(l => ids.has(l.source) && ids.has(l.target) && l.value > 0) };
 }
 
 function removeNodes(view: UnifiedViewGraph, remove: Set<string>): UnifiedViewGraph {
@@ -143,14 +154,14 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
     for (const n of current.nodes) {
       const d = n.details;
       if (d.column === 'account' && d.collapsedByDefault) remove.add(n.id);
-      else if ((d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.accountType === 'special' && d.organization && collapsedAccounts.has(d.organization)) remove.add(n.id);
+      else if ((d.column === 'revenue' || d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.accountType === 'special' && d.organization && collapsedAccounts.has(d.organization)) remove.add(n.id);
     }
   }
   if (filter.accountTypes.length > 0) {
     const allowed = new Set<string>(filter.accountTypes);
     for (const n of current.nodes) {
       const d = n.details;
-      if ((d.column === 'account' || d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.accountType && !allowed.has(d.accountType)) remove.add(n.id);
+      if ((d.column === 'revenue' || d.column === 'account' || d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.accountType && !allowed.has(d.accountType)) remove.add(n.id);
     }
   }
   if (filter.ministries.length > 0) {
@@ -173,7 +184,7 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
     const reachable = new Set<string>();
     const childrenOf = new Map<string, string[]>();
     for (const l of current.links) childrenOf.set(l.source, [...(childrenOf.get(l.source) ?? []), l.target]);
-    const roots = current.nodes.filter(n => n.details.column === 'account' || n.details.column === 'ministry' || n.details.standalone).map(n => n.id);
+    const roots = current.nodes.filter(n => n.details.column === 'revenue' || n.details.column === 'account' || n.details.column === 'ministry' || n.details.standalone).map(n => n.id);
     const stack = [...roots];
     for (const r of roots) reachable.add(r);
     while (stack.length > 0) {
@@ -228,8 +239,7 @@ export function buildNameMatcher(query: string, useRegex: boolean): ((name: stri
   const q = query.trim();
   if (useRegex) {
     try {
-      const re = new RegExp(q, 'i');
-      return name => re.test(name);
+      return compileSearchPattern(q);
     } catch {
       return null;
     }
@@ -412,6 +422,7 @@ export function relatedSet(links: SankeyLink[], seeds: Set<string>): Set<string>
  */
 export function collapseColumns(view: UnifiedViewGraph, visible: UnifiedColumn[]): UnifiedViewGraph {
   const visibleSet = new Set(visible);
+  if (visibleSet.has('revenue')) visibleSet.add('account');
   const hiddenColumns = UNIFIED_COLUMNS.filter(c => !visibleSet.has(c));
   if (hiddenColumns.length === 0) return view;
 

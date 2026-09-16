@@ -130,7 +130,7 @@ export function RangeWindowRow({
         onPointerMove={onThumbPointerMove}
         onPointerUp={onThumbPointerEnd}
         onPointerCancel={onThumbPointerEnd}
-        className="relative h-4 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-mirai-surface-light ring-1 ring-inset ring-black/5"
+        className="relative h-4 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-mirai-progress-track ring-1 ring-inset ring-black/5"
       >
         <div
           onPointerDown={onThumbPointerDown}

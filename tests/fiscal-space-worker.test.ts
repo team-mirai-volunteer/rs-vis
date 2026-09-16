@@ -16,8 +16,11 @@ test('worker engine preserves domain calculations, transport and published horiz
     form.amounts['public-investment'] = 10;
     const result = calculate(form);
     assert.deepEqual(result.projection, simulate(result.initial, result.allocated, 5, result.p));
-    assert.deepEqual(result.estimate, estimateFiscalSpace(result.initial,
-      result.policies.map(policy => ({ policy, weight: policy.annualCost })), form.thresholds, result.horizon, result.p));
+    const searched = estimateFiscalSpace(result.initial,
+      result.policies.map(policy => ({ policy, weight: policy.annualCost })), form.thresholds, result.horizon, result.p);
+    // The engine layers stress rows on the searched estimate; the search itself is unchanged.
+    assert.deepEqual({ ...result.estimate, stress: undefined, reserveRule: undefined }, { ...searched, stress: undefined, reserveRule: undefined });
+    assert.equal(result.estimate.reserveRule.method, 'stress-scenarios');
     assert.deepEqual(structuredClone(result), result);
     assert(result.durationSensitivity[2].gdpEffect < 0);
     assert(result.durationSensitivity[4].gdpEffect > 0);

@@ -2734,7 +2734,7 @@ function SubcontractDetailPageInner() {
                 step={0.01}
                 value={Math.log10(Math.max(Math.max(ZOOM_MIN_ABS, baseZoom * ZOOM_MIN_MULTIPLIER), Math.min(Math.min(ZOOM_MAX_ABS, baseZoom * ZOOM_MAX_MULTIPLIER), transform.scale)))}
                 onChange={e => { const newK = Math.pow(10, parseFloat(e.target.value)); applyZoom(newK / transform.scale); }}
-                className="accent-primary"
+                className="policy-range policy-range-vertical"
                 style={{ writingMode: 'vertical-lr', direction: 'rtl', width: 16, height: 80 }}
                 title={`Zoom: ${Math.round(transform.scale / baseZoom * 100)}%`}
               />

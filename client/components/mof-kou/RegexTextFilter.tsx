@@ -6,6 +6,7 @@
  */
 
 import { X } from 'lucide-react';
+import { compileSearchPattern } from '@/app/lib/search-pattern';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -67,15 +68,14 @@ export function RegexTextFilter({ label, note, value, onChange, useRegex, onTogg
           </Button>
         )}
       </div>
-      {invalid && <p className="text-[10px] text-destructive">正規表現が不正です</p>}
+      {invalid && <p className="text-[10px] text-destructive">使用できない正規表現です（128文字以内・先読み／後読み／後方参照は非対応）</p>}
     </div>
   );
 }
 
 export function isValidRegex(pattern: string): boolean {
   try {
-    // eslint-disable-next-line no-new
-    new RegExp(pattern);
+    compileSearchPattern(pattern, false);
     return true;
   } catch {
     return false;
@@ -87,5 +87,5 @@ export function textMatches(haystack: string, needle: string, useRegex: boolean)
   if (!needle) return true;
   if (!useRegex) return haystack.includes(needle);
   if (!isValidRegex(needle)) return false;
-  return new RegExp(needle).test(haystack);
+  return compileSearchPattern(needle, false)(haystack);
 }

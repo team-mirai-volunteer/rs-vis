@@ -1,3 +1,6 @@
+import { buildAdjacency, focusSankey } from '@/app/lib/sankey-focus';
+export { relatedNodeIds } from '@/app/lib/sankey-focus';
+
 /**
  * 予算→項→RS紐づけサンキーの絞り込み（選択したノードに連なる筋だけを取り出す）。
  *
@@ -15,43 +18,6 @@ import type { SankeyLink } from '@/types/sankey';
 const COLUMN_INDEX = new Map(MOF_SECTION_RS_COLUMNS.map((c, i) => [c, i]));
 
 /** 親→子・子→親の対応。集約ノードは親を複数持つ */
-function buildAdjacency(links: SankeyLink[]) {
-  const parentsOf = new Map<string, string[]>();
-  const childrenOf = new Map<string, string[]>();
-  for (const link of links) {
-    parentsOf.set(link.target, [...(parentsOf.get(link.target) ?? []), link.source]);
-    childrenOf.set(link.source, [...(childrenOf.get(link.source) ?? []), link.target]);
-  }
-  return { parentsOf, childrenOf };
-}
-
-/** 選択したノードに連なる集合（自分・すべての祖先・すべての子孫） */
-export function relatedNodeIds(links: SankeyLink[], selectedId: string): Set<string> {
-  const { parentsOf, childrenOf } = buildAdjacency(links);
-  const set = new Set<string>([selectedId]);
-
-  const up = [selectedId];
-  while (up.length > 0) {
-    const id = up.pop() as string;
-    for (const parent of parentsOf.get(id) ?? []) {
-      if (set.has(parent)) continue;
-      set.add(parent);
-      up.push(parent);
-    }
-  }
-
-  const down = [selectedId];
-  while (down.length > 0) {
-    const id = down.pop() as string;
-    for (const child of childrenOf.get(id) ?? []) {
-      if (set.has(child)) continue;
-      set.add(child);
-      down.push(child);
-    }
-  }
-  return set;
-}
-
 /**
  * 選択したノードの子孫を、列ごとに金額の大きい順でまとめる。
  * サイドパネルのタブに使う（/mof-hierarchy と同じ）。
@@ -171,78 +137,6 @@ export function rsStatusBreakdown(nodes: MOFSectionRsNode[], links: SankeyLink[]
  * 選択した筋だけのノードとリンクを作る。金額は2方向に付け替える
  * （/mof-hierarchy の focusHierarchy と同じ。詳細はそちらの実装コメント参照）。
  */
-export function focusHierarchy(
-  nodes: MOFSectionRsNode[],
-  links: SankeyLink[],
-  selectedId: string
-): { nodes: MOFSectionRsNode[]; links: SankeyLink[] } {
-  const related = relatedNodeIds(links, selectedId);
-  const { parentsOf } = buildAdjacency(links);
-  const nodeById = new Map(nodes.map(n => [n.id, n]));
-  const columnOf = (id: string) => COLUMN_INDEX.get(nodeById.get(id)?.details.column ?? 'total') ?? 0;
-
-  const visibleLinks: SankeyLink[] = links
-    .filter(l => related.has(l.source) && related.has(l.target))
-    .map(l => ({ ...l }));
-
-  const ancestors = new Set<string>();
-  {
-    const stack = [selectedId];
-    while (stack.length > 0) {
-      const id = stack.pop() as string;
-      for (const parent of parentsOf.get(id) ?? []) {
-        if (ancestors.has(parent)) continue;
-        ancestors.add(parent);
-        stack.push(parent);
-      }
-    }
-  }
-
-  const value = new Map<string, number>();
-
-  value.set(selectedId, nodeById.get(selectedId)?.value ?? 0);
-  const upstream = [...ancestors].sort((a, b) => columnOf(b) - columnOf(a));
-  for (const id of upstream) {
-    let sum = 0;
-    for (const link of visibleLinks) {
-      if (link.source !== id) continue;
-      const child = link.target;
-      if (child !== selectedId && !ancestors.has(child)) continue;
-      const original = nodeById.get(child)?.value ?? 0;
-      const ratio = original > 0 ? (value.get(child) ?? 0) / original : 0;
-      sum += link.value * ratio;
-    }
-    value.set(id, sum);
-  }
-  for (const link of visibleLinks) {
-    if (!ancestors.has(link.source)) continue;
-    const child = link.target;
-    if (child !== selectedId && !ancestors.has(child)) continue;
-    const original = nodeById.get(child)?.value ?? 0;
-    const ratio = original > 0 ? (value.get(child) ?? 0) / original : 0;
-    link.value *= ratio;
-  }
-
-  const aggregates = nodes
-    .filter(n => n.details.aggregated && related.has(n.id) && !ancestors.has(n.id))
-    .filter(n => n.id !== selectedId)
-    .sort((a, b) => columnOf(a.id) - columnOf(b.id));
-  for (const aggregate of aggregates) {
-    const inflow = visibleLinks.filter(l => l.target === aggregate.id).reduce((sum, l) => sum + l.value, 0);
-    value.set(aggregate.id, inflow);
-    const outgoing = visibleLinks.filter(l => l.source === aggregate.id);
-    const outflow = outgoing.reduce((sum, l) => sum + l.value, 0);
-    if (outflow <= 0) continue;
-    const ratio = inflow / outflow;
-    for (const link of outgoing) link.value *= ratio;
-  }
-
-  const visibleNodes = nodes
-    .filter(n => related.has(n.id))
-    .map(n => {
-      const next = value.get(n.id);
-      return next === undefined ? n : { ...n, value: next };
-    });
-
-  return { nodes: visibleNodes, links: visibleLinks };
+export function focusHierarchy(nodes: MOFSectionRsNode[], links: SankeyLink[], selectedId: string): { nodes: MOFSectionRsNode[]; links: SankeyLink[] } {
+  return focusSankey(nodes, links, selectedId, { columnIndex: column => COLUMN_INDEX.get(column as MOFSectionRsColumn) ?? 0, downstream: 'aggregates' });
 }

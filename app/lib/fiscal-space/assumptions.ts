@@ -8,9 +8,11 @@ export const SECTOR_LABELS: Record<Sector, string> = { general: '全産業', con
 export const INPUT_LABELS = { capital: '設備', labour: '労働', energy: 'エネルギー', materials: '中間財' };
 /** Future paths and response coefficients are scenarios, not observed statistics. */
 export const PARAMETERS: ModelParameters = {
-  // 国税の2015〜2024年度実績を参考にした仮定。税・社会負担全体の推定値ではない。
-  taxRevenueElasticity: 1.7, taxCollectionLag: 0,
+  // 比較用の初期値。税・社会負担全体の実証推定値ではない。1.7は感度比較。
+  taxRevenueElasticity: 1.3, taxCollectionLag: 0,
   productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
+  // 構造的失業率2.5%は日本のNAIRU推定幅（約2.3〜2.7%）の中央付近を置いた仮定。推定値ではない。
+  structuralUnemployment: .025, inflationRule: 'peak',
   consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
   electricity: { ...ELECTRICITY_BASELINE },
   referenceModel: 'ef2026', multiplierScale: 1,
@@ -25,10 +27,14 @@ export const PARAMETERS: ModelParameters = {
   essentialImportShare: .25, wageInflationPassThrough: .8, cesSigma: .8,
   weights: { capital: .3, labour: .4, energy: .15, materials: .15 },
   cobbWeights: { capital: .35, labour: .5, energy: .15 },
-  searchCap: 100 * TRILLION, searchStep: TRILLION, searchTolerance: .01 * TRILLION, reserveShare: .2,
+  // reserveShare 0: the displayed envelope is derived from selected stresses (stress-envelope.ts), not a percentage.
+  searchCap: 100 * TRILLION, searchStep: TRILLION, searchTolerance: .01 * TRILLION, reserveShare: 0,
 };
+// labour: structural / actual unemployment ratio. 1.25 with u* = 2.5% permits unemployment down to 2.0%.
 export const THRESHOLDS: Thresholds = { debt: 2.8, interestGdp: .065, interestTax: .3, gfn: .45,
-  inflation: .025, capacity: .995, labour: .995, sector: 1, energy: .95, external: .3 };
+  inflation: .025, capacity: .995, labour: 1.25, sector: 1, energy: .95, external: .3 };
+/** Lowest unemployment rate the labour constraint permits. */
+export const permittedUnemploymentFloor = (structuralUnemployment: number, labourThreshold: number) => structuralUnemployment / labourThreshold;
 export const NO_SHOCK: Shock = { marketRateDelta: 0, energyPriceChange: 0, realGrowthDelta: 0 };
 export function initialEconomy(dataset: JapanDataset = '2024'): EconomyState {
   const J = (key: string) => japanValue(key, dataset);
@@ -118,6 +124,8 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
       leaf === 'revenuePerPoint' ? '円/税率1%ポイント' :
       ['referenceDirectCpi', 'referenceDirectDeflator'].includes(leaf) ? '%/税率1%ポイント' :
       ['peakGwPerTrillion', 'operatingPeakGwPerTrillion'].includes(leaf) ? 'GW/年0価格1兆円' :
+      ['annualGwhPerTrillion', 'operatingAnnualGwhPerTrillion'].includes(leaf) ? 'GWh/年0価格1兆円' :
+      leaf === 'annualConstructionGwh' ? 'GWh/年' :
       leaf === 'sectorUtilizationPerTrillion' ? '稼働率の増分/年0価格1兆円' :
       ['lag', 'lifetime', 'years'].includes(leaf) ? '年' :
       prefix.startsWith('thresholds.') ? '比率（1 = 100%）' : yenFields.includes(leaf) ? '円' :

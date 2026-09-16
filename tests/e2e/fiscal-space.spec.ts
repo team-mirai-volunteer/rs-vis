@@ -11,6 +11,7 @@ test('public investment shows commissioned benefits separately and overlap contr
   const detail = page.getByRole('region', { name: '公共投資の需要効果と供用後便益', exact: true });
   await expect(detail.getByRole('row').last()).toContainText('1.50兆円');
   await expect(detail.getByRole('row').last()).toContainText('-5.27兆円');
+  await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
   await page.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();
   const overlap = page.getByLabel('公共資本・公表反応との重複控除率', { exact: true });
   await overlap.fill('100');
@@ -19,6 +20,7 @@ test('public investment shows commissioned benefits separately and overlap contr
   await overlap.fill('0');
   await expect(benefit.locator('summary')).toContainText('0.51兆円');
   await expect(page.getByTestId('input-overview')).toContainText('-4.76兆円');
+  await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
   const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
   await page.goto(url);
@@ -29,18 +31,17 @@ test('public investment shows commissioned benefits separately and overlap contr
 test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
-  await expect(page.getByText('税収弾性値 1.7・徴収ラグ 0年を仮定。', { exact: false })).toBeVisible();
   const result = page.getByTestId('horizon-results');
   await expect(result.getByRole('heading', { name: '5年目の結果（試算）' })).toBeVisible();
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.95%');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.96%');
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
   await expect(page.getByTestId('input-overview')).toContainText('追加予算');
   await expect(page.getByTestId('input-overview')).not.toContainText('入力額');
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.46%');
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -0.489ポイント');
-  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('269.54兆円');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.39%');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -0.568ポイント');
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('252.92兆円');
   await expect(result.locator('[data-metric="名目GDP"]')).toContainText('805.63兆円');
   const budget = page.getByTestId('input-overview').getByTestId('general-account-budget');
   await budget.getByText('一般会計の歳入・歳出内訳', { exact: true }).click();
@@ -55,12 +56,28 @@ test('example allocation displays pinned yen conversion and absolute search resu
   expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
   const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
-  await expect(projectionTable.getByRole('row').last()).toContainText('33.46%');
-  await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.01兆円');
-  await expect(page.getByTestId('input-overview').getByTestId('recommended-envelope')).toHaveText('13.61兆円 / 年');
+  await expect(projectionTable.getByRole('row').last()).toContainText('31.39%');
+  await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
+  await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
+  await expect(page.getByTestId('tax-elasticity-sensitivity')).toHaveCount(0);
+  await expect(page.getByTestId('theoretical-maximum')).toHaveText('17.0兆円');
+  await expect(page.getByTestId('input-overview').getByTestId('recommended-envelope')).toHaveText('17.0兆円 / 年');
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('21.96兆円');
-  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('21.96兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('22.0兆円');
+  await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('22.0兆円');
+  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
+  await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
+  const elasticity = page.getByLabel('名目GDPに対する税収弾性値・数値で入力', { exact: true });
+  await expect(elasticity).toHaveValue('1.3');
+  await expect(page.getByText('現在は1.2', { exact: true })).toBeVisible();
+  await expect(page.getByText('財務省答弁の実績ベースの値は1.7（2015〜2024年度）', { exact: true })).toBeVisible();
+  await elasticity.fill('1.7');
+  await expect(page.getByText('名目GDPが1%増えたとき、税・社会保険料収入が約1.7%増える想定です（減税分を引く前）。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('269.54兆円');
+  await expect(page.getByText('債務経路の仮定：名目GDPへの税収弾性値 1.7', { exact: false })).toBeVisible();
 });
 
 test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
@@ -71,8 +88,10 @@ test('insurance relief stops at contributor revenue and readjusts when the split
   await expect(input).toHaveValue('78.7');
   await expect(page.getByTestId('input-overview')).toContainText('78.70兆円 / 年');
   await expect(page.locator('[data-policy="social-insurance"]')).toHaveCount(0);
+  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
   await page.getByLabel('社会保険料軽減の本人配分・数値で入力', { exact: true }).fill('100');
+  await page.keyboard.press('Escape');
   await expect(input).toHaveValue('43.6');
   await expect(page.getByTestId('annual-total')).toHaveText('43.6兆円');
   await expect(page.getByTestId('input-overview')).toContainText('43.60兆円 / 年');
@@ -114,24 +133,32 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await expect(demand).toHaveValue('1');
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
   await expect(amount).toHaveValue('10');
-  await expect(page.getByText('政策なしでも設定した上限を超えます。', { exact: false })).toBeVisible();
+  await expect(page.getByTestId('recommended-envelope')).not.toHaveText('0.0兆円 / 年');
+  await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
+  await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
+  await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
   await expect(page.locator('[data-observation-key="fiscal.grossDebt"]')).toContainText('214.50%');
+  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('region', { name: '3年間の推計表' })).toBeVisible();
   await expect(page.getByRole('region', { name: '5年間の推計表' })).toHaveCount(0);
   await expect(page.getByTestId('horizon-results').getByRole('heading')).toHaveText('3年目の結果（試算）');
   expect(errors).toEqual([]);
 });
 
-test('mobile controls stay near the top and an invalid shared URL is explained', async ({ page }) => {
+test('mobile controls open over results and an invalid shared URL is explained', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/fiscal-space#scenario=invalid');
   await expect(page.getByText('共有条件を復元できません。初期状態を表示しています。')).toBeVisible();
   const panel = page.getByRole('region', { name: '政策の操作パネル' });
-  expect(await panel.evaluate(el => el.getBoundingClientRect().top + window.scrollY)).toBeLessThan(650);
+  await page.getByRole('button', { name: /^政策を調整/ }).click();
+  await expect(panel).toBeVisible();
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
   await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
+  await page.getByRole('button', { name: /^政策パネルを閉じる/ }).click();
   await expect(page.getByRole('region', { name: '次の1兆円の政策比較表', exact: true })).toBeVisible();
   const projection = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projection).toBeVisible();
@@ -155,6 +182,7 @@ test('pending results are visible, data dialog is lazy, and tables remain keyboa
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await expect(page.locator('[data-source-key]')).toHaveCount(0);
+  await page.getByRole('button', { name: /^政策を調整/ }).click();
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
   await expect(page.getByTestId('calculation-status')).toContainText('結果は直前の条件');
   await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
@@ -204,6 +232,7 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   const energyMeter = page.getByRole('meter', { name: '電力供給能力の閾値利用率' });
   await expect(sectorMeter).toHaveCount(0);
   await expect(energyMeter).toHaveCount(0);
+  await expect(page.getByTestId('recommended-envelope')).toContainText('算出不可：負荷が未評価');
   const notes = page.getByTestId('input-overview').locator('details').filter({ has: page.getByText('計算上の注意', { exact: true }) });
   await expect(notes).not.toHaveAttribute('open', '');
   await expect(notes.getByText('産業別・電力の追加負荷に未評価の項目があります。')).not.toBeVisible();
@@ -307,14 +336,64 @@ test('large supply scenarios keep a bounded chart and subsequent edits work', as
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('100');
   await page.getByLabel('使用する生産モデル', { exact: true }).selectOption('cobbDouglas');
+  await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
   await page.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();
   await page.getByLabel('公共資本の蓄積・効果係数', { exact: true }).fill('1');
   await page.getByLabel('公共資本の蓄積・純追加性', { exact: true }).fill('100');
   await page.getByLabel('公共資本の蓄積・効果までの年数', { exact: true }).fill('0');
   await page.getByLabel('公共資本の蓄積・単位費用・基準資本比', { exact: true }).fill('0.01');
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('calculation-status')).toBeEmpty();
   const chart = page.getByRole('img', { name: /5年推移/ });
   expect(await chart.locator('text').filter({ hasText: '兆円' }).count()).toBeLessThanOrEqual(9);
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('99');
   await expect(page.getByTestId('input-overview')).toContainText('99.00兆円 / 年');
+});
+
+
+test('all policies are expanded and personal tax inputs stop at eligible revenue', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  await expect(page.getByText('ほかの8政策を追加する', { exact: true })).toHaveCount(0);
+  for (const [name, cap] of [['所得税減税', '21.2'], ['住民税減税', '12.6']]) {
+    const input = page.getByLabel(`${name}・数値で入力`, { exact: true });
+    await input.fill('100');
+    await expect(input).toHaveValue(cap);
+    await expect(input).toHaveAttribute('max', cap);
+    await input.fill('0');
+  }
+});
+
+test('generation settings open beside the amount and stay linked to results and shared URLs', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('input-overview')).toBeVisible();
+  const amount = page.getByLabel('発電設備投資・数値で入力', { exact: true });
+  await amount.fill('1');
+  const trigger = page.getByRole('button', { name: '電源構成・稼働時期を設定', exact: true });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: '発電設備投資の設定', exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByTestId('power-investment-total')).toHaveText('1.0兆円／年');
+  await expect(dialog.getByLabel('太陽光・稼働まで', { exact: true })).toHaveValue('1');
+  await dialog.getByLabel('太陽光・稼働まで', { exact: true }).fill('0');
+  await dialog.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  const timeline = page.getByTestId('power-timeline');
+  await timeline.locator('summary').click();
+  await expect(timeline.locator('[data-power-year="1"] [data-power-supply]')).not.toHaveText('0.00');
+  await amount.fill('2');
+  await trigger.click();
+  await expect(dialog.getByTestId('power-investment-total')).toHaveText('2.0兆円／年');
+  await dialog.getByLabel('太陽光・稼働まで', { exact: true }).fill('1');
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(timeline.locator('[data-power-year="1"] [data-power-supply]')).toHaveText('0.00');
+  await expect(timeline.locator('[data-power-year="2"] [data-power-supply]')).not.toHaveText('0.00');
+  await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
+  const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(url);
+  await expect(amount).toHaveValue('2');
+  await trigger.click();
+  await expect(dialog.getByLabel('太陽光・稼働まで', { exact: true })).toHaveValue('1');
 });

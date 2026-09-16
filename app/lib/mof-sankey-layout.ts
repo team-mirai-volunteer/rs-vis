@@ -49,6 +49,10 @@ export interface MOFSankeyLayout<D = unknown> {
 }
 
 export interface LayoutOptions {
+  /** 金額用の高さを行間と分離し、この倍率で拡大する。はみ出した行はパンで見る。 */
+  flowScale?: number;
+  /** 帯の縮尺計算に使う固定の行間。表示用minNodeSlotを変えても帯の太さを保つ。 */
+  scaleNodeSlot?: number;
   width: number;
   height: number;
   margin: { top: number; right: number; bottom: number; left: number };
@@ -177,13 +181,17 @@ export function computeMOFSankeyLayout<D>(
   // ラベル1行分の場所（minNodeSlot）は固定 px なので、単純に「合計 ÷ 使える高さ」で
   // 割ると、小さいノードがスロットまで膨らんだ分だけ列が指定より高くなる。
   // スロットに達するノードを固定分として除きながら数回繰り返して収束させる。
-  const slot = options.minNodeSlot ?? 0;
+  const slot = options.scaleNodeSlot ?? options.minNodeSlot ?? 0;
   let scale = Infinity;
   for (const [, list] of byColumn) {
     const rows = list.filter(
       n => !(n.details as { passThrough?: boolean } | undefined)?.passThrough
     );
-    const total = list.reduce((s, n) => s + (n.value ?? 0), 0);
+    const total = list.reduce((s, n) => s + (n.layoutValue ?? n.value ?? 0), 0);
+    if (options.flowScale !== undefined) {
+      if (total > 0) scale = Math.min(scale, Math.max(1, innerH) / total * options.flowScale);
+      continue;
+    }
     const gaps =
       nodePadding * Math.max(rows.length - 1, 0) +
       rows.reduce((s, n) => s + (options.gapBefore?.({ id: n.id, type: n.type }) ?? 0), 0);
@@ -192,9 +200,9 @@ export function computeMOFSankeyLayout<D>(
     let columnScale = available / total;
     if (slot > 0) {
       for (let pass = 0; pass < 6; pass += 1) {
-        const fixed = rows.filter(n => (n.value ?? 0) * columnScale + nodePadding < slot);
+        const fixed = rows.filter(n => (n.layoutValue ?? n.value ?? 0) * columnScale + nodePadding < slot);
         const flexible = list.filter(n => !fixed.includes(n));
-        const flexibleTotal = flexible.reduce((s, n) => s + (n.value ?? 0), 0);
+        const flexibleTotal = flexible.reduce((s, n) => s + (n.layoutValue ?? n.value ?? 0), 0);
         const remaining = available - fixed.length * (slot - nodePadding);
         if (flexibleTotal <= 0 || remaining <= 0) break;
         const next = remaining / flexibleTotal;
@@ -215,13 +223,13 @@ export function computeMOFSankeyLayout<D>(
     // 列ごとに合計が違うので、中央寄せにしないと図が傾いて見える。
     // ただし階層図のように列の合計が揃う図では上詰めのほうが帯が水平に流れる
     const used =
-      list.reduce((s, n) => s + (n.value ?? 0) * scale, 0) +
+      list.reduce((s, n) => s + (n.layoutValue ?? n.value ?? 0) * scale, 0) +
       nodePadding * Math.max(list.length - 1, 0);
     let y =
       options.align === 'top'
         ? margin.top
         : margin.top + Math.max((innerH - used) / 2, 0);
-    const heightOf = (n: (typeof list)[number]) => Math.max((n.value ?? 0) * scale, 1);
+    const heightOf = (n: (typeof list)[number]) => Math.max((n.layoutValue ?? n.value ?? 0) * scale, 1);
     const isPassThroughNode = (n: (typeof list)[number]) =>
       (n.details as { passThrough?: boolean } | undefined)?.passThrough === true;
     for (let i = 0; i < list.length; i += 1) {

@@ -20,11 +20,12 @@ import type { LabelDensity } from '@/types/mof-hierarchy';
 import type { SankeyLink } from '@/types/sankey';
 import type { MofRsAmountKind } from '@/types/mof-rs-kou-moku-linkage';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT } from '@/client/lib/unified-flow-scale';
 import { UnifiedSearch } from './UnifiedSearch';
+import type { ReactNode } from 'react';
 import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
-import { HierarchyFilterClearButton } from '@/client/components/mof-hierarchy/HierarchyFilterClearButton';
-import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
+import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
@@ -37,13 +38,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { truncateName, Ellipsis } from './sankey-label';
 
-export const LABEL_FONT_PX_DEFAULT = 11;
+export const LABEL_FONT_PX_DEFAULT = 13;
 
 const labelSlot = (fontPx: number) => fontPx + 2;
 const AGGREGATE_GAP = 14;
 const ZOOM_MIN = 0.3;
 /** 左上の検索クラスタが占める高さ（top 12px + 検索ボックス 34px + 余白 8px）。サイドパネルはこの下から始める */
-const SEARCH_ROW_PX = 54;
+const SEARCH_ROW_PX = 54; // sm 未満: 左上の検索ピルの行
+const CONTROL_ROW_PX = 60; // sm 以上: 左上の表示数カード（1行）の行。詳細パネルはこの下から
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
@@ -62,6 +64,7 @@ export function UnifiedSankeyChart({
   filterOpen,
   onToggleFilterOpen,
   fontPx = LABEL_FONT_PX_DEFAULT,
+  flowScale = FLOW_SCALE_DEFAULT,
   labelDensity = 'all',
   budgetYear,
   basisMeasureLabel,
@@ -71,6 +74,10 @@ export function UnifiedSankeyChart({
   rsAmountKind,
   hasSpending = true,
   scoreStatus = 'idle',
+  searchAddon,
+  searchPopover,
+  searchTrailing,
+  sidePanelTopOffset,
 }: {
   nodes: UnifiedViewNode[];
   links: SankeyLink[];
@@ -85,7 +92,16 @@ export function UnifiedSankeyChart({
   onFilterChange: (next: UnifiedViewFilter) => void;
   filterOpen: boolean;
   onToggleFilterOpen: () => void;
+  /** 検索ピル内「絞込」の右に並べる同体裁のボタン（AI絞り込みなど） */
+  searchAddon?: ReactNode;
+  /** 検索クラスタの直下に開くポップオーバー（AI絞り込み） */
+  searchPopover?: ReactNode;
+  /** 検索ピルの右に並べる道具（表示設定の歯車）。sm 以上で使う */
+  searchTrailing?: ReactNode;
+  /** 詳細パネルの上端（px）。左上に置いたコントロール行の実高さをページ側で測って渡す。未指定なら固定値 */
+  sidePanelTopOffset?: number;
   fontPx?: number;
+  flowScale?: number;
   labelDensity?: LabelDensity;
   budgetYear: number;
   /** 列見出しに添える基準名（当初予算 / 補正後（改予算額） / 支出済額）。無ければ当初予算 */
@@ -119,15 +135,18 @@ export function UnifiedSankeyChart({
   const [showMinimap, setShowMinimap] = useState(false);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const minimapDragging = useRef(false);
-  const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width });
+  // 既定幅 520px・上限 960px（sm 未満はボトムシートになり幅は使わない）。上端はコントロール行の下
+  const sidePanel = useSidePanel({ side: 'left', viewportWidth: viewport.width, defaultWidth: 520, maxWidth: 960 });
   // 浮島の左右余白ぶんを含む。スマホ幅ではパネルがボトムシートになり横幅を取らない
   const panelOpenWidth =
     selectedId !== null && !sidePanel.collapsed && viewport.width >= 640 ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 : 0;
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
   const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinchStart = useRef<{ distance: number; zoom: number; worldX: number; worldY: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const width = Math.max(viewport.width, 1300);
+  const width = Math.max(viewport.width, 1300) * Math.max(1, fontPx / LABEL_FONT_PX_DEFAULT);
   const [hovered, setHovered] = useState<MOFLayoutNode<UnifiedViewDetails> | null>(null);
   const [hoveredLink, setHoveredLink] = useState<MOFLayoutLink<UnifiedViewDetails> | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
@@ -159,16 +178,19 @@ export function UnifiedSankeyChart({
         { nodes: visible.nodes, links: visible.links },
         {
           width,
-          height: viewport.height * zoom,
+          height: viewport.height,
           ...UNIFIED_LAYOUT,
           margin: { ...UNIFIED_LAYOUT.margin, top: viewport.width < 1200 ? UNIFIED_LAYOUT.margin.top + 40 : UNIFIED_LAYOUT.margin.top },
+          // 金額用の高さを確保し、ラベルの行間は別に足す。図の高さはパンで移動できる。
+          flowScale: flowScale * FLOW_SCALE_BASE,
           minNodeSlot: labelDensity === 'all' ? labelSlot(fontPx) : 0,
           gapBefore: node => (node.id.startsWith('__others__') || node.id.startsWith('np-') ? AGGREGATE_GAP : 0),
           columnOf: node => displayColumnIndex.get(node.type as UnifiedColumn) ?? 0,
         }
       ),
-    [visible, width, viewport.height, viewport.width, zoom, fontPx, labelDensity, displayColumnIndex]
+    [visible, width, viewport.height, viewport.width, fontPx, flowScale, labelDensity, displayColumnIndex]
   );
+
 
   const minimapH = Math.round(MINIMAP_W * (layout.contentHeight / (width || 1)));
 
@@ -185,17 +207,18 @@ export function UnifiedSankeyChart({
     ctx.fillStyle = 'rgba(245,245,245,0.95)';
     ctx.fillRect(0, 0, MINIMAP_W, minimapH);
     for (const node of layout.nodes) {
-      ctx.fillStyle = unifiedNodeColor(node.details);
+      const color = unifiedNodeColor(node.details);
+      ctx.fillStyle = color.startsWith('var(') ? getComputedStyle(container).getPropertyValue('--primary').trim() : color;
       ctx.fillRect(node.x * scaleX, node.y * scaleY, Math.max(1, node.width * scaleX), Math.max(0.5, node.height * scaleY));
     }
-    const mX = -pan.x * scaleX;
-    const mY = -pan.y * scaleY;
+    const mX = -pan.x / zoom * scaleX;
+    const mY = -pan.y / zoom * scaleY;
     ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(mX, mY, container.clientWidth * scaleX, container.clientHeight * scaleY);
+    ctx.strokeRect(mX, mY, container.clientWidth / zoom * scaleX, container.clientHeight / zoom * scaleY);
     ctx.fillStyle = 'rgba(59, 130, 246, 0.08)';
-    ctx.fillRect(mX, mY, container.clientWidth * scaleX, container.clientHeight * scaleY);
-  }, [showMinimap, layout, width, minimapH, pan]);
+    ctx.fillRect(mX, mY, container.clientWidth / zoom * scaleX, container.clientHeight / zoom * scaleY);
+  }, [showMinimap, layout, width, minimapH, pan, zoom]);
 
   const minimapNavigate = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -205,9 +228,9 @@ export function UnifiedSankeyChart({
       const rect = canvas.getBoundingClientRect();
       const scaleX = MINIMAP_W / width;
       const scaleY = minimapH / layout.contentHeight;
-      setPan({ x: container.clientWidth / 2 - (e.clientX - rect.left) / scaleX, y: container.clientHeight / 2 - (e.clientY - rect.top) / scaleY });
+      setPan({ x: container.clientWidth / 2 - (e.clientX - rect.left) / scaleX * zoom, y: container.clientHeight / 2 - (e.clientY - rect.top) / scaleY * zoom });
     },
-    [width, minimapH, layout.contentHeight]
+    [width, minimapH, layout.contentHeight, zoom]
   );
 
   const columnX = useMemo(() => {
@@ -243,7 +266,7 @@ export function UnifiedSankeyChart({
   /** 事業列のうちRS事業（個別＋集約）の合計 */
   const rsTotal = useMemo(() => layout.nodes.filter(n => n.details?.column === 'program' && (!n.details.kind || n.details.kind === 'rs')).reduce((s, n) => s + n.value, 0), [layout]);
 
-  const showsLabel = useCallback((node: MOFLayoutNode<UnifiedViewDetails>) => labelDensity === 'all' || node.height >= labelSlot(fontPx), [labelDensity, fontPx]);
+  const showsLabel = useCallback((node: MOFLayoutNode<UnifiedViewDetails>) => node.id === selectedId || labelDensity === 'all' || node.height >= labelSlot(fontPx), [selectedId, labelDensity, fontPx]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -284,31 +307,31 @@ export function UnifiedSankeyChart({
   useLayoutEffect(() => {
     zoomRef.current = zoom;
   }, [zoom]);
-  const zoomAt = useCallback((factor: number, anchorY: number) => {
+  const zoomAt = useCallback((factor: number, anchorX: number, anchorY: number) => {
     const prev = zoomRef.current;
     const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * factor));
     if (next === prev) return;
     zoomRef.current = next;
     setZoom(next);
-    setPan(p => ({ ...p, y: anchorY - (anchorY - p.y) * (next / prev) }));
+    setPan(p => ({ x: anchorX - (anchorX - p.x) * (next / prev), y: anchorY - (anchorY - p.y) * (next / prev) }));
   }, []);
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
       const rect = containerRef.current?.getBoundingClientRect();
-      zoomAt(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, rect ? e.clientY - rect.top : 0);
+      zoomAt(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, rect ? e.clientX - rect.left : 0, rect ? e.clientY - rect.top : 0);
     },
     [zoomAt]
   );
-  const zoomFromButton = useCallback((factor: number) => zoomAt(factor, (containerRef.current?.clientHeight ?? 0) / 2), [zoomAt]);
+  const zoomFromButton = useCallback((factor: number) => zoomAt(factor, (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.clientHeight ?? 0) / 2), [zoomAt]);
 
   useLayoutEffect(() => {
     if (!selectedNode || viewport.height <= 0) return;
     setPan(p => {
-      const screenY = selectedNode.y + p.y;
+      const screenY = selectedNode.y * zoomRef.current + p.y;
       const edge = 80;
       if (screenY >= edge && screenY <= viewport.height - edge) return p;
-      return { ...p, y: viewport.height / 2 - selectedNode.y };
+      return { ...p, y: viewport.height / 2 - selectedNode.y * zoomRef.current };
     });
   }, [selectedNode, viewport.height]);
 
@@ -329,6 +352,7 @@ export function UnifiedSankeyChart({
    */
   const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
     const base = columnLabels?.[column] ?? UNIFIED_COLUMN_LABELS[column];
+    if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: '当初予算・会計間受入含む' };
     if (column === 'program') {
       const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
       return { label: `${base}_${budgetYear}`, measure };
@@ -344,6 +368,56 @@ export function UnifiedSankeyChart({
       className="absolute inset-0 overflow-hidden"
       onWheel={handleWheel}
       style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
+      onPointerDown={e => {
+        if (e.pointerType !== 'touch' || (e.target as Element).closest('[data-pan-disabled="true"]')) return;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const points = [...touches.current.values()];
+        if (points.length === 1) {
+          panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+          dragged.current = false;
+          setIsPanning(true);
+        } else if (points.length === 2) {
+          const [a, b] = points;
+          const rect = e.currentTarget.getBoundingClientRect();
+          pinchStart.current = { distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), zoom: zoomRef.current,
+            worldX: ((a.x + b.x) / 2 - rect.left - pan.x) / zoomRef.current,
+            worldY: ((a.y + b.y) / 2 - rect.top - pan.y) / zoomRef.current };
+          dragged.current = true;
+        }
+      }}
+      onPointerMove={e => {
+        if (e.pointerType !== 'touch' || !touches.current.has(e.pointerId)) return;
+        touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const points = [...touches.current.values()];
+        if (points.length >= 2 && pinchStart.current) {
+          const [a, b] = points;
+          const start = pinchStart.current;
+          const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, start.zoom * Math.hypot(a.x - b.x, a.y - b.y) / start.distance));
+          const rect = e.currentTarget.getBoundingClientRect();
+          zoomRef.current = next;
+          setZoom(next);
+          setPan({ x: (a.x + b.x) / 2 - rect.left - start.worldX * next, y: (a.y + b.y) / 2 - rect.top - start.worldY * next });
+        } else if (panStart.current) {
+          const start = panStart.current;
+          if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 3) dragged.current = true;
+          setPan({ x: start.panX + e.clientX - start.x, y: start.panY + e.clientY - start.y });
+        }
+      }}
+      onPointerUp={e => {
+        if (e.pointerType !== 'touch') return;
+        touches.current.delete(e.pointerId);
+        pinchStart.current = null;
+        const remaining = [...touches.current.values()][0];
+        panStart.current = remaining ? { ...remaining, panX: pan.x, panY: pan.y } : null;
+        if (!remaining) setIsPanning(false);
+      }}
+      onPointerCancel={() => {
+        touches.current.clear();
+        pinchStart.current = null;
+        panStart.current = null;
+        setIsPanning(false);
+      }}
       onMouseDown={e => {
         if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
         panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
@@ -370,7 +444,7 @@ export function UnifiedSankeyChart({
         setHovered(null);
       }}
     >
-      <svg data-testid={testId('unified-canvas')} width={width} height={layout.contentHeight} style={{ position: 'absolute', left: pan.x, top: pan.y, display: 'block' }} role="img" aria-label="会計から所管・項・目を経てRS事業・支出先に至る予算の流れ">
+      <svg data-testid={testId('unified-canvas')} width={width} height={layout.contentHeight} style={{ position: 'absolute', left: pan.x, top: pan.y, display: 'block', transform: `scale(${zoom})`, transformOrigin: '0 0' }} role="img" aria-label="歳入から会計・所管・項・目を経てRS事業・支出先に至る予算の流れ">
         <g>
           {orderedVisible.map(column => {
             const index = displayColumnIndex.get(column) ?? 0;
@@ -479,7 +553,7 @@ export function UnifiedSankeyChart({
                     fontWeight={isSelected ? 700 : details?.aggregated || isCategory ? 400 : 500}
                     fill={details?.aggregated ? 'var(--mirai-text-muted)' : isCategory ? 'var(--mirai-text-secondary)' : 'var(--mirai-text)'}
                     stroke="var(--card)"
-                    strokeWidth={3}
+                    strokeWidth={3 * fontPx / LABEL_FONT_PX_DEFAULT}
                     paintOrder="stroke"
                     opacity={dim ? 0.35 : 1}
                   >
@@ -504,27 +578,32 @@ export function UnifiedSankeyChart({
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} />}
 
-      {/* 検索クラスタは左上に固定。サイドパネルはこの下（SEARCH_ROW_PX）から始まるので押しのけない */}
-      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5">
+      {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
+      <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-1.5 sm:left-auto sm:right-3">
         <UnifiedSearch
           nodes={browseNodes}
           onSelect={onSelect}
           filterOpen={filterOpen}
           onToggleFilter={onToggleFilterOpen}
           filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} hasSpending={hasSpending} scoreStatus={scoreStatus} />}
+          trailing={searchAddon}
+          filterActive={hasActiveUnifiedFilter(filter)}
+          onClearFilter={() => onFilterChange(UNIFIED_FILTER_DEFAULT)}
         />
-        <HierarchyFilterClearButton active={hasActiveUnifiedFilter(filter)} onClear={() => onFilterChange(UNIFIED_FILTER_DEFAULT)} />
+        {searchTrailing}
       </div>
+      {/* 検索クラスタの直下に開くポップオーバー（AI絞り込み）。左の詳細パネルとは重ならない */}
+      {searchPopover && <div data-pan-disabled="true" className="absolute left-3 top-14 z-[220] sm:top-11 sm:left-auto sm:right-3">{searchPopover}</div>}
 
       {selectedId !== null && (
         <SidePanelChrome
           side="left"
-          topOffset={SEARCH_ROW_PX}
+          topOffset={sidePanelTopOffset ?? (viewport.width >= 640 ? CONTROL_ROW_PX : SEARCH_ROW_PX)}
           open={!sidePanel.collapsed}
           onToggle={sidePanel.toggleCollapsed}
           width={sidePanel.effectiveWidth}
           minWidth={200}
-          maxWidth={800}
+          maxWidth={960}
           onResizeStart={sidePanel.onResizeStart}
           isResizing={sidePanel.isResizing}
           onResetWidth={sidePanel.resetWidth}
@@ -685,7 +764,8 @@ export function UnifiedSankeyChart({
         </SidePanelChrome>
       )}
 
-      {/* 左下: ミニマップ（表示設定はコントロールパネルの右へ移した） */}
+
+      {/* 左下: ミニマップ */}
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />
 
       <div data-pan-disabled="true" className="absolute bottom-3 right-3 z-30 flex flex-col gap-1">
@@ -711,7 +791,7 @@ export function UnifiedSankeyChart({
             onChange={e => setZoomInputValue(e.target.value)}
             onBlur={() => {
               const v = Number(zoomInputValue);
-              if (!Number.isNaN(v) && v > 0) setZoom(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, v / 100)));
+              if (Number.isFinite(v) && v > 0) zoomFromButton(v / 100 / zoomRef.current);
               setIsEditingZoom(false);
             }}
             onKeyDown={e => {
@@ -745,8 +825,14 @@ export function UnifiedSankeyChart({
 }
 
 /** ノード固有の事実（予算書の科目・分類、RS事業の予算執行サマリ） */
+function revenueAmountLabel(details: UnifiedViewDetails) {
+  return details.revenueBasis === 'settlement' ? '収納済歳入額' : details.revenueBasis === 'supplementary' ? '歳入予算額（補正後）' : '歳入予算額';
+}
 function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amountLabel: string }) {
   const rows: Array<[string, string]> = [];
+  if (details.revenueCategory) rows.push(['歳入区分', details.revenueCategory]);
+  if (details.column === 'revenue' && details.revenueAmount !== undefined) rows.push([`${revenueAmountLabel(details)}（全額）`, formatBudgetFromYen(details.revenueAmount)]);
+  if (details.column === 'account' && details.revenueAmount !== undefined) rows.push([revenueAmountLabel(details), formatBudgetFromYen(details.revenueAmount)]);
   if (details.ministry) rows.push(['所管', details.ministry]);
   if (details.organization) rows.push([details.accountType === 'special' ? '特別会計' : '組織', details.organization]);
   if (details.subAccount) rows.push(['勘定', details.subAccount]);
@@ -770,6 +856,15 @@ function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amou
           事業の歳出予算現額のうち、予算書（当初予算）の目からの流入で説明できない分。補正・前年度繰越・予備費使用・RS側の項目未記載が含まれます。
         </p>
       )}
+      {details.column === 'revenue' && <p className="mt-2 text-[11px] text-mirai-text-muted">
+        この会計の{revenueAmountLabel(details)}です。会計から先の表示・関連額は構成比による按分であり、この税目・収入が個別事業に充てられた額を示しません。
+      </p>}
+      {details.revenueKind === 'internal-transfer' && <p className="mt-2 text-[11px] text-mirai-text-muted">
+        他の会計・勘定からの受入です。新たな税収ではなく、国全体で単純に足すと重複する分を含みます。
+      </p>}
+      {details.column === 'account' && details.revenueAmount !== undefined && <p className="mt-2 text-[11px] text-mirai-text-muted">
+        会計の表示額は{details.revenueBasis === 'settlement' ? '支出済歳出額' : '歳出予算額'}です。歳入と歳出が異なる場合も、金額を合わせる補正はしていません。帯の太さは両方を収めるための値です。
+      </p>}
       {details.kind === 'unmatched' && (
         <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
       )}
@@ -786,6 +881,8 @@ function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: s
   );
 }
 
+const ACCOUNT_TYPE_LABELS = { general: '一般会計', special: '特別会計' };
+
 function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<UnifiedViewDetails>; x: number; y: number; amountLabel: string }) {
   const d = node.details;
   return (
@@ -797,7 +894,11 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
         </div>
       )}
       <div className="font-semibold text-mirai-text">{node.name}</div>
+      {d?.accountType && <div className="text-xs text-mirai-text-subtle">会計区分：{ACCOUNT_TYPE_LABELS[d.accountType]}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
+      {d?.column === 'revenue' && <div className="mt-1 text-xs text-mirai-text-subtle">{revenueAmountLabel(d)}。個別事業への充当額を示すものではありません。</div>}
+      {d?.revenueKind === 'internal-transfer' && <div className="mt-1 text-xs text-mirai-text-subtle">会計・勘定間の受入（国全体の単純合計では重複）</div>}
+      {d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
       {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}
       {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-mirai-text-subtle">項: {d.sectionName}</div>}
@@ -806,11 +907,13 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
 }
 
 function UnifiedLinkTooltip({ link, x, y }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number }) {
+  const accountTypes = [...new Set([link.source.details?.accountType, link.target.details?.accountType].filter((type): type is 'general' | 'special' => !!type))];
   return (
     <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
+      {accountTypes.length > 0 && <div className="text-xs text-mirai-text-subtle">会計区分：{accountTypes.map(type => ACCOUNT_TYPE_LABELS[type]).join(' → ')}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
     </div>
   );

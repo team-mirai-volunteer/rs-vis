@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { ProjectDetail } from '@/types/project-details';
 import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
+import { isRequestYear, parseQualityYear, qualitySourceYear } from '@/app/lib/api/quality-year';
 
 const recipientsCache = new Map<string, Promise<RecipientRow[]>>();
 const projectInfoCache = new Map<string, Promise<ProjectDetail | null>>();
@@ -69,6 +70,8 @@ export interface ScoreDetailData {
   /** null = 取得中 */
   recipients: RecipientRow[] | null;
   recipientsError: boolean;
+  recipientsAvailable: boolean;
+  sourceYear: string;
   /** undefined = 取得中、null = 詳細なし */
   projectInfo: ProjectDetail | null | undefined;
   /** undefined = 取得中または未取得、null = 評価なし */
@@ -86,6 +89,9 @@ export function useScoreDetailData(
   year: string,
   skipPolicy = false,
 ): ScoreDetailData {
+  const qualityYear = parseQualityYear(year);
+  const recipientsAvailable = qualityYear !== null && !isRequestYear(qualityYear);
+  const sourceYear = qualityYear ? qualitySourceYear(qualityYear) : year;
   const [recipients, setRecipients] = useState<RecipientRow[] | null>(null);
   const [recipientsError, setRecipientsError] = useState(false);
   const [projectInfo, setProjectInfo] = useState<ProjectDetail | null | undefined>(undefined);
@@ -101,19 +107,19 @@ export function useScoreDetailData(
     if (!pid) return;
     // 表示中の事業が切り替わった後に古い応答が届いても反映しない
     let stale = false;
-    fetchRecipients(pid, year)
+    if (recipientsAvailable) fetchRecipients(pid, year)
       .then(rows => { if (!stale) setRecipients(rows); })
       .catch(() => { if (!stale) setRecipientsError(true); });
-    fetchProjectInfo(pid, year)
+    fetchProjectInfo(pid, sourceYear)
       .then(d => { if (!stale) setProjectInfo(d); })
       .catch(() => { if (!stale) setProjectInfo(null); });
-    if (!skipPolicy) {
+    if (!skipPolicy && recipientsAvailable) {
       fetchPolicyEvaluation(pid, year)
         .then(p => { if (!stale) setPolicy(p); })
         .catch((e: Error) => { if (!stale) { setPolicy(null); setPolicyError(e.message || '取得失敗'); } });
     }
     return () => { stale = true; };
-  }, [pid, year, skipPolicy]);
+  }, [pid, year, skipPolicy, sourceYear, recipientsAvailable]);
 
-  return { recipients, recipientsError, projectInfo, policy, policyError };
+  return { recipients: recipientsAvailable ? recipients : null, recipientsError, recipientsAvailable, sourceYear, projectInfo, policy, policyError };
 }

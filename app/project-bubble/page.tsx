@@ -285,6 +285,14 @@ export default function ProjectMapPage() {
     // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる（ヘッダー分だけ上を空ける）
     <div className="flex h-dvh flex-col bg-background text-mirai-text">
     <AppHeader position="static" current="/project-bubble">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setHelpOpen(v => !v)}
+        aria-expanded={helpOpen}
+        aria-controls="bubble-help"
+        className="h-9 shrink-0 border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
+      >説明</Button>
       <YearSelect value={year} onChange={y => setYear(y as Year)} years={YEARS} />
     </AppHeader>
     <div className="relative min-h-0 w-full flex-1 overflow-hidden">
@@ -524,20 +532,13 @@ export default function ProjectMapPage() {
         </Button>
       </div>
 
-      {/* ── 右上: ヘルプ（年度・ページ切替メニューは AppHeader へ） ── */}
+      {/* ── ヘッダーの説明ボタンで開くヘルプ ── */}
       <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
         <div className="relative">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setHelpOpen(v => !v)}
-            aria-expanded={helpOpen}
-            className="border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
-          >説明</Button>
           {helpOpen && (
             <>
               <div className="fixed inset-0" onClick={() => setHelpOpen(false)} aria-hidden="true" />
-              <div className="absolute right-0 top-10 w-80 rounded-xl border border-mirai-border bg-card p-3.5 text-xs leading-relaxed shadow-soft">
+              <div id="bubble-help" className="absolute right-0 top-0 max-h-[calc(100dvh-var(--app-header-h)-24px)] w-80 max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-mirai-border bg-card p-3.5 text-xs leading-relaxed shadow-soft">
                 <h2 className="mb-2 text-[13px] font-bold">このチャートの読み方</h2>
                 <dl className="space-y-2 text-mirai-text-subtle">
                   <div>
@@ -566,9 +567,9 @@ export default function ProjectMapPage() {
         </div>
       </div>
 
-      {/* ── 右フロート: 凡例（右上のヘルプの下から。右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
+      {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
       {data && !loading && (
-        <aside className="pointer-events-none absolute right-3 top-14 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
+        <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
           <Legend
             entries={legend}
             mode={colorMode}

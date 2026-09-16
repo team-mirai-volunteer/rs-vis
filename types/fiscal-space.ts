@@ -42,6 +42,8 @@ export interface ProjectLoadBasis {
   constructionPeakMw: number | null;
   operatingPeakMw: number | null;
   annualOperatingGwh: number | null;
+  /** Electricity consumed in the spending year, for fuel imports; absent in older links. */
+  annualConstructionGwh?: number | null;
   annualLoadFactor: number | null;
   peakCoincidence: number | null;
 }
@@ -49,6 +51,9 @@ export interface PolicyLoad {
   sectorUtilizationPerTrillion: number | null;
   peakGwPerTrillion: number | null;
   operatingPeakGwPerTrillion: number | null;
+  /** Annual electricity per year-0 trillion yen; null or absent means unevaluated fuel imports. */
+  annualGwhPerTrillion?: number | null;
+  operatingAnnualGwhPerTrillion?: number | null;
   lag: number; lifetime: number; depreciation: number;
   basis?: ProjectLoadBasis;
   /** Generated from the versioned IO reference, never accepted from shared URLs. */
@@ -80,6 +85,10 @@ export interface ModelParameters {
   taxRevenueElasticity: number; taxCollectionLag: number;
   productionModel: 'leontief' | 'ces' | 'cobbDouglas';
   gapDemandSensitivity: number; gapPriceSensitivity: number; gapInflationSlope: number;
+  /** Structural (NAIRU-type) unemployment rate used by the labour constraint. A scenario input, not an estimate. */
+  structuralUnemployment: number;
+  /** How the inflation constraint aggregates the horizon: single-year peak or horizon average. */
+  inflationRule: 'peak' | 'average';
   consumptionTax: { revenuePerPoint: number; cpiShare: number; baseRate: number; passThrough: number; referenceDirectCpi: number; referenceDirectDeflator: number };
   electricity: import('@/app/lib/fiscal-space/electricity-baseline').ElectricityBaselineCase;
   referenceModel: 'ef2026' | 'esri2022'; multiplierScale: number;
@@ -116,7 +125,7 @@ export interface DemandResult {
   capacityPriceAdjustment: number;
   directTaxPriceEffect: number; directTaxDeflatorEffect: number; longRateEffect: number;
   additionalDemand: number; realOutput: number; exports: number; imports: number; prices: number;
-  domesticSubstitution: number; projectEnergyNetImports: number;
+  domesticSubstitution: number; projectOperatingImports: number; projectEnergyNetImports: number;
   priceLevelEffect: number; deflatorLevelEffect: number; employmentEffect: number; labourForceEffect: number; hoursEffect: number;
   details: { policyId: string; cost: number; baseMultiplier: number; slackFactor: number;
     capacityFactor: number; domesticRetentionFactor: number; effectiveMultiplier: number; realOutput: number }[];
@@ -132,8 +141,10 @@ export interface ProjectionStep {
   estimatedLoads?: boolean;
   importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
   taxAdjustedInflation?: number; refinancingRate?: number; referenceRateEffect?: number;
-  coverage?: { sector: boolean; energy: boolean };
-  electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number };
+  coverage?: { sector: boolean; energy: boolean; fuel: boolean };
+  structuralUnemployment?: number;
+  electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number;
+    policyDemandTwh: number; policyFuelIncrease: number };
   state: EconomyState; production: ProductionResult; demand: DemandResult; metrics: FiscalMetrics;
   outputGap: number; maximumGap: number; policyCost: number; maturingDebt: number;
   energyImportIncrease: number; inflationPressure: number; sectorDemand: Record<Sector, number>;
@@ -141,16 +152,19 @@ export interface ProjectionStep {
 export interface Simulation { initial: ProjectionStep; steps: ProjectionStep[] }
 export interface FiscalSpaceEstimate {
   theoreticalMaximum: number; emergencyReserve: number; recommendedEnvelope: number;
-  status: 'boundary' | 'baseline-violated' | 'search-cap' | 'revenue-cap' | 'empty-mix';
+  status: 'boundary' | 'baseline-violated' | 'search-cap' | 'revenue-cap' | 'empty-mix' | 'unevaluated';
   limitingPolicy?: string;
   constraints: ConstraintResult[]; evaluations: number; tolerance: number;
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };
+  /** Per-stress envelopes when the reserve is stress-based. */
+  stress?: { id: string; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }[];
 }
 export interface PolicyComparisonPeriod {
-  year: 1 | 3 | 5;
+  year: number;
   realGdpEffect: number; inflationPressure: number;
   exports: number; imports: number; tradeBalanceEffect: number; domesticSubstitution: number;
   energyOperatingTradeEffect: number;
+  industryImports?: { operating: number; substitution: number; other: number; noReplacement: number; fullReplacement: number };
   debtGdp: number; debtGdpChange: number; potentialGdpEffect: number;
 }
 export interface PolicyComparison {
@@ -166,5 +180,7 @@ export interface PolicyComparison {
   supplyEffectConfigured: boolean;
   policy: Policy; realGdpEffect: number; inflationPressure: number; exports: number; imports: number; tradeBalanceEffect: number;
   debtGdpAtHorizon: number; debtGdpChangeAtHorizon: number; potentialGdpEffect: number;
+  /** Supply benefit that reaches realized GDP inside the published horizon; zero by design for non-capital cases. */
+  realizedSupplyEffect: number;
   mainCapacity: string; space: FiscalSpaceEstimate;
 }

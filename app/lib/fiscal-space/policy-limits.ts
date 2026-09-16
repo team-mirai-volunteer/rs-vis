@@ -20,9 +20,41 @@ export function socialInsuranceLimit(p: ModelParameters): number {
   );
 }
 
+/** FY2024 receipts, held fixed in both data modes and throughout the horizon. */
+export const PERSONAL_TAX_REVENUE = {
+  'income-tax': {
+    amount: 212_086e8, label: '所得税（国の一般会計）',
+    sourceUrl: 'https://www.mof.go.jp/tax_policy/reference/fy2024k_budget_and_settlement.pdf',
+    sourceName: '財務省 令和6年度一般会計税収の予算額と決算額', publishedAt: '2025-07-31',
+    scope: '源泉所得税と申告所得税の計。復興特別所得税は対象外。',
+  },
+  'resident-tax': {
+    amount: 4_452_998_483e3 + 8_187_266e6, label: '個人住民税の所得割（都道府県・市町村）',
+    sourceUrl: 'https://www.e-stat.go.jp/stat-search/files?stat_infid=000040374263',
+    sourceName: '総務省 令和6年度地方財政状況調査・道府県税の徴収実績、令和8年版地方財政白書 第13表その4',
+    municipalSourceUrl: 'https://www.soumu.go.jp/main_content/001063596.pdf#page=38',
+    publishedAt: '2026-03-27',
+    scope: '所得割の収入済額の合計。均等割・法人住民税・利子割・配当割・株式等譲渡所得割・森林環境税は対象外。',
+  },
+} as const;
+
+export function personalTaxRevenue(id: string) {
+  return Object.hasOwn(PERSONAL_TAX_REVENUE, id)
+    ? PERSONAL_TAX_REVENUE[id as keyof typeof PERSONAL_TAX_REVENUE] : undefined;
+}
+
 export const policyReliefLimit = (id: string, p: ModelParameters): number =>
   id === 'social-insurance' ? socialInsuranceLimit(p)
-    : id === 'consumption-tax' ? consumptionTaxLimit(p) : Infinity;
+    : id === 'consumption-tax' ? consumptionTaxLimit(p) : personalTaxRevenue(id)?.amount ?? Infinity;
+
+export function personalTaxRevenueRecords(): SourceValue[] {
+  return Object.entries(PERSONAL_TAX_REVENUE).map(([id, source]) => ({
+    key: `personalTaxRevenue.${id}`, value: source.amount, unit: '円', referenceYear: '2024年度',
+    sourceName: source.sourceName, sourceUrl: source.sourceUrl, publishedAt: source.publishedAt,
+    status: id === 'income-tax' ? 'verified' : 'derived',
+    uncertaintyNote: `${source.scope} 両データモード・全評価年で実績額を固定し、将来の増収で限度を拡張しない。税額を超える還付は含まず、現金給付として別に入力する。`,
+  }));
+}
 
 export function insuranceRevenueRecords(p: ModelParameters): SourceValue[] {
   const source = { unit: '円', referenceYear: SOCIAL_INSURANCE_REVENUE.year,

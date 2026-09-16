@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { UNIFIED_COLUMN_LABELS } from '@/types/unified-budget';
 import type { UnifiedViewNode } from '@/types/unified-budget-view';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -21,12 +21,20 @@ export function UnifiedSearch({
   filterFields,
   filterOpen,
   onToggleFilter,
+  trailing,
+  filterActive = false,
+  onClearFilter,
 }: {
   nodes: UnifiedViewNode[];
   onSelect: (id: string) => void;
   filterFields: ReactNode;
   filterOpen: boolean;
   onToggleFilter: () => void;
+  /** 「絞込」の右、解除 × の左に並べる同体裁のボタン（AI絞り込みなど）。並びは 絞込 → AI → × */
+  trailing?: ReactNode;
+  /** 絞り込み条件が有効か。有効なら「絞込」を強調し、隣に解除 × を出す（独立アイコンをピルの外に置かない） */
+  filterActive?: boolean;
+  onClearFilter?: () => void;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -102,13 +110,20 @@ export function UnifiedSearch({
           aria-label={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-expanded={filterOpen}
           onClick={onToggleFilter}
-          className={cn('h-6 px-1.5 text-[11px]', filterOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
+          className={cn('h-6 px-1.5 text-[11px]', filterOpen || filterActive ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
         >
-          絞込
+          絞込{filterActive && <span aria-hidden="true" className="ml-0.5 inline-block size-1.5 rounded-full bg-primary-accent align-middle" />}
         </Button>
+        {trailing}
+        {filterActive && onClearFilter && (
+          <button type="button" title="絞り込みを解除" aria-label="絞り込みを解除" onClick={onClearFilter}
+            className="flex size-5 items-center justify-center rounded-full text-mirai-text-muted hover:bg-mirai-surface-teal hover:text-mirai-text">
+            <X className="size-3" aria-hidden="true" />
+          </button>
+        )}
       </div>
       {open && results.length > 0 && (
-        <div ref={listRef} className="absolute left-0 top-9 z-40 max-h-80 w-80 overflow-y-auto rounded-xl border border-mirai-border bg-card p-1 shadow-soft">
+        <div ref={listRef} className="absolute left-0 top-9 z-40 max-h-80 w-80 overflow-y-auto sm:left-auto sm:right-0 rounded-xl border border-mirai-border bg-card p-1 shadow-soft">
           {results.map((n, i) => (
             <Button
               key={n.id}
@@ -127,7 +142,7 @@ export function UnifiedSearch({
         </div>
       )}
       {filterOpen && (
-        <div className="absolute left-0 top-9 z-40 max-h-[calc(100vh-var(--app-header-h)-5rem)] w-[28rem] overflow-y-auto rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
+        <div className="absolute left-0 top-9 z-40 max-h-[calc(100vh-var(--app-header-h)-5rem)] w-[28rem] overflow-y-auto sm:left-auto sm:right-0 rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
           {filterFields}
         </div>
       )}

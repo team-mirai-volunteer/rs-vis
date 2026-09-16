@@ -2,8 +2,8 @@ import { SUPPLY_CASES, type SupplyCase } from '@/app/lib/fiscal-space/supply';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { fieldClass } from './format';
 
-export function SupplyConditions({ value, onChange }: { value: Record<string, SupplyCase>; onChange: (v: Record<string, SupplyCase>) => void }) {
-  return <Card><CardHeader><h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>
+export function SupplyConditions({ value, onChange, embedded = false }: { value: Record<string, SupplyCase>; onChange: (v: Record<string, SupplyCase>) => void; embedded?: boolean }) {
+  return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>}
     <p className="text-xs leading-relaxed">研究・公共資本・教育は支出後も残る効果、保育は利用中の就労効果を計算します。純追加性は、既存の投資の置換や実施失敗を除いて効果を生む割合。初期50%は比較条件で、日本の実証値ではありません。</p>
     <p className="text-xs leading-relaxed">以下の式は投入への参照換算です。実際の供給力は設備・有効労働・エネルギー・生産性に変換し、選択した生産関数で再計算します。公共資本は物流・移動などを効率化する経路と、設備量を増やす経路を区別します。</p>
   </CardHeader><CardContent className="space-y-2 text-xs">{Object.entries(SUPPLY_CASES).map(([id, ref]) => <details key={id} className="rounded-lg border border-mirai-border p-3">

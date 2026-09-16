@@ -81,7 +81,7 @@ export function lifecycleSeries(state: TaxState, p: TaxParameters, reform: Refor
       incomeTax: taxes.incomeTax, residentTax, pension: taxes.pension, health: taxes.health, care: taxes.care, employment: taxes.employment,
       childBenefit: taxes.childBenefit, singleParentBenefit: taxes.singleParentBenefit, pensionSupport: taxes.pensionSupport, reformCredit: taxes.reformCredit,
       grossBurden, benefits: taxes.benefits, netBurden, netRate: gross > 0 ? netBurden / gross : null,
-      disposable: gross - netBurden, childrenPresent: childAges.length,
+      disposable: gross - netBurden + corporateTax, childrenPresent: childAges.length,
       outOfScope: scopeReasons.length > 0, scopeReasons,
     });
   }

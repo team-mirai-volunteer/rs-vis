@@ -58,6 +58,9 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
   useEffect(() => {
     let cancelled = false;
     setComments(undefined);
+    setTotal(0);
+    setNextCursor(null);
+    setError(null);
     if (!pid) return;
     fetchPage(pid, year, null)
       .then(page => {

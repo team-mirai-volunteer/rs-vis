@@ -4,8 +4,8 @@
  */
 import { NextResponse } from 'next/server';
 
-export const SUPPORTED_YEARS = ['2024', '2025'] as const;
-export type SupportedYear = (typeof SUPPORTED_YEARS)[number];
+import { SUPPORTED_YEARS, type SupportedYear } from '@/types/rs-year';
+export { SUPPORTED_YEARS, type SupportedYear } from '@/types/rs-year';
 
 export const DEFAULT_YEAR: SupportedYear = '2024';
 

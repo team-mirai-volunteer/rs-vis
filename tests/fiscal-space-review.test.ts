@@ -149,7 +149,7 @@ test('long-run scenarios carry permanent costs and commissioning benefits withou
 test('model selection changes reference envelopes when capacity binds', () => {
   const s = initial(); s.production.inputs = { capital: 1.18, labour: 1.01, energy: 1.12, materials: 1.2 };
   const limits = { ...THRESHOLDS, inflation: .5, labour: 2 };
-  const mix = [{ policy: policy('public-investment'), weight: 1 }];
+  const mix = [{ policy: policy('public-investment', { load: { sectorUtilizationPerTrillion: 0, peakGwPerTrillion: 0, operatingPeakGwPerTrillion: 0, lag: 0, lifetime: 1, depreciation: 0 } }), weight: 1 }];
   const a = estimateFiscalSpace(s, mix, limits, 5, { ...flat, productionModel: 'leontief' });
   const b = estimateFiscalSpace(s, mix, limits, 5, { ...flat, productionModel: 'ces' });
   assert(a.theoreticalMaximum < b.theoreticalMaximum);
@@ -331,7 +331,7 @@ test('energy investment helps a binding energy input, while extra nonbinding lab
   const base = policyProduction(s, [], 3, p);
   near(policyProduction(s, [tax], 3, p).potential, base.potential);
   assert(policyProduction(s, [power], 3, p).potential > base.potential);
-  near(policyProduction(s, [power], 2, p).potential, base.potential); // Not commissioned yet.
+  near(policyProduction(s, [power], 1, p).potential, base.potential); // Before commissioning.
   const noFirm = { ...power, trade: { kind: 'power' as const, assumptions: { ...powerCase('solar'), firmShare: 0 } } };
   near(policyProduction(s, [noFirm], 3, p).potential, base.potential);
   const firm = { ...power, trade: { kind: 'power' as const, assumptions: { ...powerCase('solar'), firmShare: .2 } } };
