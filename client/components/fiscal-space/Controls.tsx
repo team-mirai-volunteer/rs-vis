@@ -101,11 +101,11 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
     <CardContent className="space-y-5">
       <section aria-label="結論を動かす条件" data-testid="decisive-conditions" className="space-y-3 rounded-xl border border-mirai-border p-3">
         <h3 className="text-sm font-bold">結論を動かす条件</h3>
-        <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、ほぼこの4つです。ほかの条件は下の詳細で変更できます。</p>
+        <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、下の3つの条件と、各政策の配分（下の金額欄）です。ほかの条件は「詳細な条件」で変更できますが、既定の近傍では結論をほとんど動かしません。</p>
         <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
         <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
         <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
-        <Button variant="outline" size="sm" className="w-full" onClick={onPreset}>例：社会保険料減税中心の15兆円配分</Button>
+        <Button variant="outline" size="sm" className="w-full" onClick={onPreset}>配分の例を入れる：社会保険料減税中心の15兆円</Button>
       </section>
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
