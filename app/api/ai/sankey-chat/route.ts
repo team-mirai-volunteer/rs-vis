@@ -13,12 +13,13 @@ import {
   type SankeyChatResponse,
 } from '@/types/sankey-ai-chat';
 
-import { createServerLlmCaller, isServerAiEnabled, LlmUpstreamError, serverModel } from '@/app/api/ai/_lib/server-llm';
+import { createServerLlmCaller, isServerAiEnabled, LlmUpstreamError, newUsage, serverModel, type LlmUsage } from '@/app/api/ai/_lib/server-llm';
 
 /** appendUsageLog 呼び出しの共通次元（非ストリーミング・ストリーミング両経路で使う） */
 interface AiChatLogBase {
   kind: 'ai_chat';
   model: string;
+  tokens: LlmUsage;
   turns: number;
   userText: string;
 }
@@ -86,14 +87,17 @@ export async function POST(req: Request) {
 
     const model = serverModel();
     // onRetry はリトライ待機の通知（ストリーム時のみ）、abortSignal はクライアント切断の伝播用
+    const usage = newUsage();
     const buildCallLlm = (onRetry?: (waitMs: number) => void, abortSignal?: AbortSignal): LlmCaller =>
-      createServerLlmCaller('ai/sankey-chat', onRetry, abortSignal);
+      createServerLlmCaller('ai/sankey-chat', onRetry, abortSignal, { usage });
 
     // 利用ログ（dev専用）の共通次元。userText は直近のユーザー発話（未充足需要の観測が主目的）
     const started = Date.now();
     const logBase: AiChatLogBase = {
       kind: 'ai_chat',
       model,
+      // 参照で持たせる: appendUsageLog の JSON 化時点の累計トークンが記録される
+      tokens: usage,
       turns: messages.length,
       userText: messages[messages.length - 1].content.slice(0, 200),
     };
