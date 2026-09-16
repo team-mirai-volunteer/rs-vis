@@ -19,27 +19,31 @@ sheet = list(openpyxl.load_workbook(io.BytesIO(raw), data_only=True).active.valu
 codes = list(sheet[1][2:110])
 rows = sheet[3:111]
 assert len(rows) == 108 and [r[0] for r in rows] == codes
-assert sheet[1][129] == '970' and sheet[1][124] == '841'
+# Column codes: 119 domestic demand total, 121 exports, 124 imports excl. tax,
+# 127 imports total incl. tax, 129 domestic production. Fail loudly on layout changes.
+COLUMNS = {119: '790', 121: '810', 124: '841', 127: '870', 129: '970'}
+assert all(sheet[1][col] == code for col, code in COLUMNS.items()), {col: sheet[1][col] for col in COLUMNS}
+cell = lambda row, col: row[col] or 0
 x = np.array([r[129] for r in rows], dtype=float)
 a = np.array([[r[j] or 0 for j in range(2, 110)] for r in rows], dtype=float) / x
 # Tax-inclusive import penetration allocates the domestic-production transactions.
 # Cash import coefficients exclude tariffs and import commodity taxes (domestic receipts).
-m = np.array([min(1, max(0, -r[127] / r[119])) if r[119] else 0 for r in rows])
-cash = np.array([max(0, -r[124] / r[119]) if r[119] else 0 for r in rows])
+m = np.array([min(1, max(0, -cell(r, 127) / cell(r, 119))) if cell(r, 119) else 0 for r in rows])
+cash = np.array([max(0, -cell(r, 124) / cell(r, 119)) if cell(r, 119) else 0 for r in rows])
 inverse = np.linalg.inv(np.eye(len(rows)) - (1 - m[:, None]) * a)
 j = codes.index('321')
 # Fix electronics gross production at one yen, rather than one yen of final demand.
 production = inverse[:, j] / inverse[j, j]
 r = rows[j]
-export_share = r[121] / x[j]
-imports = -r[124]
-domestic_market = x[j] - r[121] + imports
+export_share = cell(r, 121) / x[j]
+imports = -cell(r, 124)
+domestic_market = x[j] - cell(r, 121) + imports
 result = {
     'sourceUrl': URL, 'sourceName': '令和2年産業連関表・生産者価格評価表・108部門',
     'referenceYear': 2020, 'sectorCode': '321', 'sectorName': r[1],
     'sha256': hashlib.sha256(raw).hexdigest(),
     'amountUnit': '10億円',
-    'production': x[j], 'exports': r[121], 'importsExcludingTax': imports,
+    'production': x[j], 'exports': cell(r, 121), 'importsExcludingTax': imports,
     'domesticMarketExcludingImportTax': domestic_market,
     'exportShare': export_share,
     'domesticReplacementShare': imports / domestic_market,
@@ -49,5 +53,5 @@ result = {
 }
 assert all(0 <= result[k] <= 1 for k in ('exportShare', 'domesticReplacementShare', 'operatingImportShare'))
 target = Path(__file__).resolve().parents[1] / 'app/lib/fiscal-space/data/industry-trade-reference.json'
-target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
 print(json.dumps(result, ensure_ascii=False, indent=2))

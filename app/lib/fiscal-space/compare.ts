@@ -19,8 +19,7 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
     // These are conditional scenarios, not a confidence interval. Re-run the
     // full model so production constraints and nominal prices remain consistent.
     const industryConditions = incremental.trade?.kind === 'industry' ? incremental.trade.assumptions : undefined;
-    const replacementScenarios = incremental.id === 'semiconductors' && industryConditions
-      && industryConditions.annualSalesPerInvestment !== null
+    const replacementScenarios = industryConditions && industryConditions.annualSalesPerInvestment !== null
       ? [0, 1].map(domesticReplacementShare => simulate(initial, [...current, { ...incremental,
         trade: { kind: 'industry' as const, assumptions: { ...industryConditions, domesticReplacementShare } },
       }], horizon, p, shock)) : undefined;
@@ -55,8 +54,8 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
         const operating = step.demand.projectOperatingImports * price - base.demand.projectOperatingImports * basePrice;
         const substitution = step.demand.domesticSubstitution * price - base.demand.domesticSubstitution * basePrice;
         const imports = step.state.external.imports - base.state.external.imports;
-        const energyOperatingTradeEffect = -(step.demand.projectEnergyNetImports * previous.macro.nominalGdp / previous.macro.realGdp
-          - base.demand.projectEnergyNetImports * basePrevious.macro.nominalGdp / basePrevious.macro.realGdp) * (1 + shock.energyPriceChange);
+        const energyOperatingTradeEffect = -(step.demand.projectEnergyNetImports * price
+          - base.demand.projectEnergyNetImports * basePrice) * (1 + shock.energyPriceChange);
         return { year,
           industryImports: replacementScenarios ? { operating, substitution, other: imports - operating + substitution,
             noReplacement: replacementScenarios[0].steps[year - 1].state.external.imports - base.state.external.imports,
