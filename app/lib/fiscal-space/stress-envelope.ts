@@ -4,22 +4,22 @@ import { peakConstraints } from './constraints';
 import { simulate } from './simulate';
 import { externalStress } from './external-stress';
 
-export type StressId = 'baselineInflation' | 'fx' | 'energyPrice' | 'rate';
+export type StressId = 'cpiCeiling' | 'fx' | 'energyPrice' | 'rate';
 export type StressSelection = Record<StressId, boolean>;
 
 /** Interpretable stresses replace an arbitrary percentage haircut. Each magnitude is
  * itself an assumption, but "survives a 10% yen depreciation" is a checkable claim
  * where "minus 20%" is not. Magnitudes reuse the existing sensitivity tables. */
 export const STRESSES: Record<StressId, { label: string; short: string; note: string }> = {
-  baselineInflation: { label: '基準インフレ +0.5ポイント', short: '基準インフレ+0.5pt', note: '政策なしの物価上昇率の想定を0.5ポイント引き上げて再探索。' },
+  cpiCeiling: { label: '許容インフレ −0.3ポイント', short: 'CPI上限−0.3pt', note: 'CPI許容上限を0.3ポイント引き下げて再探索。政策なしのCPIとの余裕が縮む条件。' },
   fx: { label: '円安10%', short: '円安10%', note: '判定用CPIのピーク年に、輸入価格への転嫁100%・CPI水準への転嫁0.13で円安10%が重なっても上限内に収まる額。為替の需要・GDP反応は未推計。' },
   energyPrice: { label: '輸入エネルギー価格 +20%', short: 'エネルギー+20%', note: '本体の輸入エネルギー価格ショックを20ポイント上乗せして再探索。' },
   rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。公表GDP・CPI反応は変えない。' },
 };
 // Nothing selected by default: every stress amount is still computed and shown, so the
 // user chooses what the envelope must survive with the consequences visible. With a 2.5%
-// CPI ceiling and ~2.05% no-policy CPI, +0.5pt inflation or a 10% yen fall leave no room.
-export const DEFAULT_STRESSES: StressSelection = { baselineInflation: false, fx: false, energyPrice: false, rate: false };
+// CPI ceiling and ~2.05% no-policy CPI, a 10% yen fall (+1.3pt CPI) leaves no room at all.
+export const DEFAULT_STRESSES: StressSelection = { cpiCeiling: false, fx: false, energyPrice: false, rate: false };
 
 export interface StressRow { id: StressId; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
 
@@ -51,7 +51,7 @@ export function stressRows(initial: EconomyState, mix: PolicyShare[], base: Fisc
   const row = (id: StressId, e: FiscalSpaceEstimate): StressRow => ({ id, label: STRESSES[id].label, amount: Math.min(e.theoreticalMaximum, base.theoreticalMaximum),
     status: e.status, binding: e.constraints.find(c => c.status === 'violated')?.label, selected: selection[id] });
   return (Object.keys(STRESSES) as StressId[]).map(id => {
-    if (id === 'baselineInflation') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, { ...p, baselineInflation: p.baselineInflation + .005 }, shock));
+    if (id === 'cpiCeiling') return row(id, estimateFiscalSpace(initial, mix, { ...thresholds, inflation: Math.max(.0001, thresholds.inflation - .003) }, horizon, p, shock));
     if (id === 'energyPrice') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, energyPriceChange: shock.energyPriceChange + .2 }));
     if (id === 'rate') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, marketRateDelta: shock.marketRateDelta + .01 }));
     return { ...fxEnvelope(initial, mix, thresholds, horizon, p, shock, base.theoreticalMaximum), selected: selection[id] };
