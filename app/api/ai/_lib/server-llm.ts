@@ -11,8 +11,16 @@
 import type { LlmCaller, LlmMessage, LlmToolDef } from '@/app/lib/ai/chat-core';
 
 export const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/chat/completions';
-/** サーバー側 LLM の既定モデル（コスト制約）。SANKEY_AI_CHAT_MODEL で差し替え可能 */
-export const DEFAULT_SERVER_MODEL = 'openai/gpt-5.6-luna';
+/**
+ * サーバー側 LLM の既定モデル。2026-09-16 の計測（3質問×11構成、docs/tasks 参照）で、全問2往復で確定・
+ * 1問3〜4秒・約$0.004 と、速度とコストの両立が最も良かった。SANKEY_AI_CHAT_MODEL で差し替え可能。
+ * 次善は openai/gpt-5.4-nano（同コスト・約2倍の時間）
+ */
+export const DEFAULT_SERVER_MODEL = 'google/gemini-3.5-flash-lite';
+
+/** 1 リクエスト内の LLM 呼び出しで消費したトークン。利用ログに残して実コストを追う */
+export interface LlmUsage { calls: number; prompt: number; completion: number; reasoning: number }
+export const newUsage = (): LlmUsage => ({ calls: 0, prompt: 0, completion: 0, reasoning: 0 });
 /** 推論モデルの思考量。コストと応答時間を抑えるため既定 low（SANKEY_AI_CHAT_REASONING_EFFORT で変更。'none' で送らない） */
 export const DEFAULT_REASONING_EFFORT = 'low';
 export function reasoningEffort(): 'low' | 'medium' | 'high' | null {
@@ -46,6 +54,11 @@ export function serverModel(): string {
   return process.env.SANKEY_AI_CHAT_MODEL || DEFAULT_SERVER_MODEL;
 }
 
+/** 意見インタビュー用のモデル。未指定なら絞り込みと同じ（SANKEY_AI_INTERVIEW_MODEL で分離できる） */
+export function interviewModel(): string {
+  return process.env.SANKEY_AI_INTERVIEW_MODEL || serverModel();
+}
+
 /**
  * 接続先は OpenAI 互換 chat.completions であれば差し替え可能。既定は OpenRouter。
  * Gemini API 直（無料枠）を使う場合の例:
@@ -61,11 +74,13 @@ export function serverApiKey(): string | undefined {
   return process.env.SANKEY_AI_CHAT_API_KEY || process.env.OPENROUTER_API_KEY;
 }
 
+interface CallerOptions { model?: string; usage?: LlmUsage }
+
 /** 1 回の LLM 呼び出し。ツール無しの単純対話（インタビュー等）は tools を空にする */
-async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSignal?: AbortSignal): Promise<LlmMessage> {
+async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSignal: AbortSignal | undefined, opts: CallerOptions): Promise<LlmMessage> {
   const url = serverCompletionsUrl();
   const apiKey = serverApiKey()!;
-  const model = serverModel();
+  const model = opts.model ?? serverModel();
   const timeoutSignal = AbortSignal.timeout(LLM_TIMEOUT_MS);
   let res: Response;
   try {
@@ -101,7 +116,16 @@ async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSig
     }
     throw new LlmUpstreamError(`LLM API HTTP ${res.status}: ${detail}`);
   }
-  const data = await res.json().catch(() => null) as { choices?: { message?: LlmMessage }[] } | null;
+  const data = await res.json().catch(() => null) as {
+    choices?: { message?: LlmMessage }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } };
+  } | null;
+  if (opts.usage && data?.usage) {
+    opts.usage.calls++;
+    opts.usage.prompt += data.usage.prompt_tokens ?? 0;
+    opts.usage.completion += data.usage.completion_tokens ?? 0;
+    opts.usage.reasoning += data.usage.completion_tokens_details?.reasoning_tokens ?? 0;
+  }
   const message = data?.choices?.[0]?.message;
   // HTTP 200 で choices が空になるプロバイダ固有の一過性障害が観測されている
   if (!message) throw new LlmRetryableError('LLM API 応答に choices[0].message がありません', RETRY_WAIT_MS);
@@ -112,10 +136,10 @@ async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSig
  * リトライ 1 回付きの LLM 呼び出し関数を作る。
  * onRetry はリトライ待機の通知（ストリーム時の progress 用）、abortSignal はクライアント切断の伝播用
  */
-export function createServerLlmCaller(tag: string, onRetry?: (waitMs: number) => void, abortSignal?: AbortSignal): LlmCaller {
+export function createServerLlmCaller(tag: string, onRetry?: (waitMs: number) => void, abortSignal?: AbortSignal, opts: CallerOptions = {}): LlmCaller {
   return async (llmMessages, tools) => {
     try {
-      return await callOnce(llmMessages, tools, abortSignal);
+      return await callOnce(llmMessages, tools, abortSignal, opts);
     } catch (e) {
       if (!(e instanceof LlmRetryableError)) throw e;
       console.warn(`[${tag}] retryable upstream failure, retrying in ${e.waitMs}ms:`, e.message);
@@ -126,7 +150,7 @@ export function createServerLlmCaller(tag: string, onRetry?: (waitMs: number) =>
         const timer = setTimeout(() => resolve(), e.waitMs);
         abortSignal?.addEventListener('abort', () => { clearTimeout(timer); rejectAborted(); }, { once: true });
       });
-      return await callOnce(llmMessages, tools, abortSignal); // 2 回目の失敗はそのまま上へ（502 に丸まる）
+      return await callOnce(llmMessages, tools, abortSignal, opts); // 2 回目の失敗はそのまま上へ（502 に丸まる）
     }
   };
 }

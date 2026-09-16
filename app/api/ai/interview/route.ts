@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { notFound } from 'next/navigation';
 import { serverErrorResponse } from '@/app/lib/api/api-notes';
 import { appendUsageLog } from '@/app/lib/api/usage-log';
-import { createServerLlmCaller, isServerAiEnabled, LlmUpstreamError, serverModel } from '@/app/api/ai/_lib/server-llm';
+import { createServerLlmCaller, interviewModel, isServerAiEnabled, LlmUpstreamError, newUsage } from '@/app/api/ai/_lib/server-llm';
 import {
   buildInterviewMessages,
   buildSummarizeMessages,
@@ -32,7 +32,7 @@ export type InterviewApiResponse =
 /** 疎通確認。無効な環境では機能の有無を明かさず 404 */
 export async function GET() {
   if (!isServerAiEnabled()) notFound();
-  return NextResponse.json({ enabled: true, model: serverModel() });
+  return NextResponse.json({ enabled: true, model: interviewModel() });
 }
 
 const MAX_PROJECT_NAME_CHARS = 200;
@@ -79,10 +79,11 @@ export async function POST(req: Request) {
     const { request, error } = validate(body);
     if (error || !request) return NextResponse.json({ error }, { status: 400 });
 
-    const model = serverModel();
-    const callLlm = createServerLlmCaller('ai/interview', undefined, req.signal);
+    const model = interviewModel();
+    const usage = newUsage();
+    const callLlm = createServerLlmCaller('ai/interview', undefined, req.signal, { model, usage });
     const started = Date.now();
-    const logBase = { kind: 'ai_interview', model, step: request.kind, turns: request.turns.length, pid: request.context.pid };
+    const logBase = { kind: 'ai_interview', model, step: request.kind, turns: request.turns.length, pid: request.context.pid, tokens: usage };
     try {
       if (request.kind === 'interview') {
         const reply = await callLlm(buildInterviewMessages(request.context, request.turns), []);
