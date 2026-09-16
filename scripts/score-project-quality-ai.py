@@ -229,6 +229,10 @@ def make_client():
     return OpenAI(
         base_url=args.base_url,
         api_key=key,
+        # OS のスリープ復帰後などにソケットが半開きのまま応答せず、全件走行が無期限に固まることがある。
+        # 明示的にタイムアウトを置き、_run_batches のリトライに落とす。
+        timeout=180.0,
+        max_retries=2,
         default_headers={'HTTP-Referer': 'https://github.com/rs-vis', 'X-Title': 'rs-vis quality scoring'},
     )
 
