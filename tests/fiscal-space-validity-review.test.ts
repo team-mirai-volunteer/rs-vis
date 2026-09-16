@@ -141,7 +141,7 @@ test('envelope equals the search amount with no stress selected, and the minimum
   assert(none.estimate.stress!.every(s => !s.selected));
   const energy = none.estimate.stress!.find(s => s.id === 'energyPrice')!;
   assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
-  // With a 2.5% ceiling and ~2.05% no-policy CPI, a 10% yen fall (+1.3pt) leaves no room at all.
+  // With a 2.5% ceiling and ~2.05% no-policy CPI, even a 5% yen fall (+0.65pt) leaves no room at all.
   assert.equal(none.estimate.stress!.find(s => s.id === 'fx')!.status, 'baseline-violated');
   const ceiling = none.estimate.stress!.find(s => s.id === 'cpiCeiling')!;
   assert(ceiling.amount > 0 && ceiling.amount < energy.amount, 'a 0.3pt tighter ceiling must bind inside the 0.45pt headroom');

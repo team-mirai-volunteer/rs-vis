@@ -6,19 +6,21 @@ import { externalStress } from './external-stress';
 
 export type StressId = 'cpiCeiling' | 'fx' | 'energyPrice' | 'rate';
 export type StressSelection = Record<StressId, boolean>;
+/** Yen per foreign-currency unit, +5%. 10% exceeded a 2.5% ceiling with zero policy under the 0.13 pass-through. */
+export const FX_STRESS = .05;
 
 /** Interpretable stresses replace an arbitrary percentage haircut. Each magnitude is
- * itself an assumption, but "survives a 10% yen depreciation" is a checkable claim
+ * itself an assumption, but "survives a 5% yen depreciation" is a checkable claim
  * where "minus 20%" is not. Magnitudes reuse the existing sensitivity tables. */
 export const STRESSES: Record<StressId, { label: string; short: string; note: string }> = {
   cpiCeiling: { label: '許容インフレ −0.3ポイント', short: 'CPI上限−0.3pt', note: 'CPI許容上限を0.3ポイント引き下げて再探索。政策なしのCPIとの余裕が縮む条件。' },
-  fx: { label: '円安10%', short: '円安10%', note: '判定用CPIのピーク年に、輸入価格への転嫁100%・CPI水準への転嫁0.13で円安10%が重なっても上限内に収まる額。為替の需要・GDP反応は未推計。' },
+  fx: { label: '円安5%', short: '円安5%', note: '判定用CPIのピーク年に、輸入価格への転嫁100%・CPI水準への転嫁0.13で円安5%（CPI水準+0.65pt）が重なっても上限内に収まる額。為替の需要・GDP反応は未推計。' },
   energyPrice: { label: '輸入エネルギー価格 +20%', short: 'エネルギー+20%', note: '本体の輸入エネルギー価格ショックを20ポイント上乗せして再探索。' },
   rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。公表GDP・CPI反応は変えない。' },
 };
 // Nothing selected by default: every stress amount is still computed and shown, so the
 // user chooses what the envelope must survive with the consequences visible. With a 2.5%
-// CPI ceiling and ~2.05% no-policy CPI, a 10% yen fall (+1.3pt CPI) leaves no room at all.
+// CPI ceiling and ~2.05% no-policy CPI, even a 5% yen fall (+0.65pt CPI) leaves no room at all.
 export const DEFAULT_STRESSES: StressSelection = { cpiCeiling: false, fx: false, energyPrice: false, rate: false };
 
 export interface StressRow { id: StressId; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
@@ -29,10 +31,10 @@ function fxEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thres
   const violated = (amount: number) => {
     const path = simulate(initial, allocateMix(mix, amount), horizon, p, shock);
     const peaks = peakConstraints(path, thresholds, p.inflationRule);
-    return peaks.some(c => c.status === 'violated') || externalStress(path, .10, 0, thresholds.inflation).exceeds;
+    return peaks.some(c => c.status === 'violated') || externalStress(path, FX_STRESS, 0, thresholds.inflation).exceeds;
   };
   if (cap <= 0) return { id: 'fx', label: STRESSES.fx.label, amount: 0, status: 'empty-mix', selected: false };
-  if (violated(0)) return { id: 'fx', label: STRESSES.fx.label, amount: 0, status: 'baseline-violated', binding: '物価（円安10%込み）', selected: false };
+  if (violated(0)) return { id: 'fx', label: STRESSES.fx.label, amount: 0, status: 'baseline-violated', binding: '物価（円安5%込み）', selected: false };
   let low = 0, high = Math.min(p.searchStep, cap);
   while (!violated(high)) {
     low = high;
@@ -43,7 +45,7 @@ function fxEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thres
     const mid = (low + high) / 2;
     if (violated(mid)) high = mid; else low = mid;
   }
-  return { id: 'fx', label: STRESSES.fx.label, amount: low, status: 'boundary', binding: '物価（円安10%込み）', selected: false };
+  return { id: 'fx', label: STRESSES.fx.label, amount: low, status: 'boundary', binding: '物価（円安5%込み）', selected: false };
 }
 
 export function stressRows(initial: EconomyState, mix: PolicyShare[], base: FiscalSpaceEstimate, thresholds: Thresholds, horizon: number,
