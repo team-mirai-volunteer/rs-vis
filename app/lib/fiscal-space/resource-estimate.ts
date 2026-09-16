@@ -58,11 +58,16 @@ export function estimatePolicyLoad(policy: Policy, initial: EconomyState, c: Res
   ])) as Record<Sector, number>;
   // IO electricity purchases -> kWh -> GW at the assumed coincident peak.
   const gw = (yen: number) => yen / c.electricityPrice / 8760 / 1e6 / c.loadFactor * c.coincidence;
+  // IO electricity purchases -> kWh -> GWh, before any peak conversion. Fuel imports use this volume.
+  const gwh = (yen: number) => yen / c.electricityPrice / 1e6;
+  const operatingYen = policy.id === 'semiconductors'
+    ? reference.profiles['semiconductor-operation'].electricityYenPerTrillion * c.operatingOutputRatio * c.loadScale : 0;
   return { estimated: true, sectorLoads, workerYears, priceIndex: c.priceIndex,
     sectorUtilizationPerTrillion: sectorLoads[policy.sector],
     peakGwPerTrillion: gw(row.electricityYenPerTrillion) * scale,
-    operatingPeakGwPerTrillion: policy.id === 'semiconductors'
-      ? gw(reference.profiles['semiconductor-operation'].electricityYenPerTrillion) * c.operatingOutputRatio * c.loadScale : 0,
+    operatingPeakGwPerTrillion: gw(operatingYen),
+    annualGwhPerTrillion: gwh(row.electricityYenPerTrillion) * scale,
+    operatingAnnualGwhPerTrillion: gwh(operatingYen),
     lag: policy.trade?.kind === 'industry' ? policy.trade.assumptions.lag : 2,
     lifetime: policy.trade?.kind === 'industry' ? policy.trade.assumptions.lifetime : 20,
     depreciation: policy.trade?.kind === 'industry' ? policy.trade.assumptions.depreciation ?? 0 : .03,
@@ -106,6 +111,9 @@ export function resourceRecords(c: ResourceAssumptions, policies: Policy[] = [])
         ...(['peakGwPerTrillion', 'operatingPeakGwPerTrillion'] as const).map(k => ({ ...common,
           key: `resourceLoads.${p.id}.${k}`, value: load[k]!, unit: 'GW/2020年価格1兆円',
           uncertaintyNote: common.uncertaintyNote + ' 半導体以外の稼働後負荷は0の仮定。' })),
+        ...(['annualGwhPerTrillion', 'operatingAnnualGwhPerTrillion'] as const).map(k => ({ ...common,
+          key: `resourceLoads.${p.id}.${k}`, value: load[k]!, unit: 'GWh/2020年価格1兆円',
+          uncertaintyNote: common.uncertaintyNote + ' 電力購入額÷電力単価の年間電力量。火力限界供給割合と燃料単価で輸入額へ換算。公表輸入反応とは別の資源請求として計上。' })),
         ...(['lag', 'lifetime', 'depreciation'] as const).map(k => ({ ...common,
           key: `resourceLoads.${p.id}.${k}`, value: load[k], unit: k === 'depreciation' ? '比率' : '年',
           status: 'assumption' as const, sourceUrl: null, sourceName: '稼働後負荷の仮定' })),

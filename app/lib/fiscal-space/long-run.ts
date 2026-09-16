@@ -39,6 +39,9 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     const active = policies.filter(x => x.kind === 'permanent' || year <= x.duration);
     const benefit = configured(year);
     const fade = Math.max(0, 1 - elapsed / 5);
+    // Carry the published long-rate response at the end of the short run into
+    // policy-path refinancing with the same fade as other short-run deviations.
+    const policyRate = c.rate + (start.referenceRateEffect ?? 0) * fade;
     const baseReal = base.state.macro.realGdp * (1 + c.realGrowth) ** elapsed;
     const real = baseReal + benefit + (start.state.macro.realGdp - base.state.macro.realGdp - startBenefit) * fade;
     const basePrice = base.state.macro.nominalGdp / base.state.macro.realGdp;
@@ -53,13 +56,14 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     const indexedExpenditure = base.state.fiscal.primaryExpenditure * fiscalTrend
       * ((1 + (relativeCpi - 1) * fade) ** p.expenditurePriceIndexation - 1);
     const pb = basePb + (revenue(nominalHistory, year) - revenue(baseNominalHistory, year)) - cost - indexedExpenditure;
-    const rolled = rollover(portfolio, year, c.rate, p.newDebtMaturity);
+    const rolled = rollover(portfolio, year, policyRate, p.newDebtMaturity);
     const baseRolled = rollover(basePortfolio, year, c.rate, p.newDebtMaturity);
     const interestRevenue = base.state.fiscal.interestRevenue * fiscalTrend;
-    portfolio = financeDebt(rolled.buckets, rolled.interestPayments - interestRevenue - pb + p.stockFlowAdjustmentRatio * nominal, year, c.rate, p.newDebtMaturity).buckets;
+    portfolio = financeDebt(rolled.buckets, rolled.interestPayments - interestRevenue - pb + p.stockFlowAdjustmentRatio * nominal, year, policyRate, p.newDebtMaturity).buckets;
     basePortfolio = financeDebt(baseRolled.buckets, baseRolled.interestPayments - interestRevenue - basePb + p.stockFlowAdjustmentRatio * baseNominal, year, c.rate, p.newDebtMaturity).buckets;
     rows.push({ year, policyCost: cost, supplyBenefit: benefit * initialPrice, debtGdp: portfolio.reduce((s, x) => s + x.principal, 0) / nominal,
-      baselineDebtGdp: basePortfolio.reduce((s, x) => s + x.principal, 0) / baseNominal, interest: rolled.interestPayments });
+      baselineDebtGdp: basePortfolio.reduce((s, x) => s + x.principal, 0) / baseNominal, interest: rolled.interestPayments,
+      rate: policyRate, baselineInterest: baseRolled.interestPayments });
   }
   return rows;
 }
