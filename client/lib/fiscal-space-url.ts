@@ -73,9 +73,17 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
     if (Object.hasOwn(payload.form, 'reserve')) {
       const old = (payload.form as Record<string, unknown>).reserve;
       delete (payload.form as Record<string, unknown>).reserve;
-      filled.push(`任意控除${typeof old === 'number' ? `${old}%` : ''}→ストレス条件（基準インフレ+0.5pt・円安10%）`);
+      filled.push(`任意控除${typeof old === 'number' ? `${old}%` : ''}→ストレス条件（未選択）`);
     }
     if (!Object.hasOwn(payload.form, 'stresses')) Object.assign(payload.form, { stresses: { ...DEFAULT_STRESSES } });
+    const stresses = (payload.form as Record<string, unknown>).stresses;
+    if (stresses && typeof stresses === 'object' && Object.hasOwn(stresses, 'baselineInflation')) {
+      // 2026-09-16.6 interim key: the inflation stress became a tighter ceiling.
+      const legacy = (stresses as Record<string, unknown>).baselineInflation;
+      delete (stresses as Record<string, unknown>).baselineInflation;
+      Object.assign(stresses, { cpiCeiling: legacy === true });
+      filled.push('stresses.cpiCeiling（旧 基準インフレ+0.5pt）');
+    }
     // Old links retain their manual/unevaluated load assumptions, never silently opt in.
     if (!Object.hasOwn(payload.form, 'resource')) { Object.assign(payload.form, { resource: { ...RESOURCE_DEFAULTS, mode: 'manual' } }); filled.push('resource（手入力モード）'); }
     const calibration = payload.form.calibration;

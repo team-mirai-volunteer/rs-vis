@@ -141,8 +141,10 @@ test('envelope equals the search amount with no stress selected, and the minimum
   assert(none.estimate.stress!.every(s => !s.selected));
   const energy = none.estimate.stress!.find(s => s.id === 'energyPrice')!;
   assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
-  // With a 2.5% ceiling and ~2.05% no-policy CPI, +0.5pt inflation or a 10% yen fall leave no room at all.
-  for (const id of ['baselineInflation', 'fx']) assert.equal(none.estimate.stress!.find(s => s.id === id)!.status, 'baseline-violated');
+  // With a 2.5% ceiling and ~2.05% no-policy CPI, a 10% yen fall (+1.3pt) leaves no room at all.
+  assert.equal(none.estimate.stress!.find(s => s.id === 'fx')!.status, 'baseline-violated');
+  const ceiling = none.estimate.stress!.find(s => s.id === 'cpiCeiling')!;
+  assert(ceiling.amount > 0 && ceiling.amount < energy.amount, 'a 0.3pt tighter ceiling must bind inside the 0.45pt headroom');
   f.stresses = { ...f.stresses, energyPrice: true };
   const withEnergy = engine(f);
   near(withEnergy.estimate.recommendedEnvelope, energy.amount, 1e-6);
@@ -155,7 +157,10 @@ test('old links with a percentage reserve migrate to the stress selection and re
   const legacy = { ...defaults(), reserve: 20 } as Record<string, unknown>;
   delete legacy.stresses;
   const restored = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: legacy })));
-  assert.deepEqual(restored.form.stresses, { baselineInflation: false, fx: false, energyPrice: false, rate: false });
+  assert.deepEqual(restored.form.stresses, { cpiCeiling: false, fx: false, energyPrice: false, rate: false });
+  const interim = { ...defaults(), stresses: { baselineInflation: true, fx: false, energyPrice: false, rate: false } } as Record<string, unknown>;
+  const migrated = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: interim })));
+  assert.equal(migrated.form.stresses.cpiCeiling, true);
   assert(restored.filled.some(k => k.startsWith('任意控除20%')));
   assert.equal(restored.form.calibration.reserveShare, 0);
 });
