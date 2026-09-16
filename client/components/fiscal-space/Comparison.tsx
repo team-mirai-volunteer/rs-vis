@@ -5,6 +5,11 @@ import { KIND_LABELS, money, percent, points } from './format';
 const amount = (v: number) => Math.abs(v) < 5e9 && v !== 0 ? `${v > 0 ? '+' : '−'}0.01兆円未満` : `${v > 0 ? '+' : ''}${(v / 1e12).toFixed(2)}兆円`;
 type Field = keyof Omit<PolicyComparisonPeriod, 'year' | 'industryImports'>;
 
+function IndustryImportRow({ period, breakdown: b }: { period: PolicyComparisonPeriod; breakdown: NonNullable<PolicyComparisonPeriod['industryImports']> }) {
+  return <tr className="border-t border-mirai-border"><th scope="row" className="p-2">{period.year}年</th>
+    {[b.operating, -b.substitution, b.other, period.imports, b.noReplacement, b.fullReplacement].map((v, i) => <td key={i} className="p-2">{amount(v)}</td>)}</tr>;
+}
+
 function PeriodValues({ row, field }: { row: PolicyComparison; field: Field }) {
   const configured = field === 'potentialGdpEffect' ? row.supplyEffectConfigured
     : field === 'domesticSubstitution' ? !!row.investment?.trade : true;
@@ -41,10 +46,10 @@ export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizo
         </tr>)}</tbody>
       </table>
     </div>
-    {rows.filter(row => row.periods.some(period => period.industryImports)).map(row => <section key={row.policy.id} className="space-y-2" aria-labelledby="industry-import-heading">
-      <h3 id="industry-import-heading" className="font-bold">産業投資の輸入内訳と国内代替の条件</h3>
+    {rows.filter(row => row.periods.some(period => period.industryImports)).map(row => <section key={row.policy.id} className="space-y-2" aria-labelledby={`industry-import-heading-${row.policy.id}`}>
+      <h3 id={`industry-import-heading-${row.policy.id}`} className="font-bold">{row.policy.name}：産業投資の輸入内訳と国内代替の条件</h3>
       <p className="text-xs">追加1兆円を初年度だけ支出した場合の各年価格・兆円／年。輸入増＝稼働時輸入−国内代替＋その他。その他には一般政府支出モデルによる需要・価格等の反応が含まれ、設備の直接輸入額ではありません。既存投資との供給制約の相互作用も含む差分です。</p>
-      <div className="overflow-x-auto" role="region" aria-label="産業投資の輸入内訳" tabIndex={0}><table className="w-full min-w-[800px] text-left text-xs tabular-nums"><thead><tr>{['時点', '稼働時輸入', '国内代替（控除）', 'その他の変化', '輸入増減の合計', '置換0%の場合', '置換100%の場合'].map(label => <th scope="col" className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.periods.map(period => { const b = period.industryImports; return b && <tr key={period.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{period.year}年</th>{[b.operating, -b.substitution, b.other, period.imports, b.noReplacement, b.fullReplacement].map((v, i) => <td key={i} className="p-2">{amount(v)}</td>)}</tr>; })}</tbody></table></div>
+      <div className="overflow-x-auto" role="region" aria-label="産業投資の輸入内訳" tabIndex={0}><table className="w-full min-w-[800px] text-left text-xs tabular-nums"><thead><tr>{['時点', '稼働時輸入', '国内代替（控除）', 'その他の変化', '輸入増減の合計', '置換0%の場合', '置換100%の場合'].map(label => <th scope="col" className="p-2" key={label}>{label}</th>)}</tr></thead><tbody>{row.periods.map(period => period.industryImports && <IndustryImportRow key={period.year} period={period} breakdown={period.industryImports} />)}</tbody></table></div>
       <p className="text-xs">置換率は国内販売のうち輸入品を置き換える割合。0%・100%は追加投資の置換率だけを変えて本体を再計算した条件比較で、統計的な信頼区間や全リスクの上下限ではありません。輸出比率・調達構成・売上・稼働時期にも不確実性があります。</p>
     </section>)}
     {rows.filter(row => row.policy.id === 'generation').map(row => <section key={row.policy.id} className="space-y-2" aria-labelledby="power-trade-breakdown-heading">

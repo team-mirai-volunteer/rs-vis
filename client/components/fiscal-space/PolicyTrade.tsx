@@ -1,7 +1,7 @@
 import type { Policy } from '@/types/fiscal-space';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { POLICY_TRADE_CHANNELS, POWER_TECHNOLOGIES, POWER_SOURCE, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, SEMICONDUCTOR_SOURCE,
-  industryTrade, industryImportBreakEven, INDUSTRY_TRADE_REFERENCE, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
+  industryTrade, industryImportBreakEven, INDUSTRY_TRADE_REFERENCE, INDUSTRY_TRADE_REFERENCE_PERCENT, powerTrade, powerCase, SEMICONDUCTOR_FINANCIAL_SOURCE, type IndustryTradeCase, type PowerCase, type PowerTechnology } from '@/app/lib/fiscal-space/policy-trade';
 import { fieldClass, money } from './format';
 import { PROJECT_POLICY_IDS } from '@/app/lib/fiscal-space/project-response';
 
@@ -18,6 +18,7 @@ export function PolicyTrade({ policies, value, onChange }: { policies: Policy[];
   const channel = POLICY_TRADE_CHANNELS[selected.id];
   const isPower = selected.id === 'generation';
   const industry = value.industry[selected.id];
+  const breakEven = industryImportBreakEven(industry);
   const power = value.power;
   const tradeMoney = (n: number | null) => n === null ? '未推計' : money(n, 3);
   const changeIndustry = <K extends keyof IndustryTradeCase>(key: K, n: IndustryTradeCase[K]) => onChange({ ...value, industry: { ...value.industry, [selected.id]: { ...industry, [key]: n } } });
@@ -76,8 +77,8 @@ export function PolicyTrade({ policies, value, onChange }: { policies: Policy[];
           <Numeric label="稼働後の便益期間（仮定）" value={industry.lifetime} min={1} max={50} step={1} unit="年" onChange={n => { if (n !== null) changeIndustry('lifetime', Math.round(n)); }} />
         </div>
         <p>半導体の初期売上/設備比は<a className="underline" href={SEMICONDUCTOR_FINANCIAL_SOURCE} target="_blank" rel="noreferrer">TSMC 2024年連結決算</a>の売上2,894,307,699÷期末純有形固定資産3,234,980,070（双方千台湾ドル）≒0.895。年間設備投資で割ってはいません。日本の補助金収益率ではなく、既存の海外企業を参考にした条件です。新設工場・技術世代・再調達価格との差があり、純追加性50%・年間減耗10%・15年寿命を仮定。官民投資の倍率は付けません。稼働遅れ3年も仮定です。研究開発は売上未設定なら知識蓄積の供給モデルを使い、売上を設定するとそちらへ切り替えます。</p>
-        {selected.id === 'semiconductors' && <p><a className="underline" href={INDUSTRY_TRADE_REFERENCE.sourceUrl} target="_blank" rel="noreferrer">2020年全国産業連関表・電子デバイス部門</a>を参考に、初期値は輸出69.2%、国内販売の輸入置換59.7%、供給網全体の輸入原価19.3%。輸入原価は直接調達13.2%に国内仕入先の輸入を含めた比例配分による推計で、関税・輸入品商品税は除きます。置換59.7%は国内市場の輸入割合を代用した仮定で、投資の因果効果ではありません。2020年の部門平均と新設半導体工場には品種・技術・調達構成の違いがあります。建設時輸入は別途未推計です。</p>}
-        <p>現在の条件で、稼働後の原材料等の輸入を国内代替が上回るには、{industryImportBreakEven(industry) === null || industryImportBreakEven(industry)! > 1 ? '国内販売の輸入置換だけでは不足します。' : `国内販売の${(industryImportBreakEven(industry)! * 100).toFixed(1)}%超の輸入置換が必要です。`}建設・所得増等による輸入は別に加わります。主表の産業投資内訳では、置換率0%・100%の条件も比較できます。</p>
+        {selected.id === 'semiconductors' && <p><a className="underline" href={INDUSTRY_TRADE_REFERENCE.sourceUrl} target="_blank" rel="noreferrer">{INDUSTRY_TRADE_REFERENCE.referenceYear}年全国産業連関表・{INDUSTRY_TRADE_REFERENCE.sectorName}部門</a>を参考に、初期値は輸出{INDUSTRY_TRADE_REFERENCE_PERCENT.exportShare}%、国内販売の輸入置換{INDUSTRY_TRADE_REFERENCE_PERCENT.domesticReplacementShare}%、供給網全体の輸入原価{INDUSTRY_TRADE_REFERENCE_PERCENT.operatingImportShare}%。輸入原価は直接調達{INDUSTRY_TRADE_REFERENCE_PERCENT.directOperatingImportShare}%に国内仕入先の輸入を含めた比例配分による推計で、関税・輸入品商品税は除きます。置換{INDUSTRY_TRADE_REFERENCE_PERCENT.domesticReplacementShare}%は国内市場の輸入割合を代用した仮定で、投資の因果効果ではありません。{INDUSTRY_TRADE_REFERENCE.referenceYear}年の部門平均と新設半導体工場には品種・技術・調達構成の違いがあります。建設時輸入は別途未推計です。</p>}
+        <p>現在の条件で、稼働後の原材料等の輸入を国内代替が上回るには、{breakEven === null || breakEven > 1 ? '国内販売の輸入置換だけでは不足します。' : `国内販売の${(breakEven * 100).toFixed(1)}%超の輸入置換が必要です。`}建設・所得増等による輸入は別に加わります。主表の産業投資内訳では、置換率0%・100%の条件も比較できます。</p>
         <div className="overflow-x-auto" role="region" aria-label="政策固有の輸出入試算" tabIndex={0}><table className="w-full min-w-[680px] text-right tabular-nums"><thead><tr>{['年', '輸出増', '輸入の国内代替', '運転時輸入', '建設時輸入', '収支差', '事業の国内付加価値'].map(h => <th scope="col" key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{years.map(year => { const r = industryTrade(selected, year, industry); return <tr key={year} className="border-t border-mirai-border"><th className="p-2" scope="row">{year}</th>{[r.exports, r.substitution, r.operatingImports, r.capexImports, r.tradeBalance, r.domesticValueAdded].map((n, i) => <td key={i}>{tradeMoney(n)}</td>)}</tr>; })}</tbody></table></div>
         <p>収支差＝輸出増＋輸入代替−運転時輸入−建設時輸入。輸出販売と国内販売を分け、同じ製品を輸出と国内代替の両方へ数えません。国内付加価値は売上−輸入原価で、国内取引を含む供給網全体の粗い近似。既存事業の置換・研究の失敗・輸入原価以外の海外支払は未反映で、GDPの純増とは異なります。</p>
       </>}
