@@ -149,7 +149,6 @@ export default function FiscalSpacePage() {
             }}>
         <MemoControls
           structuralUnemployment={form.calibration.structuralUnemployment} headline={headline}
-          onPreset={() => change.preset({ ...Object.fromEntries(Object.keys(form.amounts).map(id => [id, 0])), 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 })}
           onClose={() => setControlsOpen(false)}
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}

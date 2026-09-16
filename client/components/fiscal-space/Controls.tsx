@@ -9,6 +9,7 @@ import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
+const CONDITIONS_KEY = 'fiscal-space:constraint-conditions-open';
 function usePersistedOpen(key: string) {
   const [open, setOpen] = useState(false);
   useEffect(() => { try { setOpen(window.localStorage.getItem(key) === '1'); } catch { /* per-viewer convenience only */ } }, [key]);
@@ -60,12 +61,12 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   </div>;
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, reserve, thresholds, definitions, gap, inflation, construction, firmCapacity,
-  structuralUnemployment, headline, onPreset, onClose,
+  structuralUnemployment, headline, onClose,
   onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onReserve, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; reserve: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   gap: number; inflation: number; construction: number; firmCapacity: number;
-  structuralUnemployment: number; headline?: string; onPreset: () => void; onClose?: () => void;
+  structuralUnemployment: number; headline?: string; onClose?: () => void;
   onPowerSettings: () => void;
   onCalibrationSettings: () => void;
   onSupplySettings: () => void;
@@ -78,6 +79,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
   const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);
+  const [conditionsOpen, setConditionsOpen] = usePersistedOpen(CONDITIONS_KEY);
   const floor = permittedUnemploymentFloor(structuralUnemployment, thresholds.labour);
   const thresholdInput = (d: ConstraintDefinition) => {
     const [min, max] = THRESHOLD_BOUNDS[d.id];
@@ -99,14 +101,15 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
     </div>
     <CardHeader><h2 className="text-lg font-bold">政策を積み上げる</h2><p className="text-xs leading-relaxed text-mirai-text-subtle">各政策の年間追加額を入力すると合計に反映します。ひとつの政策を変えても、ほかの政策の金額は変わりません。</p></CardHeader>
     <CardContent className="space-y-5">
-      <section aria-label="結論を動かす条件" data-testid="decisive-conditions" className="space-y-3 rounded-xl border border-mirai-border p-3">
-        <h3 className="text-sm font-bold">結論を動かす条件</h3>
-        <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、下の3つの条件と、各政策の配分（下の金額欄）です。ほかの条件は「詳細な条件」で変更できますが、既定の近傍では結論をほとんど動かしません。</p>
-        <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
-        <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
-        <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
-        <Button variant="outline" size="sm" className="w-full" onClick={onPreset}>配分の例を入れる：社会保険料減税中心の15兆円</Button>
-      </section>
+      <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border p-3" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="cursor-pointer text-sm font-bold">予算を制約する条件<span className="ml-2 text-xs font-normal text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}%・失業率下限 {(floor * 100).toFixed(2)}%・ギャップ {gap.toFixed(1)}%</span></summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、この3つの条件と各政策の配分です。一度決めたら大きく変えない条件なので折りたたんでいます。ほかの条件は「詳細な条件」で変更できますが、既定の近傍では結論をほとんど動かしません。</p>
+          <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
+          <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
+          <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
+        </div>
+      </details>
       <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4">
