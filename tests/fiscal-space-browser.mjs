@@ -176,7 +176,8 @@ try {
   await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
   await expect(page.getByRole('radio', { name: '2024年で揃える' })).toBeChecked();
   await expect(page.getByRole('link', { name: '名目GDPの出典', exact: true })).toHaveAttribute('href', /imf\.org/);
-  await expect(page.getByRole('meter')).toHaveCount(8);
+  // Every constraint now renders a meter; unevaluated ones are hatched instead of hidden.
+  await expect(page.getByRole('meter')).toHaveCount(10);
   const comparison = page.getByRole('region', { name: '次の1兆円の政策比較表' });
   await expect(comparison.locator('tbody tr')).toHaveCount(14);
   for (const metric of ['realGdpEffect', 'inflationPressure', 'exports', 'imports', 'domesticSubstitution', 'tradeBalanceEffect', 'potentialGdpEffect']) {

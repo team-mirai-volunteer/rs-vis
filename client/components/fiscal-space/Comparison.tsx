@@ -25,11 +25,12 @@ export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizo
     <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年で比較します。金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
     <p className="text-xs leading-relaxed">経済財政モデルは5年、短期日本経済モデルは3年までの公表反応を使用。公表期間外や未設定の供給・代替経路は「未推計」です。国内代替は輸入品・燃料を国産品・国内発電で置き換える額で、稼働前はゼロになります。</p>
     <p className="text-xs">追加1兆円が減収対象の収入を超える政策は比較から除いています。金額は0.01兆円単位に丸めています。表示桁は推定精度ではなく、係数や事業条件の不確実性はこれより大きい可能性があります。</p>
+    <p className="text-xs leading-relaxed">「実現供給便益」は評価期間の最終年に実質GDPへ届く供給効果です。研究・教育・系統など資本以外の供給経路は公表期間後に立ち上がる設計のため、{horizon}年評価では0になります。潜在GDP列には計上され、能力制約の判定には効きます。この設計上、成長投資は短期では物価コストだけが枠に入ります。</p>
     <p className="text-xs leading-relaxed">貿易収支のマイナスは、この1兆円を追加しない場合より悪化する意味です。主表は政府支出一般の輸入増・輸出減も含むため、発電の燃料代替があってもマイナスになり得ます。政策固有の需要波及は未校正で、この符号だけでは発電投資の要否を判断できません。</p>
   </CardHeader><CardContent className="space-y-6">
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="次の1兆円の政策比較表">
-      <table className="w-full min-w-[1430px] text-left text-xs"><caption className="sr-only">政策別の1・3・5年の効果。金額は兆円。</caption>
-        <thead className="bg-card"><tr>{['政策', '実質GDP', '潜在GDP', 'CPI差（ポイント）', '輸出', '輸入', '国内代替', '貿易収支', '債務/GDP', '追加資源需要', '単独の参考上限（任意控除後）'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-20 bg-card' : ''}`}>{h}{[1, 2, 4, 5, 6, 7, 10].includes(i) && <span className="block font-normal text-mirai-text-subtle">（兆円／年）</span>}</th>)}</tr></thead>
+      <table className="w-full min-w-[1600px] text-left text-xs"><caption className="sr-only">政策別の1・3・5年の効果。金額は兆円。</caption>
+        <thead className="bg-card"><tr>{['政策', '実質GDP', '潜在GDP', `年${horizon}の実現供給便益`, 'CPI差（ポイント）', '輸出', '輸入', '国内代替', '貿易収支', '債務/GDP', '追加資源需要', '単独の参考上限（任意控除後）'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-20 bg-card' : ''}`}>{h}{[1, 2, 3, 5, 6, 7, 8, 11].includes(i) && <span className="block font-normal text-mirai-text-subtle">（兆円／年）</span>}</th>)}</tr></thead>
         <tbody>{rows.map(row => <tr key={row.policy.id} data-policy={row.policy.id} className="border-b border-mirai-border last:border-0 hover:bg-mirai-surface-teal/60 [&>td]:align-top [&>th]:align-top">
           <th scope="row" className="sticky left-0 z-10 bg-card px-2 py-3 text-left"><span className="font-bold">{row.policy.name}</span>
             <details className="mt-2 font-normal"><summary className="cursor-pointer text-primary-accent">計算条件</summary>
@@ -39,7 +40,12 @@ export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizo
               </div>
             </details>
           </th>
-          {(['realGdpEffect', 'potentialGdpEffect', 'inflationPressure', 'exports', 'imports', 'domesticSubstitution', 'tradeBalanceEffect', 'debtGdp'] as const).map(field =>
+          {(['realGdpEffect', 'potentialGdpEffect'] as const).map(field =>
+            <td key={field} className="px-2 py-3"><PeriodValues row={row} field={field} /></td>)}
+          <td className="px-2 py-3 tabular-nums" data-metric="realizedSupplyEffect">{Math.abs(row.realizedSupplyEffect) < 5e8
+            ? <span>{row.potentialGdpEffect > 5e8 ? '0（設計上：公表期間後に立ち上がり、潜在GDPには計上）' : row.policy.kind === 'growth' ? '0（供給条件が未設定）' : '—'}</span>
+            : amount(row.realizedSupplyEffect)}</td>
+          {(['inflationPressure', 'exports', 'imports', 'domesticSubstitution', 'tradeBalanceEffect', 'debtGdp'] as const).map(field =>
             <td key={field} className="px-2 py-3"><PeriodValues row={row} field={field} /></td>)}
           <td className="px-2 py-3">{row.mainCapacity}</td>
           <td className="px-2 py-3"><strong className="tabular-nums">{row.space.status === 'unevaluated' ? '算出不可' : money(row.space.recommendedEnvelope, 1)}</strong><span className="mt-1 block text-mirai-text-subtle">{KIND_LABELS[row.policy.kind]}・{row.policy.kind === 'permanent' ? '継続' : `${row.policy.duration}年支出`}</span><span className="mt-1 block">{row.space.status === 'unevaluated' ? '負荷が未評価' : row.space.status === 'search-cap' ? '境界未特定' : row.space.status === 'revenue-cap' ? '減収対象の収入上限' : row.space.status === 'baseline-violated' ? '基準経路が違反' : row.space.constraints[0]?.label}</span></td>

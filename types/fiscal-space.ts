@@ -85,6 +85,10 @@ export interface ModelParameters {
   taxRevenueElasticity: number; taxCollectionLag: number;
   productionModel: 'leontief' | 'ces' | 'cobbDouglas';
   gapDemandSensitivity: number; gapPriceSensitivity: number; gapInflationSlope: number;
+  /** Structural (NAIRU-type) unemployment rate used by the labour constraint. A scenario input, not an estimate. */
+  structuralUnemployment: number;
+  /** How the inflation constraint aggregates the horizon: single-year peak or horizon average. */
+  inflationRule: 'peak' | 'average';
   consumptionTax: { revenuePerPoint: number; cpiShare: number; baseRate: number; passThrough: number; referenceDirectCpi: number; referenceDirectDeflator: number };
   electricity: import('@/app/lib/fiscal-space/electricity-baseline').ElectricityBaselineCase;
   referenceModel: 'ef2026' | 'esri2022'; multiplierScale: number;
@@ -138,6 +142,7 @@ export interface ProjectionStep {
   importPriceEffects?: { domesticPriceRecovery: number; gdpDeflatorLevelEffect: number; tradingIncomeChange: number; realDomesticIncome: number; expenditureIndex: number };
   taxAdjustedInflation?: number; refinancingRate?: number; referenceRateEffect?: number;
   coverage?: { sector: boolean; energy: boolean; fuel: boolean };
+  structuralUnemployment?: number;
   electricity?: { demandTwh: number; thermalTwh: number; thermalIncreaseTwh: number; commonFuelIncrease: number; operatingImportReduction: number;
     policyDemandTwh: number; policyFuelIncrease: number };
   state: EconomyState; production: ProductionResult; demand: DemandResult; metrics: FiscalMetrics;
@@ -173,5 +178,7 @@ export interface PolicyComparison {
   supplyEffectConfigured: boolean;
   policy: Policy; realGdpEffect: number; inflationPressure: number; exports: number; imports: number; tradeBalanceEffect: number;
   debtGdpAtHorizon: number; debtGdpChangeAtHorizon: number; potentialGdpEffect: number;
+  /** Supply benefit that reaches realized GDP inside the published horizon; zero by design for non-capital cases. */
+  realizedSupplyEffect: number;
   mainCapacity: string; space: FiscalSpaceEstimate;
 }

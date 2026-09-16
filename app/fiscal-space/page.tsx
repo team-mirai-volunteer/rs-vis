@@ -6,7 +6,8 @@ import { CalculationOverview } from '@/client/components/fiscal-space/Calculatio
 import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
 import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
-import { decodeScenario } from '@/client/lib/fiscal-space-url';
+import { decodeScenarioDetailed, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
+import { money } from '@/client/components/fiscal-space/format';
 import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
@@ -51,6 +52,7 @@ const MemoResourceEstimation = memo(ResourceEstimation);
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
   const [shareError, setShareError] = useState('');
+  const [restore, setRestore] = useState<ScenarioRestore | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
   const dataDialog = useRef<HTMLDialogElement>(null);
   const powerDialog = useRef<HTMLDialogElement>(null);
@@ -63,8 +65,13 @@ export default function FiscalSpacePage() {
   const { completed, error, pending, retry } = useFiscalCalculation(form);
   useEffect(() => {
     const restore = () => {
-      try { if (window.location.hash.startsWith('#scenario=')) setForm(decodeScenario(window.location.hash)); setShareError(''); }
-      catch { setForm(defaults()); setShareError('共有条件を復元できません。初期状態を表示しています。'); }
+      try {
+        if (window.location.hash.startsWith('#scenario=')) {
+          const { form: restored, ...info } = decodeScenarioDetailed(window.location.hash);
+          setForm(restored); setRestore(info);
+        }
+        setShareError('');
+      } catch { setForm(defaults()); setRestore(null); setShareError('共有条件を復元できません。初期状態（既定の条件）で計算しています。以下の数値は送信者の条件ではありません。'); }
     };
     restore(); window.addEventListener('hashchange', restore);
     return () => window.removeEventListener('hashchange', restore);
@@ -102,15 +109,17 @@ export default function FiscalSpacePage() {
   const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
   const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
-  return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-6 [&_summary]:py-1">
+  const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
+  return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-11 [&_summary]:py-2">
     <AppHeader current="/fiscal-space">
       <Button variant="outline" size="sm" className="border-mirai-border" onClick={() => { setDialogOpen(true); dataDialog.current?.showModal(); }}>
         <Info aria-hidden="true" />データについて
       </Button>
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
-      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力を考える</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">財政余力シミュレータ（試作）。減税、公共投資、研究、エネルギー。使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
-      <ShareScenario form={form} onPreset={change.preset} error={shareError} />
+      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）内でどこまで追加支出を許すかを条件付きで比較します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
+      <ShareScenario form={form} onPreset={change.preset} error={shareError} restore={restore} />
+      {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
         {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg lg:bottom-3 lg:top-auto">
           <p role="status">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>
@@ -122,7 +131,7 @@ export default function FiscalSpacePage() {
         {result && <p>下の結果は直前に計算できた条件です。</p>}
         <Button variant="outline" onClick={retry} className="mt-2">計算を再試行</Button>
       </div>}
-      {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{result.totalYen / TRILLION}兆円。追加1兆円への感応度は制約の一覧を参照してください。</p>}
+      {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">
@@ -139,6 +148,9 @@ export default function FiscalSpacePage() {
               }
             }}>
         <MemoControls
+          structuralUnemployment={form.calibration.structuralUnemployment} headline={headline}
+          onPreset={() => change.preset({ ...Object.fromEntries(Object.keys(form.amounts).map(id => [id, 0])), 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 })}
+          onClose={() => setControlsOpen(false)}
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} reserve={form.reserve}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
@@ -153,14 +165,15 @@ export default function FiscalSpacePage() {
           onGap={change.gap} onInflation={change.inflation} onConstruction={change.construction} onFirmCapacity={change.firm} onReset={change.reset} />
           </div>
         </aside>
-        <div className="min-w-0 space-y-5" aria-busy={pending}>
+        <div className={`min-w-0 space-y-5 transition-opacity ${pending && result ? 'opacity-60' : ''}`} aria-busy={pending}>
+        {pending && result && <p role="status" data-testid="recalculating" className="sticky top-[var(--app-header-h)] z-30 rounded-lg border border-mirai-border bg-card px-3 py-2 text-sm font-bold">再計算中。以下の数値は直前の条件です。</p>}
         {result && calculationForm ? <>
           <CalculationOverview result={result} latest={calculationForm.dataset === 'latest'} />
         </> : <p className="rounded-xl border border-mirai-border bg-card p-5">{error
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
-      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit}
+      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
         onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />

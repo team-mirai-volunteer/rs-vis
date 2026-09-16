@@ -12,7 +12,7 @@ const LABELS: Record<string, string> = {
   basis: '事業計画の負荷換算', budgetTrillion: '基準事業の公費額', workerYears: '追加人員', sectorWorkerCapacity: '産業の年間人員能力', constructionPeakMw: '当年の追加ピーク', operatingPeakMw: '稼働後の系統ピーク寄与', annualOperatingGwh: '稼働後の年間電力量', annualConstructionGwh: '支出年の年間電力量', annualLoadFactor: '年間負荷率', peakCoincidence: '系統ピークとの同時発生係数',
   load: '追加負荷の原単位', sectorUtilizationPerTrillion: '支出1兆円の産業稼働率増分', peakGwPerTrillion: '支出1兆円の当年ピーク電力', operatingPeakGwPerTrillion: '投資1兆円の稼働後ピーク電力', annualGwhPerTrillion: '支出1兆円の当年電力量', operatingAnnualGwhPerTrillion: '投資1兆円の稼働後年間電力量',
   lag: '稼働までの年数', lifetime: '稼働期間', depreciation: '年間減耗率',
-  generationTwh: '基準発電量', thermalShare: '基準火力割合', demandGrowth: '電力需要増加率', peakGrowth: 'ピーク需要増加率', nonThermalDecline: '既存非化石発電量の減少率', plannedNonThermalTwh: '既定の非化石発電年間追加量', fuelImportYenPerKwh: '火力燃料輸入単価', marginalThermalShare: '政策追加電力の火力供給割合',
+  generationTwh: '基準発電量', thermalShare: '基準火力割合', demandGrowth: '電力需要増加率', peakGrowth: 'ピーク需要増加率', nonThermalDecline: '既存非化石発電量の減少率', plannedNonThermalTwh: '既定の非化石発電年間追加量', fuelImportYenPerKwh: '火力燃料輸入単価', structuralUnemployment: '構造的失業率（仮定）', inflationRule: '物価判定の集約方式', marginalThermalShare: '政策追加電力の火力供給割合',
   powerMix: '電源構成', solar: '太陽光', nuclear: '原子力', hydro: '水力',
   maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益',
   energyCpi: 'エネルギーCPI', energyPolicyAdjustedCpi: 'エネルギーCPI・政策効果調整後（参考）', exchangeRate: '為替レート（円／ドル）',

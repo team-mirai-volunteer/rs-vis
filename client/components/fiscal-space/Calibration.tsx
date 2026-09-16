@@ -21,6 +21,11 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="基準インフレのギャップ係数" value={value.gapInflationSlope} min={0} max={.2} step={.01} unit="" onChange={n => change('gapInflationSlope', n)} />
       <p className="text-xs sm:col-span-2 lg:col-span-4">需要感度・物価感度を0にすると、初期GDPギャップの符号に関係なく公表反応を線形適用します（需要不足と需要超過で同じGDP・物価反応）。基準インフレのギャップ係数は政策なし経路のみに効き、政策が作るギャップには重ねません。</p>
       <RangeField label="基準借換金利" value={value.marketRate * 100} min={0} max={6} step={.1} unit="%" onChange={n => change('marketRate', n / 100)} />
+      <RangeField label="構造的失業率（労働需給の基準）" value={value.structuralUnemployment * 100} min={1} max={5} step={.1} unit="%" onChange={n => change('structuralUnemployment', n / 100)} />
+      <label className="block space-y-1 text-sm"><span>物価判定の集約方式</span><select aria-label="物価判定の集約方式" className={fieldClass} value={value.inflationRule} onChange={e => change('inflationRule', e.target.value as ModelParameters['inflationRule'])}>
+        <option value="peak">単年ピーク（既定）</option><option value="average">評価期間の平均</option>
+      </select></label>
+      <p className="text-xs sm:col-span-2 lg:col-span-4">構造的失業率は日本のNAIRU推定幅（約2.3〜2.7%）を参考にした仮定で、推定値ではありません。労働需給の制約は「構造的失業率÷失業率」で判定し、許容する失業率下限は上限設定で決まります。物価判定を「平均」にすると、単年のピークではなく評価期間の平均CPIを上限と比較します。</p>
       <RangeField label="消費税1ポイントの減収額" value={value.consumptionTax.revenuePerPoint / 1e12} min={1} max={5} step={.1} unit="兆円" onChange={n => change('consumptionTax', { ...value.consumptionTax, revenuePerPoint: n * 1e12 })} />
       <RangeField label="消費税対象品目のCPI比率" value={value.consumptionTax.cpiShare * 100} min={0} max={100} step={1} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, cpiShare: n / 100 })} />
       <RangeField label="対象品目の基準消費税率" value={value.consumptionTax.baseRate * 100} min={8} max={10} step={2} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, baseRate: n / 100 })} />
