@@ -94,7 +94,9 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
 
   const accountCategories = (() => {
     const input_ = input.filter?.accountCategories;
-    if (input_ == null) return [...ACCOUNT_CATEGORY_KEYS];
+    // 省略・null・空配列はいずれも「会計区分で絞らない」。スキーマの全項目を埋めて送るモデルは
+    // 空配列を渡してくるため、これを「該当なし」と解釈すると全事業が消える
+    if (input_ == null || input_.length === 0) return [...ACCOUNT_CATEGORY_KEYS];
     const unknown = input_.filter(c => !ACCOUNT_CATEGORY_KEYS.includes(c));
     if (unknown.length > 0) {
       errors.push(`filter.accountCategories に未知の値があります: ${unknown.join(', ')}（有効値: ${ACCOUNT_CATEGORY_KEYS.join(' | ')}）`);
