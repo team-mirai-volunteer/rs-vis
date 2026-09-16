@@ -3,6 +3,7 @@ import { REFERENCES, referenceRecords } from '@/app/lib/fiscal-space/calibration
 import { insuranceRevenueRecords, personalTaxRevenueRecords, policyReliefLimit } from '@/app/lib/fiscal-space/policy-limits';
 import { simulate } from '@/app/lib/fiscal-space/simulate';
 import { estimateFiscalSpace } from '@/app/lib/fiscal-space/search';
+import { applyStressReserve } from '@/app/lib/fiscal-space/stress-envelope';
 import { evaluateConstraints, peakConstraints, constraintInflation } from '@/app/lib/fiscal-space/constraints';
 import { compareNextTrillion, rateShockComparison } from '@/app/lib/fiscal-space/compare';
 import { PROJECT_POLICY_IDS, projectResponse } from '@/app/lib/fiscal-space/project-response';
@@ -38,7 +39,7 @@ export function createFiscalEngine() {
     initial.energy.firmCapacity = form.firmCapacity;
     if (form.resource.mode === 'estimated') initial.energy.peakDemand = resourcePowerBalance(0, 0, 0, form.resource).nationalDemandGw;
     initial.energy.reserveMargin = (form.firmCapacity - initial.energy.peakDemand) / initial.energy.peakDemand;
-    const p = { ...form.calibration, reserveShare: form.reserve / 100, resourceModel: form.resource };
+    const p = { ...form.calibration, reserveShare: 0, resourceModel: form.resource };
     const publishedYears = REFERENCES[p.referenceModel].years;
     // 15 years is an explicit extension past the published multipliers (constant tail);
     // shorter horizons stay within the published years.
@@ -81,7 +82,9 @@ export function createFiscalEngine() {
       };
     }) : [];
     const inputExternal = fiscalExternal(initial, allocated, projection, baseline, p);
-    const estimate = estimateFiscalSpace(initial, mix, form.thresholds, horizon, p, shock);
+    const searched = estimateFiscalSpace(initial, mix, form.thresholds, horizon, p, shock);
+    // The envelope is the amount that survives the selected stresses; the haircut is an output.
+    const estimate = applyStressReserve(initial, mix, searched, form.thresholds, horizon, p, shock, form.stresses);
     const riskAudit = auditFiscalSpace(initial, mix, estimate, form.thresholds, horizon, p, shock);
     const constraints = peakConstraints({ ...projection, steps: projection.steps.slice(0, horizon) }, form.thresholds, p.inflationRule);
     const baselineConstraints = peakConstraints({ ...baseline, steps: baseline.steps.slice(0, horizon) }, form.thresholds, p.inflationRule);

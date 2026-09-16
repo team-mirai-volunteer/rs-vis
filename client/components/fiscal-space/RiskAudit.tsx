@@ -5,7 +5,7 @@ import { FiscalExternal } from './FiscalExternal';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 
 export function RiskAudit({ audit }: { audit: FiscalRiskAudit }) {
-  return <div role="region" aria-label="任意控除後の枠の物価・為替リスク" className="space-y-3 border-t border-mirai-border pt-4 text-xs leading-relaxed">
+  return <div role="region" aria-label="参考上限の物価・為替リスク" className="space-y-3 border-t border-mirai-border pt-4 text-xs leading-relaxed">
     <h3 className="text-sm font-bold">この追加枠で、物価・為替は耐えられる？</h3>
     <p>下の診断は<strong>{money(audit.amount, 1)}を追加した場合</strong>のものです。入力中の年間総額とは別に計算しています。</p>
     <p>CPI判定と為替ストレスは、総合CPIと消費税の直接効果を除いたCPIのうち厳しい方を使用します。</p>
@@ -14,7 +14,7 @@ export function RiskAudit({ audit }: { audit: FiscalRiskAudit }) {
       <div><dt className="font-bold">円レート</dt><dd className="mt-1 font-bold">公表モデルの反応から推計</dd><dd>下表に年次の変化率を表示。信認低下による追加の円安は別の感度条件です。</dd></div>
       <div><dt className="font-bold">輸入品の価格</dt><dd className="mt-1 font-bold">下表で条件付きストレスを検証</dd><dd>本体のエネルギー価格ショックは現在 {percent(audit.energyPriceShock, 0)}。追加の円安・海外価格上昇を重ねて比較します。</dd></div>
     </dl>
-    <FiscalExternal rows={audit.fiscalExternal} model={audit.referenceModel} label={`任意控除後の枠 ${money(audit.amount, 1)} / 年`} />
+    <FiscalExternal rows={audit.fiscalExternal} model={audit.referenceModel} label={`参考上限 ${money(audit.amount, 1)} / 年`} />
     <p>追加額はGDPの{percent(audit.gdpShare, 1)}。GDP比1%の公表実験に対して約{audit.referenceScale.toFixed(1)}倍の規模を比例計算しています。供給面も、通常の潜在GDPとは別に、現在の実質GDPを{percent(audit.initialCapacityHeadroom, 1)}上回る最大生産能力を仮定しています。これらの仮定が大きな追加枠を許容する要因です。画面の制約探索は参照モデルの公表期間内に限定しています。期間後の財政制約は検証していません。</p>
     <p data-testid="fx-linkage">公表モデルのCPI反応には、参照モデル自身の為替反応（政府支出GDP比1%の継続で{REFERENCES[audit.referenceModel].years}年目 {REFERENCES[audit.referenceModel].government.exchangeRate.at(-1)!.toFixed(2)}%）が既に含まれており、本体では為替を別に加えません。下表の円安は、その内包分に<strong>追加して</strong>重なる外生ストレスです。参考上限は参照モデルが示す為替経路の範囲では一貫していますが、追加の円安には頑健ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="為替・輸入物価ストレス表" tabIndex={0}><table className="w-full min-w-[680px] text-right tabular-nums"><caption className="mb-2 text-left font-bold">同じ任意控除後の枠に円安が重なったら（数量固定・感度仮定）</caption><thead><tr>{['円/外貨の上昇', '円建て輸入価格', 'CPI上昇率の最大', '設定上限', '輸入支払増', '輸出受取増', '収支差'].map(h => <th scope="col" key={h} className="p-2">{h}</th>)}</tr></thead><tbody>{audit.externalStress.map(r => <tr key={r.fx} className="border-t border-mirai-border"><th scope="row" className="p-2">{percent(r.fx, 0)}</th><td>{percent(r.importPrice, 1)}</td><td>{percent(r.cpiPeak)}</td><td className="font-bold">{r.exceeds ? '超過' : '範囲内'}</td><td>{money(r.importBill, 1)}</td><td>{money(r.exportReceipts, 1)}</td><td>{money(r.tradeBalance, 1)}</td></tr>)}</tbody></table></div>

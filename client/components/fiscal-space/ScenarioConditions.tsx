@@ -22,8 +22,8 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
     <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
     <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。産業・電力の概算に含まれない制約もあるため、政策額の推奨値ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
-      <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。参考上限は同じ配分を拡大し、任意の定率控除を差し引いた別の計算です。</caption>
-      <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間参考上限（任意控除後）'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
+      <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。探索額は同じ配分を拡大した別の計算で、ストレス控除前です。</caption>
+      <thead><tr>{['生産モデル', '年0の最大GDP', '潜在GDP効果', '実質GDP効果', 'CPIピーク', '年末の稼働率価格補正', '年間探索額（ストレスなし）'].map(x => <th key={x} scope="col" className="p-2">{x}</th>)}</tr></thead>
       <tbody>{rows.map(r => <tr key={r.label} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.label}</th><td>{money(r.initialMaximum)}</td><td>{money(r.potentialEffect)}</td><td>{money(r.gdpEffect)}</td><td>{percent(r.cpiPeak, 3)}</td><td>{points(r.capacityPriceAdjustment)}</td><td>{r.space.status === 'unevaluated' ? '算出不可' : money(r.space.recommendedEnvelope, 1)}{r.space.status === 'search-cap' ? '（探索範囲の端）' : r.space.status === 'revenue-cap' ? '（減収対象の収入上限）' : ''}</td></tr>)}</tbody>
     </table></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -55,10 +55,10 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
           <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
-          <div><h3 className="text-sm">同じ配分の参考上限（任意控除後・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
-            {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">控除前の探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
+          <div><h3 className="text-sm">同じ配分の参考上限（ストレス耐性・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
+            {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
         </div>
-        {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、任意控除後の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
+        {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、ストレス耐性の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong>{horizon > 5 && <span className="ml-2 text-xs text-mirai-text-subtle">公表期間（5年）を超える延長計算。公表反応の末尾を据え置き、稼働時期の遅い投資を含めて評価します。</span>}</p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>
