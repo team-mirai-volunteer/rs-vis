@@ -169,6 +169,6 @@ export function supplyRecords(cases: Record<string, SupplyCase>): SourceValue[] 
     unit: key === 'lag' || key === 'lifetime' || key === 'rampYears' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
     referenceYear: `政策別供給シナリオ・${labels[key]}`, sourceName: SUPPLY_CASES[id].label,
     sourceUrl: SUPPLY_CASES[id].source, status: 'assumption' as const,
-    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を公共サービスによる生産性と設備量、教育・保育を有効労働、燃料節約を有効エネルギーに換算して選択した生産関数で再計算。設備0.35・エネルギー0.15の固定参照弾力性は換算仮定。公共資本の既定は生産性経路100%、純追加資本の稼働割合50%、供用後3年の立上がり、公表期間内の便益重複控除50%。係数・時期は変更可能な条件で、信頼区間ではない。`,
+    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を公共サービスによる生産性と設備量、教育・保育を有効労働、燃料節約の純額を国内付加価値（TFP）増分に換算して選択した生産関数で再計算。設備0.35の固定参照弾力性と確実供給GWによるエネルギー上限0.15は換算仮定。公共資本の既定は生産性経路100%、純追加資本の稼働割合50%、供用後3年の立上がり、公表期間内の便益重複控除50%。係数・時期は変更可能な条件で、信頼区間ではない。`,
   })));
 }

@@ -291,7 +291,8 @@ test('default substitution starts at commissioning, reports commissioning capaci
   const gridRow = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [grid])[0];
   assert.equal(gridRow.periods[2].potentialGdpEffect, 0);
   assert.equal(gridRow.investment!.startYear, 6);
-  near(gridRow.investment!.supply!, 0); // Energy is not the Leontief bottleneck.
+  // Net fuel savings enter potential as value added (TFP), so they survive a Leontief labour bottleneck.
+  assert(gridRow.investment!.supply! > 0, 'Grid savings must reach potential GDP under Leontief');
   assert(gridRow.investment!.trade!.tradeBalance > 0, 'Fuel savings remain visible at commissioning');
   const importedInputs = { ...semiconductor, trade: { kind: 'industry' as const, assumptions: { ...SEMICONDUCTOR_CASE, exportShare: .1, domesticReplacementShare: 0, operatingImportShare: .8 } } };
   const adverse = compareNextTrillion(initial, [], P, NO_SHOCK, THRESHOLDS, [importedInputs])[0].investment!.trade!;

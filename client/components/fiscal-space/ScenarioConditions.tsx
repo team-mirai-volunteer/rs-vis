@@ -92,16 +92,18 @@ function ThreePoints({ estimate, projection, baseline, horizon }: { estimate: Fi
   const bindingYear = estimate.constraints.find(c => c.status === 'violated')?.year;
   const binding = bindingYear && bindingYear >= 1 && bindingYear <= horizon ? bindingYear - 1 : cpiPeak;
   const gdpPeak = steps.reduce((a, _, i) => gdpEffect(i) > gdpEffect(a) ? i : a, 0);
+  const bindingLabel = estimate.constraints.find(c => c.status === 'violated')?.label;
   const points = [
-    { key: 'binding', label: bindingYear ? `拘束年（${estimate.constraints.find(c => c.status === 'violated')!.label}）` : '判定用CPIのピーク年', index: binding },
-    { key: 'gdp', label: '実質GDP効果のピーク年', index: gdpPeak },
-    { key: 'terminal', label: `最終年（年${horizon}）`, index: horizon - 1 },
+    { key: 'binding', label: '拘束年', note: bindingLabel ?? '判定用CPIのピーク', index: binding },
+    { key: 'gdp', label: 'GDP効果ピーク', note: '実質GDP効果が最大の年', index: gdpPeak },
+    { key: 'terminal', label: '最終年', note: `評価期間${horizon}年の末`, index: horizon - 1 },
   ];
   return <div className="mt-3 overflow-x-auto" role="region" aria-label="拘束年・GDP効果ピーク年・最終年の比較" tabIndex={0} data-testid="three-points">
-    <table className="w-full min-w-[560px] text-right text-sm tabular-nums"><caption className="text-left text-xs">枠は最も厳しい年で決まり、結果は最終年で示されます。同じ年ではないため三時点を並べています。CPIは判定用（総合と消費税直接効果を除く指標の大きい方）。</caption>
-      <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">判定用CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th></tr></thead>
-      <tbody>{points.map(({ key, label, index }) => { const s = steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
-        <th scope="row" className="py-1 text-left font-medium">{label}</th><td>{s.state.year}</td><td>{percent(constraintInflation(s))}</td><td>{money(gdpEffect(index))}</td><td>{percent(unemploymentRate(s))}</td><td>{percent(s.metrics.grossDebtGdp, 1)}</td>
+    <table className="w-full min-w-[520px] text-right text-sm tabular-nums [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+      <caption className="mb-1 text-left text-xs">枠は最も厳しい年、結果は最終年で決まるため、三時点を並べています。CPIは判定用（総合と消費税直接効果を除く値の大きい方）。</caption>
+      <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th></tr></thead>
+      <tbody>{points.map(({ key, label, note, index }) => { const s = steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
+        <th scope="row" className="py-1 pr-3 text-left font-medium">{label}<span className="block text-xs font-normal text-mirai-text-subtle">{note}</span></th><td>{s.state.year}</td><td>{percent(constraintInflation(s))}</td><td>{money(gdpEffect(index))}</td><td>{percent(unemploymentRate(s))}</td><td>{percent(s.metrics.grossDebtGdp, 1)}</td>
       </tr>; })}</tbody></table>
   </div>;
 }
