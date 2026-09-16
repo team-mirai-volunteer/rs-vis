@@ -18,9 +18,9 @@ export const OPENROUTER_CHAT_COMPLETIONS_URL = 'https://openrouter.ai/api/v1/cha
  */
 export const DEFAULT_SERVER_MODEL = 'google/gemini-3.5-flash-lite';
 
-/** 1 リクエスト内の LLM 呼び出しで消費したトークン。利用ログに残して実コストを追う */
-export interface LlmUsage { calls: number; prompt: number; completion: number; reasoning: number }
-export const newUsage = (): LlmUsage => ({ calls: 0, prompt: 0, completion: 0, reasoning: 0 });
+/** 1 リクエスト内の LLM 呼び出しで消費したトークンと、実際に応答したモデル。利用ログに残して実コストを追う */
+export interface LlmUsage { calls: number; prompt: number; completion: number; reasoning: number; models: string[]; fellBack: boolean }
+export const newUsage = (): LlmUsage => ({ calls: 0, prompt: 0, completion: 0, reasoning: 0, models: [], fellBack: false });
 /** 推論モデルの思考量。コストと応答時間を抑えるため既定 low（SANKEY_AI_CHAT_REASONING_EFFORT で変更。'none' で送らない） */
 export const DEFAULT_REASONING_EFFORT = 'low';
 export function reasoningEffort(): 'low' | 'medium' | 'high' | null {
@@ -61,6 +61,16 @@ export function serverModel(): string {
 export const DEFAULT_INTERVIEW_MODEL = 'openai/gpt-5.6-luna';
 export function interviewModel(): string {
   return process.env.SANKEY_AI_INTERVIEW_MODEL || DEFAULT_INTERVIEW_MODEL;
+}
+
+/**
+ * 保険モデル。主モデルがリトライ後も失敗（429・5xx・応答不正・タイムアウト）したとき、同じリクエスト内で
+ * 1 回だけ切り替える。提供元の障害に備えて主とは別ベンダーにする（Google ⇄ OpenAI）。空文字で無効
+ */
+export function fallbackModel(primary: string): string | null {
+  const env = primary === interviewModel() ? process.env.SANKEY_AI_INTERVIEW_FALLBACK_MODEL : process.env.SANKEY_AI_CHAT_FALLBACK_MODEL;
+  if (env !== undefined) return env || null;
+  return primary.startsWith('google/') ? DEFAULT_INTERVIEW_MODEL : DEFAULT_SERVER_MODEL;
 }
 
 /**
@@ -126,6 +136,7 @@ async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSig
   } | null;
   if (opts.usage && data?.usage) {
     opts.usage.calls++;
+    if (!opts.usage.models.includes(model)) opts.usage.models.push(model);
     opts.usage.prompt += data.usage.prompt_tokens ?? 0;
     opts.usage.completion += data.usage.completion_tokens ?? 0;
     opts.usage.reasoning += data.usage.completion_tokens_details?.reasoning_tokens ?? 0;
@@ -141,20 +152,37 @@ async function callOnce(llmMessages: LlmMessage[], tools: LlmToolDef[], abortSig
  * onRetry はリトライ待機の通知（ストリーム時の progress 用）、abortSignal はクライアント切断の伝播用
  */
 export function createServerLlmCaller(tag: string, onRetry?: (waitMs: number) => void, abortSignal?: AbortSignal, opts: CallerOptions = {}): LlmCaller {
-  return async (llmMessages, tools) => {
+  const primary = opts.model ?? serverModel();
+  const fallback = fallbackModel(primary);
+  const wait = (ms: number) => new Promise<void>((resolve, reject) => {
+    const rejectAborted = () => reject(new DOMException('クライアントが切断しました', 'AbortError'));
+    if (abortSignal?.aborted) { rejectAborted(); return; }
+    const timer = setTimeout(() => resolve(), ms);
+    abortSignal?.addEventListener('abort', () => { clearTimeout(timer); rejectAborted(); }, { once: true });
+  });
+  const withRetry = async (llmMessages: LlmMessage[], tools: LlmToolDef[], model: string) => {
     try {
-      return await callOnce(llmMessages, tools, abortSignal, opts);
+      return await callOnce(llmMessages, tools, abortSignal, { ...opts, model });
     } catch (e) {
       if (!(e instanceof LlmRetryableError)) throw e;
-      console.warn(`[${tag}] retryable upstream failure, retrying in ${e.waitMs}ms:`, e.message);
+      console.warn(`[${tag}] retryable upstream failure (${model}), retrying in ${e.waitMs}ms:`, e.message);
       onRetry?.(e.waitMs);
-      await new Promise<void>((resolve, reject) => {
-        const rejectAborted = () => reject(new DOMException('クライアントが切断しました', 'AbortError'));
-        if (abortSignal?.aborted) { rejectAborted(); return; }
-        const timer = setTimeout(() => resolve(), e.waitMs);
-        abortSignal?.addEventListener('abort', () => { clearTimeout(timer); rejectAborted(); }, { once: true });
-      });
-      return await callOnce(llmMessages, tools, abortSignal, opts); // 2 回目の失敗はそのまま上へ（502 に丸まる）
+      await wait(e.waitMs);
+      return await callOnce(llmMessages, tools, abortSignal, { ...opts, model });
+    }
+  };
+  return async (llmMessages, tools) => {
+    // 主モデルで最大 2 回。それでも上流失敗なら別ベンダーの保険モデルへ 1 回だけ切り替える。
+    // 一度切り替えたら同じリクエスト内は保険側で続ける（会話途中でモデルが往復しないように）
+    const model = opts.usage?.fellBack && fallback ? fallback : primary;
+    try {
+      return await withRetry(llmMessages, tools, model);
+    } catch (e) {
+      const upstream = e instanceof LlmUpstreamError || (e instanceof Error && e.name === 'TimeoutError');
+      if (!upstream || !fallback || model === fallback || abortSignal?.aborted) throw e;
+      console.warn(`[${tag}] primary model ${model} failed, falling back to ${fallback}:`, e instanceof Error ? e.message : e);
+      if (opts.usage) opts.usage.fellBack = true;
+      return await withRetry(llmMessages, tools, fallback);
     }
   };
 }
