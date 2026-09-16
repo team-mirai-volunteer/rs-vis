@@ -429,7 +429,7 @@ function UnifiedBudgetSankeyContent() {
             setFilterOpen(false);
           }} />}
         searchTrailing={wideControls ? settingsPanel('top-right') : undefined}
-        sidePanelTopOffset={wideControls && controlsHeight > 0 ? controlsHeight + 6 : undefined}
+        sidePanelTopOffset={wideControls && controlsHeight > 0 ? controlsHeight + 4 : undefined}
         searchAddon={<Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
           onClick={() => { const next = !aiOpen; setAiOpen(next); if (next) setFilterOpen(false); }}
           className={cn('h-6 gap-1 px-1.5 text-[11px]', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>
@@ -461,7 +461,7 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>}
-      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-1.5 sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-1 sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         {!wideControls && settingsPanel('top-right')}
       </div>
