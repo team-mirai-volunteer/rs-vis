@@ -143,8 +143,7 @@ test('envelope equals the search amount with no stress selected, and the minimum
   assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
   // Import prices +3% add 0.39pt of the 0.45pt headroom: a small but positive surviving amount.
   const imports = none.estimate.stress!.find(s => s.id === 'importPrice')!;
-  assert(imports.amount > 0 && imports.amount < ceilingAmount(none), 'import-price stress must bind below the tighter-ceiling stress');
-  const ceilingAmount = (r: ReturnType<typeof engine>) => r.estimate.stress!.find(s => s.id === 'cpiCeiling')!.amount;
+  assert(imports.amount > 0 && imports.amount < none.estimate.stress!.find(s => s.id === 'cpiCeiling')!.amount, 'import-price stress must bind below the tighter-ceiling stress');
   const ceiling = none.estimate.stress!.find(s => s.id === 'cpiCeiling')!;
   assert(ceiling.amount > 0 && ceiling.amount < energy.amount, 'a 0.3pt tighter ceiling must bind inside the 0.45pt headroom');
   f.stresses = { ...f.stresses, energyPrice: true };
