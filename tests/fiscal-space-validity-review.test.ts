@@ -141,26 +141,29 @@ test('envelope equals the search amount with no stress selected, and the minimum
   assert(none.estimate.stress!.every(s => !s.selected));
   const energy = none.estimate.stress!.find(s => s.id === 'energyPrice')!;
   assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
-  // With a 2.5% ceiling and ~2.05% no-policy CPI, even a 5% yen fall (+0.65pt) leaves no room at all.
-  assert.equal(none.estimate.stress!.find(s => s.id === 'fx')!.status, 'baseline-violated');
+  // Import prices +3% add 0.39pt of the 0.45pt headroom: a small but positive surviving amount.
+  const imports = none.estimate.stress!.find(s => s.id === 'importPrice')!;
+  assert(imports.amount > 0 && imports.amount < ceilingAmount(none), 'import-price stress must bind below the tighter-ceiling stress');
+  const ceilingAmount = (r: ReturnType<typeof engine>) => r.estimate.stress!.find(s => s.id === 'cpiCeiling')!.amount;
   const ceiling = none.estimate.stress!.find(s => s.id === 'cpiCeiling')!;
   assert(ceiling.amount > 0 && ceiling.amount < energy.amount, 'a 0.3pt tighter ceiling must bind inside the 0.45pt headroom');
   f.stresses = { ...f.stresses, energyPrice: true };
   const withEnergy = engine(f);
   near(withEnergy.estimate.recommendedEnvelope, energy.amount, 1e-6);
   near(withEnergy.estimate.reserveRule.share, 1 - energy.amount / none.estimate.theoreticalMaximum, 1e-6);
-  f.stresses = { ...f.stresses, fx: true };
-  near(engine(f).estimate.recommendedEnvelope, 0);
+  f.stresses = { ...f.stresses, importPrice: true };
+  near(engine(f).estimate.recommendedEnvelope, imports.amount, 1e-6);
 });
 
 test('old links with a percentage reserve migrate to the stress selection and report it', () => {
   const legacy = { ...defaults(), reserve: 20 } as Record<string, unknown>;
   delete legacy.stresses;
   const restored = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: legacy })));
-  assert.deepEqual(restored.form.stresses, { cpiCeiling: false, fx: false, energyPrice: false, rate: false });
-  const interim = { ...defaults(), stresses: { baselineInflation: true, fx: false, energyPrice: false, rate: false } } as Record<string, unknown>;
+  assert.deepEqual(restored.form.stresses, { cpiCeiling: false, importPrice: false, energyPrice: false, rate: false });
+  const interim = { ...defaults(), stresses: { baselineInflation: true, fx: true, energyPrice: false, rate: false } } as Record<string, unknown>;
   const migrated = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: interim })));
   assert.equal(migrated.form.stresses.cpiCeiling, true);
+  assert.equal(migrated.form.stresses.importPrice, true);
   assert(restored.filled.some(k => k.startsWith('任意控除20%')));
   assert.equal(restored.form.calibration.reserveShare, 0);
 });
