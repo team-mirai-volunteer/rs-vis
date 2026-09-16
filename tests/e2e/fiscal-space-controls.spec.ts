@@ -66,7 +66,7 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await supplyDialog.getByLabel('公共資本の蓄積・効果までの年数', { exact: true }).fill('4');
   await supplyDialog.getByRole('button', { name: '供給力・長期条件を閉じる', exact: true }).click();
   await expect(supplyOpener).toBeFocused();
-  await page.getByRole('button', { name: /^政策パネルを閉じる/ }).click();
+  await page.getByRole('button', { name: /^政策パネルを閉じる/ }).first().click();
   await expect(panel).not.toBeVisible();
   await expect(heading).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

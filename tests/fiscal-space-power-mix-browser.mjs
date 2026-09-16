@@ -10,7 +10,7 @@ try {
   const closePower = () => page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
   await page.goto(`${process.env.FISCAL_SPACE_BASE_URL ?? 'http://localhost:3107'}/fiscal-space`);
   await page.waitForFunction(() => [...document.querySelectorAll('main input')].every(el => Object.keys(el).some(k => k.startsWith('__reactProps$'))));
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   const commonFirst = page.locator('[data-electricity-year="1"] [data-electricity="common"]');
   await expect(commonFirst).toHaveText('0.045兆円');
   await page.getByLabel('共通の電力需要増加率', { exact: true }).fill('1');

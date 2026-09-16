@@ -18,7 +18,7 @@ try {
   await expect(page.getByRole('heading', { name: '日本のデータを選ぶ' })).toBeVisible();
   await expect(page.getByRole('radio', { name: '最新値を優先する' })).toBeChecked();
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByRole('heading', { name: '同じ配分を拡大した場合の参考上限' })).toBeVisible({ timeout: 30000 });
   const sensitivity = page.getByTestId('cpi-limit-sensitivity');
   await expect(sensitivity).toBeVisible();
@@ -85,7 +85,7 @@ try {
   await expect(annualTotal).toHaveText('0.0兆円');
   await expect(page.getByText('政策の追加額は0円です。', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   assert.equal(await page.getByRole('button', { name: '初期条件に戻す' }).evaluate(el => el.previousElementSibling?.querySelector('output')?.getAttribute('data-testid')), 'annual-total');
   await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
@@ -98,7 +98,7 @@ try {
   await expect(page.getByLabel('手取り賃金に対する労働時間の弾力性', { exact: true })).toHaveValue('0.2');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await page.getByLabel('社会保険料減税・数値で入力', { exact: true }).fill('7.5');
   await expect(page.getByLabel('社会保険料減税', { exact: true })).toHaveValue('7.5');
   await expect(annualTotal).toHaveText('17.5兆円');
@@ -126,7 +126,7 @@ try {
   await page.mouse.wheel(0, 400);
   await expect.poll(() => controlPanel.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByRole('link', { name: '名目GDPの出典', exact: true })).toHaveAttribute('href', /qe262_2/);
   await page.getByText('経済状態・評価条件を変える', { exact: true }).click();
   const gap = page.getByLabel('潜在GDPギャップ（年0）', { exact: true });
@@ -153,7 +153,7 @@ try {
     await expect(cpiSource).toContainText('2026年7月');
   });
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByRole('radio', { name: '最新値を優先する' })).toBeChecked();
   await expect(cpi).toHaveValue('1.9');
   await expect(gap).toHaveValue('0.7');
@@ -173,7 +173,7 @@ try {
   await expect(cpi).toHaveValue('1.9');
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByRole('radio', { name: '2024年で揃える' })).toBeChecked();
   await expect(page.getByRole('link', { name: '名目GDPの出典', exact: true })).toHaveAttribute('href', /imf\.org/);
   // Every constraint now renders a meter; unevaluated ones are hatched instead of hidden.
@@ -231,7 +231,7 @@ try {
   await page.keyboard.press('Escape');
   await expect(page.getByText('政策なしでも設定した上限を超えます。', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByLabel('潜在GDPギャップ（年0）', { exact: true })).toHaveValue('0');
   await inspectSources(() => expect(potential).toContainText('推計'));
   await expect(annualTotal).toHaveText('15.0兆円');
@@ -291,7 +291,7 @@ try {
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
   await expect(page.getByLabel('発電方式', { exact: true })).toHaveValue('hydro');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税中心の15兆円配分' }).click();
+  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByLabel('試算する政策', { exact: true })).toHaveValue('semiconductors');
   await expect(page.getByLabel('投資1円あたり稼働後の年間売上（円/年）', { exact: true })).not.toHaveValue('');
   await page.getByRole('radio', { name: '最新値を優先する' }).check();

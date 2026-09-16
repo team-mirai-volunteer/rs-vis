@@ -25,7 +25,7 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
   const id = useId();
   const [empty, setEmpty] = useState(false);
   const clamp = (n: number) => Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8));
-  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
+  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="min-w-0 text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
     <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={empty ? '' : Number(value.toFixed(6))}
       onBlur={() => setEmpty(false)} onChange={e => { setEmpty(e.target.value === ''); const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
       className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>

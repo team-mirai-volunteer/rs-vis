@@ -4,7 +4,7 @@ import { peakConstraints } from './constraints';
 import { simulate } from './simulate';
 import { externalStress } from './external-stress';
 
-export type StressId = 'cpiCeiling' | 'importPrice' | 'energyPrice' | 'rate';
+export type StressId = 'importPrice' | 'energyPrice' | 'rate';
 export type StressSelection = Record<StressId, boolean>;
 /** Import price index, +3%. The in-model channel is import prices -> CPI (0.13 pass-through), of which
  * FX is only one driver. With a 2.5% ceiling and ~2.05% no-policy CPI the ceiling absorbs at most
@@ -13,9 +13,10 @@ export const IMPORT_PRICE_STRESS = .03;
 
 /** Interpretable stresses replace an arbitrary percentage haircut. Each magnitude is
  * itself an assumption, but "survives a 3% import-price rise" is a checkable claim
- * where "minus 20%" is not. Magnitudes reuse the existing sensitivity tables. */
+ * where "minus 20%" is not. Magnitudes reuse the existing sensitivity tables.
+ * A tighter CPI ceiling is not a stress here: it is the same control as the CPI limit
+ * itself, so lowering that limit says the same thing without a second hidden number. */
 export const STRESSES: Record<StressId, { label: string; short: string; note: string }> = {
-  cpiCeiling: { label: '許容インフレ −0.3ポイント', short: 'CPI上限−0.3pt', note: 'CPI許容上限を0.3ポイント引き下げて再探索。政策なしのCPIとの余裕が縮む条件。' },
   importPrice: { label: '輸入物価 +3%', short: '輸入物価+3%', note: '判定用CPIのピーク年に輸入物価3%上昇（CPI水準+0.39pt、転嫁0.13）が重なっても上限内に収まる額。円安・海外価格のどちらでも同じ経路。為替の需要・GDP反応は未推計。' },
   energyPrice: { label: '輸入エネルギー価格 +20%', short: 'エネルギー+20%', note: '本体の輸入エネルギー価格ショックを20ポイント上乗せして再探索。' },
   rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。公表GDP・CPI反応は変えない。' },
@@ -23,7 +24,7 @@ export const STRESSES: Record<StressId, { label: string; short: string; note: st
 // Nothing selected by default: every stress amount is still computed and shown, so the
 // user chooses what the envelope must survive with the consequences visible. With a 2.5%
 // CPI ceiling and ~2.05% no-policy CPI, import prices above ~3.5% leave no room at all.
-export const DEFAULT_STRESSES: StressSelection = { cpiCeiling: false, importPrice: false, energyPrice: false, rate: false };
+export const DEFAULT_STRESSES: StressSelection = { importPrice: false, energyPrice: false, rate: false };
 
 export interface StressRow { id: StressId; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
 
@@ -55,7 +56,6 @@ export function stressRows(initial: EconomyState, mix: PolicyShare[], base: Fisc
   const row = (id: StressId, e: FiscalSpaceEstimate): StressRow => ({ id, label: STRESSES[id].label, amount: Math.min(e.theoreticalMaximum, base.theoreticalMaximum),
     status: e.status, binding: e.constraints.find(c => c.status === 'violated')?.label, selected: selection[id] });
   return (Object.keys(STRESSES) as StressId[]).map(id => {
-    if (id === 'cpiCeiling') return row(id, estimateFiscalSpace(initial, mix, { ...thresholds, inflation: Math.max(.0001, thresholds.inflation - .003) }, horizon, p, shock));
     if (id === 'energyPrice') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, energyPriceChange: shock.energyPriceChange + .2 }));
     if (id === 'rate') return row(id, estimateFiscalSpace(initial, mix, thresholds, horizon, p, { ...shock, marketRateDelta: shock.marketRateDelta + .01 }));
     return { ...importPriceEnvelope(initial, mix, thresholds, horizon, p, shock, base.theoreticalMaximum), selected: selection[id] };

@@ -80,8 +80,11 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
     if (stresses && typeof stresses === 'object') {
       // 2026-09-16.6 interim keys: the inflation stress became a tighter ceiling, FX became import prices.
       const bag = stresses as Record<string, unknown>;
-      if (Object.hasOwn(bag, 'baselineInflation')) { const legacy = bag.baselineInflation; delete bag.baselineInflation; bag.cpiCeiling = legacy === true; filled.push('stresses.cpiCeiling（旧 基準インフレ+0.5pt）'); }
       if (Object.hasOwn(bag, 'fx')) { const legacy = bag.fx; delete bag.fx; bag.importPrice = legacy === true; filled.push('stresses.importPrice（旧 円安）'); }
+      // The tighter-ceiling stress was removed: it duplicated the CPI limit control.
+      for (const key of ['baselineInflation', 'cpiCeiling'] as const) {
+        if (Object.hasOwn(bag, key)) { const legacy = bag[key]; delete bag[key]; if (legacy === true) filled.push('ストレス「許容インフレ−0.3pt」は廃止（CPI許容上限で調整）'); }
+      }
     }
     // Old links retain their manual/unevaluated load assumptions, never silently opt in.
     if (!Object.hasOwn(payload.form, 'resource')) { Object.assign(payload.form, { resource: { ...RESOURCE_DEFAULTS, mode: 'manual' } }); filled.push('resource（手入力モード）'); }

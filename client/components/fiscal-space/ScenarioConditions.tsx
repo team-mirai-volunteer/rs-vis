@@ -1,4 +1,4 @@
-import type { EconomyState, FiscalSpaceEstimate, Inputs, ModelParameters, Policy, Simulation } from '@/types/fiscal-space';
+import type { EconomyState, FiscalSpaceEstimate, Inputs, ModelParameters, Policy, ProjectionStep, Simulation } from '@/types/fiscal-space';
 import { INPUT_LABELS } from '@/app/lib/fiscal-space/assumptions';
 import { type LongRunAssumptions } from '@/app/lib/fiscal-space/long-run';
 import { RangeField } from './Controls';
@@ -84,27 +84,41 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
  * CPI peak while the displayed outcome was the post-withdrawal trough. */
 function ThreePoints({ estimate, projection, baseline, horizon }: { estimate: FiscalSpaceEstimate; projection: Simulation; baseline: Simulation; horizon: number }) {
   const steps = projection.steps.slice(0, horizon);
-  // Without any policy there is no binding year; the fallback would just be the
-  // no-policy CPI drift (which peaks in the final year) and reads as a result.
-  if (estimate.status === 'empty-mix') return <p className="mt-3 text-sm" data-testid="three-points">政策額を入力すると、拘束年・実質GDP効果のピーク年・最終年の三時点を比較します。</p>;
+  // Without any policy there is no binding year, so the row falls back to the no-policy CPI peak
+  // and says so: the three points then describe the baseline path itself and every change is zero.
+  const empty = estimate.status === 'empty-mix';
   const gdpEffect = (i: number) => steps[i].state.macro.realGdp - baseline.steps[i].state.macro.realGdp;
   const cpiPeak = steps.reduce((a, b, i) => constraintInflation(steps[a]) >= constraintInflation(b) ? a : i, 0);
   const bindingYear = estimate.constraints.find(c => c.status === 'violated')?.year;
   const binding = bindingYear && bindingYear >= 1 && bindingYear <= horizon ? bindingYear - 1 : cpiPeak;
   const gdpPeak = steps.reduce((a, _, i) => gdpEffect(i) > gdpEffect(a) ? i : a, 0);
   const bindingLabel = estimate.constraints.find(c => c.status === 'violated')?.label;
-  const points = [
-    { key: 'binding', label: '拘束年', note: bindingLabel ?? '判定用CPIのピーク', index: binding },
-    { key: 'gdp', label: 'GDP効果ピーク', note: '実質GDP効果が最大の年', index: gdpPeak },
+  const burden = (s: ProjectionStep) => s.state.fiscal.taxRevenue / s.state.macro.nominalGdp;
+  const rows = [
+    { key: 'binding', label: '拘束年', note: empty ? '政策なし経路の判定用CPIピーク' : bindingLabel ?? '判定用CPIのピーク', index: binding },
+    { key: 'gdp', label: 'GDP効果ピーク', note: empty ? '政策なしのため効果は全年0' : '実質GDP効果が最大の年', index: gdpPeak },
     { key: 'terminal', label: '最終年', note: `評価期間${horizon}年の末`, index: horizon - 1 },
   ];
-  return <div className="mt-3 overflow-x-auto" role="region" aria-label="拘束年・GDP効果ピーク年・最終年の比較" tabIndex={0} data-testid="three-points">
-    <table className="w-full min-w-[520px] text-right text-sm tabular-nums [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-      <caption className="mb-1 text-left text-xs">枠は最も厳しい年、結果は最終年で決まるため、三時点を並べています。CPIは判定用（総合と消費税直接効果を除く値の大きい方）。</caption>
-      <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th></tr></thead>
-      <tbody>{points.map(({ key, label, note, index }) => { const s = steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
-        <th scope="row" className="py-1 pr-3 text-left font-medium">{label}<span className="block text-xs font-normal text-mirai-text-subtle">{note}</span></th><td>{s.state.year}</td><td>{percent(constraintInflation(s))}</td><td>{money(gdpEffect(index))}</td><td>{percent(unemploymentRate(s))}</td><td>{percent(s.metrics.grossDebtGdp, 1)}</td>
-      </tr>; })}</tbody></table>
+  /** Level with the change against the no-policy path underneath (percentage points, unit in the caption). */
+  const signed = (v: number) => `${v >= 0 ? '+' : ''}${(Number((v * 100).toFixed(3)) || 0).toFixed(3)}`;
+  const cell = (value: string, change: number) => <td className="py-1"><span className="block">{value}</span>
+    <span className="block text-xs text-mirai-text-subtle">{signed(change)}</span></td>;
+  return <div data-testid="three-points">
+    <div className="mt-3 overflow-x-auto" role="region" aria-label="拘束年・GDP効果ピーク年・最終年の比較" tabIndex={0}>
+      <table className="w-full min-w-[620px] text-right text-sm tabular-nums [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+        <caption className="mb-1 text-left text-xs">枠は最も厳しい年、結果は最終年で決まるため、三時点を並べています。CPIは判定用（総合と消費税直接効果を除く値の大きい方）。下段の小さい値は政策なし経路との差（ポイント）。国民負担率はGDP比で、国民所得比ではありません。</caption>
+        <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th><th scope="col">国民負担率（GDP比）</th></tr></thead>
+        <tbody>{rows.map(({ key, label, note, index }) => { const s = steps[index], b = baseline.steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
+          <th scope="row" className="py-1 pr-3 text-left font-medium">{label}<span className="block text-xs font-normal text-mirai-text-subtle">{note}</span></th>
+          <td>{s.state.year}</td>
+          {cell(percent(constraintInflation(s)), constraintInflation(s) - constraintInflation(b))}
+          <td>{money(gdpEffect(index))}</td>
+          {cell(percent(unemploymentRate(s)), unemploymentRate(s) - unemploymentRate(b))}
+          {cell(percent(s.metrics.grossDebtGdp, 1), s.metrics.grossDebtGdp - b.metrics.grossDebtGdp)}
+          {cell(percent(burden(s)), burden(s) - burden(b))}
+        </tr>; })}</tbody></table>
+    </div>
+    {empty && <p className="mt-2 text-xs">政策額が未入力のため、政策なし経路そのものの値です。差はすべて0になります。政策額を入力すると、拘束年と実質GDP効果のピーク年が政策に応じて動きます。</p>}
   </div>;
 }
 

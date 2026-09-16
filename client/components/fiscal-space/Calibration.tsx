@@ -10,7 +10,7 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
   return <details><summary className="cursor-pointer font-bold">GDPギャップ・金利・消費税の接続条件</summary>
     <p className="my-3 text-xs">ギャップゼロ・稼働率価格補正0で公表反応に一致。GDP反応は exp(−需要感度×初期ギャップ)、税直接効果を除く物価水準反応は exp(物価感度×初期ギャップ) 倍（指数の範囲は−1〜1）。基準インフレには政策なしのギャップ×傾きを加えます。未推定の感度仮定で、公表モデルの再推計ではありません。0で元の線形反応を比較できます。</p>
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="space-y-2">
+      <div className="space-y-2 md:col-span-2">
         <RangeField label="名目GDPに対する税収弾性値" value={value.taxRevenueElasticity} min={0} max={2} step={.1} unit="" onChange={n => change('taxRevenueElasticity', n)} />
         <p className="text-xs">名目GDPが1%増えたとき、税・社会保険料収入が約{value.taxRevenueElasticity.toFixed(1)}%増える想定です（減税分を引く前）。入力した値を評価期間全体に適用します。</p>
         <p className="text-xs">初期値は比較用の1.3。政府の後年度試算は従来1.1、<a className="underline" href="https://www.mof.go.jp/policy/budget/topics/outlook/sy2026a.htm" target="_blank" rel="noreferrer">現在は1.2</a>です。<a className="underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">財務省答弁の実績ベースの値は1.7（2015〜2024年度）</a>。期間によって変わり、将来も1.7になるという推定ではありません。</p>
@@ -19,13 +19,13 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="ギャップに対する需要感度" value={value.gapDemandSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapDemandSensitivity', n)} />
       <RangeField label="ギャップに対する物価感度" value={value.gapPriceSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapPriceSensitivity', n)} />
       <RangeField label="基準インフレのギャップ係数" value={value.gapInflationSlope} min={0} max={.2} step={.01} unit="" onChange={n => change('gapInflationSlope', n)} />
-      <p className="text-xs sm:col-span-2 lg:col-span-4">需要感度・物価感度を0にすると、初期GDPギャップの符号に関係なく公表反応を線形適用します（需要不足と需要超過で同じGDP・物価反応）。基準インフレのギャップ係数は政策なし経路のみに効き、政策が作るギャップには重ねません。</p>
+      <p className="text-xs md:col-span-2">需要感度・物価感度を0にすると、初期GDPギャップの符号に関係なく公表反応を線形適用します（需要不足と需要超過で同じGDP・物価反応）。基準インフレのギャップ係数は政策なし経路のみに効き、政策が作るギャップには重ねません。</p>
       <RangeField label="基準借換金利" value={value.marketRate * 100} min={0} max={6} step={.1} unit="%" onChange={n => change('marketRate', n / 100)} />
       <RangeField label="構造的失業率（労働需給の基準）" value={value.structuralUnemployment * 100} min={1} max={5} step={.1} unit="%" onChange={n => change('structuralUnemployment', n / 100)} />
       <label className="block space-y-1 text-sm"><span>物価判定の集約方式</span><select aria-label="物価判定の集約方式" className={fieldClass} value={value.inflationRule} onChange={e => change('inflationRule', e.target.value as ModelParameters['inflationRule'])}>
         <option value="peak">単年ピーク（既定）</option><option value="average">評価期間の平均</option>
       </select></label>
-      <p className="text-xs sm:col-span-2 lg:col-span-4">構造的失業率は日本のNAIRU推定幅（約2.3〜2.7%）を参考にした仮定で、推定値ではありません。労働需給の制約は「構造的失業率÷失業率」で判定し、許容する失業率下限は上限設定で決まります。物価判定を「平均」にすると、単年のピークではなく評価期間の平均CPIを上限と比較します。</p>
+      <p className="text-xs md:col-span-2">構造的失業率は日本のNAIRU推定幅（約2.3〜2.7%）を参考にした仮定で、推定値ではありません。労働需給の制約は「構造的失業率÷失業率」で判定し、許容する失業率下限は上限設定で決まります。物価判定を「平均」にすると、単年のピークではなく評価期間の平均CPIを上限と比較します。</p>
       <RangeField label="消費税1ポイントの減収額" value={value.consumptionTax.revenuePerPoint / 1e12} min={1} max={5} step={.1} unit="兆円" onChange={n => change('consumptionTax', { ...value.consumptionTax, revenuePerPoint: n * 1e12 })} />
       <RangeField label="消費税対象品目のCPI比率" value={value.consumptionTax.cpiShare * 100} min={0} max={100} step={1} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, cpiShare: n / 100 })} />
       <RangeField label="対象品目の基準消費税率" value={value.consumptionTax.baseRate * 100} min={8} max={10} step={2} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, baseRate: n / 100 })} />

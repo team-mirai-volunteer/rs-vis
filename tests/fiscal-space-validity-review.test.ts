@@ -137,15 +137,13 @@ test('envelope equals the search amount with no stress selected, and the minimum
   const none = engine(f);
   near(none.estimate.recommendedEnvelope, none.estimate.theoreticalMaximum);
   assert.equal(none.estimate.reserveRule.method, 'stress-scenarios');
-  assert.equal(none.estimate.stress!.length, 4);
+  assert.equal(none.estimate.stress!.length, 3);
   assert(none.estimate.stress!.every(s => !s.selected));
   const energy = none.estimate.stress!.find(s => s.id === 'energyPrice')!;
   assert(energy.amount > 0 && energy.amount < none.estimate.theoreticalMaximum);
   // Import prices +3% add 0.39pt of the 0.45pt headroom: a small but positive surviving amount.
   const imports = none.estimate.stress!.find(s => s.id === 'importPrice')!;
-  assert(imports.amount > 0 && imports.amount < none.estimate.stress!.find(s => s.id === 'cpiCeiling')!.amount, 'import-price stress must bind below the tighter-ceiling stress');
-  const ceiling = none.estimate.stress!.find(s => s.id === 'cpiCeiling')!;
-  assert(ceiling.amount > 0 && ceiling.amount < energy.amount, 'a 0.3pt tighter ceiling must bind inside the 0.45pt headroom');
+  assert(imports.amount > 0 && imports.amount < energy.amount, 'import-price stress must bind below the energy-price stress');
   f.stresses = { ...f.stresses, energyPrice: true };
   const withEnergy = engine(f);
   near(withEnergy.estimate.recommendedEnvelope, energy.amount, 1e-6);
@@ -158,11 +156,11 @@ test('old links with a percentage reserve migrate to the stress selection and re
   const legacy = { ...defaults(), reserve: 20 } as Record<string, unknown>;
   delete legacy.stresses;
   const restored = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: legacy })));
-  assert.deepEqual(restored.form.stresses, { cpiCeiling: false, importPrice: false, energyPrice: false, rate: false });
+  assert.deepEqual(restored.form.stresses, { importPrice: false, energyPrice: false, rate: false });
   const interim = { ...defaults(), stresses: { baselineInflation: true, fx: true, energyPrice: false, rate: false } } as Record<string, unknown>;
   const migrated = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.5', form: interim })));
-  assert.equal(migrated.form.stresses.cpiCeiling, true);
-  assert.equal(migrated.form.stresses.importPrice, true);
+  assert.deepEqual(migrated.form.stresses, { importPrice: true, energyPrice: false, rate: false });
+  assert(migrated.filled.some(k => k.includes('許容インフレ')), 'the removed ceiling stress is reported');
   assert(restored.filled.some(k => k.startsWith('任意控除20%')));
   assert.equal(restored.form.calibration.reserveShare, 0);
 });
