@@ -8,6 +8,7 @@ const CPI_2024 = 'https://www.e-stat.go.jp/stat-search/file-download?fileKind=2&
 const CPI_LATEST = 'https://www.stat.go.jp/data/cpi/sokuhou/tsuki/pdf/zenkoku.pdf';
 const FOOD = 'https://www.maff.go.jp/j/press/kanbo/anpo/260807.html';
 export const FERTILIZER_SOURCE = 'https://www.maff.go.jp/j/seisan/sien/sizai/s_hiryo/attach/pdf/index-229.pdf';
+export const VITAL_STATISTICS_2024 = 'https://www.mhlw.go.jp/toukei/saikin/hw/jinkou/kakutei24/dl/14_houdouR06.pdf';
 export const OECD_DEBT_SOURCE = 'https://www.oecd.org/content/dam/oecd/en/topics/policy-sub-issues/economic-outlook/eo-dec-2025/EO118_Annexes_E.pdf';
 
 export function japanContext(dataset: JapanDataset): Record<string, SourceValue> {
@@ -38,6 +39,9 @@ export function japanContext(dataset: JapanDataset): Record<string, SourceValue>
       sourceName: '総務省 全国CPIの政策寄与度から換算', sourceUrl: CPI_LATEST, status: 'estimated' as const,
       uncertaintyNote: '補助金とガソリン暫定税率廃止を合わせた公表政策効果の調整。補助金のみではない。当月の総合CPI寄与−0.35%、前年剥落分＋0.13%、エネルギーウエイト749/10000、当月指数102.2、前年総合指数100.1、エネルギー前年比0.6%を使用。当月と前年の指数水準をともに調整して前年比を再計算。公表丸め値からの近似で約3.4%。補助金を今廃止した場合の値上がり予測ではなく、将来のモデルCPIには代入しない。2024年平均は同じ範囲の両年調整額を未取得。',
     }] : []),
+    { key: 'context.totalFertilityRate', value: 1.15, unit: '合計特殊出生率', referenceYear: '2024年', publishedAt: '2025-07-16',
+      sourceName: '厚生労働省 令和6年（2024）人口動態統計（確定数）報道資料', sourceUrl: VITAL_STATISTICS_2024, status: 'verified' as const,
+      uncertaintyNote: `2024年の合計特殊出生率1.15（前年1.20、9年連続低下）、出生数686,173人。${latest ? '2025年の確定数は未公表のため2024年を継続採用。' : ''}モデルの人口動態経路は社人研の将来推計人口（2023年推計・出生中位）を使い、その2024年の仮定は1.268・出生77.9万人で実績を上回る。したがって基準経路の出生・子ども人口は実績より高めで、政策効果は仮定値に対する比率として計算する。SHA-256 f4d86603…3cc81b124。2026-09-17確認。` },
     food('calorieSelfSufficiency', latest ? .37 : .38, '供給熱量（カロリー）ベース。摂取熱量ベースとは異なる'),
     food('valueSelfSufficiency', latest ? .66 : .64, '生産額（金額）ベース。国内価格の上昇でも高まるため、供給量の増加とは限らない'),
   ];
