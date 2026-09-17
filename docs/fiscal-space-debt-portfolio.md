@@ -10,7 +10,7 @@ JSON: `app/lib/fiscal-space/data/jgb-maturity.json`、`app/lib/fiscal-space/data
 |---|---|
 | `saimu2026-3-ho.xlsx` | 財務省「債務管理リポート 2026」補足資料。(1) 国債及び借入金並びに政府保証債務現在高の推移（2016〜2025 年度末）、(2) 国及び地方の長期債務残高、(4) 普通国債償還年次表（令和 8 年度当初予算ベース）、(6) 普通国債残高・利率加重平均・一般会計利払費・平均残存期間、(7) 政府短期証券の券種別残高 |
 | `saimu2026-3-1.xlsx` / `.pdf` | 同 資料編 国債発行市場（発行額・残高・保有者別内訳） |
-| `imf-cr26-75.pdf` | IMF Country Report 26/75（2026 年対日 4 条協議）。Table 4 General Government Operations は印刷 46 頁・PDF 50 頁 |
+| `imf-cr26-75.pdf（原本は再配布制限のため未収録、URL・SHA-256 のみ）` | IMF Country Report 26/75（2026 年対日 4 条協議）。Table 4 General Government Operations は印刷 46 頁・PDF 50 頁 |
 
 「残存期間別残高（1 年刻み）」の表は債務管理リポート本文の図表のみで Excel 公表がなく、また `国債及び借入金並びに政府保証債務現在高` の四半期ページ（`/jgbs/reference/gbb/`）は 404 だった。代わりに補足資料 (4) の **普通国債償還年次表** を残存年数バケットとして使う。
 
