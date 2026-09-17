@@ -1,7 +1,7 @@
 {
   "modelVersion": "2026-09-17.1",
   "reproduction": {
-    "formSha256": "a9888a9146027452a37c8f1209212438738ec43e3b529184be2204a3415056f8",
+    "formSha256": "5056224653e78b5540c4acf61586afc6f7e622d25b06c0466bcf27193ec41ba5",
     "recordsSha256": "08b8fee8321360e34c5e62841c19dcecd96635f452b924e136e0caa895389aee"
   },
   "form": {
@@ -271,7 +271,7 @@
         "duration": 3
       },
       "childcare": {
-        "kind": "temporary",
+        "kind": "permanent",
         "duration": 3
       },
       "education": {
@@ -819,28 +819,28 @@
   "taxElasticitySensitivity": [
     {
       "elasticity": 1,
-      "debtGdp": 1.9658276213396622,
-      "taxRevenue": 255689614828055.34
+      "debtGdp": 1.962087286716025,
+      "taxRevenue": 256649773671158.12
     },
     {
       "elasticity": 1.1,
-      "debtGdp": 1.9561455194174637,
-      "taxRevenue": 257893500229923.16
+      "debtGdp": 1.9522814546878338,
+      "taxRevenue": 258920491241706.2
     },
     {
       "elasticity": 1.2,
-      "debtGdp": 1.9463591303702228,
-      "taxRevenue": 260128344494178.47
+      "debtGdp": 1.9423678178403592,
+      "taxRevenue": 261223953178199.25
     },
     {
       "elasticity": 1.3,
-      "debtGdp": 1.9364672527812679,
-      "taxRevenue": 262394582512381.34
+      "debtGdp": 1.9323451039323811,
+      "taxRevenue": 263560631663314.44
     },
     {
       "elasticity": 1.7,
-      "debtGdp": 1.8958203179600497,
-      "taxRevenue": 271782385584844.38
+      "debtGdp": 1.8911374775212308,
+      "taxRevenue": 273249195130507.38
     }
   ]
 }

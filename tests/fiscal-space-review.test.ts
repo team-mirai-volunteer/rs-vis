@@ -384,6 +384,9 @@ test('equipment-only public investment and commissioning use the selected produc
 test('displayed 15-trillion model comparison exposes supply and CPI differences and keeps the current row consistent', () => {
   const form = defaults();
   Object.assign(form.amounts, { 'social-insurance': 5, rd: 3, grid: 3, defence: 2, childcare: 2 });
+  // Permanent childcare keeps its labour-channel supply effect at year five, which differs by production model;
+  // hold it temporary here so only the common TFP channel remains, as this comparison intends.
+  form.policySettings.childcare = { ...form.policySettings.childcare, kind: 'temporary' };
   const result = createFiscalEngine()(form);
   const [leontief, ces] = result.modelSensitivity;
   assert.notEqual(leontief.cpiPeak, ces.cpiPeak);

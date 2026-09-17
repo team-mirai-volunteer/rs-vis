@@ -88,7 +88,7 @@ export const POLICIES: Policy[] = [
   policy('public-investment', '公共投資', { kind: 'growth', sector: 'construction' }),
   policy('defence', '防衛', {}),
   policy('healthcare', '医療', { sector: 'healthcare' }),
-  policy('childcare', '子育て', {}),
+  policy('childcare', '子育て', { kind: 'permanent' }),
   policy('education', '教育', { kind: 'growth' }),
   policy('rd', '研究開発', { kind: 'growth', sector: 'research' }),
   policy('semiconductors', '半導体・産業投資', { kind: 'growth', sector: 'electronics' }),
