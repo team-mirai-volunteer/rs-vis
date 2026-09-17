@@ -84,3 +84,8 @@ docs/image*.png
 infra/terraform/*.tfplan
 /.next-*/
 debug.log
+
+# 再配布制限のある一次資料の原本（URL と SHA-256 のみ manifest に記録。IMF/OECD）
+tests/fixtures/fiscal-debt/imf-cr26-75.pdf
+tests/fixtures/fiscal-demographics/imf_sip_2024-025_japan_fertility.pdf
+tests/fixtures/fiscal-demographics/oecd_selsa_wp299_fertility_family_policy_2023.pdf

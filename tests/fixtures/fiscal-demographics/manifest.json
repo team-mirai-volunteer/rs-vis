@@ -1,131 +1,135 @@
 {
- "retrievedOn": "2026-09-17",
- "files": {
-  "imf_sip_2024-025_japan_fertility.pdf": {
-   "url": "https://www.imf.org/-/media/files/publications/selected-issues-papers/2024/english/sipea2024025.pdf",
-   "title": "Asao, Smirnov, Xu (2024) Japan's Fertility: More Children Please. IMF Selected Issues Paper 2024/025",
-   "retrievedOn": "2026-09-17",
-   "sha256": "e8c4958b4426eade18f3de1f63a20316e443a7ad523ac01f7bdfdbca1d6d5dc4",
-   "bytes": 1725360
-  },
-  "ipss2023_1-1.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-1.xlsx",
-   "title": "表1-1 総数,年齢3区分別総人口及び年齢構造係数：出生中位(死亡中位)推計",
-   "retrievedOn": "2026-09-17",
-   "sha256": "b5f0f439e004e32840da5ffcdaf7b2935fcbb19e0bcf5e3183942ded855ca029",
-   "bytes": 15803
-  },
-  "ipss2023_1-2.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-2.xlsx",
-   "title": "表1-2 総数,年齢4区分別総人口及び年齢構造係数：出生中位(死亡中位)推計",
-   "retrievedOn": "2026-09-17",
-   "sha256": "dfc09f583c4fba8da0b7fe559ebc99c789140acff70d76bcfd0bcec5a758a057",
-   "bytes": 16136
-  },
-  "ipss2023_1-8.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-8.xlsx",
-   "title": "表1-8 出生,死亡及び自然増加の実数ならびに率(総人口)：出生中位(死亡中位)推計",
-   "retrievedOn": "2026-09-17",
-   "sha256": "6a84e365d27e79542b89dd51aa435daec2bd8685fa1f96ae80954cf760f420be",
-   "bytes": 14984
-  },
-  "ipss2023_1-9.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-9.xlsx",
-   "title": "表1-9 男女年齢各歳別人口(総人口)：出生中位(死亡中位)推計 2020-2070各年",
-   "retrievedOn": "2026-09-17",
-   "sha256": "e5c891579abc21d85d370c203cb431593c71bfa56ac0e541f85df01c7f7ba639",
-   "bytes": 348734
-  },
-  "ipss2023_1-9a.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-9a.xlsx",
-   "title": "表1-9A 男女年齢5歳階級別人口(総人口)：出生中位(死亡中位)推計（5年毎）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "907f4c7fb57970787f74ea9ddc9894e9d56adc23f3f3c4c2084252a37466d125",
-   "bytes": 46862
-  },
-  "ipss2023_ATable1.xlsx": {
-   "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/ATable1.xlsx",
-   "title": "仮定値表 表1 合計特殊出生率の推移：出生中位・高位・低位(死亡中位)推計",
-   "retrievedOn": "2026-09-17",
-   "sha256": "b6dffd4286c6e09fc6d09f84aa86a5427bebf76f28afdbf5206e9ac9248280e4",
-   "bytes": 13979
-  },
-  "ipss_sscost_R05-1.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-1.xlsx",
-   "title": "令和5年度社会保障費用統計 第1表 政策分野別社会支出の推移",
-   "retrievedOn": "2026-09-17",
-   "sha256": "1cb61b375f06938b3a21b464a91e01df8b071fb074ae5959330d9a8e60165ff9",
-   "bytes": 20711
-  },
-  "ipss_sscost_R05-13.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-13.xlsx",
-   "title": "第13表 機能別社会保障給付費の推移",
-   "retrievedOn": "2026-09-17",
-   "sha256": "065cde79afe2a362057cfb5ef232c9a792116211f0e6a67e7693340804864529",
-   "bytes": 18980
-  },
-  "ipss_sscost_R05-2.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-2.xlsx",
-   "title": "第2表 政策分野別社会支出の推移（対GDP比）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "225cae8c53b3650021089820716f4d300020d44f9463cb97dc83a88f87b60847",
-   "bytes": 18012
-  },
-  "ipss_sscost_R05-20.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-20.xlsx",
-   "title": "第20表 高齢者関係給付費の推移",
-   "retrievedOn": "2026-09-17",
-   "sha256": "b4eb6c4dcfcb9a1c0a554ca95b333d5cbff711f5bd71acb3bfc2c3026fbff9bc",
-   "bytes": 18777
-  },
-  "ipss_sscost_R05-21.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-21.xlsx",
-   "title": "第21表 児童・家族関係給付費の推移",
-   "retrievedOn": "2026-09-17",
-   "sha256": "d61cd04e7ebd5025651cb778bcaf9fe8da9be17ae98e3754200838ab2853fe0f",
-   "bytes": 20913
-  },
-  "ipss_sscost_R05-8.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-8.xlsx",
-   "title": "第8表 社会保障給付費の部門別推移",
-   "retrievedOn": "2026-09-17",
-   "sha256": "81c481a2e8a6632d2d8306dab7e32dad0c2ac66cd9cfd77bdc4624cc662174f7",
-   "bytes": 23074
-  },
-  "ipss_sscost_R05-9.xlsx": {
-   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-9.xlsx",
-   "title": "第9表 社会保障給付費の部門別推移（対GDP比）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "0301d5378ff8352008c329a398c23e8ceb69f61c36229d41603305642d93e7a9",
-   "bytes": 18852
-  },
-  "lfs_3-1_pop15plus_by_age.xlsx": {
-   "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001082682&fileKind=0",
-   "title": "労働力調査 基本集計 長期時系列表3(1) 年齢階級(5歳階級)別15歳以上人口（年平均）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "7c81638e8ca25a279d6582d8ac62df2d3202c37f94573c5cd46f0a5d9d50b411",
-   "bytes": 59852
-  },
-  "lfs_3-2_labourforce_rate_by_age.xlsx": {
-   "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001082683&fileKind=0",
-   "title": "労働力調査 基本集計 長期時系列表3(2) 年齢階級(5歳階級)別労働力人口及び労働力人口比率（年平均）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "5374af4dc4d8f7545c9bf0ad13a43114a990090ed3f1189792315b415481caaa",
-   "bytes": 80992
-  },
-  "mhlw_2040_outlook_2018.pdf": {
-   "url": "https://www5.cao.go.jp/keizai-shimon/kaigi/minutes/2018/0521/shiryo_04-1.pdf",
-   "title": "2040年を見据えた社会保障の将来見通し（議論の素材）概要（2018-05-21 経済財政諮問会議 資料4-1）",
-   "retrievedOn": "2026-09-17",
-   "sha256": "142163188001ce90851d80cac014af36b187c9fbeff6f50df02d33b106a6fc7d",
-   "bytes": 184300
-  },
-  "oecd_selsa_wp299_fertility_family_policy_2023.pdf": {
-   "url": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2023/09/fertility-employment-and-family-policy_8daa2477/326844f0-en.pdf",
-   "title": "Fluchtmann, van Veen, Adema (2023) Fertility, employment and family policy: A cross-country panel analysis. OECD SEM WP No. 299",
-   "retrievedOn": "2026-09-17",
-   "sha256": "259a159f7b4e7ecf963acf13766938bfa85dd25a08ceb3e41d8673367aeddd8c",
-   "bytes": 1614098
+  "retrievedOn": "2026-09-17",
+  "files": {
+    "imf_sip_2024-025_japan_fertility.pdf": {
+      "url": "https://www.imf.org/-/media/files/publications/selected-issues-papers/2024/english/sipea2024025.pdf",
+      "title": "Asao, Smirnov, Xu (2024) Japan's Fertility: More Children Please. IMF Selected Issues Paper 2024/025",
+      "retrievedOn": "2026-09-17",
+      "sha256": "e8c4958b4426eade18f3de1f63a20316e443a7ad523ac01f7bdfdbca1d6d5dc4",
+      "bytes": 1725360,
+      "stored": false,
+      "note": "原本は著作権者（IMF/OECD）の利用条件により再配布しないため未収録。URL と SHA-256 で同一性を確認する。"
+    },
+    "ipss2023_1-1.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-1.xlsx",
+      "title": "表1-1 総数,年齢3区分別総人口及び年齢構造係数：出生中位(死亡中位)推計",
+      "retrievedOn": "2026-09-17",
+      "sha256": "b5f0f439e004e32840da5ffcdaf7b2935fcbb19e0bcf5e3183942ded855ca029",
+      "bytes": 15803
+    },
+    "ipss2023_1-2.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-2.xlsx",
+      "title": "表1-2 総数,年齢4区分別総人口及び年齢構造係数：出生中位(死亡中位)推計",
+      "retrievedOn": "2026-09-17",
+      "sha256": "dfc09f583c4fba8da0b7fe559ebc99c789140acff70d76bcfd0bcec5a758a057",
+      "bytes": 16136
+    },
+    "ipss2023_1-8.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-8.xlsx",
+      "title": "表1-8 出生,死亡及び自然増加の実数ならびに率(総人口)：出生中位(死亡中位)推計",
+      "retrievedOn": "2026-09-17",
+      "sha256": "6a84e365d27e79542b89dd51aa435daec2bd8685fa1f96ae80954cf760f420be",
+      "bytes": 14984
+    },
+    "ipss2023_1-9.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-9.xlsx",
+      "title": "表1-9 男女年齢各歳別人口(総人口)：出生中位(死亡中位)推計 2020-2070各年",
+      "retrievedOn": "2026-09-17",
+      "sha256": "e5c891579abc21d85d370c203cb431593c71bfa56ac0e541f85df01c7f7ba639",
+      "bytes": 348734
+    },
+    "ipss2023_1-9a.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/1-9a.xlsx",
+      "title": "表1-9A 男女年齢5歳階級別人口(総人口)：出生中位(死亡中位)推計（5年毎）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "907f4c7fb57970787f74ea9ddc9894e9d56adc23f3f3c4c2084252a37466d125",
+      "bytes": 46862
+    },
+    "ipss2023_ATable1.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/ATable1.xlsx",
+      "title": "仮定値表 表1 合計特殊出生率の推移：出生中位・高位・低位(死亡中位)推計",
+      "retrievedOn": "2026-09-17",
+      "sha256": "b6dffd4286c6e09fc6d09f84aa86a5427bebf76f28afdbf5206e9ac9248280e4",
+      "bytes": 13979
+    },
+    "ipss_sscost_R05-1.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-1.xlsx",
+      "title": "令和5年度社会保障費用統計 第1表 政策分野別社会支出の推移",
+      "retrievedOn": "2026-09-17",
+      "sha256": "1cb61b375f06938b3a21b464a91e01df8b071fb074ae5959330d9a8e60165ff9",
+      "bytes": 20711
+    },
+    "ipss_sscost_R05-13.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-13.xlsx",
+      "title": "第13表 機能別社会保障給付費の推移",
+      "retrievedOn": "2026-09-17",
+      "sha256": "065cde79afe2a362057cfb5ef232c9a792116211f0e6a67e7693340804864529",
+      "bytes": 18980
+    },
+    "ipss_sscost_R05-2.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-2.xlsx",
+      "title": "第2表 政策分野別社会支出の推移（対GDP比）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "225cae8c53b3650021089820716f4d300020d44f9463cb97dc83a88f87b60847",
+      "bytes": 18012
+    },
+    "ipss_sscost_R05-20.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-20.xlsx",
+      "title": "第20表 高齢者関係給付費の推移",
+      "retrievedOn": "2026-09-17",
+      "sha256": "b4eb6c4dcfcb9a1c0a554ca95b333d5cbff711f5bd71acb3bfc2c3026fbff9bc",
+      "bytes": 18777
+    },
+    "ipss_sscost_R05-21.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-21.xlsx",
+      "title": "第21表 児童・家族関係給付費の推移",
+      "retrievedOn": "2026-09-17",
+      "sha256": "d61cd04e7ebd5025651cb778bcaf9fe8da9be17ae98e3754200838ab2853fe0f",
+      "bytes": 20913
+    },
+    "ipss_sscost_R05-8.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-8.xlsx",
+      "title": "第8表 社会保障給付費の部門別推移",
+      "retrievedOn": "2026-09-17",
+      "sha256": "81c481a2e8a6632d2d8306dab7e32dad0c2ac66cd9cfd77bdc4624cc662174f7",
+      "bytes": 23074
+    },
+    "ipss_sscost_R05-9.xlsx": {
+      "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-9.xlsx",
+      "title": "第9表 社会保障給付費の部門別推移（対GDP比）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "0301d5378ff8352008c329a398c23e8ceb69f61c36229d41603305642d93e7a9",
+      "bytes": 18852
+    },
+    "lfs_3-1_pop15plus_by_age.xlsx": {
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001082682&fileKind=0",
+      "title": "労働力調査 基本集計 長期時系列表3(1) 年齢階級(5歳階級)別15歳以上人口（年平均）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "7c81638e8ca25a279d6582d8ac62df2d3202c37f94573c5cd46f0a5d9d50b411",
+      "bytes": 59852
+    },
+    "lfs_3-2_labourforce_rate_by_age.xlsx": {
+      "url": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000001082683&fileKind=0",
+      "title": "労働力調査 基本集計 長期時系列表3(2) 年齢階級(5歳階級)別労働力人口及び労働力人口比率（年平均）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "5374af4dc4d8f7545c9bf0ad13a43114a990090ed3f1189792315b415481caaa",
+      "bytes": 80992
+    },
+    "mhlw_2040_outlook_2018.pdf": {
+      "url": "https://www5.cao.go.jp/keizai-shimon/kaigi/minutes/2018/0521/shiryo_04-1.pdf",
+      "title": "2040年を見据えた社会保障の将来見通し（議論の素材）概要（2018-05-21 経済財政諮問会議 資料4-1）",
+      "retrievedOn": "2026-09-17",
+      "sha256": "142163188001ce90851d80cac014af36b187c9fbeff6f50df02d33b106a6fc7d",
+      "bytes": 184300
+    },
+    "oecd_selsa_wp299_fertility_family_policy_2023.pdf": {
+      "url": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2023/09/fertility-employment-and-family-policy_8daa2477/326844f0-en.pdf",
+      "title": "Fluchtmann, van Veen, Adema (2023) Fertility, employment and family policy: A cross-country panel analysis. OECD SEM WP No. 299",
+      "retrievedOn": "2026-09-17",
+      "sha256": "259a159f7b4e7ecf963acf13766938bfa85dd25a08ceb3e41d8673367aeddd8c",
+      "bytes": 1614098,
+      "stored": false,
+      "note": "原本は著作権者（IMF/OECD）の利用条件により再配布しないため未収録。URL と SHA-256 で同一性を確認する。"
+    }
   }
- }
 }
