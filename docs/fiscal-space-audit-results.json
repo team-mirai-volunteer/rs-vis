@@ -1,5 +1,9 @@
 {
-  "modelVersion": "2026-09-16.2",
+  "modelVersion": "2026-09-17.1",
+  "reproduction": {
+    "formSha256": "a9888a9146027452a37c8f1209212438738ec43e3b529184be2204a3415056f8",
+    "recordsSha256": "08b8fee8321360e34c5e62841c19dcecd96635f452b924e136e0caa895389aee"
+  },
   "form": {
     "dataset": "latest",
     "horizon": 5,
@@ -193,9 +197,9 @@
         "semiconductors": {
           "annualSalesPerInvestment": 0.8946910448817695,
           "capexImportShare": null,
-          "exportShare": 0.5,
-          "domesticReplacementShare": 0.5,
-          "operatingImportShare": 0.25,
+          "exportShare": 0.6915412693682956,
+          "domesticReplacementShare": 0.5973893385838256,
+          "operatingImportShare": 0.1928650497213598,
           "lag": 3,
           "lifetime": 15,
           "additionality": 0.5,
@@ -293,14 +297,29 @@
     },
     "rateShock": 0,
     "energyShock": 0,
-    "reserve": 20,
+    "stresses": {
+      "importPrice": false,
+      "energyPrice": false,
+      "rate": false
+    },
     "calibration": {
-      "taxRevenueElasticity": 1.1,
+      "taxRevenueElasticity": 1.3,
       "taxCollectionLag": 0,
+      "socialContributionElasticity": 1,
+      "demographics": {
+        "mode": "included",
+        "labourElasticity": 0.55,
+        "fertilityPerGdpPoint": 0.1,
+        "fertilityIncomeElasticity": 0.2,
+        "ageingShare": 0.531,
+        "childBenefitShare": 0.054
+      },
       "productionModel": "leontief",
       "gapDemandSensitivity": 3,
       "gapPriceSensitivity": 5,
       "gapInflationSlope": 0.05,
+      "structuralUnemployment": 0.025,
+      "inflationRule": "peak",
       "consumptionTax": {
         "revenuePerPoint": 3500000000000,
         "cpiShare": 0.85,
@@ -316,7 +335,8 @@
         "peakGrowth": 0.004,
         "nonThermalDecline": 0,
         "plannedNonThermalTwh": 0,
-        "fuelImportYenPerKwh": 9
+        "fuelImportYenPerKwh": 9,
+        "marginalThermalShare": 1
       },
       "referenceModel": "ef2026",
       "multiplierScale": 1,
@@ -359,7 +379,7 @@
       "searchCap": 100000000000000,
       "searchStep": 1000000000000,
       "searchTolerance": 10000000000,
-      "reserveShare": 0.2
+      "reserveShare": 0
     },
     "gap": 0.7,
     "inflation": 1.9,
@@ -388,7 +408,7 @@
       "gfn": 0.45,
       "inflation": 0.025,
       "capacity": 0.995,
-      "labour": 0.995,
+      "labour": 1.25,
       "sector": 1,
       "energy": 0.95,
       "external": 0.3
@@ -404,26 +424,342 @@
     },
     {
       "limit": 0.025,
-      "maximum": 17007812500000,
-      "afterDeduction": 13606250000000,
+      "maximum": 16781250000000,
+      "afterDeduction": 16781250000000,
       "status": "boundary",
       "binding": "物価"
     },
     {
       "limit": 0.03,
       "maximum": 27445312500000,
-      "afterDeduction": 21956250000000,
+      "afterDeduction": 27445312500000,
       "status": "boundary",
       "binding": "産業別能力"
     },
     {
       "limit": 0.035,
       "maximum": 27445312500000,
-      "afterDeduction": 21956250000000,
+      "afterDeduction": 27445312500000,
       "status": "boundary",
       "binding": "産業別能力"
     }
   ],
+  "reserveRule": {
+    "method": "stress-scenarios",
+    "share": 0,
+    "scenarios": []
+  },
+  "stress": [
+    {
+      "id": "importPrice",
+      "label": "輸入物価 +3%",
+      "amount": 2257812500000,
+      "status": "boundary",
+      "binding": "物価（輸入物価+3%込み）",
+      "selected": false
+    },
+    {
+      "id": "energyPrice",
+      "label": "輸入エネルギー価格 +20%",
+      "amount": 15343750000000,
+      "status": "boundary",
+      "binding": "物価",
+      "selected": false
+    },
+    {
+      "id": "rate",
+      "label": "借換金利 +100bp",
+      "amount": 16781250000000,
+      "status": "boundary",
+      "binding": "物価",
+      "selected": false
+    }
+  ],
+  "initial": {
+    "year": 0,
+    "baseCalendarYear": 2026,
+    "macro": {
+      "nominalGdp": 689200000000000,
+      "realGdp": 689200000000000,
+      "potentialGdp": 684409136047666.4,
+      "inflation": 0.019,
+      "coreInflation": 0.018,
+      "expectedInflation": 0.02,
+      "nominalWageGrowth": 0.03,
+      "realGrowth": 0.016096256256000085,
+      "nominalGrowth": 0.05302281656099961
+    },
+    "fiscal": {
+      "primaryBalance": -10338000000000,
+      "structuralPrimaryBalance": -11925227600000,
+      "taxRevenue": 226746800000000,
+      "taxes": 136461600000000,
+      "socialContributions": 90285200000000,
+      "primaryExpenditure": 245355200000000,
+      "interestPayments": 11716400000000,
+      "interestRevenue": 9648799999999.998,
+      "otherPrimaryRevenue": 8270399999999.979,
+      "grossDebt": 1399765200000000,
+      "financialAssets": 483129200000000.06,
+      "netDebt": 916636000000000,
+      "liquidFinancialAssets": 137840000000000,
+      "liquidityAdjustedNetDebt": 1261925200000000.2
+    },
+    "debtPortfolio": [
+      {
+        "principal": 181840871188997.72,
+        "coupon": 0.008699422914708802,
+        "maturityYear": 1
+      },
+      {
+        "principal": 135131694462140.86,
+        "coupon": 0.008319001061915427,
+        "maturityYear": 2
+      },
+      {
+        "principal": 103155419771476.7,
+        "coupon": 0.007859918747426425,
+        "maturityYear": 3
+      },
+      {
+        "principal": 106346365892801.4,
+        "coupon": 0.007918131312528977,
+        "maturityYear": 4
+      },
+      {
+        "principal": 109246437178097.55,
+        "coupon": 0.0079680876633648,
+        "maturityYear": 5
+      },
+      {
+        "principal": 80816483035540.06,
+        "coupon": 0.0073236500218403465,
+        "maturityYear": 6
+      },
+      {
+        "principal": 86747745850414.38,
+        "coupon": 0.007492967188506563,
+        "maturityYear": 7
+      },
+      {
+        "principal": 79258080367470.67,
+        "coupon": 0.007274959082126124,
+        "maturityYear": 8
+      },
+      {
+        "principal": 79339066400703.69,
+        "coupon": 0.007277536539323021,
+        "maturityYear": 9
+      },
+      {
+        "principal": 80757575337557.48,
+        "coupon": 0.007321843676416987,
+        "maturityYear": 10
+      },
+      {
+        "principal": 20738980519863.19,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 11
+      },
+      {
+        "principal": 20509712916258.33,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 12
+      },
+      {
+        "principal": 19921214408098.5,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 13
+      },
+      {
+        "principal": 23501857608384.863,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 14
+      },
+      {
+        "principal": 22746084376821.15,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 15
+      },
+      {
+        "principal": 21138029557424.387,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 16
+      },
+      {
+        "principal": 21628862765982.99,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 17
+      },
+      {
+        "principal": 21228656785089.89,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 18
+      },
+      {
+        "principal": 21967847162229.707,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 19
+      },
+      {
+        "principal": 16385113526090.287,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 20
+      },
+      {
+        "principal": 11488640109656.254,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 21
+      },
+      {
+        "principal": 9957618433775.174,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 22
+      },
+      {
+        "principal": 10122386446626.607,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 23
+      },
+      {
+        "principal": 12212500987648.393,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 24
+      },
+      {
+        "principal": 12681641508733.867,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 25
+      },
+      {
+        "principal": 13130149873733.791,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 26
+      },
+      {
+        "principal": 13045500186616.436,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 27
+      },
+      {
+        "principal": 12692246822609.617,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 28
+      },
+      {
+        "principal": 12033271183148.209,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 29
+      },
+      {
+        "principal": 9353694014523.342,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 30
+      },
+      {
+        "principal": 2102069622118.0857,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 31
+      },
+      {
+        "principal": 2561568948771.0596,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 32
+      },
+      {
+        "principal": 4077839597170.4146,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 33
+      },
+      {
+        "principal": 3947876296220.3076,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 34
+      },
+      {
+        "principal": 4428393426736.133,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 35
+      },
+      {
+        "principal": 4293031056903.8257,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 36
+      },
+      {
+        "principal": 4329089124081.378,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 37
+      },
+      {
+        "principal": 1853616041592.5476,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 38
+      },
+      {
+        "principal": 1758843100321.0676,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 39
+      },
+      {
+        "principal": 1289124107569.3928,
+        "coupon": 0.009800000000000005,
+        "maturityYear": 40
+      }
+    ],
+    "production": {
+      "inputs": {
+        "capital": 1.18,
+        "labour": 1.08,
+        "energy": 1.12,
+        "materials": 1.2
+      },
+      "tfp": 1,
+      "labourProductivity": 1
+    },
+    "labour": {
+      "labourForce": 70190000,
+      "employment": 68500000,
+      "unemployment": 1690000,
+      "hoursWorked": 1700,
+      "participation": 0.641,
+      "wageGrowth": 0.03,
+      "sectorUtilization": {
+        "general": 0.87,
+        "construction": 0.94,
+        "healthcare": 0.92,
+        "research": 0.8,
+        "electronics": 0.88,
+        "electricity": 0.89
+      }
+    },
+    "energy": {
+      "primaryDemand": 100,
+      "domesticSupply": 16.3,
+      "importedEnergy": 83.7,
+      "fossilFuelImportDependency": 0.95,
+      "firmCapacity": 187.29000000000002,
+      "peakDemand": 159.62,
+      "reserveMargin": 0.17334920436035595,
+      "importBill": 20938620000000.004,
+      "renewableInstalledCapacity": 100,
+      "renewableFirmContribution": 20
+    },
+    "external": {
+      "exports": 139402299999999.98,
+      "imports": 145066700000000,
+      "tradeBalance": -5664400000000.023,
+      "goodsBalance": -3660200000000.0117,
+      "servicesBalance": -2004200000000.0117,
+      "primaryIncomeBalance": 38603199999999.95,
+      "secondaryIncomeBalance": -4252000000000,
+      "currentAccount": 28686800000000,
+      "niip": 561087000000000,
+      "termsOfTrade": 1,
+      "essentialImports": 40000000000000
+    },
+    "resilience": {}
+  },
   "baselineSensitivity": [
     {
       "inflation": 0.01,
@@ -445,7 +781,7 @@
     },
     {
       "inflation": 0.018,
-      "amount": 23984375000000,
+      "amount": 23664062500000,
       "status": "boundary",
       "current": false,
       "binding": [
@@ -454,7 +790,7 @@
     },
     {
       "inflation": 0.02,
-      "amount": 17007812500000,
+      "amount": 16781250000000,
       "status": "boundary",
       "current": true,
       "binding": [
@@ -463,7 +799,7 @@
     },
     {
       "inflation": 0.022,
-      "amount": 10062500000000,
+      "amount": 9929687500000,
       "status": "boundary",
       "current": false,
       "binding": [
@@ -483,18 +819,28 @@
   "taxElasticitySensitivity": [
     {
       "elasticity": 1,
-      "debtGdp": 1.8640884568671268,
-      "taxRevenue": 241124771217694.97
+      "debtGdp": 1.9658276213396622,
+      "taxRevenue": 255689614828055.34
     },
     {
       "elasticity": 1.1,
-      "debtGdp": 1.8476945231027504,
-      "taxRevenue": 244996786295128.1
+      "debtGdp": 1.9561455194174637,
+      "taxRevenue": 257893500229923.16
+    },
+    {
+      "elasticity": 1.2,
+      "debtGdp": 1.9463591303702228,
+      "taxRevenue": 260128344494178.47
+    },
+    {
+      "elasticity": 1.3,
+      "debtGdp": 1.9364672527812679,
+      "taxRevenue": 262394582512381.34
     },
     {
       "elasticity": 1.7,
-      "debtGdp": 1.745110796587483,
-      "taxRevenue": 269542148659080.75
+      "debtGdp": 1.8958203179600497,
+      "taxRevenue": 271782385584844.38
     }
   ]
 }

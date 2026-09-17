@@ -1,0 +1,12 @@
+{
+  "source": "IMF Country Report 26/75, Table 4, printed page 46 (PDF page 50)",
+  "url": "https://www.imf.org/-/media/files/publications/cr/2026/english/1jpnea2026001.pdf",
+  "vintage": "2026-04",
+  "checkedAt": "2026-09-17",
+  "scope": "General government, calendar year; taxes include fines; tax and social contributions are percent of GDP rounded to 0.1 percentage point. Only 2022-2024 historical columns; 2025 estimate and forecasts excluded. Not a real-time vintage backtest.",
+  "rows": [
+    { "year": 2022, "gdpTrillion": 584.9, "taxPercentGdp": 20.7, "socialPercentGdp": 13.2 },
+    { "year": 2023, "gdpTrillion": 616.0, "taxPercentGdp": 20.2, "socialPercentGdp": 12.9 },
+    { "year": 2024, "gdpTrillion": 634.2, "taxPercentGdp": 20.1, "socialPercentGdp": 13.1 }
+  ]
+}

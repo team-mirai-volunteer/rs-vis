@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialEconomy, PARAMETERS as P, POLICIES, THRESHOLDS, TRILLION as T, NO_SHOCK } from '../app/lib/fiscal-space/assumptions';
+import { initialEconomy, PARAMETERS, POLICIES, THRESHOLDS, TRILLION as T, NO_SHOCK } from '../app/lib/fiscal-space/assumptions';
+import { DEMOGRAPHICS_OFF } from '../app/lib/fiscal-space/demographics';
+const P = { ...PARAMETERS, demographics: DEMOGRAPHICS_OFF };
 import { simulate } from '../app/lib/fiscal-space/simulate';
 import { calibratedResponse, consumptionTaxLimit, CONSUMPTION_TAX_CUT } from '../app/lib/fiscal-space/calibration';
 import { peakConstraints, evaluateConstraints } from '../app/lib/fiscal-space/constraints';
@@ -55,8 +57,15 @@ test('published long rates use the same scale and duration in both rollover and 
   const path = simulate(s, [q], 5, flat);
   near(path.steps[4].referenceRateEffect!, .0057);
   near(path.steps[4].refinancingRate!, .0257);
-  near(path.steps[0].state.fiscal.interestPayments - simulate(s, [], 1, flat).steps[0].state.fiscal.interestPayments, s.fiscal.grossDebt / 10 * .0008);
-  for (const step of path.steps) for (const bucket of step.state.debtPortfolio.filter(x => x.maturityYear === step.state.year + flat.newDebtMaturity)) near(bucket.coupon, step.refinancingRate!);
+  // Only the principal maturing in year 1 (published JGB schedule plus the residual ladder) reprices at the response.
+  near(path.steps[0].state.fiscal.interestPayments - simulate(s, [], 1, flat).steps[0].state.fiscal.interestPayments, path.steps[0].maturingDebt * .0008);
+  // New issuance is appended last; repriced buckets are those that matured this year. Pre-existing JGB
+  // buckets with the same maturity year keep their own coupon, so they are not part of this check.
+  path.steps.forEach((step, i) => {
+    assert(step.state.debtPortfolio.some(b => b.maturityYear === step.state.year + flat.newDebtMaturity && Math.abs(b.coupon - step.refinancingRate!) < 1e-9));
+    const before = i === 0 ? s.debtPortfolio : path.steps[i - 1].state.debtPortfolio;
+    before.forEach((bucket, k) => { if (bucket.maturityYear <= step.state.year) near(step.state.debtPortfolio[k].coupon, step.refinancingRate!); });
+  });
   const one = simulate(s, [{ ...q, kind: 'temporary', duration: 1 }], 5, flat);
   near(one.steps[4].referenceRateEffect!, .0008);
   const double = simulate(s, [{ ...q, annualCost: q.annualCost * 2 }], 5, flat);

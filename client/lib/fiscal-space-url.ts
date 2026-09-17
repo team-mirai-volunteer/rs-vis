@@ -12,13 +12,13 @@ import type { ConstraintId } from '@/types/fiscal-space';
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-16.6';
+export const FISCAL_MODEL_VERSION = '2026-09-17.1';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
-  dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'], inflationRule: ['peak', 'average'],
+  dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'], inflationRule: ['peak', 'average'], mode: ['estimated', 'manual', 'included', 'off'],
   productionModel: ['leontief', 'ces', 'cobbDouglas'], kind: ['temporary', 'permanent', 'growth'],
   technology: ['solar', 'nuclear', 'hydro'], selected: ids,
-  mode: ['estimated', 'manual'], region: ['demand-share', ...RESOURCE_REGIONS],
+  region: ['demand-share', ...RESOURCE_REGIONS],
 };
 
 function shape(value: unknown, template: unknown, path: string): void {
@@ -67,7 +67,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     // 2026-09-16.6: the percentage haircut became stress-derived. Drop the old share and select the defaults.
     if (Object.hasOwn(payload.form, 'reserve')) {
@@ -92,6 +92,19 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
     if (calibration && typeof calibration === 'object' && !Array.isArray(calibration)) {
       for (const key of ['energyDomesticPricePassThrough', 'expenditurePriceIndexation', 'capacityPriceSensitivity', 'capacityPressureStart', 'referenceCapacityRatio', 'structuralUnemployment', 'inflationRule'] as const) {
         if (!Object.hasOwn(calibration, key)) { Object.assign(calibration, { [key]: PARAMETERS[key] }); filled.push(`calibration.${key}`); }
+      }
+      // 2026-09-17.1: population projections, JGB ladder and the IMF bridge for latest. Older links
+      // predate the demographic block; they get the current defaults and the notice names it.
+      if (!Object.hasOwn(calibration, 'demographics')) {
+        Object.assign(calibration, { demographics: { ...PARAMETERS.demographics } });
+        filled.push('calibration.demographics（人口動態の経路を既定で有効化）');
+      }
+      // 2026-09-17.1: social contributions have their own elasticity. Older links applied one
+      // value to the whole tax + contribution total, so carry that value over instead of the new default.
+      if (!Object.hasOwn(calibration, 'socialContributionElasticity')) {
+        const legacy = (calibration as Record<string, unknown>).taxRevenueElasticity;
+        Object.assign(calibration, { socialContributionElasticity: typeof legacy === 'number' ? legacy : PARAMETERS.socialContributionElasticity });
+        filled.push('calibration.socialContributionElasticity（旧リンクの税収弾性値を社会負担にも適用）');
       }
       if ((calibration as Record<string, unknown>).reserveShare !== PARAMETERS.reserveShare) Object.assign(calibration, { reserveShare: PARAMETERS.reserveShare });
       // 2026-09-16.5: the labour constraint became structural / actual unemployment. Convert the

@@ -20,7 +20,10 @@ export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = fa
     ['国民負担（GDP比）', percent(burden), `税・社会保険料 ÷ 名目GDP。政策なし ${percent(baselineBurden)}、差 ${points(burden - baselineBurden)}。国民所得比ではありません。`],
     ['歳出（利払いを含む）', money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments), `政策なしとの差 ${money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments - baseline.state.fiscal.primaryExpenditure - baseline.state.fiscal.interestPayments)}。元本の借換を除く。`],
     ['税・社会保険料収入', money(s.fiscal.taxRevenue), `政策なしとの差 ${money(s.fiscal.taxRevenue - baseline.state.fiscal.taxRevenue)}`],
+    ['　うち税（罰金を含む）', money(s.fiscal.taxes), `政策なしとの差 ${money(s.fiscal.taxes - baseline.state.fiscal.taxes)}`],
+    ['　うち社会保険料', money(s.fiscal.socialContributions), `政策なしとの差 ${money(s.fiscal.socialContributions - baseline.state.fiscal.socialContributions)}`],
     ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
+    ['労働力人口', `${Math.round(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`, `将来推計人口×2024年労働力率の指数 ${(step.demographics?.labourForceIndex ?? 1).toFixed(3)}（年0＝1）。政策なし ${Math.round(baseline.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`],
     ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
   ];
   const detailedRows = [
@@ -104,7 +107,7 @@ export function Projection({ simulation, baseline, peaksByYear, shocks, paramete
         </svg>
       </div>
     </details>
-    <p className="text-sm">債務経路の仮定：名目GDPへの税収弾性値 {parameters.taxRevenueElasticity}、徴収ラグ {parameters.taxCollectionLag}年。債務/GDPの低下は分母の名目成長でも起こり、政策が自己財源化することを意味しません。</p>
+    <p className="text-sm">債務経路の仮定：名目GDPへの弾性値は税 {parameters.taxRevenueElasticity}・社会保険料 {parameters.socialContributionElasticity}、徴収ラグ {parameters.taxCollectionLag}年。債務/GDPの低下は分母の名目成長でも起こり、政策が自己財源化することを意味しません。</p>
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${years}年間の推計表`}><table className="w-full min-w-[1440px] text-right text-xs tabular-nums"><caption className="mb-2 text-left">← 横にスクロールできます → 金額は兆円、率は%。GDPは基準年価格（名目GDPを除く）、輸出入は各年価格。国民負担は税・社会保険料の名目GDP比。{years > publishedYears && `†は公表期間（${publishedYears}年）外の延長計算。`}</caption><thead><tr className="border-b border-mirai-border">{['年', '名目GDP', '実質GDP', '潜在GDP', '最大GDP', 'GDPギャップ', '最大GDPギャップ', 'CPI', '税直接効果を除くCPI', '借換金利', '輸出', '輸入', '債務/GDP', '利払/GDP', '資金調達/GDP', '基礎的収支/GDP', '債務安定に必要な収支/GDP', '国民負担/GDP', '追加1兆円で最も動く制約'].map((h, i) => <th scope="col" key={h} className={`px-2 py-3 ${i === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}>{h}</th>)}</tr></thead><tbody>
       {simulation.steps.map((s, i) => <tr key={s.state.year} className="border-b border-mirai-border last:border-0 hover:bg-mirai-surface-teal/60"><th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-card p-2">{s.state.year}年</th>{[
         money(s.state.macro.nominalGdp, 1), money(s.state.macro.realGdp, 1), money(s.state.macro.potentialGdp, 1), money(s.production.maximum, 1),

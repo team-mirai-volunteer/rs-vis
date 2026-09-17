@@ -1,8 +1,9 @@
 import type { SourceValue } from '@/types/fiscal-space';
+import imf2026 from './data/imf-2026-projections.json';
 
 /** Fixed statistical vintage. Never silently replace these with forecasts or live data. */
 export const JAPAN_BASE_YEAR = 2024;
-export const JAPAN_DATA_CHECKED = '2026-09-14';
+export const JAPAN_DATA_CHECKED = '2026-09-17';
 export type JapanDataset = '2024' | 'latest';
 export const JAPAN_DATASET_LABELS: Record<JapanDataset, string> = {
   '2024': '2024年で揃える', latest: '最新値を優先する',
@@ -32,6 +33,8 @@ export const JAPAN_RECORDS: SourceValue[] = [
   record('macro.inflation', .027, '比率（1 = 100%）', '総務省 消費者物価指数 2024年平均', CPI, '全国・総合の前年比。GDPデフレーターとは異なります。'),
   record('macro.coreInflation', .025, '比率（1 = 100%）', '総務省 消費者物価指数 2024年平均', CPI, '全国・生鮮食品を除く総合の前年比。'),
   fiscal('taxRevenue', .201 + .131, '税（罰金を含む）20.1%＋社会負担13.1%。画面では「税・社会負担収入」と表示。'),
+  fiscal('taxes', .201, '税（罰金を含む）。所得税・住民税・消費税の減税はこの区分から控除。'),
+  fiscal('socialContributions', .131, '社会負担（社会保険料）。社会保険料減税はこの区分から控除し、弾性値も別に設定。'),
   fiscal('otherPrimaryRevenue', .356 - .201 - .131 - .013, '総収入35.6%から税・社会負担・受取利子1.3%を控除。内訳の丸め差をここで調整。'),
   fiscal('interestRevenue', .013, '受取利子。PBから除外し、資金調達需要から控除。'),
   fiscal('primaryExpenditure', .373 - .014, '総支出37.3%−支払利子1.4%。政府財政統計の非金融資産純投資を含む。'),
@@ -103,12 +106,36 @@ const latestOverrides = [
     '財務省 対外資産負債残高・一次推計', 'https://www.mof.go.jp/policy/international_policy/reference/iip/202607a.pdf',
     '四半期の参考推計。SNA対外残高とは定義が異なります。将来経路はSNA経常収支を累積する近似で、為替・価格の評価替えを省略。', 'estimated'),
 ];
-const overrides = Object.fromEntries(latestOverrides.map(r => [r.key, r]));
+/** 2026 general-government ratios (IMF projection column) × the latest annualized nominal GDP.
+ * This bridges the 2024 fiscal accounts to the GDP vintage instead of mixing years in one ratio. */
+const IMF_2026 = imf2026.rows as Record<string, Record<'2024' | '2025' | '2026', number>>;
+const ratio2026 = (row: string) => IMF_2026[row]['2026'] / 100;
+const bridged = (key: string, ratio: number, note: string): SourceValue => recent(`fiscal.${key}`, ratio * LATEST_GDP, '円', '2026年（推計）', imf2026.retrievedOn as string,
+  'IMF 2026年対日4条協議 表4（2026年推計欄）×最新名目GDP', imf2026.url as string,
+  `一般政府。IMFの2026年推計比率${(ratio * 100).toFixed(1)}%×季節調整済み年率の名目GDP ${(LATEST_GDP / T).toFixed(1)}兆円。2024年実績を年次接続する橋渡し推計で、実績ではありません。${note}`, 'estimated');
+const bridgedTaxes = ratio2026('taxes'), bridgedSocial = ratio2026('socialContributions');
+const bridgedPrimaryExpenditure = ratio2026('totalExpenditure') - ratio2026('interestPaid');
+const bridgedOtherRevenue = ratio2026('totalRevenue') - bridgedTaxes - bridgedSocial - ratio2026('interestIncome');
+const latestFiscal = [
+  bridged('taxRevenue', bridgedTaxes + bridgedSocial, '税＋社会負担。'),
+  bridged('taxes', bridgedTaxes, '税（罰金を含む）。'),
+  bridged('socialContributions', bridgedSocial, '社会負担。'),
+  bridged('otherPrimaryRevenue', bridgedOtherRevenue, '総収入−税・社会負担−受取利子。'),
+  bridged('interestRevenue', ratio2026('interestIncome'), '受取利子。'),
+  bridged('primaryExpenditure', bridgedPrimaryExpenditure, '総支出−支払利子。'),
+  bridged('interestPayments', ratio2026('interestPaid'), '支払利子。'),
+  bridged('primaryBalance', ratio2026('primaryBalance'), '収入と支出の推計比率から計算した値と一致します。'),
+  bridged('structuralPrimaryBalance', ratio2026('primaryBalance') - (bridgedTaxes + bridgedSocial) * LATEST_OUTPUT_GAP, 'IMFは構造的PBの2026年推計を表4に載せていないため、PB−税・社会負担比率×GDPギャップ0.7%で近似。'),
+  bridged('grossDebt', ratio2026('grossDebt'), '2026年末推計。連結・額面ベース。'),
+  bridged('netDebt', ratio2026('netDebt'), '2026年末推計。'),
+  bridged('financialAssets', ratio2026('grossDebt') - ratio2026('netDebt'), '総債務−純債務。'),
+  bridged('liquidFinancialAssets', .2, '現金・預金の2026年推計はないため2024年のGDP比20%を据え置き。'),
+  bridged('liquidityAdjustedNetDebt', ratio2026('grossDebt') - .2, '総債務−現金・預金（2024年比率据え置き）。'),
+];
+const overrides = Object.fromEntries([...latestOverrides, ...latestFiscal].map(r => [r.key, r]));
 export const JAPAN_LATEST_RECORDS: SourceValue[] = JAPAN_RECORDS.map(r => overrides[r.key] ?? {
   ...r,
-  retainedReason: r.key.startsWith('initial.fiscal.')
-    ? '財政は一般政府の歳入・歳出・利子・資産を同じ年次資料で揃えるため2024年を継続採用。四半期債務だけの更新や予算・予測への置換は行っていません。'
-    : r.key.startsWith('initial.external.')
+  retainedReason: r.key.startsWith('initial.external.')
       ? '輸出入・所得・移転・経常収支をSNAの同じ勘定体系で揃えるため2024年を継続採用。'
       : 'エネルギー需給の最新確報は2024年度。輸入費も同じ基準年の概算を継続採用。',
 });

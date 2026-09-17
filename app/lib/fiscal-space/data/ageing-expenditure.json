@@ -1,0 +1,220 @@
+{
+ "sources": [
+  {
+   "name": "国立社会保障・人口問題研究所「令和5（2023）年度 社会保障費用統計」",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/fsss_R05.html",
+   "retrievedOn": "2026-09-17"
+  },
+  {
+   "name": "内閣官房・内閣府・財務省・厚生労働省「2040年を見据えた社会保障の将来見通し（議論の素材）」（2018年5月21日 経済財政諮問会議 資料4-1）",
+   "url": "https://www5.cao.go.jp/keizai-shimon/kaigi/minutes/2018/0521/shiryo_04-1.pdf",
+   "retrievedOn": "2026-09-17"
+  }
+ ],
+ "files": {
+  "ipss_sscost_R05-8.xlsx": {
+   "title": "第8表 社会保障給付費の部門別推移",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-8.xlsx",
+   "sha256": "81c481a2e8a6632d2d8306dab7e32dad0c2ac66cd9cfd77bdc4624cc662174f7"
+  },
+  "ipss_sscost_R05-9.xlsx": {
+   "title": "第9表 社会保障給付費の部門別推移（対GDP比）",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-9.xlsx",
+   "sha256": "0301d5378ff8352008c329a398c23e8ceb69f61c36229d41603305642d93e7a9"
+  },
+  "ipss_sscost_R05-13.xlsx": {
+   "title": "第13表 機能別社会保障給付費の推移",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-13.xlsx",
+   "sha256": "065cde79afe2a362057cfb5ef232c9a792116211f0e6a67e7693340804864529"
+  },
+  "ipss_sscost_R05-1.xlsx": {
+   "title": "第1表 政策分野別社会支出の推移",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-1.xlsx",
+   "sha256": "1cb61b375f06938b3a21b464a91e01df8b071fb074ae5959330d9a8e60165ff9"
+  },
+  "ipss_sscost_R05-2.xlsx": {
+   "title": "第2表 政策分野別社会支出の推移（対GDP比）",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/3/R05-2.xlsx",
+   "sha256": "225cae8c53b3650021089820716f4d300020d44f9463cb97dc83a88f87b60847"
+  },
+  "ipss_sscost_R05-20.xlsx": {
+   "title": "第20表 高齢者関係給付費の推移",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-20.xlsx",
+   "sha256": "b4eb6c4dcfcb9a1c0a554ca95b333d5cbff711f5bd71acb3bfc2c3026fbff9bc"
+  },
+  "ipss_sscost_R05-21.xlsx": {
+   "title": "第21表 児童・家族関係給付費の推移",
+   "url": "https://www.ipss.go.jp/ss-cost/j/fsss-R05/4/R05-21.xlsx",
+   "sha256": "d61cd04e7ebd5025651cb778bcaf9fe8da9be17ae98e3754200838ab2853fe0f"
+  },
+  "mhlw_2040_outlook_2018.pdf": {
+   "title": "2040年を見据えた社会保障の将来見通し（議論の素材）概要",
+   "url": "https://www5.cao.go.jp/keizai-shimon/kaigi/minutes/2018/0521/shiryo_04-1.pdf",
+   "sha256": "142163188001ce90851d80cac014af36b187c9fbeff6f50df02d33b106a6fc7d"
+  }
+ },
+ "retrievedOn": "2026-09-17",
+ "checkedAt": "2026-09-17",
+ "referenceYear": 2023,
+ "units": {
+  "yen": "円（原表は億円）",
+  "percentGdp": "percent of nominal GDP (fiscal year)"
+ },
+ "fy2023": {
+  "nominalGdpYen": 595184300000000,
+  "socialBenefitsByCategoryYen": {
+   "total": 135492800000000,
+   "medical": 45579900000000,
+   "pension": 56393600000000,
+   "welfareAndOther": 33519200000000,
+   "ofWhichLongTermCare": 11591500000000
+  },
+  "socialBenefitsByCategoryPercentGdp": {
+   "total": 22.76,
+   "medical": 7.66,
+   "pension": 9.47,
+   "welfareAndOther": 5.63,
+   "ofWhichLongTermCare": 1.95
+  },
+  "socialBenefitsByFunctionYen": {
+   "total": 135492800000000,
+   "oldAge": 59722700000000,
+   "survivors": 6262700000000,
+   "disability": 5817000000000,
+   "workInjury": 881100000000,
+   "health": 44098000000000,
+   "family": 10948700000000,
+   "unemployment": 1594200000000,
+   "housing": 651500000000,
+   "publicAssistanceOther": 5516900000000
+  },
+  "childAndFamilyBenefitsYen": {
+   "total": 10347200000000,
+   "childAllowance": 1841300000000,
+   "childcareServices": 6235100000000,
+   "parentalLeaveBenefit": 888200000000,
+   "shareOfSocialBenefitsPercent": 7.6
+  },
+  "elderlyRelatedBenefitsYen": {
+   "total": 86064700000000,
+   "pensionInsurance": 57049000000000,
+   "elderlyMedical": 17250100000000,
+   "elderlyWelfareServices": 11591600000000,
+   "shareOfSocialBenefitsPercent": 63.5
+  },
+  "socialExpenditureByPolicyAreaPercentGdp": {
+   "total": 23.5,
+   "oldAge": 8.29,
+   "survivors": 1.05,
+   "incapacity": 1.23,
+   "health": 9.92,
+   "family": 1.93,
+   "activeLabourMarket": 0.15,
+   "unemployment": 0.17,
+   "housing": 0.1,
+   "other": 0.64
+  },
+  "familySocialExpenditureYen": 11512200000000
+ },
+ "ageingLinkedShare": {
+  "definition": "高齢化連動分 = 年金 + 医療 + 介護（部門別給付費）。IMF 表4 の社会給付（20.5% of GDP, 2024）や SNA の一般政府支出とは範囲が異なる。",
+  "pensionMedicalLtcYen": 113565000000000,
+  "pensionMedicalLtcPercentGdp": 19.08,
+  "shareOfTotalSocialBenefits": 0.8382
+ },
+ "outlook2040": {
+  "basis": "2040年を見据えた社会保障の将来見通し（2018年5月）計画ベース・経済ベースラインケース。年度・兆円。医療は単価伸び率の仮定②（下限）〜①（上限）で幅。",
+  "nominalGdpTrillionYen": {
+   "2018": 564.3,
+   "2025": 645.6,
+   "2040": 790.6
+  },
+  "benefitsTrillionYen": {
+   "pension": {
+    "2018": 56.7,
+    "2025": 59.9,
+    "2040": 73.2
+   },
+   "medical": {
+    "2018": 39.2,
+    "2025": [
+     47.4,
+     47.8
+    ],
+    "2040": [
+     66.7,
+     68.5
+    ]
+   },
+   "longTermCare": {
+    "2018": 10.7,
+    "2025": 15.3,
+    "2040": 25.8
+   },
+   "childrenAndFamily": {
+    "2018": 7.9,
+    "2025": 10.0,
+    "2040": 13.1
+   },
+   "other": {
+    "2018": 6.7,
+    "2025": 7.7,
+    "2040": 9.4
+   },
+   "total": {
+    "2018": 121.3,
+    "2025": [
+     140.2,
+     140.6
+    ],
+    "2040": [
+     188.2,
+     190.0
+    ]
+   }
+  },
+  "totalPercentGdp": {
+   "2018": 21.5,
+   "2025": [
+    21.7,
+    21.8
+   ],
+   "2040": [
+    23.8,
+    24.0
+   ]
+  },
+  "pensionPercentGdp": {
+   "2018": 10.1,
+   "2025": 9.3,
+   "2040": 9.3
+  },
+  "medicalPercentGdp": {
+   "2018": 7.0,
+   "2025": [
+    7.3,
+    7.4
+   ],
+   "2040": [
+    8.4,
+    8.7
+   ]
+  },
+  "longTermCarePercentGdp": {
+   "2018": 1.9,
+   "2025": 2.4,
+   "2040": 3.3
+  },
+  "childrenAndFamilyPercentGdp": {
+   "2018": 1.4,
+   "2025": 1.5,
+   "2040": 1.7
+  }
+ },
+ "notes": [
+  "2023年度は社会保障費用統計（ILO基準の社会保障給付費、OECD基準の社会支出）。給付費合計は2022年度からコロナ関連給付の縮小で減少。",
+  "『家族関係社会支出 対GDP比』は OECD 基準 社会支出の『家族』政策分野（第2表）。ILO 基準の機能別『家族』給付費（第13表）とは範囲が異なる。設計書2-2の感度仮定はこの OECD 基準の値を基準に用いる。",
+  "2040年見通しの数値は概要 PDF から転記（PDF の日本語テキストが抽出不能な部分があるため、数値は図表の判読可能な部分に基づく）。介護は計画ベース、医療は計画ベースの幅。2018年5月時点の人口推計（平成29年推計）と経済前提に基づき、令和5年推計・現行制度とは整合しない。",
+  "高齢化連動分の指数化は 65歳以上人口指数 × 物価 で伸ばす（設計書1-3）。年金はマクロ経済スライドで GDP 比ほぼ一定（2040年見通しでも 9.3%）なので、年金分は 65歳以上人口ではなく賃金・物価で伸ばす方が見通しに近い。医療・介護は 75歳以上人口の伸びが支配的。"
+ ]
+}

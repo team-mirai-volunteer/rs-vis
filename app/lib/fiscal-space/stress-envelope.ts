@@ -19,36 +19,61 @@ export const IMPORT_PRICE_STRESS = .03;
 export const STRESSES: Record<StressId, { label: string; short: string; note: string }> = {
   importPrice: { label: '輸入物価 +3%', short: '輸入物価+3%', note: '判定用CPIのピーク年に輸入物価3%上昇（CPI水準+0.39pt、転嫁0.13）が重なっても上限内に収まる額。円安・海外価格のどちらでも同じ経路。為替の需要・GDP反応は未推計。' },
   energyPrice: { label: '輸入エネルギー価格 +20%', short: 'エネルギー+20%', note: '本体の輸入エネルギー価格ショックを20ポイント上乗せして再探索。' },
-  rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。公表GDP・CPI反応は変えない。' },
+  rate: { label: '借換金利 +100bp', short: '金利+100bp', note: '借換・新発金利の外生ショックを1ポイント上乗せして再探索。借換費用だけの反応で、金利上昇による需要・GDP・CPIの追加反応は公表反応に金融引締めが含まれるため再加算しない。' },
 };
 // Nothing selected by default: every stress amount is still computed and shown, so the
 // user chooses what the envelope must survive with the consequences visible. With a 2.5%
 // CPI ceiling and ~2.05% no-policy CPI, import prices above ~3.5% leave no room at all.
 export const DEFAULT_STRESSES: StressSelection = { importPrice: false, energyPrice: false, rate: false };
 
-export interface StressRow { id: StressId; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
+export interface StressRow { id: StressId | 'combined'; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }
+export const COMBINED_STRESS_LABEL = '選択したストレスの同時発生';
 
-/** Import prices have no in-model demand response, so they are judged on the CPI path of each
- * candidate amount. Same scan-then-bisect discipline as estimateFiscalSpace, same step and tolerance. */
-function importPriceEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock, cap: number): StressRow {
-  const violated = (amount: number) => {
-    const path = simulate(initial, allocateMix(mix, amount), horizon, p, shock);
-    const peaks = peakConstraints(path, thresholds, p.inflationRule);
-    return peaks.some(c => c.status === 'violated') || externalStress(path, 0, IMPORT_PRICE_STRESS, thresholds.inflation).exceeds;
-  };
-  if (cap <= 0) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: 0, status: 'empty-mix', selected: false };
-  if (violated(0)) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: 0, status: 'baseline-violated', binding: '物価（輸入物価+3%込み）', selected: false };
+/** Scan-then-bisect on a violation test, with the same step and tolerance as estimateFiscalSpace.
+ * Used where a stress is judged on the path (import prices) or where several stresses share one path. */
+function envelopeOn(id: StressRow['id'], label: string, binding: string, violated: (amount: number) => boolean, p: ModelParameters, cap: number): StressRow {
+  if (cap <= 0) return { id, label, amount: 0, status: 'empty-mix', selected: false };
+  if (violated(0)) return { id, label, amount: 0, status: 'baseline-violated', binding, selected: false };
   let low = 0, high = Math.min(p.searchStep, cap);
   while (!violated(high)) {
     low = high;
-    if (high >= cap) return { id: 'importPrice', label: STRESSES.importPrice.label, amount: cap, status: 'boundary', selected: false };
+    if (high >= cap) return { id, label, amount: cap, status: 'boundary', selected: false };
     high = Math.min(cap, high + p.searchStep);
   }
   while (high - low > p.searchTolerance) {
     const mid = (low + high) / 2;
     if (violated(mid)) high = mid; else low = mid;
   }
-  return { id: 'importPrice', label: STRESSES.importPrice.label, amount: low, status: 'boundary', binding: '物価（輸入物価+3%込み）', selected: false };
+  return { id, label, amount: low, status: 'boundary', binding, selected: false };
+}
+
+/** Import prices have no in-model demand response, so they are judged on the CPI path of each candidate amount. */
+function importPriceEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thresholds, horizon: number, p: ModelParameters, shock: Shock, cap: number): StressRow {
+  const violated = (amount: number) => {
+    const path = simulate(initial, allocateMix(mix, amount), horizon, p, shock);
+    const peaks = peakConstraints(path, thresholds, p.inflationRule);
+    return peaks.some(c => c.status === 'violated') || externalStress(path, 0, IMPORT_PRICE_STRESS, thresholds.inflation).exceeds;
+  };
+  return envelopeOn('importPrice', STRESSES.importPrice.label, '物価（輸入物価+3%込み）', violated, p, cap);
+}
+
+/** Every selected stress on one path: energy and rate enter the shock, import prices the CPI test.
+ * "Survives each" (minimum of the rows) and "survives all at once" are different claims; this is the latter.
+ * The energy shock already raises the energy import bill, so the import-price stress is applied to the
+ * CPI level only and is not added to the energy bill a second time. */
+export function combinedStressEnvelope(initial: EconomyState, mix: PolicyShare[], thresholds: Thresholds, horizon: number,
+  p: ModelParameters, shock: Shock, selection: StressSelection, cap: number): StressRow & { scenarios: StressId[] } {
+  const scenarios = (Object.keys(STRESSES) as StressId[]).filter(id => selection[id]);
+  const combinedShock: Shock = { ...shock,
+    energyPriceChange: shock.energyPriceChange + (selection.energyPrice ? .2 : 0),
+    marketRateDelta: shock.marketRateDelta + (selection.rate ? .01 : 0) };
+  const violated = (amount: number) => {
+    const path = simulate(initial, allocateMix(mix, amount), horizon, p, combinedShock);
+    const peaks = peakConstraints(path, thresholds, p.inflationRule);
+    return peaks.some(c => c.status === 'violated') || (selection.importPrice && externalStress(path, 0, IMPORT_PRICE_STRESS, thresholds.inflation).exceeds);
+  };
+  const row = envelopeOn('combined', COMBINED_STRESS_LABEL, scenarios.map(id => STRESSES[id].short).join('＋'), violated, p, cap);
+  return { ...row, selected: scenarios.length > 0, scenarios };
 }
 
 export function stressRows(initial: EconomyState, mix: PolicyShare[], base: FiscalSpaceEstimate, thresholds: Thresholds, horizon: number,
@@ -73,6 +98,11 @@ export function applyStressReserve(initial: EconomyState, mix: PolicyShare[], ba
   }
   const stress = stressRows(initial, mix, base, thresholds, horizon, p, shock, selection);
   const recommendedEnvelope = Math.min(base.theoreticalMaximum, ...stress.filter(s => s.selected).map(s => s.amount));
+  // Shown beside the per-stress minimum; two or more selections make the joint path a distinct, stricter claim.
+  const combinedStress = selected.length >= 2
+    ? { ...combinedStressEnvelope(initial, mix, thresholds, horizon, p, shock, selection, recommendedEnvelope), id: 'combined' as const }
+    : undefined;
   return { ...base, recommendedEnvelope, emergencyReserve: base.theoreticalMaximum - recommendedEnvelope,
-    reserveRule: { method: 'stress-scenarios', share: base.theoreticalMaximum > 0 ? 1 - recommendedEnvelope / base.theoreticalMaximum : 0, scenarios: selected }, stress };
+    reserveRule: { method: 'stress-scenarios', share: base.theoreticalMaximum > 0 ? 1 - recommendedEnvelope / base.theoreticalMaximum : 0, scenarios: selected }, stress,
+    ...(combinedStress ? { combinedStress } : {}) };
 }

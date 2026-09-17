@@ -14,9 +14,12 @@ export type Sector = 'general' | 'construction' | 'healthcare' | 'research' | 'e
 export interface DebtBucket { principal: number; coupon: number; maturityYear: number }
 export interface EconomyState {
   year: number;
+  /** Calendar year of year 0, so population projections can be aligned to the dataset. */
+  baseCalendarYear: number;
   macro: { nominalGdp: number; realGdp: number; potentialGdp: number; inflation: number;
     coreInflation: number; expectedInflation: number; nominalWageGrowth: number; realGrowth: number; nominalGrowth: number };
-  fiscal: { primaryBalance: number; structuralPrimaryBalance: number; taxRevenue: number; primaryExpenditure: number;
+  /** taxRevenue = taxes + socialContributions (general government). Both components carry their own elasticity and relief. */
+  fiscal: { primaryBalance: number; structuralPrimaryBalance: number; taxRevenue: number; taxes: number; socialContributions: number; primaryExpenditure: number;
     interestPayments: number; interestRevenue: number; otherPrimaryRevenue: number;
     grossDebt: number; financialAssets: number; netDebt: number;
     liquidFinancialAssets: number; liquidityAdjustedNetDebt: number };
@@ -82,7 +85,11 @@ export interface PolicyShare { policy: Policy; weight: number }
 export interface Shock { marketRateDelta: number; energyPriceChange: number; realGrowthDelta: number }
 export interface ModelParameters {
   resourceModel?: ResourceAssumptions;
+  /** Nominal-GDP elasticity of taxes (incl. fines). Social contributions have their own elasticity. */
   taxRevenueElasticity: number; taxCollectionLag: number;
+  /** Nominal-GDP elasticity of social contributions. A scenario input; the backtest records the historical fit. */
+  socialContributionElasticity: number;
+  demographics: import('@/app/lib/fiscal-space/demographics').DemographicAssumptions;
   productionModel: 'leontief' | 'ces' | 'cobbDouglas';
   gapDemandSensitivity: number; gapPriceSensitivity: number; gapInflationSlope: number;
   /** Structural (NAIRU-type) unemployment rate used by the labour constraint. A scenario input, not an estimate. */
@@ -136,6 +143,14 @@ export interface FiscalMetrics {
   effectiveRate: number; stabilizingPrimaryBalance: number; stockFlowAdjustmentGdp: number;
 }
 export interface ProjectionStep {
+  /** Population-driven indices for the year and the policy birth driver recorded for it. */
+  demographics?: import('@/app/lib/fiscal-space/demographics').DemographicPath & { driver: import('@/app/lib/fiscal-space/demographics').BirthDriver };
+  /** Accounting decomposition of annual CPI, in ratios (1 = 100 percentage points). */
+  cpiDiagnostics?: {
+    baselineGap: number; priceIndex: number;
+    contributions: { baseline: number; gap: number; overflow: number; energy: number; persistence: number;
+      referencePrices: number; capacityPrices: number; directTaxPrices: number };
+  };
   publicCapital?: { stock: number; potentialBenefit: number; realizedBenefit: number; demandEffect: number };
   resourcePower?: ReturnType<typeof import('@/app/lib/fiscal-space/resource-estimate').resourcePowerBalance>;
   estimatedLoads?: boolean;
@@ -158,6 +173,8 @@ export interface FiscalSpaceEstimate {
   reserveRule: { method: 'fixed-share' | 'stress-scenarios'; share: number; scenarios?: string[] };
   /** Per-stress envelopes when the reserve is stress-based. */
   stress?: { id: string; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean }[];
+  /** Amount that survives every selected stress applied on the same path at once. Absent unless two or more are selected. */
+  combinedStress?: { id: 'combined'; label: string; amount: number; status: FiscalSpaceEstimate['status']; binding?: string; selected: boolean; scenarios: string[] };
 }
 export interface PolicyComparisonPeriod {
   year: number;
