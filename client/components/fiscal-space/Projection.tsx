@@ -20,9 +20,10 @@ export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = fa
     ['国民負担（GDP比）', percent(burden), `税・社会保険料 ÷ 名目GDP。政策なし ${percent(baselineBurden)}、差 ${points(burden - baselineBurden)}。国民所得比ではありません。`],
     ['歳出（利払いを含む）', money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments), `政策なしとの差 ${money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments - baseline.state.fiscal.primaryExpenditure - baseline.state.fiscal.interestPayments)}。元本の借換を除く。`],
     ['税・社会保険料収入', money(s.fiscal.taxRevenue), `政策なしとの差 ${money(s.fiscal.taxRevenue - baseline.state.fiscal.taxRevenue)}`],
-    ['　うち税（罰金を含む）', money(s.fiscal.taxes), `政策なしとの差 ${money(s.fiscal.taxes - baseline.state.fiscal.taxes)}`],
-    ['　うち社会保険料', money(s.fiscal.socialContributions), `政策なしとの差 ${money(s.fiscal.socialContributions - baseline.state.fiscal.socialContributions)}`],
+    ['うち税（罰金を含む）', money(s.fiscal.taxes), `政策なしとの差 ${money(s.fiscal.taxes - baseline.state.fiscal.taxes)}`],
+    ['うち社会保険料', money(s.fiscal.socialContributions), `政策なしとの差 ${money(s.fiscal.socialContributions - baseline.state.fiscal.socialContributions)}`],
     ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
+    ['合計特殊出生率', step.demographics ? step.demographics.tfr.toFixed(3) : '—', step.demographics ? `将来推計人口の出生中位 ${step.demographics.baselineTfr.toFixed(3)}（${step.demographics.calendarYear}年）。政策による差 ${(step.demographics.tfr - step.demographics.baselineTfr >= 0 ? '+' : '')}${(step.demographics.tfr - step.demographics.baselineTfr).toFixed(3)}、追加出生 ${Math.round(step.demographics.extraBirths).toLocaleString('ja-JP')}人/年。子育て支出と保険料減税の手取り増からの換算仮定` : '人口動態の経路を「含めない」設定'],
     ['労働力人口', `${Math.round(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`, `将来推計人口×2024年労働力率の指数 ${(step.demographics?.labourForceIndex ?? 1).toFixed(3)}（年0＝1）。政策なし ${Math.round(baseline.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`],
     ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
   ];

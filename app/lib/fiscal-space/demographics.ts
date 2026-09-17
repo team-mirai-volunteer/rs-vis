@@ -81,6 +81,8 @@ export interface DemographicPath {
   calendarYear: number;
   labourForceIndex: number; population65Index: number; childIndex: number; population15Index: number;
   births: number; extraBirths: number; cumulativeExtraBirths: number; beyondProjection: boolean;
+  /** Medium-variant total fertility rate and the rate implied by policy births in the same year. */
+  baselineTfr: number; tfr: number;
 }
 const sum = (values: number[], from: number, to = GROUPS.length) => values.slice(from, to).reduce((s, v) => s + v, 0);
 const labourForce = (pop: number[]) => pop.reduce((s, n, i) => s + n * RATES[i], 0);
@@ -107,6 +109,7 @@ export function demographicPath(baseYear: number, calendarYear: number, d: Demog
     childIndex: off ? 1 : sum(current, 0, 3) / sum(base, 0, 3),
     population15Index: off ? 1 : sum(current, 3) / sum(base, 3),
     births: births(calendarYear) + extraThisYear, extraBirths: extraThisYear, cumulativeExtraBirths: cumulative,
+    baselineTfr: tfr(calendarYear), tfr: tfr(calendarYear) * (births(calendarYear) + extraThisYear) / births(calendarYear),
     beyondProjection: calendarYear > PROJECTION_YEARS.last };
 }
 
