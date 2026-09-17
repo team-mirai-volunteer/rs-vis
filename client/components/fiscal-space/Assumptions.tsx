@@ -9,7 +9,7 @@ import { JAPAN_DATA_CHECKED, JAPAN_DATASET_LABELS, japanSources, SOURCE_STATUS_L
 export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; onDataset: (value: JapanDataset) => void }) {
   const s = initialEconomy(dataset), sources = japanSources(dataset), latest = dataset === 'latest';
   const context = japanContext(dataset);
-  const fiscalGdp = initialEconomy('2024').macro.nominalGdp;
+  const fiscalGdp = s.macro.nominalGdp;
   const rows = [
     ['名目GDP', money(s.macro.nominalGdp, 1), 'macro.nominalGdp'],
     ['総債務（一般政府）', money(s.fiscal.grossDebt, 1), 'fiscal.grossDebt'],
@@ -38,7 +38,7 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       </label>)}
     </fieldset>
     <p className="text-sm leading-relaxed">{latest
-      ? '2026年9月15日までに確認した公表値を採用。GDP・GDPギャップ・CPI・雇用・対外純資産を更新し、食料自給率は2025年度概算。財政と国民経済計算の対外収支は2024年の一式を継続採用しています。異なる対象期間を組み合わせた試算です。'
+      ? '2026年9月17日までに確認した公表値を採用。GDP・GDPギャップ・CPI・雇用・対外純資産を更新し、食料自給率は2025年度概算。一般政府の財政額はIMFの2026年推計比率を最新の名目GDPに掛けた橋渡し推計で、2024年実績と最新GDPを一つの比率に混ぜていません。国民経済計算の対外収支は2024年の一式を継続採用しています。'
       : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
     <p className="text-xs leading-relaxed">以下は操作前の基準値です。切り替えると経済状態の操作を初期化し、政策・ショック・閾値は引き継ぎます。年0は選択した初期状態、年1以降は試算の経過年です。</p>
     <p className="text-xs text-mirai-text-subtle">GDPは国内総生産、CPIは消費者物価指数、IMFは国際通貨基金を指します。</p>
@@ -72,8 +72,8 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       {key === 'fiscal.netDebt' && <dd className="mt-2 text-xs">OECD平均：同じ資産控除範囲の値は未取得。総金融資産を控除する「純金融負債」とは区別します。</dd>}
       {(key === 'energy.domesticSupply' || key === 'context.calorieSelfSufficiency' || key === 'context.valueSelfSufficiency') && <dd className="mt-2 text-xs">OECD平均：同一定義・対象年の加盟国全体の値は未取得。</dd>}
     </div>;
-  })}</dl><p className="mt-3 text-xs leading-relaxed">総債務・純債務は地方・社会保障基金を含む一般政府の2024年値です。純債務は総債務から定義上の控除対象となる金融資産を差し引いた額です。</p>{latest && <details className="mt-4 text-xs leading-relaxed"><summary className="cursor-pointer font-bold">2024年を継続採用する項目と理由</summary><ul className="mt-2 list-disc space-y-1 pl-5">
-    <li>財政：歳入・歳出・利子・債務・資産を同じ年次資料で揃えています。最新の四半期債務のみを組み込むと、資産や利子との時点がずれるため一式を維持しています。</li>
+  })}</dl><p className="mt-3 text-xs leading-relaxed">総債務・純債務は地方・社会保障基金を含む一般政府の{latest ? '2026年推計値（IMF比率×最新GDP）' : '2024年値'}です。純債務は総債務から定義上の控除対象となる金融資産を差し引いた額です。</p>{latest && <details className="mt-4 text-xs leading-relaxed"><summary className="cursor-pointer font-bold">橋渡し推計と2024年を継続採用する項目</summary><ul className="mt-2 list-disc space-y-1 pl-5">
+    <li>財政：歳入・歳出・利子・債務・資産は、IMF 2026年対日4条協議 表4の2026年推計欄（GDP比）に最新の名目GDPを掛けた推計値です。現金・預金の推計はないため2024年のGDP比を据え置き、構造的PBはPBからGDPギャップ分を差し引いた近似です。</li>
     <li>国民経済計算の対外収支：輸出入・第一次所得・経常移転の会計関係を揃えるため2024年の勘定体系を維持。対外純資産は独立して更新します。</li>
     <li>エネルギー：需給実績の最新確報は2024年度。エネルギー輸入費は2024年の概算を維持しています。</li>
   </ul></details>}<p className="mt-4 text-xs leading-relaxed">政策乗数、将来の成長率・物価・金利、産業別の供給能力、債務の満期構成、許容閾値は仮定です。表示する財政余力は、これらの設定に依存する試算です。出典確認：{JAPAN_DATA_CHECKED}。データは確認時点の固定値で、自動更新ではありません。</p></CardContent></Card>;

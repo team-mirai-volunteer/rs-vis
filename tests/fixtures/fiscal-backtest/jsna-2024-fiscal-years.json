@@ -1,0 +1,487 @@
+{
+  "source": "内閣府 2024年度国民経済計算（2020年基準・2008SNA）、付表6(2) GFS・主要系列表1名目GDP年度",
+  "url": "https://www.esri.cao.go.jp/jp/sna/data/data_list/kakuhou/files/2024/2024_kaku_top.html",
+  "vintage": "2024年度年次推計・2020年基準",
+  "checkedAt": "2026-09-17",
+  "period": "fiscal-year",
+  "scope": "一般政府の税（GFS 11）＋科料・罰金及び追徴金（143）＋社会負担（12）。GDPも年度。IMF暦年系列とは接合しない。",
+  "sources": [
+    {
+      "file": "2024s6_2_jp.xlsx",
+      "url": "https://www.esri.cao.go.jp/jp/sna/data/data_list/kakuhou/files/2024/tables/2024s6_2_jp.xlsx",
+      "sha256": "362f28742ebef20bb4e97036bb080f246e69c42d7856012b1a2d84356bcb6aad"
+    },
+    {
+      "file": "2024ffm1n_jp.xlsx",
+      "url": "https://www.esri.cao.go.jp/jp/sna/data/data_list/kakuhou/files/2024/tables/2024ffm1n_jp.xlsx",
+      "sha256": "92a391ba3ad870235d6a7ed33dcfe79b6a7f3aea482f8c7e64ff02cf805650bb"
+    }
+  ],
+  "rows": [
+    {
+      "year": 1994,
+      "gdpTrillion": 522.0403,
+      "taxTrillion": 88.65180000000001,
+      "finesTrillion": 0.2499,
+      "socialTrillion": 43.725699999999996,
+      "taxPercentGdp": 17.02966226936886,
+      "socialPercentGdp": 8.375924234201843,
+      "cells": {
+        "gdp": "B48",
+        "tax": "F9",
+        "social": "F44",
+        "fines": "F77"
+      }
+    },
+    {
+      "year": 1995,
+      "gdpTrillion": 534.7062,
+      "taxTrillion": 90.4128,
+      "finesTrillion": 0.25639999999999996,
+      "socialTrillion": 47.043699999999994,
+      "taxPercentGdp": 16.956826010246377,
+      "socialPercentGdp": 8.798046478608253,
+      "cells": {
+        "gdp": "C48",
+        "tax": "K9",
+        "social": "K44",
+        "fines": "K77"
+      }
+    },
+    {
+      "year": 1996,
+      "gdpTrillion": 549.359,
+      "taxTrillion": 92.49719999999999,
+      "finesTrillion": 0.26439999999999997,
+      "socialTrillion": 48.473800000000004,
+      "taxPercentGdp": 16.885424649455093,
+      "socialPercentGdp": 8.823701805194782,
+      "cells": {
+        "gdp": "D48",
+        "tax": "P9",
+        "social": "P44",
+        "fines": "P77"
+      }
+    },
+    {
+      "year": 1997,
+      "gdpTrillion": 552.2606999999999,
+      "taxTrillion": 93.5718,
+      "finesTrillion": 0.26530000000000004,
+      "socialTrillion": 50.192099999999996,
+      "taxPercentGdp": 16.99144987141037,
+      "socialPercentGdp": 9.088479408366375,
+      "cells": {
+        "gdp": "E48",
+        "tax": "U9",
+        "social": "U44",
+        "fines": "U77"
+      }
+    },
+    {
+      "year": 1998,
+      "gdpTrillion": 540.9567,
+      "taxTrillion": 88.7303,
+      "finesTrillion": 0.266,
+      "socialTrillion": 50.118,
+      "taxPercentGdp": 16.45164945734104,
+      "socialPercentGdp": 9.264697155983095,
+      "cells": {
+        "gdp": "F48",
+        "tax": "Z9",
+        "social": "Z44",
+        "fines": "Z77"
+      }
+    },
+    {
+      "year": 1999,
+      "gdpTrillion": 536.8624,
+      "taxTrillion": 86.3233,
+      "finesTrillion": 0.2631,
+      "socialTrillion": 49.6857,
+      "taxPercentGdp": 16.128229505363016,
+      "socialPercentGdp": 9.254829542914534,
+      "cells": {
+        "gdp": "G48",
+        "tax": "AE9",
+        "social": "AE44",
+        "fines": "AE77"
+      }
+    },
+    {
+      "year": 2000,
+      "gdpTrillion": 545.8445,
+      "taxTrillion": 90.6643,
+      "finesTrillion": 0.2374,
+      "socialTrillion": 50.6962,
+      "taxPercentGdp": 16.653405869253973,
+      "socialPercentGdp": 9.287663427954298,
+      "cells": {
+        "gdp": "H48",
+        "tax": "AJ9",
+        "social": "AJ44",
+        "fines": "AJ77"
+      }
+    },
+    {
+      "year": 2001,
+      "gdpTrillion": 535.3987,
+      "taxTrillion": 87.85010000000001,
+      "finesTrillion": 0.2296,
+      "socialTrillion": 51.9422,
+      "taxPercentGdp": 16.451235313048016,
+      "socialPercentGdp": 9.701592476784123,
+      "cells": {
+        "gdp": "I48",
+        "tax": "AO9",
+        "social": "AO44",
+        "fines": "AO77"
+      }
+    },
+    {
+      "year": 2002,
+      "gdpTrillion": 530.5473000000001,
+      "taxTrillion": 80.68469999999999,
+      "finesTrillion": 0.2528,
+      "socialTrillion": 51.838,
+      "taxPercentGdp": 15.255472980448678,
+      "socialPercentGdp": 9.770665122600755,
+      "cells": {
+        "gdp": "J48",
+        "tax": "AT9",
+        "social": "AT44",
+        "fines": "AT77"
+      }
+    },
+    {
+      "year": 2003,
+      "gdpTrillion": 532.4111,
+      "taxTrillion": 79.16969999999999,
+      "finesTrillion": 0.26639999999999997,
+      "socialTrillion": 51.9602,
+      "taxPercentGdp": 14.9200683456825,
+      "socialPercentGdp": 9.759413355581804,
+      "cells": {
+        "gdp": "K48",
+        "tax": "AY9",
+        "social": "AY44",
+        "fines": "AY77"
+      }
+    },
+    {
+      "year": 2004,
+      "gdpTrillion": 534.6031999999999,
+      "taxTrillion": 82.79180000000001,
+      "finesTrillion": 0.2587,
+      "socialTrillion": 52.282300000000006,
+      "taxPercentGdp": 15.534979962708793,
+      "socialPercentGdp": 9.779645913080955,
+      "cells": {
+        "gdp": "L48",
+        "tax": "BD9",
+        "social": "BD44",
+        "fines": "BD77"
+      }
+    },
+    {
+      "year": 2005,
+      "gdpTrillion": 538.8724,
+      "taxTrillion": 88.2314,
+      "finesTrillion": 0.2687,
+      "socialTrillion": 53.508300000000006,
+      "taxPercentGdp": 16.423201485175337,
+      "socialPercentGdp": 9.929679085438408,
+      "cells": {
+        "gdp": "M48",
+        "tax": "BI9",
+        "social": "BI44",
+        "fines": "BI77"
+      }
+    },
+    {
+      "year": 2006,
+      "gdpTrillion": 542.8157,
+      "taxTrillion": 92.19239999999999,
+      "finesTrillion": 0.2741,
+      "socialTrillion": 55.422,
+      "taxPercentGdp": 17.034603089041088,
+      "socialPercentGdp": 10.21009524963998,
+      "cells": {
+        "gdp": "N48",
+        "tax": "BN9",
+        "social": "BN44",
+        "fines": "BN77"
+      }
+    },
+    {
+      "year": 2007,
+      "gdpTrillion": 543.816,
+      "taxTrillion": 94.24789999999999,
+      "finesTrillion": 0.2692,
+      "socialTrillion": 56.8296,
+      "taxPercentGdp": 17.3803455580564,
+      "socialPercentGdp": 10.450152257381173,
+      "cells": {
+        "gdp": "O48",
+        "tax": "BS9",
+        "social": "BS44",
+        "fines": "BS77"
+      }
+    },
+    {
+      "year": 2008,
+      "gdpTrillion": 522.4717,
+      "taxTrillion": 86.14110000000001,
+      "finesTrillion": 0.2543,
+      "socialTrillion": 57.546699999999994,
+      "taxPercentGdp": 16.535900413362103,
+      "socialPercentGdp": 11.014319053070242,
+      "cells": {
+        "gdp": "P48",
+        "tax": "BX9",
+        "social": "BX44",
+        "fines": "BX77"
+      }
+    },
+    {
+      "year": 2009,
+      "gdpTrillion": 500.842,
+      "taxTrillion": 75.7444,
+      "finesTrillion": 0.2479,
+      "socialTrillion": 55.5223,
+      "taxPercentGdp": 15.172908821544517,
+      "socialPercentGdp": 11.085791527068418,
+      "cells": {
+        "gdp": "Q48",
+        "tax": "CC9",
+        "social": "CC44",
+        "fines": "CC77"
+      }
+    },
+    {
+      "year": 2010,
+      "gdpTrillion": 509.17940000000004,
+      "taxTrillion": 78.6156,
+      "finesTrillion": 0.2393,
+      "socialTrillion": 57.4192,
+      "taxPercentGdp": 15.48666344317936,
+      "socialPercentGdp": 11.276811277125507,
+      "cells": {
+        "gdp": "R48",
+        "tax": "CH9",
+        "social": "CH44",
+        "fines": "CH77"
+      }
+    },
+    {
+      "year": 2011,
+      "gdpTrillion": 504.2047,
+      "taxTrillion": 80.45039999999999,
+      "finesTrillion": 0.236,
+      "socialTrillion": 59.353300000000004,
+      "taxPercentGdp": 16.00270683712389,
+      "socialPercentGdp": 11.771667340665408,
+      "cells": {
+        "gdp": "S48",
+        "tax": "CM9",
+        "social": "CM44",
+        "fines": "CM77"
+      }
+    },
+    {
+      "year": 2012,
+      "gdpTrillion": 504.5383,
+      "taxTrillion": 82.6199,
+      "finesTrillion": 0.2395,
+      "socialTrillion": 61.083400000000005,
+      "taxPercentGdp": 16.42281666228312,
+      "socialPercentGdp": 12.106791496304641,
+      "cells": {
+        "gdp": "T48",
+        "tax": "CR9",
+        "social": "CR44",
+        "fines": "CR77"
+      }
+    },
+    {
+      "year": 2013,
+      "gdpTrillion": 519.1542000000001,
+      "taxTrillion": 87.7835,
+      "finesTrillion": 0.2375,
+      "socialTrillion": 62.5922,
+      "taxPercentGdp": 16.95469284463075,
+      "socialPercentGdp": 12.056572016560782,
+      "cells": {
+        "gdp": "U48",
+        "tax": "CW9",
+        "social": "CW44",
+        "fines": "CW77"
+      }
+    },
+    {
+      "year": 2014,
+      "gdpTrillion": 533.7461,
+      "taxTrillion": 96.0042,
+      "finesTrillion": 0.22390000000000002,
+      "socialTrillion": 64.8337,
+      "taxPercentGdp": 18.028815573547046,
+      "socialPercentGdp": 12.14691779480918,
+      "cells": {
+        "gdp": "V48",
+        "tax": "DB9",
+        "social": "DB44",
+        "fines": "DB77"
+      }
+    },
+    {
+      "year": 2015,
+      "gdpTrillion": 551.9449000000001,
+      "taxTrillion": 100.03739999999999,
+      "finesTrillion": 0.2228,
+      "socialTrillion": 67.0205,
+      "taxPercentGdp": 18.164892908694327,
+      "socialPercentGdp": 12.142606988487437,
+      "cells": {
+        "gdp": "W48",
+        "tax": "DG9",
+        "social": "DG44",
+        "fines": "DG77"
+      }
+    },
+    {
+      "year": 2016,
+      "gdpTrillion": 556.2733000000001,
+      "taxTrillion": 99.4131,
+      "finesTrillion": 0.21530000000000002,
+      "socialTrillion": 69.0965,
+      "taxPercentGdp": 17.909973388979843,
+      "socialPercentGdp": 12.42132239674275,
+      "cells": {
+        "gdp": "X48",
+        "tax": "DL9",
+        "social": "DL44",
+        "fines": "DL77"
+      }
+    },
+    {
+      "year": 2017,
+      "gdpTrillion": 567.6681,
+      "taxTrillion": 103.5195,
+      "finesTrillion": 0.2053,
+      "socialTrillion": 70.9515,
+      "taxPercentGdp": 18.272085396378625,
+      "socialPercentGdp": 12.498764683095635,
+      "cells": {
+        "gdp": "Y48",
+        "tax": "DQ9",
+        "social": "DQ44",
+        "fines": "DQ77"
+      }
+    },
+    {
+      "year": 2018,
+      "gdpTrillion": 569.9444,
+      "taxTrillion": 106.1202,
+      "finesTrillion": 0.19240000000000002,
+      "socialTrillion": 72.9562,
+      "taxPercentGdp": 18.653152833855373,
+      "socialPercentGdp": 12.800581951502638,
+      "cells": {
+        "gdp": "Z48",
+        "tax": "DV9",
+        "social": "DV44",
+        "fines": "DV77"
+      }
+    },
+    {
+      "year": 2019,
+      "gdpTrillion": 570.6189,
+      "taxTrillion": 105.193,
+      "finesTrillion": 0.1822,
+      "socialTrillion": 74.3418,
+      "taxPercentGdp": 18.466826107582484,
+      "socialPercentGdp": 13.028275088680028,
+      "cells": {
+        "gdp": "AA48",
+        "tax": "EA9",
+        "social": "EA44",
+        "fines": "EA77"
+      }
+    },
+    {
+      "year": 2020,
+      "gdpTrillion": 554.3423,
+      "taxTrillion": 107.4787,
+      "finesTrillion": 0.1636,
+      "socialTrillion": 73.6849,
+      "taxPercentGdp": 19.418020237676252,
+      "socialPercentGdp": 13.292310545307473,
+      "cells": {
+        "gdp": "AB48",
+        "tax": "EF9",
+        "social": "EF44",
+        "fines": "EF77"
+      }
+    },
+    {
+      "year": 2021,
+      "gdpTrillion": 576.554,
+      "taxTrillion": 116.1956,
+      "finesTrillion": 0.1519,
+      "socialTrillion": 75.9314,
+      "taxPercentGdp": 20.179809696923446,
+      "socialPercentGdp": 13.169867870138788,
+      "cells": {
+        "gdp": "AC48",
+        "tax": "EK9",
+        "social": "EK44",
+        "fines": "EK77"
+      }
+    },
+    {
+      "year": 2022,
+      "gdpTrillion": 591.6513,
+      "taxTrillion": 123.04360000000001,
+      "finesTrillion": 0.1464,
+      "socialTrillion": 77.7012,
+      "taxPercentGdp": 20.82138583993646,
+      "socialPercentGdp": 13.132938269551675,
+      "cells": {
+        "gdp": "AD48",
+        "tax": "EP9",
+        "social": "EP44",
+        "fines": "EP77"
+      }
+    },
+    {
+      "year": 2023,
+      "gdpTrillion": 619.3904,
+      "taxTrillion": 124.775,
+      "finesTrillion": 0.1504,
+      "socialTrillion": 79.6897,
+      "taxPercentGdp": 20.169088833149495,
+      "socialPercentGdp": 12.865827432908224,
+      "cells": {
+        "gdp": "AE48",
+        "tax": "EU9",
+        "social": "EU44",
+        "fines": "EU77"
+      }
+    },
+    {
+      "year": 2024,
+      "gdpTrillion": 642.4146999999999,
+      "taxTrillion": 130.0736,
+      "finesTrillion": 0.14830000000000002,
+      "socialTrillion": 83.6985,
+      "taxPercentGdp": 20.270691190596978,
+      "socialPercentGdp": 13.028733620198915,
+      "cells": {
+        "gdp": "AF48",
+        "tax": "EZ9",
+        "social": "EZ44",
+        "fines": "EZ77"
+      }
+    }
+  ]
+}

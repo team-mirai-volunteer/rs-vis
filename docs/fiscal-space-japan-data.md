@@ -45,6 +45,10 @@ CPI出典：[総務省2024年平均](https://www.e-stat.go.jp/stat-search/file-d
 
 CPI総合は初期インフレ率のスライダーで変更できる。将来の基準インフレ率2%、前年の乖離の持続率25%は別のモデル仮定である。コアCPIは初期状態の参考指標で、総合CPIの操作とは連動しない。
 
+### 財政の橋渡し推計（2026-09-17）
+
+最新版の一般政府の財政額（税・社会負担・その他収入・受取利子・基礎的歳出・支払利子・PB・総債務・純債務）は、IMF 2026年対日4条協議 表4の2026年推計欄（GDP比）に最新の名目GDP（季節調整済み年率 689.2兆円）を掛けた `estimated` の値に置き換えた（`app/lib/fiscal-space/data/imf-2026-projections.json`）。2024年実績と2026年GDPを一つの比率に混ぜていた初期総債務/GDP 197.4% は 203.1% になる。現金・預金は2026年推計がないため2024年のGDP比20%を据え置き、構造的PBはPBから税・社会負担比率×GDPギャップを差し引いた近似。対外収支・エネルギーは引き続き2024年の一式を継続採用する。
+
 ## 2024年で揃える版
 
 2024暦年（エネルギーは2024年度）を採用。対象年を揃える版であり、全項目が同じ日に公表されたビンテージではない。一般政府財政に合わせ、従来の2024年基準値を保持する。
@@ -72,6 +76,20 @@ CPI総合は初期インフレ率のスライダーで変更できる。将来�
 - 実質GDPは選択した初期状態の価格に正規化するので年0で名目GDPと等しい。2024年版は2024年価格。2020年連鎖価格の実質額ではない。
 - 一次エネルギーは国内供給を100とする指数。海外依存分＝100−16.3であり、輸入の物理量の実測ではない。
 - 輸出入・所得収支は同じSNA表で揃える。SNAの経常対外収支は国際収支統計の経常収支と異なる。NIIPは財務省の国際収支統計を使用し、将来はSNA経常収支を累積する近似。評価替え・両統計の調整は行わない。
+
+## burden-incidence-2024.json の同期
+
+`app/lib/fiscal-space/burden-incidence-2024.json`（法人課税の賃金帰着に使う法人課税総額・賃金総額・参照シェア）は、税負担ビュー（/tax-burden）の `public/data/tax-burden-incidence.json.gz` を展開した**手動コピー**で、ビルド時に生成されない（[監査記録](fiscal-space-trade-burden-audit.md) 国民負担率の節）。`/data-update` や `python scripts/generate-tax-burden-stats.py` → `node scripts/compress-tax-burden-data.mjs` で税負担側の `.gz` を更新したときは、次を必ず実行する。
+
+- 元: `public/data/tax-burden-incidence.json.gz`（生成元は `scripts/generate-tax-burden-stats.py`。`data/server/tax-burden-incidence.json.gz` は同一内容）
+- 先: `app/lib/fiscal-space/burden-incidence-2024.json`（Git 管理・非圧縮。`app/lib/fiscal-space/burden-data.ts` が import）
+
+```bash
+gunzip -c public/data/tax-burden-incidence.json.gz > app/lib/fiscal-space/burden-incidence-2024.json
+npm run typecheck && npm run test:fiscal-space
+```
+
+`metadata.retrievedOn` が両者で一致していれば同期済み。2026-09-17 に上記コマンドで同期し、税負担側（2026-09-15 取得）の参照シェア（土居2016・2017）と `oecd` ブロックが財政側のコピーにも入った。数値本体（法人課税総額・賃金総額）は変わらず、型検査と財政テスト 190 件は成功。以後 tax-burden データを更新したら同じ手順で再コピーする。
 
 ## 残る仮定
 

@@ -3,7 +3,7 @@ import { percent } from './format';
 
 export function FiscalVintageBadge({ latest, projected = false }: { latest: boolean; projected?: boolean }) {
   return <span className="mt-1 block rounded bg-mirai-surface-warm px-1 py-1 text-xs font-normal" data-testid="fiscal-vintage">
-    {projected ? '試算の初期条件：' : '年0の比率：'}{latest ? '分子2024年／分母2026Q2（年率）' : '分子・分母2024年'}
+    {projected ? '試算の初期条件：' : '年0の比率：'}{latest ? '分子はIMF 2026年推計比率×分母2026Q2（年率）の橋渡し推計' : '分子・分母2024年'}
     {projected && '。以後はモデルで延長'}
   </span>;
 }

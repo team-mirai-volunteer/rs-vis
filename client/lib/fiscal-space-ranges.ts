@@ -12,7 +12,7 @@ export const THRESHOLD_BOUNDS: Record<ConstraintId, Bounds> = {
   capacity: [.8, 1.2], labour: [.8, 1.6], sector: [.8, 1.2], energy: [.8, 1.2], external: [.05, .6],
 };
 const calibration: Record<string, Bounds> = {
-  taxRevenueElasticity: [0, 2], taxCollectionLag: [0, 3], multiplierScale: [0, 3],
+  taxRevenueElasticity: [0, 2], socialContributionElasticity: [0, 2], taxCollectionLag: [0, 3], multiplierScale: [0, 3],
   gapDemandSensitivity: [0, 10], gapPriceSensitivity: [0, 10], gapInflationSlope: [0, .2], marketRate: [0, .06],
   structuralUnemployment: [.01, .05],
   hoursElasticity: [0, 1], participationElasticity: [0, 1], employeeReliefShare: [0, 1], employerDemandElasticity: [0, 1],
@@ -25,6 +25,8 @@ const calibration: Record<string, Bounds> = {
   'electricity.demandGrowth': [-.1, .1], 'electricity.peakGrowth': [-.1, .1],
   'electricity.nonThermalDecline': [0, 1], 'electricity.plannedNonThermalTwh': [0, 100],
   'electricity.fuelImportYenPerKwh': [0, 50], 'electricity.marginalThermalShare': [0, 1],
+  'demographics.labourElasticity': [0, 1], 'demographics.fertilityPerGdpPoint': [0, .5], 'demographics.fertilityIncomeElasticity': [0, 2],
+  'demographics.ageingShare': [0, .8], 'demographics.childBenefitShare': [0, .2],
 };
 const supply: Record<string, Bounds> = {
   serviceShare: [0, 1], realizationRate: [0, 1], rampYears: [1, 10], referenceOverlap: [0, 1],

@@ -1,0 +1,3133 @@
+{
+  "form": {
+    "dataset": "latest",
+    "horizon": 15,
+    "inputs": {
+      "capital": 1.18,
+      "labour": 1.08,
+      "energy": 1.12,
+      "materials": 1.2
+    },
+    "longRun": {
+      "years": 30,
+      "realGrowth": 0.01,
+      "inflation": 0.02,
+      "rate": 0.03,
+      "realization": 0.5
+    },
+    "loads": {},
+    "resource": {
+      "mode": "estimated",
+      "loadScale": 1,
+      "spendingShare": 0.6,
+      "priceIndex": 1.2,
+      "electricityPrice": 20,
+      "loadFactor": 0.6,
+      "coincidence": 1,
+      "operatingOutputRatio": 0.5,
+      "region": "demand-share"
+    },
+    "corporateShare": 0.25,
+    "supply": {
+      "public-investment": {
+        "kind": "capital",
+        "additionality": 0.5,
+        "lag": 2,
+        "depreciation": 0.03,
+        "lifetime": 40,
+        "yield": 0.122,
+        "unitCost": 1.2,
+        "employment": 0,
+        "serviceShare": 1,
+        "realizationRate": 0.5,
+        "rampYears": 3,
+        "referenceOverlap": 0.5
+      },
+      "rd": {
+        "kind": "research",
+        "additionality": 0.5,
+        "lag": 3,
+        "depreciation": 0.15,
+        "lifetime": 20,
+        "yield": 0.3,
+        "unitCost": 1,
+        "employment": 0
+      },
+      "education": {
+        "kind": "education",
+        "additionality": 0.5,
+        "lag": 4,
+        "depreciation": 0.02,
+        "lifetime": 35,
+        "yield": 0.09,
+        "unitCost": 1500000,
+        "employment": 0.8
+      },
+      "childcare": {
+        "kind": "childcare",
+        "additionality": 0.5,
+        "lag": 0,
+        "depreciation": 0,
+        "lifetime": 1,
+        "yield": 0.188,
+        "unitCost": 2000000,
+        "employment": 0.8
+      },
+      "grid": {
+        "kind": "grid",
+        "additionality": 0.5,
+        "lag": 5,
+        "depreciation": 0.02,
+        "lifetime": 40,
+        "yield": 0.028120516499282648,
+        "unitCost": 1,
+        "employment": 0,
+        "maintenanceRate": 0.01,
+        "maintenanceImportShare": 0.2,
+        "generationOverlapShare": 1
+      }
+    },
+    "trade": {
+      "selected": "semiconductors",
+      "industry": {
+        "income-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "resident-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "consumption-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "social-insurance": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "cash": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "public-investment": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "defence": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "healthcare": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "childcare": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "education": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "rd": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "semiconductors": {
+          "annualSalesPerInvestment": 0.8946910448817695,
+          "capexImportShare": null,
+          "exportShare": 0.6915412693682956,
+          "domesticReplacementShare": 0.5973893385838256,
+          "operatingImportShare": 0.1928650497213598,
+          "lag": 3,
+          "lifetime": 15,
+          "additionality": 0.5,
+          "depreciation": 0.1
+        },
+        "grid": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "generation": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        }
+      },
+      "power": {
+        "technology": "solar",
+        "capexPerKw": 176000,
+        "capacityFactor": 0.183,
+        "lag": 1,
+        "curtailment": 0,
+        "thermalReplacement": 0.8,
+        "displacedFuelYenPerKwh": 9,
+        "operatingImportYenPerKwh": 0,
+        "capexImportShare": null,
+        "firmShare": 0.1
+      }
+    },
+    "policySettings": {
+      "income-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "resident-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "consumption-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "social-insurance": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "cash": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "public-investment": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "defence": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "healthcare": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "childcare": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "education": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "rd": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "semiconductors": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "grid": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "generation": {
+        "kind": "growth",
+        "duration": 3
+      }
+    },
+    "rateShock": 0,
+    "energyShock": 0,
+    "stresses": {
+      "importPrice": false,
+      "energyPrice": false,
+      "rate": false
+    },
+    "calibration": {
+      "taxRevenueElasticity": 1.3,
+      "taxCollectionLag": 0,
+      "productionModel": "leontief",
+      "gapDemandSensitivity": 3,
+      "gapPriceSensitivity": 5,
+      "gapInflationSlope": 0.05,
+      "structuralUnemployment": 0.025,
+      "inflationRule": "peak",
+      "consumptionTax": {
+        "revenuePerPoint": 3500000000000,
+        "cpiShare": 0.85,
+        "baseRate": 0.1,
+        "passThrough": 1,
+        "referenceDirectCpi": 0.78,
+        "referenceDirectDeflator": 0.5
+      },
+      "electricity": {
+        "generationTwh": 991.1,
+        "thermalShare": 0.675,
+        "demandGrowth": 0.005,
+        "peakGrowth": 0.004,
+        "nonThermalDecline": 0,
+        "plannedNonThermalTwh": 0,
+        "fuelImportYenPerKwh": 9,
+        "marginalThermalShare": 1
+      },
+      "referenceModel": "ef2026",
+      "multiplierScale": 1,
+      "hoursElasticity": 0,
+      "participationElasticity": 0,
+      "netLabourIncomeShare": 0.4,
+      "employeeReliefShare": 0.5,
+      "employerDemandElasticity": 0,
+      "employerLabourCostShare": 0.55,
+      "baselineRealGrowth": 0.01,
+      "baselineInflation": 0.02,
+      "marketRate": 0.02,
+      "newDebtMaturity": 10,
+      "stockFlowAdjustmentRatio": 0,
+      "overflowImportShare": 0.4,
+      "inflationPassThrough": 1.4,
+      "inflationPersistence": 0.25,
+      "energyPricePassThrough": 0.25,
+      "investmentDepreciation": 0.03,
+      "goodsImportShare": 0.75,
+      "energyDomesticPricePassThrough": 0.5,
+      "expenditurePriceIndexation": 1,
+      "capacityPriceSensitivity": 0.005,
+      "capacityPressureStart": 0.85,
+      "referenceCapacityRatio": 1.1,
+      "essentialImportShare": 0.25,
+      "wageInflationPassThrough": 0.8,
+      "cesSigma": 0.8,
+      "weights": {
+        "capital": 0.3,
+        "labour": 0.4,
+        "energy": 0.15,
+        "materials": 0.15
+      },
+      "cobbWeights": {
+        "capital": 0.35,
+        "labour": 0.5,
+        "energy": 0.15
+      },
+      "searchCap": 100000000000000,
+      "searchStep": 1000000000000,
+      "searchTolerance": 10000000000,
+      "reserveShare": 0
+    },
+    "gap": 0.7,
+    "inflation": 1.9,
+    "construction": 94,
+    "firmCapacity": 187.29000000000002,
+    "amounts": {
+      "income-tax": 0,
+      "resident-tax": 0,
+      "consumption-tax": 0,
+      "social-insurance": 5,
+      "cash": 0,
+      "public-investment": 0,
+      "defence": 2,
+      "healthcare": 0,
+      "childcare": 2,
+      "education": 0,
+      "rd": 3,
+      "semiconductors": 0,
+      "grid": 3,
+      "generation": 0
+    },
+    "thresholds": {
+      "debt": 2.8,
+      "interestGdp": 0.065,
+      "interestTax": 0.3,
+      "gfn": 0.45,
+      "inflation": 0.025,
+      "capacity": 0.995,
+      "labour": 1.25,
+      "sector": 1,
+      "energy": 0.95,
+      "external": 0.3
+    }
+  },
+  "initial": {
+    "year": 0,
+    "macro": {
+      "nominalGdp": 689200000000000,
+      "realGdp": 689200000000000,
+      "potentialGdp": 684409136047666.4,
+      "inflation": 0.019,
+      "coreInflation": 0.018,
+      "expectedInflation": 0.02,
+      "nominalWageGrowth": 0.03,
+      "realGrowth": 0.016096256256000085,
+      "nominalGrowth": 0.05302281656099961
+    },
+    "fiscal": {
+      "primaryBalance": -10147200000000,
+      "structuralPrimaryBalance": -9513000000000,
+      "taxRevenue": 210554400000000,
+      "primaryExpenditure": 227677800000000,
+      "interestPayments": 8878800000000,
+      "interestRevenue": 8244600000000,
+      "otherPrimaryRevenue": 6976199999999.979,
+      "grossDebt": 1360359000000000,
+      "financialAssets": 461697600000000,
+      "netDebt": 898661400000000,
+      "liquidFinancialAssets": 126840000000000,
+      "liquidityAdjustedNetDebt": 1233519000000000
+    },
+    "debtPortfolio": [
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 1
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 2
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 3
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 4
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 5
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 6
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 7
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 8
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 9
+      },
+      {
+        "principal": 136035900000000,
+        "coupon": 0.006526806526806527,
+        "maturityYear": 10
+      }
+    ],
+    "production": {
+      "inputs": {
+        "capital": 1.18,
+        "labour": 1.08,
+        "energy": 1.12,
+        "materials": 1.2
+      },
+      "tfp": 1,
+      "labourProductivity": 1
+    },
+    "labour": {
+      "labourForce": 70190000,
+      "employment": 68500000,
+      "unemployment": 1690000,
+      "hoursWorked": 1700,
+      "participation": 0.641,
+      "wageGrowth": 0.03,
+      "sectorUtilization": {
+        "general": 0.87,
+        "construction": 0.94,
+        "healthcare": 0.92,
+        "research": 0.8,
+        "electronics": 0.88,
+        "electricity": 0.89
+      }
+    },
+    "energy": {
+      "primaryDemand": 100,
+      "domesticSupply": 16.3,
+      "importedEnergy": 83.7,
+      "fossilFuelImportDependency": 0.95,
+      "firmCapacity": 187.29000000000002,
+      "peakDemand": 159.62,
+      "reserveMargin": 0.17334920436035595,
+      "importBill": 20938620000000.004,
+      "renewableInstalledCapacity": 100,
+      "renewableFirmContribution": 20
+    },
+    "external": {
+      "exports": 139402299999999.98,
+      "imports": 145066700000000,
+      "tradeBalance": -5664400000000.023,
+      "goodsBalance": -3660200000000.0117,
+      "servicesBalance": -2004200000000.0117,
+      "primaryIncomeBalance": 38603199999999.95,
+      "secondaryIncomeBalance": -4252000000000,
+      "currentAccount": 28686800000000,
+      "niip": 561087000000000,
+      "termsOfTrade": 1,
+      "essentialImports": 40000000000000
+    },
+    "resilience": {}
+  },
+  "parameters": {
+    "taxRevenueElasticity": 1.3,
+    "taxCollectionLag": 0,
+    "productionModel": "leontief",
+    "gapDemandSensitivity": 3,
+    "gapPriceSensitivity": 5,
+    "gapInflationSlope": 0.05,
+    "structuralUnemployment": 0.025,
+    "inflationRule": "peak",
+    "consumptionTax": {
+      "revenuePerPoint": 3500000000000,
+      "cpiShare": 0.85,
+      "baseRate": 0.1,
+      "passThrough": 1,
+      "referenceDirectCpi": 0.78,
+      "referenceDirectDeflator": 0.5
+    },
+    "electricity": {
+      "generationTwh": 991.1,
+      "thermalShare": 0.675,
+      "demandGrowth": 0.005,
+      "peakGrowth": 0.004,
+      "nonThermalDecline": 0,
+      "plannedNonThermalTwh": 0,
+      "fuelImportYenPerKwh": 9,
+      "marginalThermalShare": 1
+    },
+    "referenceModel": "ef2026",
+    "multiplierScale": 1,
+    "hoursElasticity": 0,
+    "participationElasticity": 0,
+    "netLabourIncomeShare": 0.4,
+    "employeeReliefShare": 0.5,
+    "employerDemandElasticity": 0,
+    "employerLabourCostShare": 0.55,
+    "baselineRealGrowth": 0.01,
+    "baselineInflation": 0.02,
+    "marketRate": 0.02,
+    "newDebtMaturity": 10,
+    "stockFlowAdjustmentRatio": 0,
+    "overflowImportShare": 0.4,
+    "inflationPassThrough": 1.4,
+    "inflationPersistence": 0.25,
+    "energyPricePassThrough": 0.25,
+    "investmentDepreciation": 0.03,
+    "goodsImportShare": 0.75,
+    "energyDomesticPricePassThrough": 0.5,
+    "expenditurePriceIndexation": 1,
+    "capacityPriceSensitivity": 0.005,
+    "capacityPressureStart": 0.85,
+    "referenceCapacityRatio": 1.1,
+    "essentialImportShare": 0.25,
+    "wageInflationPassThrough": 0.8,
+    "cesSigma": 0.8,
+    "weights": {
+      "capital": 0.3,
+      "labour": 0.4,
+      "energy": 0.15,
+      "materials": 0.15
+    },
+    "cobbWeights": {
+      "capital": 0.35,
+      "labour": 0.5,
+      "energy": 0.15
+    },
+    "searchCap": 100000000000000,
+    "searchStep": 1000000000000,
+    "searchTolerance": 10000000000,
+    "reserveShare": 0,
+    "resourceModel": {
+      "mode": "estimated",
+      "loadScale": 1,
+      "spendingShare": 0.6,
+      "priceIndex": 1.2,
+      "electricityPrice": 20,
+      "loadFactor": 0.6,
+      "coincidence": 1,
+      "operatingOutputRatio": 0.5,
+      "region": "demand-share"
+    }
+  },
+  "policies": [
+    {
+      "id": "social-insurance",
+      "name": "社会保険料減税",
+      "kind": "permanent",
+      "channel": "tax",
+      "sector": "general",
+      "annualCost": 5000000000000,
+      "duration": 3,
+      "energyDemand": 0,
+      "potentialGdpEffect": 0,
+      "implementationLag": 0,
+      "capitalEffect": 0,
+      "tfpEffect": 0,
+      "energyCapacityEffect": 0,
+      "labourProductivityEffect": 0,
+      "load": {
+        "estimated": true,
+        "sectorLoads": {
+          "general": 0.0009302089331540127,
+          "construction": 0.00008122007032711456,
+          "healthcare": 0.0004468096060491943,
+          "research": 0.00004074661497842689,
+          "electronics": 0.00020421718051034606,
+          "electricity": 0.0010802570295046087
+        },
+        "workerYears": {
+          "general": 57288.823542000006,
+          "construction": 443.1386046,
+          "healthcare": 4120.3805688,
+          "research": 45.9324876,
+          "electronics": 109.0784298,
+          "electricity": 173.02804559999998
+        },
+        "priceIndex": 1.2,
+        "sectorUtilizationPerTrillion": 0.0009302089331540127,
+        "peakGwPerTrillion": 0.23104850972973745,
+        "operatingPeakGwPerTrillion": 0,
+        "annualGwhPerTrillion": 1214.3909671395,
+        "operatingAnnualGwhPerTrillion": 0,
+        "lag": 2,
+        "lifetime": 20,
+        "depreciation": 0.03
+      }
+    },
+    {
+      "id": "defence",
+      "name": "防衛",
+      "kind": "temporary",
+      "channel": "expenditure",
+      "sector": "general",
+      "annualCost": 2000000000000,
+      "duration": 3,
+      "energyDemand": 0,
+      "potentialGdpEffect": 0,
+      "implementationLag": 0,
+      "capitalEffect": 0,
+      "tfpEffect": 0,
+      "energyCapacityEffect": 0,
+      "labourProductivityEffect": 0,
+      "load": {
+        "estimated": true,
+        "sectorLoads": {
+          "general": 0.0009768191153723112,
+          "construction": 0.00010807859210062976,
+          "healthcare": 0.007352717329743534,
+          "research": 0.00024360968134333244,
+          "electronics": 0.00020406188335311912,
+          "electricity": 0.0008608012335676305
+        },
+        "workerYears": {
+          "general": 60159.407138,
+          "construction": 589.679328,
+          "healthcare": 67805.152806,
+          "research": 274.61419,
+          "electronics": 108.995481,
+          "electricity": 137.877145
+        },
+        "priceIndex": 1.2,
+        "sectorUtilizationPerTrillion": 0.0009768191153723112,
+        "peakGwPerTrillion": 0.18411066644511037,
+        "operatingPeakGwPerTrillion": 0,
+        "annualGwhPerTrillion": 967.6856628355,
+        "operatingAnnualGwhPerTrillion": 0,
+        "lag": 2,
+        "lifetime": 20,
+        "depreciation": 0.03
+      }
+    },
+    {
+      "id": "childcare",
+      "name": "子育て",
+      "kind": "temporary",
+      "channel": "expenditure",
+      "sector": "general",
+      "annualCost": 2000000000000,
+      "duration": 3,
+      "energyDemand": 0,
+      "potentialGdpEffect": 0,
+      "implementationLag": 0,
+      "capitalEffect": 0,
+      "tfpEffect": 0,
+      "energyCapacityEffect": 0,
+      "labourProductivityEffect": 0,
+      "load": {
+        "estimated": true,
+        "sectorLoads": {
+          "general": 0.0005805717523028286,
+          "construction": 0.00009635476720828942,
+          "healthcare": 0.017760071518709425,
+          "research": 0,
+          "electronics": 0.00014260618542488414,
+          "electricity": 0.0012087678338734795
+        },
+        "workerYears": {
+          "general": 35755.701204,
+          "construction": 525.713865,
+          "healthcare": 163779.499356,
+          "research": 0,
+          "electronics": 76.170177,
+          "electricity": 193.612011
+        },
+        "priceIndex": 1.2,
+        "sectorUtilizationPerTrillion": 0.0005805717523028286,
+        "peakGwPerTrillion": 0.2585347734371195,
+        "operatingPeakGwPerTrillion": 0,
+        "annualGwhPerTrillion": 1358.8587691854998,
+        "operatingAnnualGwhPerTrillion": 0,
+        "lag": 2,
+        "lifetime": 20,
+        "depreciation": 0.03
+      },
+      "supply": {
+        "kind": "childcare",
+        "additionality": 0.5,
+        "lag": 0,
+        "depreciation": 0,
+        "lifetime": 1,
+        "yield": 0.188,
+        "unitCost": 2000000,
+        "employment": 0.8
+      }
+    },
+    {
+      "id": "rd",
+      "name": "研究開発",
+      "kind": "growth",
+      "channel": "expenditure",
+      "sector": "research",
+      "annualCost": 3000000000000,
+      "duration": 3,
+      "energyDemand": 0,
+      "potentialGdpEffect": 0,
+      "implementationLag": 0,
+      "capitalEffect": 0,
+      "tfpEffect": 0,
+      "energyCapacityEffect": 0,
+      "labourProductivityEffect": 0,
+      "load": {
+        "estimated": true,
+        "sectorLoads": {
+          "general": 0.0007168837307843474,
+          "construction": 0.00010234294258424516,
+          "healthcare": 7.736442229933172e-7,
+          "research": 0.03592496904626992,
+          "electronics": 0.00038370159401234806,
+          "electricity": 0.0008129823727850499
+        },
+        "workerYears": {
+          "general": 44150.75376,
+          "construction": 558.38549,
+          "healthcare": 7.134378,
+          "research": 40497.184763,
+          "electronics": 204.946358,
+          "electricity": 130.217853
+        },
+        "priceIndex": 1.2,
+        "sectorUtilizationPerTrillion": 0.03592496904626992,
+        "peakGwPerTrillion": 0.17388303062899546,
+        "operatingPeakGwPerTrillion": 0,
+        "annualGwhPerTrillion": 913.929208986,
+        "operatingAnnualGwhPerTrillion": 0,
+        "lag": 3,
+        "lifetime": 10,
+        "depreciation": 0
+      },
+      "supply": {
+        "kind": "research",
+        "additionality": 0.5,
+        "lag": 3,
+        "depreciation": 0.15,
+        "lifetime": 20,
+        "yield": 0.3,
+        "unitCost": 1,
+        "employment": 0
+      },
+      "trade": {
+        "kind": "industry",
+        "assumptions": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        }
+      }
+    },
+    {
+      "id": "grid",
+      "name": "送電網投資",
+      "kind": "growth",
+      "channel": "expenditure",
+      "sector": "construction",
+      "annualCost": 3000000000000,
+      "duration": 3,
+      "energyDemand": 0,
+      "potentialGdpEffect": 0,
+      "implementationLag": 0,
+      "capitalEffect": 0,
+      "tfpEffect": 0,
+      "energyCapacityEffect": 0,
+      "labourProductivityEffect": 0,
+      "load": {
+        "estimated": true,
+        "sectorLoads": {
+          "general": 0.0009967201372987936,
+          "construction": 0.009802702666796915,
+          "healthcare": 6.721880132799956e-7,
+          "research": 0,
+          "electronics": 0.0012577447919086707,
+          "electricity": 0.0008455516940948694
+        },
+        "workerYears": {
+          "general": 61385.052359,
+          "construction": 53483.775175,
+          "healthcare": 6.198771,
+          "research": 0,
+          "electronics": 671.798654,
+          "electricity": 135.43458
+        },
+        "priceIndex": 1.2,
+        "sectorUtilizationPerTrillion": 0.009802702666796915,
+        "peakGwPerTrillion": 0.18084905173906013,
+        "operatingPeakGwPerTrillion": 0,
+        "annualGwhPerTrillion": 950.5426159405,
+        "operatingAnnualGwhPerTrillion": 0,
+        "lag": 2,
+        "lifetime": 20,
+        "depreciation": 0.03
+      },
+      "supply": {
+        "kind": "grid",
+        "additionality": 0.5,
+        "lag": 5,
+        "depreciation": 0.02,
+        "lifetime": 40,
+        "yield": 0.028120516499282648,
+        "unitCost": 1,
+        "employment": 0,
+        "maintenanceRate": 0.01,
+        "maintenanceImportShare": 0.2,
+        "generationOverlapShare": 1
+      }
+    }
+  ],
+  "cases": [
+    {
+      "gapClosureYears": 0,
+      "withPolicy": false,
+      "terminalInflation": 0.02049162619783007,
+      "cumulativeInflation": 0.3549377112277552,
+      "peakInflation": 0.02049162619783007,
+      "peakYear": 15,
+      "constraintPeak": 0.02049162619783007,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.02011601781804706,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.020116017818047,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000016017818047039758,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 696092000000000,
+          "potentialGdp": 691253227408143
+        },
+        {
+          "year": 2,
+          "inflation": 0.02039524455590902,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.0409215334768462,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00001624010139722668,
+            "persistence": 0.000029004454511758967,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 703052920000000,
+          "potentialGdp": 698165759682224.5
+        },
+        {
+          "year": 3,
+          "inflation": 0.02046527346393412,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.0622242773139476,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": 0.00001646232495689219,
+            "persistence": 0.00009881113897724624,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 710083449200000.1,
+          "potentialGdp": 705147417279046.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.020482997462305086,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.0839818144905682,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00001667909632151034,
+            "persistence": 0.00011631836598353668,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 717184283692000,
+          "potentialGdp": 712198891451837.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.020487640112566652,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.1061900437944179,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": 0.000016890746990402943,
+            "persistence": 0.00012074936557626096,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 724356126528920.1,
+          "potentialGdp": 719320880366355.6
+        },
+        {
+          "year": 6,
+          "inflation": 0.02048900783238916,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.1288547802658326,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00001709780424756586,
+            "persistence": 0.0001219100281416672,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 731599687794209.2,
+          "potentialGdp": 726514089170019.2
+        },
+        {
+          "year": 7,
+          "inflation": 0.02048955249841633,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.1519845095491776,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000017300540318940733,
+            "persistence": 0.00012225195809730752,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 738915684672151.4,
+          "potentialGdp": 733779230061719.4
+        },
+        {
+          "year": 8,
+          "inflation": 0.020489887213108293,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.175588542221088,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00001749908850416263,
+            "persistence": 0.00012238812460406076,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 746304841518872.9,
+          "potentialGdp": 741117022362336.6
+        },
+        {
+          "year": 9,
+          "inflation": 0.020490165331801702,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.19967654581337,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000017693528524618197,
+            "persistence": 0.00012247180327705498,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 753767889934061.5,
+          "potentialGdp": 748528192585959.9
+        },
+        {
+          "year": 10,
+          "inflation": 0.020490425254672484,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.2242584284051425,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000017883921722076435,
+            "persistence": 0.00012254133295041755,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 761305568833402.1,
+          "potentialGdp": 756013474511819.5
+        },
+        {
+          "year": 11,
+          "inflation": 0.02049067663694082,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.2493443119816416,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000018070323272767935,
+            "persistence": 0.00012260631366812266,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 768918624521736.1,
+          "potentialGdp": 763573609256937.6
+        },
+        {
+          "year": 12,
+          "inflation": 0.020490921945319984,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.274944528761287,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00001825278608470665,
+            "persistence": 0.00012266915923522196,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 776607810766953.6,
+          "potentialGdp": 771209345349507.1
+        },
+        {
+          "year": 13,
+          "inflation": 0.020491161848313233,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.3010696234477561,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000018431361983297473,
+            "persistence": 0.0001227304863299812,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 784373888874623.1,
+          "potentialGdp": 778921438803002.1
+        },
+        {
+          "year": 14,
+          "inflation": 0.020491396564141784,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.3277303570593828,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000018606102063390608,
+            "persistence": 0.00012279046207831854,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 792217627763369.2,
+          "potentialGdp": 786710653191032.1
+        },
+        {
+          "year": 15,
+          "inflation": 0.02049162619783007,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.3549377112277552,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": 0.000018777056794602892,
+            "persistence": 0.00012284914103542592,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 800139804041003.1,
+          "potentialGdp": 794577759722942.5
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 0,
+      "withPolicy": true,
+      "terminalInflation": 0.02040514529566262,
+      "cumulativeInflation": 0.35782480152228513,
+      "peakInflation": 0.024510019881265777,
+      "peakYear": 2,
+      "constraintPeak": 0.024510019881265777,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.023015189394183233,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.0230151893941832,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00005997337414051972,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0.002759280316596872,
+            "capacityPrices": 0.00009593570344589464,
+            "directTaxPrices": 0
+          },
+          "realGdp": 708821846539403,
+          "potentialGdp": 692012092265093.2
+        },
+        {
+          "year": 2,
+          "inflation": 0.024510019881265777,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.0480893120250716,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00005869895336504394,
+            "persistence": 0.000039993343535128616,
+            "referencePrices": 0.004075230656145246,
+            "capacityPrices": -0.000013903071779702566,
+            "directTaxPrices": 0
+          },
+          "realGdp": 714508041425180,
+          "potentialGdp": 698917368905583
+        },
+        {
+          "year": 3,
+          "inflation": 0.023598516338133813,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.0728226647787187,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": 0.00005738845594229111,
+            "persistence": 0.00011217307422504205,
+            "referencePrices": 0.003104452532851386,
+            "capacityPrices": -0.0000254977248850313,
+            "directTaxPrices": 0
+          },
+          "realGdp": 719111220562621.6,
+          "potentialGdp": 705891703390295.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.020602095159850675,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.0949250594081343,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.00003124939934521923,
+            "persistence": 0.00012989038254183558,
+            "referencePrices": 0.00020385000411996811,
+            "capacityPrices": -0.00011289462615636957,
+            "directTaxPrices": 0
+          },
+          "realGdp": 713789151922037.9,
+          "potentialGdp": 712667163256337.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.01900439559922984,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.1157334483886368,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": 0.00003101777721680179,
+            "persistence": 0.0001277849454717631,
+            "referencePrices": -0.0014855364750352062,
+            "capacityPrices": -0.00001887064842356851,
+            "directTaxPrices": 0
+          },
+          "realGdp": 720788099846360.8,
+          "potentialGdp": 720186686290116.9
+        },
+        {
+          "year": 6,
+          "inflation": 0.017892094911631018,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.1356962571432876,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": 0.000013303967594603639,
+            "persistence": 0.00012720068067214284,
+            "referencePrices": -0.0026048152353952826,
+            "capacityPrices": 0.000006405498759465526,
+            "directTaxPrices": 0
+          },
+          "realGdp": 730148342825186.5,
+          "potentialGdp": 727758469178435
+        },
+        {
+          "year": 7,
+          "inflation": 0.018514443999014807,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.1567230418960577,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000003317734761154977,
+            "persistence": 0.00012262616206668627,
+            "referencePrices": -0.001985906159945214,
+            "capacityPrices": 0.00003104173165457885,
+            "directTaxPrices": 0
+          },
+          "realGdp": 739589651848213,
+          "potentialGdp": 734894409572519.5
+        },
+        {
+          "year": 8,
+          "inflation": 0.019097752227809295,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.1788138519463864,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000018962012204383218,
+            "persistence": 0.00011732710682638234,
+            "referencePrices": -0.0013748933565924618,
+            "capacityPrices": 0.000024280489779667084,
+            "directTaxPrices": 0
+          },
+          "realGdp": 748358863619181.2,
+          "potentialGdp": 742126242692806.2
+        },
+        {
+          "year": 9,
+          "inflation": 0.02040291326532251,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.2028650887236092,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000017633056345219945,
+            "persistence": 0.00011209127365549836,
+            "referencePrices": -0.00005227685657026698,
+            "capacityPrices": 0.000010731904582806822,
+            "directTaxPrices": 0
+          },
+          "realGdp": 755893387355886.2,
+          "potentialGdp": 749410723136173.6
+        },
+        {
+          "year": 10,
+          "inflation": 0.020401481323330417,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.2274053183656901,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.00001639381212730029,
+            "persistence": 0.00011111455432756892,
+            "referencePrices": -0.00005125576246448241,
+            "capacityPrices": 0.000008016343594466709,
+            "directTaxPrices": 0
+          },
+          "realGdp": 763466642755263.6,
+          "potentialGdp": 756787077887973.9
+        },
+        {
+          "year": 11,
+          "inflation": 0.02040009902836526,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.2524445084082925,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000015191014585652233,
+            "persistence": 0.00011118018555006642,
+            "referencePrices": -0.000050253390946612636,
+            "capacityPrices": 0.000004363248347206073,
+            "directTaxPrices": 0
+          },
+          "realGdp": 771055189934653.6,
+          "potentialGdp": 764253536269849
+        },
+        {
+          "year": 12,
+          "inflation": 0.02039984558544239,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.277994182984157,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000014023044728169334,
+            "persistence": 0.00011149729274110252,
+            "referencePrices": -0.00004927042845055783,
+            "capacityPrices": 0.0000016417658798817108,
+            "directTaxPrices": 0
+          },
+          "realGdp": 778675894322413,
+          "potentialGdp": 771808690426623.2
+        },
+        {
+          "year": 13,
+          "inflation": 0.020400334242175022,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.3040656914765891,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000012888554742044211,
+            "persistence": 0.00011186856200323236,
+            "referencePrices": -0.00004830669470628494,
+            "capacityPrices": -3.390703799310018e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 786342284855803.2,
+          "potentialGdp": 779451445108191.4
+        },
+        {
+          "year": 14,
+          "inflation": 0.02040276789659612,
+          "baselineGap": 0.006999999999999895,
+          "priceIndex": 1.3306722411017,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003499999999999948,
+            "overflow": 0,
+            "energy": -0.000011785888820447091,
+            "persistence": 0.00011224500181529658,
+            "referencePrices": -0.0000473618376932919,
+            "capacityPrices": -3.2937870544531584e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 794096653721280.6,
+          "potentialGdp": 787180974568749.4
+        },
+        {
+          "year": 15,
+          "inflation": 0.02040514529566262,
+          "baselineGap": 0.007000000000000117,
+          "priceIndex": 1.3578248015222851,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003500000000000059,
+            "overflow": 0,
+            "energy": -0.000010714286669936845,
+            "persistence": 0.0001126147782487116,
+            "referencePrices": -0.00004643541160564806,
+            "capacityPrices": -3.197843104221466e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 801938391971310.8,
+          "potentialGdp": 794996685576337.2
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 3,
+      "withPolicy": false,
+      "terminalInflation": 0.020025276493496724,
+      "cumulativeInflation": 0.34649835190298206,
+      "peakInflation": 0.02013283133315613,
+      "peakYear": 2,
+      "constraintPeak": 0.02013283133315613,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.019999388352683,
+          "baselineGap": 0.004666666666666819,
+          "priceIndex": 1.019999388352683,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00023333333333334095,
+            "overflow": 0,
+            "energy": 0.000016055019349736932,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 694479075802714.4,
+          "potentialGdp": 691253227408143
+        },
+        {
+          "year": 2,
+          "inflation": 0.02013283133315613,
+          "baselineGap": 0.0023333333333332984,
+          "priceIndex": 1.04053486399831,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00011666666666666493,
+            "overflow": 0,
+            "energy": 0.000016317578318794623,
+            "persistence": -1.5291182922996804e-7,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 699794813121483,
+          "potentialGdp": 698165759682224.5
+        },
+        {
+          "year": 3,
+          "inflation": 0.0200497915569795,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.0613973711292461,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001658372369043222,
+            "persistence": 0.000033207833289057055,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 705147417279046.9,
+          "potentialGdp": 705147417279046.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.02002925682909762,
+          "baselineGap": 0,
+          "priceIndex": 1.0826563716733228,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001680893985271552,
+            "persistence": 0.000012447889244874416,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 712198891451837.2,
+          "potentialGdp": 712198891451837.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.02002434402040354,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.1043358553155913,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001702981312910818,
+            "persistence": 0.000007314207274397751,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 719320880366355.8,
+          "potentialGdp": 719320880366355.6
+        },
+        {
+          "year": 6,
+          "inflation": 0.02002333241324794,
+          "baselineGap": 0,
+          "priceIndex": 1.1264483392424438,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001724640814703546,
+            "persistence": 0.000006086005100878686,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 726514089170019.2,
+          "potentialGdp": 726514089170019.2
+        },
+        {
+          "year": 7,
+          "inflation": 0.020023291980017843,
+          "baselineGap": 0,
+          "priceIndex": 1.1490035432395014,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017458876705893745,
+            "persistence": 0.000005833103311978123,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 733779230061719.4,
+          "potentialGdp": 733779230061719.4
+        },
+        {
+          "year": 8,
+          "inflation": 0.020023490312968795,
+          "baselineGap": 0,
+          "priceIndex": 1.1720106045571244,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017667317964263655,
+            "persistence": 0.000005822995004467653,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 741117022362336.6,
+          "potentialGdp": 741117022362336.6
+        },
+        {
+          "year": 9,
+          "inflation": 0.020023744377526187,
+          "baselineGap": 0,
+          "priceIndex": 1.1954786453105262,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017871799283954895,
+            "persistence": 0.000005872578242182951,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 748528192585959.9,
+          "potentialGdp": 748528192585959.9
+        },
+        {
+          "year": 10,
+          "inflation": 0.020024008469570642,
+          "baselineGap": 0,
+          "priceIndex": 1.219416919829415,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001807237518901029,
+            "persistence": 0.000005936094381534494,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 756013474511819.5,
+          "potentialGdp": 756013474511819.5
+        },
+        {
+          "year": 11,
+          "inflation": 0.0200242712128873,
+          "baselineGap": 0,
+          "priceIndex": 1.2438348549536629,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018269095494736136,
+            "persistence": 0.000006002117392636154,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 763573609256937.6,
+          "potentialGdp": 763573609256937.6
+        },
+        {
+          "year": 12,
+          "inflation": 0.020024529811399683,
+          "baselineGap": 0,
+          "priceIndex": 1.2687420630871404,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001846200817773404,
+            "persistence": 0.000006067803221842562,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 771209345349507.1,
+          "potentialGdp": 771209345349507.1
+        },
+        {
+          "year": 13,
+          "inflation": 0.02002478361315263,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.2941483483613652,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.000018651160302729117,
+            "persistence": 0.0000061324528498937075,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 778921438803002.2,
+          "potentialGdp": 778921438803002.1
+        },
+        {
+          "year": 14,
+          "inflation": 0.02002503250159693,
+          "baselineGap": 0,
+          "priceIndex": 1.3200637110991895,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018836598308826488,
+            "persistence": 0.000006195903288157452,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 786710653191032.1,
+          "potentialGdp": 786710653191032.1
+        },
+        {
+          "year": 15,
+          "inflation": 0.020025276493496724,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.346498351902982,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001901836809745981,
+            "persistence": 0.00000625812539924598,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 794577759722942.6,
+          "potentialGdp": 794577759722942.5
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 3,
+      "withPolicy": true,
+      "terminalInflation": 0.019938601342214923,
+      "cumulativeInflation": 0.3493665633809413,
+      "peakInflation": 0.024247384418863094,
+      "peakYear": 2,
+      "constraintPeak": 0.024247384418863094,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.02289885727152874,
+          "baselineGap": 0.004666666666666819,
+          "priceIndex": 1.0228988572715287,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00023333333333334095,
+            "overflow": 0,
+            "energy": 0.000060112662003487086,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0.002758965138868801,
+            "capacityPrices": 0.00009644613732303014,
+            "directTaxPrices": 0
+          },
+          "realGdp": 707208922342117.4,
+          "potentialGdp": 692012092265093.2
+        },
+        {
+          "year": 2,
+          "inflation": 0.024247384418863094,
+          "baselineGap": 0.0023333333333332984,
+          "priceIndex": 1.0477014790854073,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00011666666666666493,
+            "overflow": 0,
+            "energy": 0.00005897895939463817,
+            "persistence": 0.000010861498834207478,
+            "referencePrices": 0.004074181525289861,
+            "capacityPrices": -0.000013304231322222414,
+            "directTaxPrices": 0
+          },
+          "realGdp": 711249934546663,
+          "potentialGdp": 698917368905583
+        },
+        {
+          "year": 3,
+          "inflation": 0.0231829529517682,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.0719902931825422,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.000057811594900577556,
+            "persistence": 0.00004662678122387739,
+            "referencePrices": 0.0031031863362233156,
+            "capacityPrices": -0.000024671760579514596,
+            "directTaxPrices": 0
+          },
+          "realGdp": 714175188641668.4,
+          "potentialGdp": 705891703390295.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.020148969213665602,
+          "baselineGap": 0,
+          "priceIndex": 1.0935897925972256,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00003149261069755495,
+            "persistence": 0.000026109594031116685,
+            "referencePrices": 0.00020375902508493253,
+            "capacityPrices": -0.00011239201614812094,
+            "directTaxPrices": 0
+          },
+          "realGdp": 708803759681875.1,
+          "potentialGdp": 712667163256337.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.01854355279867037,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.1138688326563393,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00003127308247628207,
+            "persistence": 0.000014400551182167966,
+            "referencePrices": -0.001484858852778434,
+            "capacityPrices": -0.000017261982209603242,
+            "directTaxPrices": 0
+          },
+          "realGdp": 715752853683796.4,
+          "potentialGdp": 720186686290116.9
+        },
+        {
+          "year": 6,
+          "inflation": 0.0174286180641825,
+          "baselineGap": 0,
+          "priceIndex": 1.1332820271143034,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001344912787827508,
+            "persistence": 0.000011418408414614646,
+            "referencePrices": -0.0026036165360721203,
+            "capacityPrices": 0.0000073670639618173506,
+            "directTaxPrices": 0
+          },
+          "realGdp": 725062744200996.5,
+          "potentialGdp": 727758469178435
+        },
+        {
+          "year": 7,
+          "inflation": 0.018047737836369704,
+          "baselineGap": 0,
+          "priceIndex": 1.1537352040343318,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.0000032749955523559562,
+            "persistence": 0.000006216884073222476,
+            "referencePrices": -0.0019849889340226006,
+            "capacityPrices": 0.000029784881871418793,
+            "directTaxPrices": 0
+          },
+          "realGdp": 734453197237781,
+          "potentialGdp": 734894409572519.5
+        },
+        {
+          "year": 8,
+          "inflation": 0.01863056975110222,
+          "baselineGap": 0,
+          "priceIndex": 1.1752299482273956,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001901487963272454,
+            "persistence": 7.354721302159709e-7,
+            "referencePrices": -0.0013742596147939667,
+            "capacityPrices": 0.00002310877339885257,
+            "directTaxPrices": 0
+          },
+          "realGdp": 743171044462645,
+          "potentialGdp": 742126242692806.2
+        },
+        {
+          "year": 9,
+          "inflation": 0.01993533960503502,
+          "baselineGap": 0,
+          "priceIndex": 1.1986585563593164,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000017662908872743086,
+            "persistence": -0.000004569851875627605,
+            "referencePrices": -0.000052252816941248204,
+            "capacityPrices": 0.000009825182724498692,
+            "directTaxPrices": 0
+          },
+          "realGdp": 750653690007784.6,
+          "potentialGdp": 749410723136173.6
+        },
+        {
+          "year": 10,
+          "inflation": 0.019934136350667542,
+          "baselineGap": 0,
+          "priceIndex": 1.2225527794596773,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000016401576630468662,
+            "persistence": -0.0000055581901870927625,
+            "referencePrices": -0.00005123223821199336,
+            "capacityPrices": 0.0000073283556971758065,
+            "directTaxPrices": 0
+          },
+          "realGdp": 758174548433681,
+          "potentialGdp": 756787077887973.9
+        },
+        {
+          "year": 11,
+          "inflation": 0.019933067117785086,
+          "baselineGap": 0,
+          "priceIndex": 1.2469220060676818,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000015177094548686968,
+            "persistence": -0.000005489941704389829,
+            "referencePrices": -0.000050230361663875956,
+            "capacityPrices": 0.000003964515701817825,
+            "directTaxPrices": 0
+          },
+          "realGdp": 765710174669855.1,
+          "potentialGdp": 764253536269849
+        },
+        {
+          "year": 12,
+          "inflation": 0.019933056399480176,
+          "baselineGap": 0,
+          "priceIndex": 1.2717769727403818,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000013987821019895128,
+            "persistence": -0.000005166759063268862,
+            "referencePrices": -0.00004924787013244576,
+            "capacityPrices": 0.0000014588496956719456,
+            "directTaxPrices": 0
+          },
+          "realGdp": 773277428904966.5,
+          "potentialGdp": 771808690426623.2
+        },
+        {
+          "year": 13,
+          "inflation": 0.0199337302642022,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.2971282318712123,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000012832385638216249,
+            "persistence": -0.000004788645020790613,
+            "referencePrices": -0.00004828458760148127,
+            "capacityPrices": -3.6411753706985954e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 780889834784182.4,
+          "potentialGdp": 779451445108191.4
+        },
+        {
+          "year": 14,
+          "inflation": 0.019936194367955018,
+          "baselineGap": 0,
+          "priceIndex": 1.3229880324219585,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001170911314783031,
+            "persistence": -0.000004405257664748773,
+            "referencePrices": -0.000047340165472553544,
+            "capacityPrices": -3.510957597242334e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 788589679148943.5,
+          "potentialGdp": 787180974568749.4
+        },
+        {
+          "year": 15,
+          "inflation": 0.019938601342214923,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.3493665633809413,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000010617226988244439,
+            "persistence": -0.000004028592703144915,
+            "referencePrices": -0.00004641416556741887,
+            "capacityPrices": -3.3867252623077085e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 796376347653250.2,
+          "potentialGdp": 794996685576337.2
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 5,
+      "withPolicy": false,
+      "terminalInflation": 0.020025264959390165,
+      "cumulativeInflation": 0.3471140979119205,
+      "peakInflation": 0.020237796530615748,
+      "peakYear": 2,
+      "constraintPeak": 0.020237796530615748,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.020046040118111952,
+          "baselineGap": 0.005599999999999827,
+          "priceIndex": 1.020046040118112,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00027999999999999136,
+            "overflow": 0,
+            "energy": 0.000016040118111942165,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 695124245481628.5,
+          "potentialGdp": 691253227408143
+        },
+        {
+          "year": 2,
+          "inflation": 0.020237796530615748,
+          "baselineGap": 0.0041999999999999815,
+          "priceIndex": 1.0406895243298826,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0002099999999999991,
+            "overflow": 0,
+            "energy": 0.00001628650108780996,
+            "persistence": 0.000011510029527983523,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 701098055872889.9,
+          "potentialGdp": 698165759682224.5
+        },
+        {
+          "year": 3,
+          "inflation": 0.020215984093039152,
+          "baselineGap": 0.0028000000000001357,
+          "priceIndex": 1.061728087199528,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0001400000000000068,
+            "overflow": 0,
+            "energy": 0.0000165349603852177,
+            "persistence": 0.0000594491326539482,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 707121830047428.2,
+          "potentialGdp": 705147417279046.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.020140776233157576,
+          "baselineGap": 0.0014000000000000679,
+          "priceIndex": 1.0831121150242722,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0000700000000000034,
+            "overflow": 0,
+            "energy": 0.000016780209897806952,
+            "persistence": 0.00005399602325979313,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 713195969899869.9,
+          "potentialGdp": 712198891451837.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.02005221670309454,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.104830913868486,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.000017022644805062965,
+            "persistence": 0.00003519405828940163,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 719320880366355.8,
+          "potentialGdp": 719320880366355.6
+        },
+        {
+          "year": 6,
+          "inflation": 0.020030292853056464,
+          "baselineGap": 0,
+          "priceIndex": 1.1269610006263817,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017238677282827366,
+            "persistence": 0.000013054175773618941,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 726514089170019.2,
+          "potentialGdp": 726514089170019.2
+        },
+        {
+          "year": 7,
+          "inflation": 0.020025024144571413,
+          "baselineGap": 0,
+          "priceIndex": 1.1495284218739155,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017450931307237038,
+            "persistence": 0.0000075732132641115335,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 733779230061719.4,
+          "potentialGdp": 733779230061719.4
+        },
+        {
+          "year": 8,
+          "inflation": 0.02002391528366898,
+          "baselineGap": 0,
+          "priceIndex": 1.1725464816096884,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017659247526240696,
+            "persistence": 0.0000062560361428374775,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 741117022362336.6,
+          "potentialGdp": 741117022362336.6
+        },
+        {
+          "year": 9,
+          "inflation": 0.020023842448723794,
+          "baselineGap": 0,
+          "priceIndex": 1.1960253676212462,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000017863627806617038,
+            "persistence": 0.000005978820917270158,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 748528192585959.9,
+          "potentialGdp": 748528192585959.9
+        },
+        {
+          "year": 10,
+          "inflation": 0.020024024722254286,
+          "baselineGap": 0,
+          "priceIndex": 1.2199746091509374,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018064110073406338,
+            "persistence": 0.000005960612180971013,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 756013474511819.5,
+          "potentialGdp": 756013474511819.5
+        },
+        {
+          "year": 11,
+          "inflation": 0.0200242669204882,
+          "baselineGap": 0,
+          "priceIndex": 1.244403706360794,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018260739924590316,
+            "persistence": 0.0000060061805635946985,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 763573609256937.6,
+          "potentialGdp": 763573609256937.6
+        },
+        {
+          "year": 12,
+          "inflation": 0.020024520294375625,
+          "baselineGap": 0,
+          "priceIndex": 1.269322293633212,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001845356425367708,
+            "persistence": 0.000006066730122046039,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 771209345349507.1,
+          "potentialGdp": 771209345349507.1
+        },
+        {
+          "year": 13,
+          "inflation": 0.020024772703429505,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.294740184050613,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.000018642629835508694,
+            "persistence": 0.000006130073593930453,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 778921438803002.2,
+          "potentialGdp": 778921438803002.1
+        },
+        {
+          "year": 14,
+          "inflation": 0.0200250211588775,
+          "baselineGap": 0,
+          "priceIndex": 1.3206673836314755,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001882798302010844,
+            "persistence": 0.00000619317585736235,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 786710653191032.1,
+          "potentialGdp": 786710653191032.1
+        },
+        {
+          "year": 15,
+          "inflation": 0.020025264959390165,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.3471140979119205,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001900966967077099,
+            "persistence": 0.00000625528971936757,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 794577759722942.6,
+          "potentialGdp": 794577759722942.5
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 5,
+      "withPolicy": true,
+      "terminalInflation": 0.019938583180022285,
+      "cumulativeInflation": 0.34998301420733835,
+      "peakInflation": 0.024352439927739278,
+      "peakYear": 2,
+      "constraintPeak": 0.024352439927739278,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.022945390613756222,
+          "baselineGap": 0.005599999999999827,
+          "priceIndex": 1.0229453906137562,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00027999999999999136,
+            "overflow": 0,
+            "energy": 0.00006005686929147113,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0.00275909120975023,
+            "capacityPrices": 0.00009624253471456559,
+            "directTaxPrices": 0
+          },
+          "realGdp": 707854092021031.5,
+          "potentialGdp": 692012092265093.2
+        },
+        {
+          "year": 2,
+          "inflation": 0.024352439927739278,
+          "baselineGap": 0.0041999999999999815,
+          "priceIndex": 1.0478566067880355,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0002099999999999991,
+            "overflow": 0,
+            "energy": 0.000058866644471678974,
+            "persistence": 0.00002251421732286582,
+            "referencePrices": 0.004074601173960926,
+            "capacityPrices": -0.000013542108016254031,
+            "directTaxPrices": 0
+          },
+          "realGdp": 712553177298069.9,
+          "potentialGdp": 698917368905583
+        },
+        {
+          "year": 3,
+          "inflation": 0.023349180199695896,
+          "baselineGap": 0.0028000000000001357,
+          "priceIndex": 1.0723231995233713,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0001400000000000068,
+            "overflow": 0,
+            "energy": 0.00005764162880804407,
+            "persistence": 0.0000728452154486357,
+            "referencePrices": 0.0031036928055310138,
+            "capacityPrices": -0.000024999450091693732,
+            "directTaxPrices": 0
+          },
+          "realGdp": 716149601410049.8,
+          "potentialGdp": 705891703390295.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.02026072846570326,
+          "baselineGap": 0.0014000000000000679,
+          "priceIndex": 1.0940492486963884,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0000700000000000034,
+            "overflow": 0,
+            "energy": 0.000031438806790115875,
+            "persistence": 0.0000676217110641723,
+            "referencePrices": 0.0002037814416672446,
+            "capacityPrices": -0.00011211349381840066,
+            "directTaxPrices": 0
+          },
+          "realGdp": 709800838129907.8,
+          "potentialGdp": 712667163256337.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.018571835033953876,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.114367750862199,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00003125993321197613,
+            "persistence": 0.000042265129463573206,
+            "referencePrices": -0.0014849000833446885,
+            "capacityPrices": -0.000016789945377117777,
+            "directTaxPrices": 0
+          },
+          "realGdp": 715752853683796.4,
+          "potentialGdp": 720186686290116.9
+        },
+        {
+          "year": 6,
+          "inflation": 0.017435549290182317,
+          "baselineGap": 0,
+          "priceIndex": 1.1337973647097463,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000013435183556815475,
+            "persistence": 0.00001838126566889014,
+            "referencePrices": -0.002603634273193239,
+            "capacityPrices": 0.000007367114149893808,
+            "directTaxPrices": 0
+          },
+          "realGdp": 725062744200996.5,
+          "potentialGdp": 727758469178435
+        },
+        {
+          "year": 7,
+          "inflation": 0.018049457654358836,
+          "baselineGap": 0,
+          "priceIndex": 1.1542617922326985,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000003289102812877304,
+            "persistence": 0.000007954112306426432,
+            "referencePrices": -0.0019849922873227946,
+            "capacityPrices": 0.00002978493218789585,
+            "directTaxPrices": 0
+          },
+          "realGdp": 734453197237781,
+          "potentialGdp": 734894409572519.5
+        },
+        {
+          "year": 8,
+          "inflation": 0.018630985877245765,
+          "baselineGap": 0,
+          "priceIndex": 1.1757668273824304,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000019028981766618555,
+            "persistence": 0.0000011662523733873068,
+            "referencePrices": -0.0013742601762000062,
+            "capacityPrices": 0.00002310878283913941,
+            "directTaxPrices": 0
+          },
+          "realGdp": 743171044462645,
+          "potentialGdp": 742126242692806.2
+        },
+        {
+          "year": 9,
+          "inflation": 0.019935429717852227,
+          "baselineGap": 0,
+          "priceIndex": 1.199206244334295,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001767696183431979,
+            "persistence": -0.000004465682348308436,
+            "referencePrices": -0.00005225282155786296,
+            "capacityPrices": 0.000009825183592568325,
+            "directTaxPrices": 0
+          },
+          "realGdp": 750653690007784.6,
+          "potentialGdp": 749410723136173.6
+        },
+        {
+          "year": 10,
+          "inflation": 0.019934144905615847,
+          "baselineGap": 0,
+          "priceIndex": 1.2231113953805741,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000016415550455288604,
+            "persistence": -0.00000553566104565667,
+            "referencePrices": -0.00005123223864171636,
+            "capacityPrices": 0.000007328355758644192,
+            "directTaxPrices": 0
+          },
+          "realGdp": 758174548433681,
+          "potentialGdp": 756787077887973.9
+        },
+        {
+          "year": 11,
+          "inflation": 0.019933055360453755,
+          "baselineGap": 0,
+          "priceIndex": 1.247491742536697,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000015190991242353847,
+            "persistence": -0.000005487802875236113,
+            "referencePrices": -0.00005023036108484285,
+            "capacityPrices": 0.000003964515656116664,
+            "directTaxPrices": 0
+          },
+          "realGdp": 765710174669855.1,
+          "potentialGdp": 764253536269849
+        },
+        {
+          "year": 12,
+          "inflation": 0.01993303963783033,
+          "baselineGap": 0,
+          "priceIndex": 1.272358044888547,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001400164398906147,
+            "persistence": -0.0000051696985293977,
+            "referencePrices": -0.00004924786932310288,
+            "capacityPrices": 0.0000014588496716971096,
+            "directTaxPrices": 0
+          },
+          "realGdp": 773277428904966.5,
+          "potentialGdp": 771808690426623.2
+        },
+        {
+          "year": 13,
+          "inflation": 0.019933712321732466,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.2977208641255973,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000012846138355106967,
+            "persistence": -0.0000047928356296149735,
+            "referencePrices": -0.000048284586752068475,
+            "capacityPrices": -3.641175306643768e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 780889834784182.4,
+          "potentialGdp": 779451445108191.4
+        },
+        {
+          "year": 14,
+          "inflation": 0.01993617619779564,
+          "baselineGap": 0,
+          "priceIndex": 1.3235924559283607,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000011722798325447258,
+            "persistence": -0.000004409743496177308,
+            "referencePrices": -0.00004734016462918867,
+            "capacityPrices": -3.5109575346946374e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 788589679148943.5,
+          "potentialGdp": 787180974568749.4
+        },
+        {
+          "year": 15,
+          "inflation": 0.019938583180022285,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.3499830142073383,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000010630847261284277,
+            "persistence": -0.000004033135455406081,
+            "referencePrices": -0.00004641416474091518,
+            "capacityPrices": -3.3867252019998065e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 796376347653250.2,
+          "potentialGdp": 794996685576337.2
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 10,
+      "withPolicy": false,
+      "terminalInflation": 0.02002525124083232,
+      "cumulativeInflation": 0.34865468641600295,
+      "peakInflation": 0.02034062869386566,
+      "peakYear": 3,
+      "constraintPeak": 0.02034062869386566,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.020081028960323266,
+          "baselineGap": 0.006300000000000194,
+          "priceIndex": 1.0200810289603233,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003150000000000097,
+            "overflow": 0,
+            "energy": 0.000016028960323332045,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 695608122740814.4,
+          "potentialGdp": 691253227408143
+        },
+        {
+          "year": 2,
+          "inflation": 0.02031652050900523,
+          "baselineGap": 0.005599999999999827,
+          "priceIndex": 1.040805526106043,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00027999999999999136,
+            "overflow": 0,
+            "energy": 0.000016263268924462356,
+            "persistence": 0.000020257240080835508,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 702075487936444.9,
+          "potentialGdp": 698165759682224.5
+        },
+        {
+          "year": 3,
+          "inflation": 0.02034062869386566,
+          "baselineGap": 0.0049000000000001265,
+          "priceIndex": 1.0619761648550894,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00024500000000000633,
+            "overflow": 0,
+            "energy": 0.000016498566614339195,
+            "persistence": 0.0000791301272513225,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 708602639623714.1,
+          "potentialGdp": 705147417279046.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.02031188668496764,
+          "baselineGap": 0.0041999999999999815,
+          "priceIndex": 1.0835469043777626,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0002099999999999991,
+            "overflow": 0,
+            "energy": 0.00001672951150127081,
+            "persistence": 0.00008515717346641635,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 715190126795934.9,
+          "potentialGdp": 712198891451837.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.02026992813533135,
+          "baselineGap": 0.0035000000000000586,
+          "priceIndex": 1.1055103222607605,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00017500000000000295,
+            "overflow": 0,
+            "energy": 0.000016956464089395296,
+            "persistence": 0.00007797167124192188,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 721838503447637.9,
+          "potentialGdp": 719320880366355.6
+        },
+        {
+          "year": 6,
+          "inflation": 0.020224662008900163,
+          "baselineGap": 0.0027999999999999137,
+          "priceIndex": 1.1278688948758346,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00013999999999999568,
+            "overflow": 0,
+            "energy": 0.000017179975067395325,
+            "persistence": 0.00006748203383282955,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 728548328619695.2,
+          "potentialGdp": 726514089170019.2
+        },
+        {
+          "year": 7,
+          "inflation": 0.020178565839980234,
+          "baselineGap": 0.0020999999999999908,
+          "priceIndex": 1.1506276716299524,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00010499999999999954,
+            "overflow": 0,
+            "energy": 0.000017400337755153486,
+            "persistence": 0.00005616550222505446,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 735320166444849,
+          "potentialGdp": 733779230061719.4
+        },
+        {
+          "year": 8,
+          "inflation": 0.020132259165201782,
+          "baselineGap": 0.0014000000000000679,
+          "priceIndex": 1.1737924061178593,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0000700000000000034,
+            "overflow": 0,
+            "energy": 0.00001761770520664261,
+            "persistence": 0.00004464145999505224,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 742154586193644,
+          "potentialGdp": 741117022362336.6
+        },
+        {
+          "year": 9,
+          "inflation": 0.020085896967234396,
+          "baselineGap": 0.0006999999999999229,
+          "priceIndex": 1.1973690794480647,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00003499999999999615,
+            "overflow": 0,
+            "energy": 0.000017832175933880665,
+            "persistence": 0.000033064791300424674,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 749052162320770,
+          "potentialGdp": 748528192585959.9
+        },
+        {
+          "year": 10,
+          "inflation": 0.020039518071076623,
+          "baselineGap": 0,
+          "priceIndex": 1.2213637787534126,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.00001804382926812577,
+            "persistence": 0.000021474241808575392,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 756013474511819.5,
+          "potentialGdp": 756013474511819.5
+        },
+        {
+          "year": 11,
+          "inflation": 0.02002811947850347,
+          "baselineGap": 0,
+          "priceIndex": 1.2458253984410024,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018239960734190475,
+            "persistence": 0.000009879517769174721,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 763573609256937.6,
+          "potentialGdp": 763573609256937.6
+        },
+        {
+          "year": 12,
+          "inflation": 0.02002546236513192,
+          "baselineGap": 0,
+          "priceIndex": 1.2707736280710082,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018432495506157114,
+            "persistence": 0.000007029869625841366,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 771209345349507.1,
+          "potentialGdp": 771209345349507.1
+        },
+        {
+          "year": 13,
+          "inflation": 0.020024986918797172,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.2962208533498827,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001862132751416755,
+            "persistence": 0.000006365591282999489,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 778921438803002.2,
+          "potentialGdp": 778921438803002.1
+        },
+        {
+          "year": 14,
+          "inflation": 0.020025053194128395,
+          "baselineGap": 0,
+          "priceIndex": 1.3221777448895526,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": 0.000018806464429126297,
+            "persistence": 0.000006246729699294594,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 786710653191032.1,
+          "potentialGdp": 786710653191032.1
+        },
+        {
+          "year": 15,
+          "inflation": 0.02002525124083232,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.348654686416003,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": 0.00001898794230030531,
+            "persistence": 0.0000062632985321055615,
+            "referencePrices": 0,
+            "capacityPrices": 0,
+            "directTaxPrices": 0
+          },
+          "realGdp": 794577759722942.6,
+          "potentialGdp": 794577759722942.5
+        }
+      ]
+    },
+    {
+      "gapClosureYears": 10,
+      "withPolicy": true,
+      "terminalInflation": 0.019938552916285213,
+      "cumulativeInflation": 0.35152638968577077,
+      "peakInflation": 0.024431230401474435,
+      "peakYear": 2,
+      "constraintPeak": 0.024431230401474435,
+      "years": [
+        {
+          "year": 1,
+          "inflation": 0.022980290188971075,
+          "baselineGap": 0.006300000000000194,
+          "priceIndex": 1.022980290188971,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0003150000000000097,
+            "overflow": 0,
+            "energy": 0.00006001509267564678,
+            "persistence": -0.0002500000000000002,
+            "referencePrices": 0.0027591857630950042,
+            "capacityPrices": 0.0000960893332003329,
+            "directTaxPrices": 0
+          },
+          "realGdp": 708337969280217.4,
+          "potentialGdp": 692012092265093.2
+        },
+        {
+          "year": 2,
+          "inflation": 0.024431230401474435,
+          "baselineGap": 0.005599999999999827,
+          "priceIndex": 1.047972957354745,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00027999999999999136,
+            "overflow": 0,
+            "energy": 0.00005878268210739161,
+            "persistence": 0.00003125377316891449,
+            "referencePrices": 0.0040749159136778445,
+            "capacityPrices": -0.000013721967479812426,
+            "directTaxPrices": 0
+          },
+          "realGdp": 713530609361624.9,
+          "potentialGdp": 698917368905583
+        },
+        {
+          "year": 3,
+          "inflation": 0.023473848980614775,
+          "baselineGap": 0.0049000000000001265,
+          "priceIndex": 1.0725729162914586,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00024500000000000633,
+            "overflow": 0,
+            "energy": 0.00005751477723352338,
+            "persistence": 0.00009250911381907412,
+            "referencePrices": 0.003104072665690918,
+            "capacityPrices": -0.000025247576128801768,
+            "directTaxPrices": 0
+          },
+          "realGdp": 717630410986335.6,
+          "potentialGdp": 705891703390295.8
+        },
+        {
+          "year": 4,
+          "inflation": 0.020431411729128657,
+          "baselineGap": 0.0041999999999999815,
+          "priceIndex": 1.0944870951537216,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0002099999999999991,
+            "overflow": 0,
+            "energy": 0.000031343837753806954,
+            "persistence": 0.00009875597276315026,
+            "referencePrices": 0.0002038157224489631,
+            "capacityPrices": -0.00011250380383737102,
+            "directTaxPrices": 0
+          },
+          "realGdp": 711794995025972.8,
+          "potentialGdp": 712667163256337.2
+        },
+        {
+          "year": 5,
+          "inflation": 0.01878811871551478,
+          "baselineGap": 0.0035000000000000586,
+          "priceIndex": 1.1150504486300685,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00017500000000000295,
+            "overflow": 0,
+            "energy": 0.00003113842957946114,
+            "persistence": 0.0000850249526292389,
+            "referencePrices": -0.0014852182752647782,
+            "capacityPrices": -0.000017826391429098954,
+            "directTaxPrices": 0
+          },
+          "realGdp": 718270476765078.5,
+          "potentialGdp": 720186686290116.9
+        },
+        {
+          "year": 6,
+          "inflation": 0.017629416719313395,
+          "baselineGap": 0.0027999999999999137,
+          "priceIndex": 1.1347081376520254,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00013999999999999568,
+            "overflow": 0,
+            "energy": 0.000013378670814059634,
+            "persistence": 0.00007279084555217568,
+            "referencePrices": -0.0026041354237711094,
+            "capacityPrices": 0.0000073826267183484,
+            "directTaxPrices": 0
+          },
+          "realGdp": 727096983650672.5,
+          "potentialGdp": 727758469178435
+        },
+        {
+          "year": 7,
+          "inflation": 0.018203596495902197,
+          "baselineGap": 0.0020999999999999908,
+          "priceIndex": 1.1553639067304595,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00010499999999999954,
+            "overflow": 0,
+            "energy": -0.000003307051132913805,
+            "persistence": 0.00005654237909155733,
+            "referencePrices": -0.0019852949874768753,
+            "capacityPrices": 0.00003065615542033672,
+            "directTaxPrices": 0
+          },
+          "realGdp": 735994133620910.6,
+          "potentialGdp": 734894409572519.5
+        },
+        {
+          "year": 8,
+          "inflation": 0.0187398328150008,
+          "baselineGap": 0.0014000000000000679,
+          "priceIndex": 1.1770152331830745,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.0000700000000000034,
+            "overflow": 0,
+            "energy": -0.000019031807432256548,
+            "persistence": 0.00003955883198966063,
+            "referencePrices": -0.0013744077093582221,
+            "capacityPrices": 0.000023713499801345318,
+            "directTaxPrices": 0
+          },
+          "realGdp": 744208608293952.4,
+          "potentialGdp": 742126242692806.2
+        },
+        {
+          "year": 9,
+          "inflation": 0.01999784867604837,
+          "baselineGap": 0.0006999999999999229,
+          "priceIndex": 1.2005530057056735,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0.00003499999999999615,
+            "overflow": 0,
+            "energy": -0.00001769718856421661,
+            "persistence": 0.00002263175613935204,
+            "referencePrices": -0.000052256027781143104,
+            "capacityPrices": 0.0000101701362545947,
+            "directTaxPrices": 0
+          },
+          "realGdp": 751177659742594.8,
+          "potentialGdp": 749410723136173.6
+        },
+        {
+          "year": 10,
+          "inflation": 0.019949793337918464,
+          "baselineGap": 0,
+          "priceIndex": 1.2245037900607185,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001644983429288731,
+            "persistence": 0.000009983641893782785,
+            "referencePrices": -0.000051233024676993334,
+            "capacityPrices": 0.000007492554994523774,
+            "directTaxPrices": 0
+          },
+          "realGdp": 758174548433681,
+          "potentialGdp": 756787077887973.9
+        },
+        {
+          "year": 11,
+          "inflation": 0.019936891881971563,
+          "baselineGap": 0,
+          "priceIndex": 1.2489165897322234,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.00001522555046914249,
+            "persistence": -0.000001616548099775926,
+            "referencePrices": -0.00005023055002848003,
+            "capacityPrices": 0.000003964530568810731,
+            "directTaxPrices": 0
+          },
+          "realGdp": 765710174669855.1,
+          "potentialGdp": 764253536269849
+        },
+        {
+          "year": 12,
+          "inflation": 0.019933964278191274,
+          "baselineGap": 0,
+          "priceIndex": 1.273812448418386,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000014036134191172847,
+            "persistence": -0.000004210524642229985,
+            "referencePrices": -0.00004924791396972761,
+            "capacityPrices": 0.0000014588509942459773,
+            "directTaxPrices": 0
+          },
+          "realGdp": 773277428904966.5,
+          "potentialGdp": 771808690426623.2
+        },
+        {
+          "year": 13,
+          "inflation": 0.01993390913991888,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.2992045100264555,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000012880481701951834,
+            "persistence": -0.00000456166470835101,
+            "referencePrices": -0.00004828459606961989,
+            "capacityPrices": -3.6411760092870004e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 780889834784182.4,
+          "potentialGdp": 779451445108191.4
+        },
+        {
+          "year": 14,
+          "inflation": 0.019936191222225785,
+          "baselineGap": 0,
+          "priceIndex": 1.3251056995751211,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 0,
+            "overflow": 0,
+            "energy": -0.000011756980086417574,
+            "persistence": -0.000004360536602573267,
+            "referencePrices": -0.00004734016532654505,
+            "capacityPrices": -3.510957586413693e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 788589679148943.5,
+          "potentialGdp": 787180974568749.4
+        },
+        {
+          "year": 15,
+          "inflation": 0.019938552916285213,
+          "baselineGap": 2.220446049250313e-16,
+          "priceIndex": 1.3515263896857708,
+          "contributions": {
+            "baseline": 0.02,
+            "gap": 1.1102230246251566e-17,
+            "overflow": 0,
+            "energy": -0.000010664868668690351,
+            "persistence": -0.000004029379172247431,
+            "referencePrices": -0.00004641416336370865,
+            "capacityPrices": -3.3867251015085e-7,
+            "directTaxPrices": 0
+          },
+          "realGdp": 796376347653250.2,
+          "potentialGdp": 794996685576337.2
+        }
+      ]
+    }
+  ]
+}

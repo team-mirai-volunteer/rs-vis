@@ -21,6 +21,7 @@ import { configuredPower } from './fiscal-space-trade';
 import { policyCostYen } from './fiscal-space-amounts';
 import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensitivity';
 import { estimatePolicyLoad, resourcePowerBalance, resourceRecords, validateResourceAssumptions } from '@/app/lib/fiscal-space/resource-estimate';
+import { buildDebtPortfolio, debtPortfolioRecords } from '@/app/lib/fiscal-space/debt-portfolio';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
 /** Optional evaluation horizon past the published years, so commissioning around year 11 (new nuclear) is visible. */
@@ -168,6 +169,7 @@ export function createFiscalEngine() {
       ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...personalTaxRevenueRecords(), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
       ...burdenRecords(form.dataset === 'latest', form.corporateShare), ...externalStressRecords(),
       ...policyTradeRecords(form.trade), ...supplyRecords(form.supply),
+      ...debtPortfolioRecords(buildDebtPortfolio(initial.fiscal.grossDebt, initial.fiscal.interestPayments)),
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity, powerTimeline,

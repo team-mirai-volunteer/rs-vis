@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialEconomy, PARAMETERS as P, POLICIES, THRESHOLDS, TRILLION as T, NO_SHOCK, assumptionRecords } from '../app/lib/fiscal-space/assumptions';
+import { initialEconomy, PARAMETERS, POLICIES, THRESHOLDS, TRILLION as T, NO_SHOCK, assumptionRecords } from '../app/lib/fiscal-space/assumptions';
+import { DEMOGRAPHICS_OFF } from '../app/lib/fiscal-space/demographics';
+// Published-response reproductions hold the labour force flat; the population path is tested separately.
+const P = { ...PARAMETERS, demographics: DEMOGRAPHICS_OFF };
 import { debtRatioNext, rollover, financeDebt } from '../app/lib/fiscal-space/debt';
 import { leontief, ces } from '../app/lib/fiscal-space/production';
 import { allocateDemand } from '../app/lib/fiscal-space/demand';
@@ -910,7 +913,11 @@ test('latest snapshot uses official gap sign and monthly prices without changing
   assert.equal(latest.labour.employment, 68.5e6);
   near(latest.labour.labourForce, latest.labour.employment + latest.labour.unemployment);
   near(latest.external.niip, 561087 * 1e9);
-  assert.deepEqual(latest.fiscal, original.fiscal);
+  // 2026-09-17.1: latest fiscal aggregates are bridged to the GDP vintage with IMF 2026 ratios.
+  assert(Math.abs(latest.fiscal.grossDebt / latest.macro.nominalGdp - 2.031) < 1e-9);
+  assert(Math.abs(latest.fiscal.taxes / latest.macro.nominalGdp - .198) < 1e-9);
+  assert(Math.abs(latest.fiscal.primaryBalance - (latest.fiscal.taxRevenue + latest.fiscal.otherPrimaryRevenue - latest.fiscal.primaryExpenditure)) < 1);
+  assert.notDeepEqual(latest.fiscal, original.fiscal);
   assert.deepEqual(initialEconomy('2024'), original);
   const latestPath = simulate(latest, [preset('cash')]);
   const oldPath = simulate(original, [preset('cash')]);
@@ -975,8 +982,12 @@ test('resident tax uses the income-tax proxy, aggregates personal relief and exp
   assert(supply.hours > 1); assert(supply.participation > 1);
   near(taxLabourSupply(initial, [resident, income], 2, p).employeeCut, 0);
   const path = simulate(initial, [resident, income], 2, p);
-  near(path.steps[0].state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (path.steps[0].state.macro.nominalGdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity - 3 * T);
-  near(path.steps[1].state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (path.steps[1].state.macro.nominalGdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity);
+  // Personal relief is deducted from taxes; contributions follow their own elasticity.
+  const revenue = (gdp: number, taxCut = 0) => initial.fiscal.taxes * (gdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity - taxCut
+    + initial.fiscal.socialContributions * (gdp / initial.macro.nominalGdp) ** p.socialContributionElasticity;
+  near(path.steps[0].state.fiscal.taxRevenue, revenue(path.steps[0].state.macro.nominalGdp, 3 * T));
+  near(path.steps[0].state.fiscal.taxes, initial.fiscal.taxes * (path.steps[0].state.macro.nominalGdp / initial.macro.nominalGdp) ** p.taxRevenueElasticity - 3 * T);
+  near(path.steps[1].state.fiscal.taxRevenue, revenue(path.steps[1].state.macro.nominalGdp));
   const row = compareNextTrillion(initial, [], p, NO_SHOCK, THRESHOLDS, [resident])[0];
   assert(row.supplyEffectConfigured);
   assert(row.periods[0].potentialGdpEffect > 0);
@@ -989,7 +1000,11 @@ test('social-insurance relief is split once between employee and employer; incom
   near(supply.employeeCut, 4 * T); near(supply.employerCut, 2 * T);
   near(supply.employeeCut + supply.employerCut, 6 * T);
   const withRelief = simulate(initial, policies, 1).steps[0];
-  near(withRelief.state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (withRelief.state.macro.nominalGdp / initial.macro.nominalGdp) ** P.taxRevenueElasticity - 6 * T);
+  const ratio = withRelief.state.macro.nominalGdp / initial.macro.nominalGdp;
+  // Insurance relief (4) leaves social contributions; income-tax relief (2) leaves taxes.
+  near(withRelief.state.fiscal.socialContributions, initial.fiscal.socialContributions * ratio ** P.socialContributionElasticity - 4 * T);
+  near(withRelief.state.fiscal.taxes, initial.fiscal.taxes * ratio ** P.taxRevenueElasticity - 2 * T);
+  near(withRelief.state.fiscal.taxRevenue, withRelief.state.fiscal.taxes + withRelief.state.fiscal.socialContributions);
   const onlyEmployer = { ...P, employeeReliefShare: 0, hoursElasticity: .3, employerDemandElasticity: .3 };
   const employer = taxLabourSupply(initial, [policies[0]], 1, onlyEmployer);
   near(employer.hours, 1); assert(employer.employerDemand > 1);
@@ -999,7 +1014,7 @@ test('social-insurance relief is split once between employee and employer; incom
 
 test('labour supply sensitivity increases hours and participation without creating automatic real GDP or changing population', () => {
   const initial = initialEconomy(), policies = [preset('income-tax', { annualCost: 10 * T })];
-  const a = simulate(initial, policies, 1).steps[0];
+  const a = simulate(initial, policies, 1, P).steps[0];
   const b = simulate(initial, policies, 1, { ...P, hoursElasticity: .2, participationElasticity: .1 }).steps[0];
   assert(b.state.labour.hoursWorked > a.state.labour.hoursWorked);
   assert(b.state.labour.labourForce > a.state.labour.labourForce);

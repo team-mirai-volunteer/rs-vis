@@ -11,6 +11,7 @@ import { money } from '@/client/components/fiscal-space/format';
 import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
+import { Demographics } from '@/client/components/fiscal-space/Demographics';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -50,6 +51,7 @@ const MemoPowerMix = memo(PowerMix);
 const MemoPolicyLoads = memo(PolicyLoads);
 const MemoPolicyTrade = memo(PolicyTrade);
 const MemoResourceEstimation = memo(ResourceEstimation);
+const MemoDemographics = memo(Demographics);
 
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
@@ -97,6 +99,7 @@ export default function FiscalSpacePage() {
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
+    demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
     trade: (v: FiscalForm['trade']) => update('trade', v),
     resource: (v: FiscalForm['resource']) => update('resource', v),
     power: (trade: FiscalForm['trade'], total: number) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } })),
@@ -182,6 +185,7 @@ export default function FiscalSpacePage() {
       <MemoResourceEstimation result={result} value={form.resource} onChange={change.resource} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />
       <MemoLongRun rows={result.longRun} value={form.longRun} onChange={change.longRun} />
+      <MemoDemographics steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={form.calibration.demographics} onChange={change.demographics} baseYear={result.initial.baseCalendarYear} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>

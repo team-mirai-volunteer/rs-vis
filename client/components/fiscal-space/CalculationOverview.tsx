@@ -19,7 +19,7 @@ export const CalculationOverview = memo(function CalculationOverview({ result, l
     <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={latest} structuralUnemployment={result.p.structuralUnemployment} />
     <PowerTimeline rows={result.powerTimeline} />
     <ResultAssumptions result={result} latest={latest} />
-    <p className="text-sm">{latest ? '財政比率の試算は2024年の財政額と最新GDPを組み合わせた初期条件です。同時点の観測値ではありません。' : '財政の初期値は2024年で揃えています。'}</p>
+    <p className="text-sm">{latest ? '財政の初期値はIMFの2026年推計比率を最新GDPに掛けた橋渡し推計です。同時点の観測値ではありません。' : '財政の初期値は2024年で揃えています。'}</p>
     <div className="rounded-xl border border-mirai-border bg-white p-4"><FiscalExternal rows={result.inputExternal} model={result.p.referenceModel} label={`追加予算 ${(result.totalYen / TRILLION).toFixed(1)}兆円 / 年`} /></div>
   </>;
 });

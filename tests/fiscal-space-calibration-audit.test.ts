@@ -11,7 +11,8 @@ const policy = (id: string) => ({ ...POLICIES.find(p => p.id === id)!, annualCos
 test('elasticity scenarios apply to nominal GDP with collection lag, before subtracting active tax cuts', () => {
   const initial = initialEconomy();
   for (const taxRevenueElasticity of [0, 1.1, 1.2, 1.3, 1.7, 2]) for (const taxCollectionLag of [0, 1, 3]) {
-    const path = simulate(initial, [policy('income-tax')], 5, { ...P, taxRevenueElasticity, taxCollectionLag });
+    // Both components share the scenario elasticity here so the total keeps the single-elasticity form.
+    const path = simulate(initial, [policy('income-tax')], 5, { ...P, taxRevenueElasticity, socialContributionElasticity: taxRevenueElasticity, taxCollectionLag });
     path.steps.forEach((step, i) => {
       const revenueGdp = i < taxCollectionLag ? initial.macro.nominalGdp : path.steps[i - taxCollectionLag].state.macro.nominalGdp;
       near(step.state.fiscal.taxRevenue, initial.fiscal.taxRevenue * (revenueGdp / initial.macro.nominalGdp) ** taxRevenueElasticity - T);

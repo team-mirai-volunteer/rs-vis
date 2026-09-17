@@ -1,0 +1,854 @@
+{
+  "modelVersion": "2026-09-16.6",
+  "form": {
+    "dataset": "latest",
+    "horizon": 5,
+    "inputs": {
+      "capital": 1.18,
+      "labour": 1.08,
+      "energy": 1.12,
+      "materials": 1.2
+    },
+    "longRun": {
+      "years": 30,
+      "realGrowth": 0.01,
+      "inflation": 0.02,
+      "rate": 0.03,
+      "realization": 0.5
+    },
+    "loads": {},
+    "resource": {
+      "mode": "estimated",
+      "loadScale": 1,
+      "spendingShare": 0.6,
+      "priceIndex": 1.2,
+      "electricityPrice": 20,
+      "loadFactor": 0.6,
+      "coincidence": 1,
+      "operatingOutputRatio": 0.5,
+      "region": "demand-share"
+    },
+    "corporateShare": 0.25,
+    "supply": {
+      "public-investment": {
+        "kind": "capital",
+        "additionality": 0.5,
+        "lag": 2,
+        "depreciation": 0.03,
+        "lifetime": 40,
+        "yield": 0.122,
+        "unitCost": 1.2,
+        "employment": 0,
+        "serviceShare": 1,
+        "realizationRate": 0.5,
+        "rampYears": 3,
+        "referenceOverlap": 0.5
+      },
+      "rd": {
+        "kind": "research",
+        "additionality": 0.5,
+        "lag": 3,
+        "depreciation": 0.15,
+        "lifetime": 20,
+        "yield": 0.3,
+        "unitCost": 1,
+        "employment": 0
+      },
+      "education": {
+        "kind": "education",
+        "additionality": 0.5,
+        "lag": 4,
+        "depreciation": 0.02,
+        "lifetime": 35,
+        "yield": 0.09,
+        "unitCost": 1500000,
+        "employment": 0.8
+      },
+      "childcare": {
+        "kind": "childcare",
+        "additionality": 0.5,
+        "lag": 0,
+        "depreciation": 0,
+        "lifetime": 1,
+        "yield": 0.188,
+        "unitCost": 2000000,
+        "employment": 0.8
+      },
+      "grid": {
+        "kind": "grid",
+        "additionality": 0.5,
+        "lag": 5,
+        "depreciation": 0.02,
+        "lifetime": 40,
+        "yield": 0.028120516499282648,
+        "unitCost": 1,
+        "employment": 0,
+        "maintenanceRate": 0.01,
+        "maintenanceImportShare": 0.2,
+        "generationOverlapShare": 1
+      }
+    },
+    "trade": {
+      "selected": "semiconductors",
+      "industry": {
+        "income-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "resident-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "consumption-tax": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "social-insurance": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "cash": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "public-investment": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "defence": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "healthcare": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "childcare": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "education": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "rd": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "semiconductors": {
+          "annualSalesPerInvestment": 0.8946910448817695,
+          "capexImportShare": null,
+          "exportShare": 0.6915412693682956,
+          "domesticReplacementShare": 0.5973893385838256,
+          "operatingImportShare": 0.1928650497213598,
+          "lag": 3,
+          "lifetime": 15,
+          "additionality": 0.5,
+          "depreciation": 0.1
+        },
+        "grid": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        },
+        "generation": {
+          "annualSalesPerInvestment": null,
+          "capexImportShare": null,
+          "exportShare": 0.5,
+          "domesticReplacementShare": 0.5,
+          "operatingImportShare": 0.25,
+          "lag": 3,
+          "lifetime": 10
+        }
+      },
+      "power": {
+        "technology": "solar",
+        "capexPerKw": 176000,
+        "capacityFactor": 0.183,
+        "lag": 1,
+        "curtailment": 0,
+        "thermalReplacement": 0.8,
+        "displacedFuelYenPerKwh": 9,
+        "operatingImportYenPerKwh": 0,
+        "capexImportShare": null,
+        "firmShare": 0.1
+      }
+    },
+    "policySettings": {
+      "income-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "resident-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "consumption-tax": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "social-insurance": {
+        "kind": "permanent",
+        "duration": 3
+      },
+      "cash": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "public-investment": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "defence": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "healthcare": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "childcare": {
+        "kind": "temporary",
+        "duration": 3
+      },
+      "education": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "rd": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "semiconductors": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "grid": {
+        "kind": "growth",
+        "duration": 3
+      },
+      "generation": {
+        "kind": "growth",
+        "duration": 3
+      }
+    },
+    "rateShock": 0,
+    "energyShock": 0,
+    "stresses": {
+      "importPrice": false,
+      "energyPrice": false,
+      "rate": false
+    },
+    "calibration": {
+      "taxRevenueElasticity": 1.3,
+      "taxCollectionLag": 0,
+      "productionModel": "leontief",
+      "gapDemandSensitivity": 3,
+      "gapPriceSensitivity": 5,
+      "gapInflationSlope": 0.05,
+      "structuralUnemployment": 0.025,
+      "inflationRule": "peak",
+      "consumptionTax": {
+        "revenuePerPoint": 3500000000000,
+        "cpiShare": 0.85,
+        "baseRate": 0.1,
+        "passThrough": 1,
+        "referenceDirectCpi": 0.78,
+        "referenceDirectDeflator": 0.5
+      },
+      "electricity": {
+        "generationTwh": 991.1,
+        "thermalShare": 0.675,
+        "demandGrowth": 0.005,
+        "peakGrowth": 0.004,
+        "nonThermalDecline": 0,
+        "plannedNonThermalTwh": 0,
+        "fuelImportYenPerKwh": 9,
+        "marginalThermalShare": 1
+      },
+      "referenceModel": "ef2026",
+      "multiplierScale": 1,
+      "hoursElasticity": 0,
+      "participationElasticity": 0,
+      "netLabourIncomeShare": 0.4,
+      "employeeReliefShare": 0.5,
+      "employerDemandElasticity": 0,
+      "employerLabourCostShare": 0.55,
+      "baselineRealGrowth": 0.01,
+      "baselineInflation": 0.02,
+      "marketRate": 0.02,
+      "newDebtMaturity": 10,
+      "stockFlowAdjustmentRatio": 0,
+      "overflowImportShare": 0.4,
+      "inflationPassThrough": 1.4,
+      "inflationPersistence": 0.25,
+      "energyPricePassThrough": 0.25,
+      "investmentDepreciation": 0.03,
+      "goodsImportShare": 0.75,
+      "energyDomesticPricePassThrough": 0.5,
+      "expenditurePriceIndexation": 1,
+      "capacityPriceSensitivity": 0.005,
+      "capacityPressureStart": 0.85,
+      "referenceCapacityRatio": 1.1,
+      "essentialImportShare": 0.25,
+      "wageInflationPassThrough": 0.8,
+      "cesSigma": 0.8,
+      "weights": {
+        "capital": 0.3,
+        "labour": 0.4,
+        "energy": 0.15,
+        "materials": 0.15
+      },
+      "cobbWeights": {
+        "capital": 0.35,
+        "labour": 0.5,
+        "energy": 0.15
+      },
+      "searchCap": 100000000000000,
+      "searchStep": 1000000000000,
+      "searchTolerance": 10000000000,
+      "reserveShare": 0
+    },
+    "gap": 0.7,
+    "inflation": 1.9,
+    "construction": 94,
+    "firmCapacity": 187.29000000000002,
+    "amounts": {
+      "income-tax": 0,
+      "resident-tax": 0,
+      "consumption-tax": 0,
+      "social-insurance": 5,
+      "cash": 0,
+      "public-investment": 0,
+      "defence": 2,
+      "healthcare": 0,
+      "childcare": 2,
+      "education": 0,
+      "rd": 3,
+      "semiconductors": 0,
+      "grid": 3,
+      "generation": 0
+    },
+    "thresholds": {
+      "debt": 2.8,
+      "interestGdp": 0.065,
+      "interestTax": 0.3,
+      "gfn": 0.45,
+      "inflation": 0.025,
+      "capacity": 0.995,
+      "labour": 1.25,
+      "sector": 1,
+      "energy": 0.95,
+      "external": 0.3
+    }
+  },
+  "estimate": {
+    "trillionPerYear": 16.7890625,
+    "status": "boundary",
+    "binding": [
+      {
+        "id": "inflation",
+        "year": 2
+      }
+    ]
+  },
+  "reserveRule": {
+    "method": "stress-scenarios",
+    "share": 0,
+    "scenarios": []
+  },
+  "stress": [
+    {
+      "id": "importPrice",
+      "label": "輸入物価 +3%",
+      "amount": 2257812500000,
+      "status": "boundary",
+      "binding": "物価（輸入物価+3%込み）",
+      "selected": false
+    },
+    {
+      "id": "energyPrice",
+      "label": "輸入エネルギー価格 +20%",
+      "amount": 15351562500000,
+      "status": "boundary",
+      "binding": "物価",
+      "selected": false
+    },
+    {
+      "id": "rate",
+      "label": "借換金利 +100bp",
+      "amount": 16789062500000,
+      "status": "boundary",
+      "binding": "物価",
+      "selected": false
+    }
+  ],
+  "baselineSensitivity": [
+    {
+      "inflation": 0.01,
+      "amount": 27445312500000,
+      "status": "boundary",
+      "current": false,
+      "binding": [
+        "産業別能力"
+      ]
+    },
+    {
+      "inflation": 0.015,
+      "amount": 27445312500000,
+      "status": "boundary",
+      "current": false,
+      "binding": [
+        "産業別能力"
+      ]
+    },
+    {
+      "inflation": 0.018,
+      "amount": 23671875000000,
+      "status": "boundary",
+      "current": false,
+      "binding": [
+        "物価"
+      ]
+    },
+    {
+      "inflation": 0.02,
+      "amount": 16789062500000,
+      "status": "boundary",
+      "current": true,
+      "binding": [
+        "物価"
+      ]
+    },
+    {
+      "inflation": 0.022,
+      "amount": 9929687500000,
+      "status": "boundary",
+      "current": false,
+      "binding": [
+        "物価"
+      ]
+    },
+    {
+      "inflation": 0.025,
+      "amount": 0,
+      "status": "baseline-violated",
+      "current": false,
+      "binding": [
+        "物価"
+      ]
+    }
+  ],
+  "taxElasticitySensitivity": [
+    {
+      "elasticity": 1,
+      "debtGdp": 1.8643057934769367,
+      "taxRevenue": 241124771217694.97
+    },
+    {
+      "elasticity": 1.1,
+      "debtGdp": 1.8479118597125603,
+      "taxRevenue": 244996786295128.1
+    },
+    {
+      "elasticity": 1.2,
+      "debtGdp": 1.8313212491721607,
+      "taxRevenue": 248929715601899.75
+    },
+    {
+      "elasticity": 1.3,
+      "debtGdp": 1.8145314274855189,
+      "taxRevenue": 252924517435759.88
+    },
+    {
+      "elasticity": 1.7,
+      "debtGdp": 1.7453281331972927,
+      "taxRevenue": 269542148659080.75
+    }
+  ],
+  "resourceSensitivity": [
+    {
+      "loadScale": 0.5,
+      "trillionPerYear": 16.8984375,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "loadScale": 1,
+      "trillionPerYear": 16.7890625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "loadScale": 1.5,
+      "trillionPerYear": 16.6796875,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    }
+  ],
+  "modelSensitivity": [
+    {
+      "model": "レオンチェフ",
+      "trillionPerYear": 16.7890625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "model": "CES",
+      "trillionPerYear": 16.625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "model": "コブ＝ダグラス",
+      "trillionPerYear": 16.6640625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    }
+  ],
+  "cpi": [
+    {
+      "inflation": 0.02,
+      "trillionPerYear": 0,
+      "status": "baseline-violated",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 5
+        }
+      ]
+    },
+    {
+      "inflation": 0.025,
+      "trillionPerYear": 16.7890625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "inflation": 0.03,
+      "trillionPerYear": 27.4453125,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "sector",
+          "year": 1
+        }
+      ]
+    },
+    {
+      "inflation": 0.035,
+      "trillionPerYear": 27.4453125,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "sector",
+          "year": 1
+        }
+      ]
+    }
+  ],
+  "searchResolution": [
+    {
+      "stepTrillion": 1,
+      "trillionPerYear": 16.7890625,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    },
+    {
+      "stepTrillion": 0.1,
+      "trillionPerYear": 16.7875,
+      "status": "boundary",
+      "binding": [
+        {
+          "id": "inflation",
+          "year": 2
+        }
+      ]
+    }
+  ],
+  "noPolicy": [
+    {
+      "dataset": "2024",
+      "taxRevenueElasticity": 1,
+      "initialDebtGdp": 2.145,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.9602729632794473,
+          "revenueTrillion": 244.885957435106,
+          "primaryBalanceTrillion": -11.849120891070125,
+          "labourForce": 69570000,
+          "employment": 67810000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.7830583697946571,
+          "revenueTrillion": 329.74658584472763,
+          "primaryBalanceTrillion": -16.046281278419375,
+          "labourForce": 69570000,
+          "employment": 67810000
+        }
+      ]
+    },
+    {
+      "dataset": "2024",
+      "taxRevenueElasticity": 1.1,
+      "initialDebtGdp": 2.145,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.9452197425786786,
+          "revenueTrillion": 248.6130021871357,
+          "primaryBalanceTrillion": -8.122076139040438,
+          "labourForce": 69570000,
+          "employment": 67810000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.6669780304024011,
+          "revenueTrillion": 344.8751530594148,
+          "primaryBalanceTrillion": -0.9177140637321874,
+          "labourForce": 69570000,
+          "employment": 67810000
+        }
+      ]
+    },
+    {
+      "dataset": "2024",
+      "taxRevenueElasticity": 1.3,
+      "initialDebtGdp": 2.145,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.9146046705784883,
+          "revenueTrillion": 256.23812640604143,
+          "primaryBalanceTrillion": -0.4969519201346875,
+          "labourForce": 69570000,
+          "employment": 67810000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.4235704077125246,
+          "revenueTrillion": 377.2463994858214,
+          "primaryBalanceTrillion": 31.453532362674437,
+          "labourForce": 69570000,
+          "employment": 67810000
+        }
+      ]
+    },
+    {
+      "dataset": "2024",
+      "taxRevenueElasticity": 1.7,
+      "initialDebtGdp": 2.145,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.8513013501648115,
+          "revenueTrillion": 272.1971504340406,
+          "primaryBalanceTrillion": 15.4620721078645,
+          "labourForce": 69570000,
+          "employment": 67810000
+        },
+        {
+          "year": 15,
+          "debtGdp": 0.8882657025539151,
+          "revenueTrillion": 451.3895472349595,
+          "primaryBalanceTrillion": 105.5966801118125,
+          "labourForce": 69570000,
+          "employment": 67810000
+        }
+      ]
+    },
+    {
+      "dataset": "latest",
+      "taxRevenueElasticity": 1,
+      "initialDebtGdp": 1.973823273360418,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.8045410004906857,
+          "revenueTrillion": 244.76956493931164,
+          "primaryBalanceTrillion": -11.837299852478813,
+          "labourForce": 70190000,
+          "employment": 68500000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.6343483583690073,
+          "revenueTrillion": 331.10000095292696,
+          "primaryBalanceTrillion": -16.14603479481475,
+          "labourForce": 70190000,
+          "employment": 68500000
+        }
+      ]
+    },
+    {
+      "dataset": "latest",
+      "taxRevenueElasticity": 1.1,
+      "initialDebtGdp": 1.973823273360418,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.7908776722988742,
+          "revenueTrillion": 248.48302495046025,
+          "primaryBalanceTrillion": -8.123839841330188,
+          "labourForce": 70190000,
+          "employment": 68500000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.527286361045327,
+          "revenueTrillion": 346.43253204929476,
+          "primaryBalanceTrillion": -0.8135036984469375,
+          "labourForce": 70190000,
+          "employment": 68500000
+        }
+      ]
+    },
+    {
+      "dataset": "latest",
+      "taxRevenueElasticity": 1.3,
+      "initialDebtGdp": 1.973823273360418,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.7630915374483835,
+          "revenueTrillion": 256.0798131671097,
+          "primaryBalanceTrillion": -0.52705162468075,
+          "labourForce": 70190000,
+          "employment": 68500000
+        },
+        {
+          "year": 15,
+          "debtGdp": 1.3026896735802378,
+          "revenueTrillion": 379.26052350689673,
+          "primaryBalanceTrillion": 32.01448775915506,
+          "labourForce": 70190000,
+          "employment": 68500000
+        }
+      ]
+    },
+    {
+      "dataset": "latest",
+      "taxRevenueElasticity": 1.7,
+      "initialDebtGdp": 1.973823273360418,
+      "years": [
+        {
+          "year": 5,
+          "debtGdp": 1.7056454246538997,
+          "revenueTrillion": 271.9772524037594,
+          "primaryBalanceTrillion": 15.370387611968969,
+          "labourForce": 70190000,
+          "employment": 68500000
+        },
+        {
+          "year": 15,
+          "debtGdp": 0.8082974090366738,
+          "revenueTrillion": 454.54363890738244,
+          "primaryBalanceTrillion": 107.29760315964074,
+          "labourForce": 70190000,
+          "employment": 68500000
+        }
+      ]
+    }
+  ]
+}

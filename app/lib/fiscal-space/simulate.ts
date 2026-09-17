@@ -10,6 +10,8 @@ import { projectResponses } from './project-response';
 import { policyProduction } from './policy-production';
 import { ELECTRICITY_BASELINE, electricityBaseline } from './electricity-baseline';
 import { resourcePowerBalance, validateResourceAssumptions } from './resource-estimate';
+import { projectRevenueComponents, reliefComponent } from './revenue';
+import { demographicPath, expenditureDemographicFactor, validateDemographics, type BirthDriver } from './demographics';
 
 const sectorZeros = () => Object.fromEntries(SECTORS.map(s => [s, 0])) as Record<Sector, number>;
 const emptyDemand = () => ({ additionalDemand: 0, realOutput: 0, exports: 0, imports: 0, prices: 0, capacityPriceAdjustment: 0,
@@ -51,6 +53,10 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
   checkFinite(p);
   if (p.capacityPriceSensitivity < 0 || p.capacityPriceSensitivity > .1 || p.capacityPressureStart < 0 || p.capacityPressureStart >= 1 || p.referenceCapacityRatio <= 1) throw new RangeError('Invalid capacity price sensitivity');
   if (p.taxRevenueElasticity < 0 || p.taxRevenueElasticity > 3 || !Number.isInteger(p.taxCollectionLag) || p.taxCollectionLag < 0 || p.taxCollectionLag > 5) throw new RangeError('Invalid tax revenue sensitivity');
+  if (!(p.socialContributionElasticity >= 0 && p.socialContributionElasticity <= 3)) throw new RangeError('Invalid social contribution elasticity');
+  validateDemographics(p.demographics);
+  if (!Number.isInteger(initial.baseCalendarYear) || initial.baseCalendarYear < 1990 || initial.baseCalendarYear > 2100) throw new RangeError('Invalid base calendar year');
+  if (Math.abs(initial.fiscal.taxes + initial.fiscal.socialContributions - initial.fiscal.taxRevenue) > Math.max(1, initial.fiscal.taxRevenue * 1e-9)) throw new RangeError('Revenue components must sum to tax revenue');
   if (!['leontief', 'ces', 'cobbDouglas'].includes(p.productionModel)) throw new RangeError('Invalid production model');
   for (const n of [p.gapDemandSensitivity, p.gapPriceSensitivity, p.gapInflationSlope]) if (n < 0) throw new RangeError('Invalid gap sensitivity');
   if (!(p.structuralUnemployment > 0 && p.structuralUnemployment < .2)) throw new RangeError('Invalid structural unemployment');
@@ -79,8 +85,11 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
 }
 
 /** Explicit baseline paths keep temporary demand from becoming permanent growth by accident. */
-export function simulate(initial: EconomyState, policies: Policy[], horizon = 10, p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK): Simulation {
+export function simulate(initial: EconomyState, policies: Policy[], horizon = 10, p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK,
+  diagnostic: { gapClosureYears?: number } = {}): Simulation {
   validate(initial, policies, horizon, p, shock);
+  const gapClosureYears = diagnostic.gapClosureYears ?? 0;
+  if (!Number.isInteger(gapClosureYears) || gapClosureYears < 0 || gapClosureYears > 100) throw new RangeError('Invalid diagnostic gap closure');
   let previous = structuredClone(initial);
   const steps: ProjectionStep[] = [];
   const taxRate = initial.fiscal.taxRevenue / initial.macro.nominalGdp;
@@ -89,14 +98,33 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
   let commonPriceIndex = 1, previousCommonFuelIncrease = 0;
   let previousDomesticInflation = initial.macro.inflation, previousEnergyDeflatorEffect = 0, consumerPriceIndex = 1;
   let previousTaxAdjustedPrice = 0;
+  let previousReferencePrices = 0, previousCapacityPrices = 0, previousDirectTaxPrices = 0;
+  const drivers: BirthDriver[] = [];
   for (let t = 1; t <= horizon; t++) {
     const year = initial.year + t;
     const active = policies.filter(policy => policy.kind === 'permanent' || t <= policy.duration);
+    const fiscalTrend = ((1 + p.baselineRealGrowth) * (1 + p.baselineInflation)) ** t;
+    // Population: official projection × fixed age participation. Policy births come from
+    // family spending (share of GDP) and, if credited, net-income gains of insurance relief.
+    const calendarYear = initial.baseCalendarYear + t;
+    const trendNominal = initial.macro.nominalGdp * fiscalTrend;
+    const driver: BirthDriver = { calendarYear,
+      familySpendingGdpShare: active.filter(x => x.id === 'childcare').reduce((s, x) => s + x.annualCost, 0) / trendNominal,
+      netIncomeChange: active.filter(x => x.id === 'social-insurance').reduce((s, x) => s + x.annualCost, 0) * p.employeeReliefShare / (p.netLabourIncomeShare * trendNominal) };
+    drivers.push(driver);
+    const demographics = demographicPath(initial.baseCalendarYear, calendarYear, p.demographics, drivers);
+    const labourFactor = demographics.labourForceIndex ** p.demographics.labourElasticity;
     const priceBefore = previous.macro.nominalGdp / previous.macro.realGdp;
     const electricity = electricityBaseline(p.electricity, t);
     const commonFuelIncrease = electricity.additionalFuelBill * commonPriceIndex * (1 + shock.energyPriceChange);
-    const baselineReal = initial.macro.realGdp * (1 + p.baselineRealGrowth + shock.realGrowthDelta) ** t;
-    const baselinePotential = initial.macro.potentialGdp * (1 + p.baselineRealGrowth) ** t;
+    // Baseline growth is per unit of labour input; the labour-force index scales both paths equally so the gap is unchanged.
+    const originalBaselineReal = initial.macro.realGdp * (1 + p.baselineRealGrowth + shock.realGrowthDelta) ** t * labourFactor;
+    const baselinePotential = initial.macro.potentialGdp * (1 + p.baselineRealGrowth) ** t * labourFactor;
+    // Diagnostic only: close the initial gap by changing baseline demand, holding
+    // potential growth fixed. The separate growth shock remains in the path.
+    const initialGap = initial.macro.realGdp / initial.macro.potentialGdp - 1;
+    const baselineReal = gapClosureYears === 0 ? originalBaselineReal : originalBaselineReal
+      * (1 + initialGap * Math.max(0, 1 - t / gapClosureYears)) / (1 + initialGap);
     const supply = taxLabourSupply(initial, policies, t, p);
     const projects = projectResponses(initial, policies, t, p);
     const capacity = policyProduction(initial, policies, t, p, baselinePotential);
@@ -126,12 +154,14 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
       energyDemandIncrease += initial.energy.primaryDemand * intensity * policy.energyDemand;
     }
     for (const sector of SECTORS) state.labour.sectorUtilization[sector] += sectorDemand[sector];
-    state.labour.labourForce = Math.min(initial.labour.labourForce / initial.labour.participation,
-      initial.labour.labourForce * (1 + demand.labourForceEffect) * supply.participation);
-    state.labour.participation = Math.min(1, initial.labour.participation * state.labour.labourForce / initial.labour.labourForce);
+    const population15 = initial.labour.labourForce / initial.labour.participation * demographics.population15Index;
+    state.labour.labourForce = Math.min(population15,
+      initial.labour.labourForce * demographics.labourForceIndex * (1 + demand.labourForceEffect) * supply.participation);
+    state.labour.participation = Math.min(1, state.labour.labourForce / population15);
     state.labour.hoursWorked = initial.labour.hoursWorked * (1 + demand.hoursEffect) * supply.hours;
-    // Calibrated headcount response, with extra hours meeting part of labour demand.
-    state.labour.employment = initial.labour.employment * (1 + demand.employmentEffect) * supply.employerDemand / supply.hours;
+    // Calibrated headcount response, with extra hours meeting part of labour demand. The
+    // demographic index moves employment with the labour force so the baseline unemployment rate holds.
+    state.labour.employment = initial.labour.employment * demographics.labourForceIndex * (1 + demand.employmentEffect) * supply.employerDemand / supply.hours;
     state.labour.unemployment = Math.max(0, state.labour.labourForce - state.labour.employment);
     state.energy.primaryDemand = initial.energy.primaryDemand + energyDemandIncrease;
     state.energy.domesticSupply = initial.energy.domesticSupply * (1 + energyAddition);
@@ -164,6 +194,7 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     const underlyingInflation = p.baselineInflation + gapInflation + inflationPressure + energyPricePressure + p.inflationPersistence * (previousUnderlyingInflation - p.baselineInflation);
     const domesticInflation = p.baselineInflation + gapInflation + inflationPressure + p.inflationPersistence * (previousDomesticInflation - p.baselineInflation);
     const taxAdjustedPrice = demand.priceLevelEffect;
+    const referencePrices = demand.priceLevelEffect - demand.capacityPriceAdjustment;
     demand.priceLevelEffect += demand.directTaxPriceEffect;
     demand.deflatorLevelEffect += demand.directTaxDeflatorEffect;
     positive(1 + demand.priceLevelEffect, 'consumer price level');
@@ -185,6 +216,17 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     // No unidentified consumption/production response is inferred from this loss.
     const tradingIncomeChange = -importPriceBill / (nominalBeforeImportPrices / realGdp);
     consumerPriceIndex *= 1 + inflation;
+    // Exact additive decomposition: level components share the full previous
+    // price-level denominator. Interaction with underlying inflation is assigned
+    // to these level-change contributions, not counted a second time.
+    const levelFactor = (1 + underlyingInflation) / (1 + previousPriceEffect);
+    const cpiDiagnostics = { baselineGap, priceIndex: consumerPriceIndex, contributions: {
+      baseline: p.baselineInflation, gap: gapInflation, overflow: inflationPressure, energy: energyPricePressure,
+      persistence: p.inflationPersistence * (previousUnderlyingInflation - p.baselineInflation),
+      referencePrices: levelFactor * (referencePrices - previousReferencePrices),
+      capacityPrices: levelFactor * (demand.capacityPriceAdjustment - previousCapacityPrices),
+      directTaxPrices: levelFactor * (demand.directTaxPriceEffect - previousDirectTaxPrices),
+    } };
     const expenditureIndex = (consumerPriceIndex / (1 + p.baselineInflation) ** t) ** p.expenditurePriceIndexation;
     state.macro = { nominalGdp, realGdp, potentialGdp: potential, inflation,
       coreInflation: inflation - energyPricePressure, expectedInflation: p.baselineInflation + p.inflationPersistence * (inflation - p.baselineInflation),
@@ -195,15 +237,18 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     // Pass its long yield to new/rolled debt without applying a second GDP shock.
     const marketRate = Math.max(0, baseMarketRate + demand.longRateEffect);
     const rolled = rollover(previous.debtPortfolio, year, marketRate, p.newDebtMaturity);
-    const fiscalTrend = ((1 + p.baselineRealGrowth) * (1 + p.baselineInflation)) ** t;
-    const taxCut = active.filter(x => x.channel === 'tax').reduce((s, x) => s + x.annualCost, 0);
+    const relief = { taxes: 0, socialContributions: 0 };
+    for (const x of active) if (x.channel === 'tax') relief[reliefComponent(x.id)] += x.annualCost;
     const expenditure = active.filter(x => x.channel === 'expenditure').reduce((s, x) => s + x.annualCost, 0);
     const revenueYear = t - p.taxCollectionLag;
     const revenueBase = revenueYear <= 0 ? initial.macro.nominalGdp : revenueYear === t ? nominalGdp : steps[revenueYear - 1].state.macro.nominalGdp;
-    state.fiscal.taxRevenue = initial.fiscal.taxRevenue * (revenueBase / initial.macro.nominalGdp) ** p.taxRevenueElasticity - taxCut;
+    const revenue = projectRevenueComponents(initial.fiscal, initial.macro.nominalGdp, revenueBase,
+      { taxes: p.taxRevenueElasticity, socialContributions: p.socialContributionElasticity }, relief);
+    state.fiscal.taxes = revenue.taxes; state.fiscal.socialContributions = revenue.socialContributions;
+    state.fiscal.taxRevenue = revenue.total;
     state.fiscal.otherPrimaryRevenue = initial.fiscal.otherPrimaryRevenue * fiscalTrend;
     state.fiscal.interestRevenue = initial.fiscal.interestRevenue * fiscalTrend;
-    state.fiscal.primaryExpenditure = initial.fiscal.primaryExpenditure * fiscalTrend * expenditureIndex + expenditure;
+    state.fiscal.primaryExpenditure = initial.fiscal.primaryExpenditure * fiscalTrend * expenditureIndex * expenditureDemographicFactor(demographics, p.demographics) + expenditure;
     state.fiscal.primaryBalance = state.fiscal.taxRevenue + state.fiscal.otherPrimaryRevenue - state.fiscal.primaryExpenditure;
     state.fiscal.structuralPrimaryBalance = state.fiscal.primaryBalance - taxRate * (realGdp - potential) * nominalGdp / realGdp;
     state.fiscal.interestPayments = rolled.interestPayments;
@@ -236,7 +281,8 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     state.external.essentialImports = Math.max(0, initial.external.essentialImports * fiscalTrend + nominalImports * p.essentialImportShare + energyOutsideDemand + demand.projectEnergyNetImports * priceBefore * (1 - p.essentialImportShare));
     state.external.termsOfTrade = initial.external.termsOfTrade / (1 + shock.energyPriceChange * initial.energy.importBill / initial.external.imports);
     const production = productionCapacity(state, p, t);
-    steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure,
+    steps.push({ state, production, demand, policyCost, sectorDemand, maturingDebt: rolled.maturingDebt, energyImportIncrease, inflationPressure, cpiDiagnostics,
+      demographics: { ...demographics, driver },
       structuralUnemployment: p.structuralUnemployment,
       publicCapital: policies.some(policy => policy.supply?.kind === 'capital') ? {
         stock: capacity.publicCapitalStock, potentialBenefit: capacity.publicCapitalBenefit,
@@ -257,6 +303,8 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     previous = state;
     previousPriceEffect = demand.priceLevelEffect; previousDeflatorEffect = demand.deflatorLevelEffect;
     previousTaxAdjustedPrice = taxAdjustedPrice;
+    previousReferencePrices = referencePrices; previousCapacityPrices = demand.capacityPriceAdjustment;
+    previousDirectTaxPrices = demand.directTaxPriceEffect;
     previousUnderlyingInflation = underlyingInflation;
     previousDomesticInflation = domesticInflation; previousEnergyDeflatorEffect = energyDeflatorEffect;
     previousCommonFuelIncrease = commonFuelIncrease;

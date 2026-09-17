@@ -1,0 +1,33 @@
+{
+ "retrievedOn": "2026-09-17",
+ "files": {
+  "imf-cr26-75.pdf": {
+   "url": "https://www.imf.org/-/media/files/publications/cr/2026/english/1jpnea2026001.pdf",
+   "title": "IMF Country Report No. 26/75 Japan: 2026 Article IV Consultation（Table 4 は印刷46頁・PDF50頁）",
+   "retrievedOn": "2026-09-17",
+   "sha256": "6b8678ec0734b389c4d9047a9e4cf13974defdd8841330bf2919030edf99fc1e",
+   "bytes": 7240263
+  },
+  "saimu2026-3-1.pdf": {
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-1.pdf",
+   "title": "債務管理リポート2026 資料編 国債発行市場 PDF",
+   "retrievedOn": "2026-09-17",
+   "sha256": "5b885cad0e4a6e098f83e130ca5b23254705a68eace5914787f4ca856c160419",
+   "bytes": 937531
+  },
+  "saimu2026-3-1.xlsx": {
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-1.xlsx",
+   "title": "債務管理リポート2026 資料編 国債発行市場 Excel",
+   "retrievedOn": "2026-09-17",
+   "sha256": "735205449c98dc1ca5f3a1715723ac014906993e0621b8278eb06c5d69315efd",
+   "bytes": 127637
+  },
+  "saimu2026-3-ho.xlsx": {
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-ho.xlsx",
+   "title": "債務管理リポート2026 補足資料 Excel",
+   "retrievedOn": "2026-09-17",
+   "sha256": "529cb08d18ca84382f1ef069b2f882c0c8bf6a2263a41058ac1bbd76448c5a9b",
+   "bytes": 134395
+  }
+ }
+}

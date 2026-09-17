@@ -9,14 +9,18 @@ test('desktop keeps controls beside the five-year projection and changes it in p
   const bounds = (await panel.boundingBox())!;
   expect(bounds.y).toBeGreaterThanOrEqual(0);
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(1000);
-  const scrollY = await page.evaluate(() => window.scrollY);
-  const graph = page.getByRole('region', { name: 'GDP経路のグラフ' }).locator('polyline').first();
+  // 入力で上部の表示（公共資本の便益など）が伸縮しても、見出しの画面内位置が保たれること（スクロール固定ではなく「その場で変わる」ことを検証）。
+  const headingTop = async () => Math.round((await heading.boundingBox())!.y);
+  const topBefore = await headingTop();
+  const graph = page.getByRole('region', { name: '政策なしとの差のグラフ', exact: true }).locator('polyline').first();
   const before = await graph.getAttribute('points');
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
-  expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(scrollY, 0);
+  await expect.poll(headingTop).toBe(topBefore);
   await expect(graph).not.toHaveAttribute('points', before!);
   await expect(heading).toBeInViewport();
-  await panel.getByText('経済状態・評価条件を変える', { exact: true }).click();
+  // 「詳細な条件」は既定で閉じているため、ダイアログの開閉ボタンを表示させる。
+  await panel.getByText('詳細な条件', { exact: true }).click();
+  await panel.getByRole('button', { name: '経済状態・評価条件を変える', exact: true }).click();
   const economy = page.getByRole('dialog', { name: '経済状態・評価条件', exact: true });
   await expect(economy).toBeVisible();
   await page.getByLabel('制約の評価期間', { exact: true }).selectOption('3');
@@ -31,13 +35,15 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await page.goto('/fiscal-space');
   const heading = page.getByRole('heading', { name: '5年間の状態遷移', exact: true });
   await heading.scrollIntoViewIfNeeded();
-  const scrollY = await page.evaluate(() => window.scrollY);
+  const headingTop = async () => Math.round((await heading.boundingBox())!.y);
+  const topBefore = await headingTop();
   await page.getByRole('button', { name: /^政策を調整/ }).click();
   const panel = page.getByRole('region', { name: '政策の操作パネル' });
   await expect(panel).toBeInViewport();
   const economyOpener = panel.getByRole('button', { name: '経済状態・評価条件を変える', exact: true });
   const settings = panel.locator('[aria-haspopup="dialog"]');
   expect((await settings.allTextContents()).slice(-3)).toEqual(['経済状態・評価条件を変える', '乗数・労働反応の条件', '政策別の供給力・長期条件']);
+  await panel.getByText('詳細な条件', { exact: true }).click();
   await economyOpener.click();
   const economy = page.getByRole('dialog', { name: '経済状態・評価条件', exact: true });
   await expect(economy).toBeInViewport();
@@ -54,7 +60,7 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(opener).toBeFocused();
-  expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(scrollY, 0);
+  await expect.poll(headingTop).toBe(topBefore);
   await opener.click();
   await expect(dialog.getByLabel('GDP乗数の感度倍率・数値で入力', { exact: true })).toHaveValue('1.5');
   await dialog.getByRole('button', { name: '乗数・労働反応の設定を閉じる', exact: true }).click();

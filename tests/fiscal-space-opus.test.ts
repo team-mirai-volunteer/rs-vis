@@ -49,7 +49,7 @@ test('tax revenue elasticity and collection lag alter fiscal paths while preserv
   assert(paths[0].steps[0].state.fiscal.taxRevenue > paths[1].steps[0].state.fiscal.taxRevenue);
   assert.equal(paths[1].steps[0].state.fiscal.taxRevenue, s.fiscal.taxRevenue);
   assert.equal(paths[2].steps[1].state.fiscal.taxRevenue, s.fiscal.taxRevenue);
-  const flat = simulate(s, [policy], 5, { ...P, taxRevenueElasticity: 0 });
+  const flat = simulate(s, [policy], 5, { ...P, taxRevenueElasticity: 0, socialContributionElasticity: 0 });
   assert(flat.steps.every(x => x.state.fiscal.taxRevenue === s.fiscal.taxRevenue));
   for (const path of paths) for (const step of path.steps) {
     const f = step.state.fiscal;

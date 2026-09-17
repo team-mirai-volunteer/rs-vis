@@ -26,7 +26,9 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
   // 2026-09-16.4: policy electricity now adds an imported-fuel bill and its
   // energy price pressure, so the 2.5% CPI boundary moved from 17.01/13.61.
   // 2026-09-16.6: no default haircut; the envelope equals the search amount unless stresses are selected.
-  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 16.79, 16.79], [.03, 27.45, 27.45], [.035, 27.45, 27.45]]) {
+  // 2026-09-17.1: latest fiscal aggregates bridged with IMF 2026 ratios, JGB maturity ladder, population path
+  // and separate contribution elasticity; the 2.5% boundary moved 16.79 -> 16.78.
+  for (const [limit, maximum, envelope] of [[.02, 0, 0], [.025, 16.78, 16.78], [.03, 27.45, 27.45], [.035, 27.45, 27.45]]) {
     form.thresholds.inflation = limit;
     const r = calculate(form);
     assert.equal(r.totalYen, 15_000_000_000_000);

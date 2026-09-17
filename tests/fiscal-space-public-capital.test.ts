@@ -8,9 +8,10 @@ import { longRunScenario, LONG_RUN } from '../app/lib/fiscal-space/long-run';
 import { defaults } from '../client/lib/fiscal-space-form';
 import { createFiscalEngine } from '../client/lib/fiscal-space-engine';
 import { decodeScenario, encodeScenario } from '../client/lib/fiscal-space-url';
+import { DEMOGRAPHICS_OFF } from '../app/lib/fiscal-space/demographics';
 
 const s = initialEconomy('latest'); s.macro.inflation = 0; s.macro.potentialGdp = s.macro.realGdp;
-const p = { ...PARAMETERS, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0, capacityPriceSensitivity: 0 };
+const p = { ...PARAMETERS, demographics: DEMOGRAPHICS_OFF, baselineInflation: 0, baselineRealGrowth: 0, inflationPersistence: 0, capacityPriceSensitivity: 0 };
 const capital = { ...POLICIES.find(x => x.id === 'public-investment')!, annualCost: 1e12, duration: 1,
   supply: { ...SUPPLY_CASES['public-investment'].settings, additionality: 1, depreciation: 0, lifetime: 4, realizationRate: .6 } };
 const near = (a: number, b: number) => assert(Math.abs(a - b) < 2, `${a} != ${b}`);
@@ -63,9 +64,10 @@ test('public capital pools different spending durations before diminishing retur
 test('default ten-trillion scenario exposes a modest benefit without forcing total GDP positive', () => {
   const f = defaults(); f.amounts['public-investment'] = 10;
   const r = createFiscalEngine()(f), end = r.projection.steps[4];
-  assert(Math.abs(end.publicCapital!.potentialBenefit / 1e12 - 1.50262033) < 1e-6);
-  assert(Math.abs(end.publicCapital!.realizedBenefit / 1e12 - .252543542) < 1e-6);
-  assert(Math.abs((end.state.macro.realGdp - r.baseline.steps[4].state.macro.realGdp) / 1e12 + 5.014088977) < 1e-6);
+  // Pinned outputs (2026-09-17.1: population path lowers the baseline potential the benefit scales with).
+  assert(Math.abs(end.publicCapital!.potentialBenefit / 1e12 - 1.478008276) < 1e-6);
+  assert(Math.abs(end.publicCapital!.realizedBenefit / 1e12 - .248407024) < 1e-6);
+  assert(Math.abs((end.state.macro.realGdp - r.baseline.steps[4].state.macro.realGdp) / 1e12 + 5.018225494) < 1e-6);
   near(end.state.macro.realGdp - r.baseline.steps[4].state.macro.realGdp, end.publicCapital!.realizedBenefit + end.publicCapital!.demandEffect);
   assert.equal(r.publicCapitalSensitivity.at(-1)!.benefit, 0);
   assert(r.publicCapitalSensitivity[0].benefit > r.publicCapitalSensitivity[1].benefit);

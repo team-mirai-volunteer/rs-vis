@@ -1,0 +1,289 @@
+{
+ "source": "財務省「債務管理リポート2026」資料編・補足資料（Excel）",
+ "sourcePage": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/index.html",
+ "retrievedOn": "2026-09-17",
+ "checkedAt": "2026-09-17",
+ "asOf": {
+  "outstanding": "2025年度末（2026年3月末）実績",
+  "redemptionSchedule": "令和8年度当初予算ベース（2026年度末見込残高の償還年次、2027年度以降）",
+  "coupon": "2025年度末実績"
+ },
+ "units": {
+  "principalYen": "円",
+  "coupon": "percent per annum（利率加重平均）",
+  "outstanding": "円（原表は億円）"
+ },
+ "files": {
+  "saimu2026-3-ho.xlsx": {
+   "title": "債務管理リポート2026 補足資料（(1)現在高の推移、(4)普通国債償還年次表、(6)利率加重平均・平均残存期間、(7)政府短期証券）",
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-ho.xlsx",
+   "sha256": "529cb08d18ca84382f1ef069b2f882c0c8bf6a2263a41058ac1bbd76448c5a9b"
+  },
+  "saimu2026-3-1.xlsx": {
+   "title": "債務管理リポート2026 資料編 国債発行市場（発行額・残高・保有者別）",
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-1.xlsx",
+   "sha256": "735205449c98dc1ca5f3a1715723ac014906993e0621b8278eb06c5d69315efd"
+  },
+  "saimu2026-3-1.pdf": {
+   "title": "同 PDF 版",
+   "url": "https://www.mof.go.jp/jgbs/publication/debt_management_report/2026/saimu2026-3-1.pdf",
+   "sha256": "5b885cad0e4a6e098f83e130ca5b23254705a68eace5914787f4ca856c160419"
+  }
+ },
+ "outstandingYen": {
+  "内国債": 1207218800000000,
+  "普通国債": 1104298400000000,
+  "財投債": 90921400000000,
+  "借入金": 44324300000000,
+  "政府短期証券": 92299500000000,
+  "合計": 1343842600000000
+ },
+ "ordinaryJgbByOriginalMaturityYen": {
+  "long10yPlus": 852255800000000,
+  "medium2to5y": 208043000000000,
+  "short1yOrLess": 43999700000000
+ },
+ "filpBondsByOriginalMaturityYen": {
+  "long10yPlus": 74486200000000,
+  "medium2to5y": 16435200000000,
+  "short1yOrLess": 0
+ },
+ "borrowingsYen": {
+  "longOver1y": 8368700000000,
+  "short1yOrLess": 35955700000000
+ },
+ "ordinaryJgb": {
+  "outstandingTrillionYen": 1104.3,
+  "weightedAverageCouponPercent": 0.98,
+  "generalAccountInterestTrillionYen": 9.4,
+  "averageRemainingMaturity": "９年５ヶ月",
+  "fiscalYear": 2025
+ },
+ "financingBills": {
+  "totalYen": 92299500000000,
+  "foreignExchangeFundBillsYen": 91139100000000,
+  "petroleumBillsYen": 1160400000000
+ },
+ "redemptionSchedule": {
+  "basis": "普通国債償還年次表（令和8年度当初予算ベース）",
+  "buckets": [
+   {
+    "maturityFiscalYear": 2027,
+    "remainingYears": 1,
+    "principalYen": 157962100000000
+   },
+   {
+    "maturityFiscalYear": 2028,
+    "remainingYears": 2,
+    "principalYen": 109514600000000
+   },
+   {
+    "maturityFiscalYear": 2029,
+    "remainingYears": 3,
+    "principalYen": 76348300000000
+   },
+   {
+    "maturityFiscalYear": 2030,
+    "remainingYears": 4,
+    "principalYen": 79658000000000
+   },
+   {
+    "maturityFiscalYear": 2031,
+    "remainingYears": 5,
+    "principalYen": 82666000000000
+   },
+   {
+    "maturityFiscalYear": 2032,
+    "remainingYears": 6,
+    "principalYen": 53178000000000
+   },
+   {
+    "maturityFiscalYear": 2033,
+    "remainingYears": 7,
+    "principalYen": 59330000000000
+   },
+   {
+    "maturityFiscalYear": 2034,
+    "remainingYears": 8,
+    "principalYen": 51561600000000
+   },
+   {
+    "maturityFiscalYear": 2035,
+    "remainingYears": 9,
+    "principalYen": 51645600000000
+   },
+   {
+    "maturityFiscalYear": 2036,
+    "remainingYears": 10,
+    "principalYen": 53116900000000
+   },
+   {
+    "maturityFiscalYear": 2037,
+    "remainingYears": 11,
+    "principalYen": 21510800000000
+   },
+   {
+    "maturityFiscalYear": 2038,
+    "remainingYears": 12,
+    "principalYen": 21273000000000
+   },
+   {
+    "maturityFiscalYear": 2039,
+    "remainingYears": 13,
+    "principalYen": 20662600000000
+   },
+   {
+    "maturityFiscalYear": 2040,
+    "remainingYears": 14,
+    "principalYen": 24376500000000
+   },
+   {
+    "maturityFiscalYear": 2041,
+    "remainingYears": 15,
+    "principalYen": 23592600000000
+   },
+   {
+    "maturityFiscalYear": 2042,
+    "remainingYears": 16,
+    "principalYen": 21924700000000
+   },
+   {
+    "maturityFiscalYear": 2043,
+    "remainingYears": 17,
+    "principalYen": 22433800000000
+   },
+   {
+    "maturityFiscalYear": 2044,
+    "remainingYears": 18,
+    "principalYen": 22018700000000
+   },
+   {
+    "maturityFiscalYear": 2045,
+    "remainingYears": 19,
+    "principalYen": 22785400000000
+   },
+   {
+    "maturityFiscalYear": 2046,
+    "remainingYears": 20,
+    "principalYen": 16994900000000
+   },
+   {
+    "maturityFiscalYear": 2047,
+    "remainingYears": 21,
+    "principalYen": 11916200000000
+   },
+   {
+    "maturityFiscalYear": 2048,
+    "remainingYears": 22,
+    "principalYen": 10328200000000
+   },
+   {
+    "maturityFiscalYear": 2049,
+    "remainingYears": 23,
+    "principalYen": 10499100000000
+   },
+   {
+    "maturityFiscalYear": 2050,
+    "remainingYears": 24,
+    "principalYen": 12667000000000
+   },
+   {
+    "maturityFiscalYear": 2051,
+    "remainingYears": 25,
+    "principalYen": 13153600000000
+   },
+   {
+    "maturityFiscalYear": 2052,
+    "remainingYears": 26,
+    "principalYen": 13618800000000
+   },
+   {
+    "maturityFiscalYear": 2053,
+    "remainingYears": 27,
+    "principalYen": 13531000000000
+   },
+   {
+    "maturityFiscalYear": 2054,
+    "remainingYears": 28,
+    "principalYen": 13164600000000
+   },
+   {
+    "maturityFiscalYear": 2055,
+    "remainingYears": 29,
+    "principalYen": 12481100000000
+   },
+   {
+    "maturityFiscalYear": 2056,
+    "remainingYears": 30,
+    "principalYen": 9701800000000
+   },
+   {
+    "maturityFiscalYear": 2057,
+    "remainingYears": 31,
+    "principalYen": 2180300000000
+   },
+   {
+    "maturityFiscalYear": 2058,
+    "remainingYears": 32,
+    "principalYen": 2656900000000
+   },
+   {
+    "maturityFiscalYear": 2059,
+    "remainingYears": 33,
+    "principalYen": 4229600000000
+   },
+   {
+    "maturityFiscalYear": 2060,
+    "remainingYears": 34,
+    "principalYen": 4094800000000
+   },
+   {
+    "maturityFiscalYear": 2061,
+    "remainingYears": 35,
+    "principalYen": 4593200000000
+   },
+   {
+    "maturityFiscalYear": 2062,
+    "remainingYears": 36,
+    "principalYen": 4452800000000
+   },
+   {
+    "maturityFiscalYear": 2063,
+    "remainingYears": 37,
+    "principalYen": 4490200000000
+   },
+   {
+    "maturityFiscalYear": 2064,
+    "remainingYears": 38,
+    "principalYen": 1922600000000
+   },
+   {
+    "maturityFiscalYear": 2065,
+    "remainingYears": 39,
+    "principalYen": 1824300000000
+   },
+   {
+    "maturityFiscalYear": 2066,
+    "remainingYears": 40,
+    "principalYen": 1337100000000
+   }
+  ],
+  "totalYen": 1145397500000000,
+  "ratioToOrdinaryJgbOutstandingFy2025": 1.0372
+ },
+ "generalGovernmentComparison": {
+  "imfGrossDebtPercentGdp2024": 214.5,
+  "imfNominalGdpTrillionYen2024": 634.2,
+  "imfGrossDebtYen2024": 1360359000000000,
+  "centralGovernmentDebtTotalYen2025FYEnd": 1343842600000000,
+  "residualYen": 16516400000000,
+  "note": "IMF 一般政府総債務（連結・額面、2024暦年末）と財務省 国の債務合計（2025年度末、国債+借入金+政府短期証券）は時点・範囲が異なる。差額は地方債・連結消去・時点差を含む概算。"
+ },
+ "notes": [
+  "償還年次表は普通国債のみ（財投債・政府短期証券・借入金を含まない）。2026年度中に償還される分は含まれないため、合計 1,145.4兆円 は 2025年度末残高 1,104.3兆円 より大きい（2026年度当初予算の発行を含む2026年度末見込残高ベース）。",
+  "残存年数 = 償還年度 − 2026（2026年度末基準）。年度は4月〜翌3月。",
+  "クーポンは銘柄別の公表がないため利率加重平均（2025年度末）を全バケット共通に使うか、一般会計利払費（2025年度補正後）で整合させる。",
+  "政府短期証券は残存1年以内。借入金は長期・短期の2区分のみ。財投債は残存構成が非公表のため、普通国債の構成比で按分するか10年均等とする（設計書2-3の『その他』扱い）。",
+  "残存期間別（1年刻み）の残高表は債務管理リポート本文（PDF）の図表のみで、Excel では公表されていないため、償還年次表を代用した。"
+ ]
+}

@@ -1,6 +1,8 @@
 import type { EconomyState, ModelParameters, Policy, Sector, Shock, SourceValue, Thresholds } from '@/types/fiscal-space';
 import { japanSources, japanValue, type JapanDataset } from './japan-data';
 import { ELECTRICITY_BASELINE, electricityRecords } from './electricity-baseline';
+import { DEMOGRAPHICS, demographicRecords } from './demographics';
+import { buildDebtPortfolio } from './debt-portfolio';
 
 export const TRILLION = 1e12;
 export const SECTORS: Sector[] = ['general', 'construction', 'healthcare', 'research', 'electronics', 'electricity'];
@@ -10,6 +12,10 @@ export const INPUT_LABELS = { capital: '設備', labour: '労働', energy: 'エ�
 export const PARAMETERS: ModelParameters = {
   // 比較用の初期値。税・社会負担全体の実証推定値ではない。1.7は感度比較。
   taxRevenueElasticity: 1.3, taxCollectionLag: 0,
+  // 社会負担の弾性値。1994〜2024年度の1年変化の事後推定は0.77〜0.87（docs/fiscal-space-macro-backtest.md）。
+  // 保険料率引上げ・高齢化トレンドは1年変化では捉えられないため、比較用の初期値は1.0（GDP比一定）とする。
+  socialContributionElasticity: 1.0,
+  demographics: { ...DEMOGRAPHICS },
   productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
   // 構造的失業率2.5%は日本のNAIRU推定幅（約2.3〜2.7%）の中央付近を置いた仮定。推定値ではない。
   structuralUnemployment: .025, inflationRule: 'peak',
@@ -41,17 +47,17 @@ export function initialEconomy(dataset: JapanDataset = '2024'): EconomyState {
   const gdp = J('macro.nominalGdp'), debt = J('fiscal.grossDebt');
   const interest = J('fiscal.interestPayments');
   return {
-    year: 0,
+    year: 0, baseCalendarYear: dataset === 'latest' ? 2026 : 2024,
     macro: { nominalGdp: gdp, realGdp: J('macro.realGdp'), potentialGdp: J('macro.potentialGdp'), inflation: J('macro.inflation'),
       coreInflation: J('macro.coreInflation'), expectedInflation: .02, nominalWageGrowth: .03,
       realGrowth: J('macro.realGrowth'), nominalGrowth: J('macro.nominalGrowth') },
     fiscal: { primaryBalance: J('fiscal.primaryBalance'), structuralPrimaryBalance: J('fiscal.structuralPrimaryBalance'),
-      taxRevenue: J('fiscal.taxRevenue'), primaryExpenditure: J('fiscal.primaryExpenditure'), interestPayments: interest,
+      taxRevenue: J('fiscal.taxRevenue'), taxes: J('fiscal.taxes'), socialContributions: J('fiscal.socialContributions'), primaryExpenditure: J('fiscal.primaryExpenditure'), interestPayments: interest,
       interestRevenue: J('fiscal.interestRevenue'), otherPrimaryRevenue: J('fiscal.otherPrimaryRevenue'),
       grossDebt: debt, financialAssets: J('fiscal.financialAssets'), netDebt: J('fiscal.netDebt'),
       liquidFinancialAssets: J('fiscal.liquidFinancialAssets'), liquidityAdjustedNetDebt: J('fiscal.liquidityAdjustedNetDebt') },
-    // Synthetic maturity distribution, calibrated only to aggregate debt and interest.
-    debtPortfolio: Array.from({ length: 10 }, (_, i) => ({ principal: debt / 10, coupon: interest / debt, maturityYear: i + 1 })),
+    // Published JGB redemption schedule plus a residual ladder, reconciled to gross debt and interest paid.
+    debtPortfolio: buildDebtPortfolio(debt, interest).buckets,
     production: { inputs: { capital: 1.18, labour: 1.08, energy: 1.12, materials: 1.2 }, tfp: 1, labourProductivity: 1 },
     labour: { labourForce: J('labour.labourForce'), employment: J('labour.employment'), unemployment: J('labour.unemployment'), hoursWorked: 1700,
       participation: J('labour.participation'), wageGrowth: .03,
@@ -96,11 +102,14 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
   if (prefix === 'parameters.resourceModel' || (prefix.startsWith('policies.') && prefix.endsWith('.load') &&
     data && typeof data === 'object' && 'estimated' in data && data.estimated)) return [];
   if (prefix === 'parameters.electricity') return electricityRecords(data as ModelParameters['electricity']);
+  if (prefix === 'parameters.demographics') return demographicRecords(data as ModelParameters['demographics'], dataset === 'latest' ? 2026 : 2024);
+  // The maturity ladder has its own provenance records (debtPortfolioRecords); leaf values would only repeat them.
+  if (prefix.startsWith('initial.debtPortfolio')) return [];
   // Project fields have their own units and provenance in policyTradeRecords.
   if (prefix.startsWith('policies.') && prefix.endsWith('.trade')) return [];
   if (prefix.startsWith('policies.') && prefix.endsWith('.supply')) return [];
   const leaf = prefix.split('.').at(-1) ?? '';
-  const yenFields = ['nominalGdp', 'realGdp', 'potentialGdp', 'primaryBalance', 'structuralPrimaryBalance', 'taxRevenue',
+  const yenFields = ['nominalGdp', 'realGdp', 'potentialGdp', 'primaryBalance', 'structuralPrimaryBalance', 'taxRevenue', 'taxes', 'socialContributions',
     'primaryExpenditure', 'interestPayments', 'grossDebt', 'financialAssets', 'netDebt', 'liquidFinancialAssets',
     'liquidityAdjustedNetDebt', 'principal', 'importBill', 'exports', 'imports', 'tradeBalance', 'goodsBalance',
     'servicesBalance', 'primaryIncomeBalance', 'secondaryIncomeBalance', 'currentAccount', 'niip', 'essentialImports',

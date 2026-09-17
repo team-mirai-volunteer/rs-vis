@@ -13,10 +13,10 @@ test('public investment shows commissioned benefits separately and overlap contr
   const benefit = page.getByTestId('public-capital-benefit');
   await expect(benefit.locator('summary')).toContainText('0.25兆円');
   await expect(benefit).not.toHaveAttribute('open', '');
-  await expect(page.getByTestId('input-overview')).toContainText('-5.01兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-5.02兆円');
   await benefit.locator('summary').click();
   const detail = page.getByRole('region', { name: '公共投資の需要効果と供用後便益', exact: true });
-  await expect(detail.getByRole('row').last()).toContainText('1.50兆円');
+  await expect(detail.getByRole('row').last()).toContainText('1.48兆円');
   await expect(detail.getByRole('row').last()).toContainText('-5.27兆円');
   await openAdvanced(page);
   await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
@@ -26,14 +26,14 @@ test('public investment shows commissioned benefits separately and overlap contr
   await expect(benefit.locator('summary')).toContainText('0.00兆円');
   await expect(page.getByTestId('input-overview')).toContainText('-5.27兆円');
   await overlap.fill('0');
-  await expect(benefit.locator('summary')).toContainText('0.51兆円');
-  await expect(page.getByTestId('input-overview')).toContainText('-4.76兆円');
+  await expect(benefit.locator('summary')).toContainText('0.50兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-4.77兆円');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
   const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
   await page.goto(url);
-  await expect(benefit.locator('summary')).toContainText('0.51兆円');
-  await expect(page.getByTestId('input-overview')).toContainText('-4.76兆円');
+  await expect(benefit.locator('summary')).toContainText('0.50兆円');
+  await expect(page.getByTestId('input-overview')).toContainText('-4.77兆円');
 });
 
 test('example allocation displays pinned yen conversion and absolute search results', async ({ page }) => {
@@ -41,16 +41,17 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(page.getByTestId('input-overview')).toBeVisible();
   const result = page.getByTestId('horizon-results');
   await expect(result.getByRole('heading', { name: '5年目の結果（試算）' })).toBeVisible();
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.96%');
+  // 2026-09-17.1: latest fiscal aggregates bridged with IMF 2026 ratios (taxes 19.8% + contributions 13.1% at year 0).
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.71%');
   await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
   await expect(page.getByTestId('input-overview')).toContainText('追加予算');
   await expect(page.getByTestId('input-overview')).not.toContainText('入力額');
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('30.29%');
-  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -1.675ポイント');
-  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('246.87兆円');
-  await expect(result.locator('[data-metric="名目GDP"]')).toContainText('815.09兆円');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.95%');
+  await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -1.763ポイント');
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('256.18兆円');
+  await expect(result.locator('[data-metric="名目GDP"]')).toContainText('801.83兆円');
   const budget = page.getByTestId('input-overview').getByTestId('general-account-budget');
   await budget.getByText('一般会計の歳入・歳出内訳', { exact: true }).click();
   await expect(budget).toContainText('125.42兆円');
@@ -64,7 +65,7 @@ test('example allocation displays pinned yen conversion and absolute search resu
   expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
   const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
-  await expect(projectionTable.getByRole('row').last()).toContainText('30.29%');
+  await expect(projectionTable.getByRole('row').last()).toContainText('31.95%');
   await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
   await expect(page.getByTestId('baseline-inflation-sensitivity')).not.toBeVisible();
   await page.getByTestId('baseline-sensitivity-details').locator('summary').click();
@@ -79,15 +80,15 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await openAdvanced(page);
   await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
   await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
-  const elasticity = page.getByLabel('名目GDPに対する税収弾性値・数値で入力', { exact: true });
+  const elasticity = page.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true });
   await expect(elasticity).toHaveValue('1.3');
   await expect(page.getByText('現在は1.2', { exact: true })).toBeVisible();
   await expect(page.getByText('財務省答弁の実績ベースの値は1.7（2015〜2024年度）', { exact: true })).toBeVisible();
   await elasticity.fill('1.7');
-  await expect(page.getByText('名目GDPが1%増えたとき、税・社会保険料収入が約1.7%増える想定です（減税分を引く前）。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
+  await expect(page.getByText('名目GDPが1%増えたとき、税（罰金を含む）が約1.7%、社会保険料が約1.0%増える想定です（減税分を引く前）。所得税・住民税・消費税の減税は税から、社会保険料減税は社会負担から差し引きます。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('265.05兆円');
-  await expect(page.getByText('債務経路の仮定：名目GDPへの税収弾性値 1.7', { exact: false })).toBeVisible();
+  await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('266.55兆円');
+  await expect(page.getByText('債務経路の仮定：名目GDPへの弾性値は税 1.7・社会保険料 1', { exact: false })).toBeVisible();
 });
 
 test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
@@ -201,8 +202,8 @@ test('pending results are visible, data dialog is lazy, and tables remain keyboa
   await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
   await expect(page.getByTestId('calculation-status')).toBeEmpty();
   await expect(page.getByRole('region', { name: '結果を左右する前提' })).toContainText('評価期間中一定');
-  await expect(page.locator('[data-constraint]').first()).toHaveAttribute('data-constraint', 'inflation');
-  await expect(page.getByTestId('fiscal-vintage').first()).toContainText('分子2024年／分母2026Q2');
+  await expect(page.locator('[data-constraint]').first()).toHaveAttribute('data-constraint', 'debt');
+  await expect(page.getByTestId('fiscal-vintage').first()).toContainText('分子はIMF 2026年推計比率×分母2026Q2');
   await page.getByRole('button', { name: 'データについて', exact: true }).click();
   await expect(page.locator('[data-source-key]').first()).toBeAttached();
   await page.keyboard.press('Escape');
@@ -237,13 +238,24 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   const amount = page.getByLabel('公共投資・数値で入力', { exact: true });
   for (const value of ['1', '4', '8', '2']) await amount.fill(value);
   await expect(page.getByTestId('input-overview')).toContainText('2.00兆円 / 年');
+  // メーターは未評価でも斜線付きで常に描画されるため、評価済みかは data-status で判定する。
+  const sectorMeter = page.locator('[data-constraint="sector"]');
+  const energyMeter = page.locator('[data-constraint="energy"]');
+  const evaluated = async (meter: typeof sectorMeter, expected: boolean) => {
+    await expect(meter).toHaveCount(1);
+    if (expected) await expect(meter).not.toHaveAttribute('data-status', 'unevaluated');
+    else await expect(meter).toHaveAttribute('data-status', 'unevaluated');
+  };
+  // 既定の「公表統計を基に概算」モードでは、負荷係数を入力しなくても産業・電力の負荷が概算され、評価済みになる。
+  await evaluated(sectorMeter, true);
+  await evaluated(energyMeter, true);
+  // 「手入力した負荷だけで評価」に切り替えると、係数未入力の負荷は未評価として扱われる。
+  await page.getByRole('combobox', { name: '負荷の評価方法' }).selectOption('manual');
   const loads = page.getByRole('region', { name: '政策別の負荷条件', exact: true });
   await loads.locator('summary').click();
   await loads.getByLabel('公共投資の負荷条件を入力する').check();
-  const sectorMeter = page.getByRole('meter', { name: '産業別能力の閾値利用率' });
-  const energyMeter = page.getByRole('meter', { name: '電力供給能力の閾値利用率' });
-  await expect(sectorMeter).toHaveCount(0);
-  await expect(energyMeter).toHaveCount(0);
+  await evaluated(sectorMeter, false);
+  await evaluated(energyMeter, false);
   await expect(page.getByTestId('recommended-envelope')).toContainText('算出不可：負荷が未評価');
   const notes = page.getByTestId('input-overview').locator('details').filter({ has: page.getByText('計算上の注意', { exact: true }) });
   await expect(notes).not.toHaveAttribute('open', '');
@@ -252,19 +264,19 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await expect(notes.getByText('産業別・電力の追加負荷に未評価の項目があります。')).toBeVisible();
   await notes.locator('summary').click();
   await loads.getByLabel(/公共投資・支出1兆円の産業稼働率増分/).fill('0');
-  await expect(sectorMeter).toHaveCount(1);
-  await expect(energyMeter).toHaveCount(0);
+  await evaluated(sectorMeter, true);
+  await evaluated(energyMeter, false);
   await loads.getByLabel('公共投資・負荷の入力方式').selectOption('project');
-  await expect(sectorMeter).toHaveCount(0);
-  await loads.getByLabel(/公共投資・稼働後の年間電力（ピーク不明時）/).fill('8760');
+  await evaluated(sectorMeter, false);
+  await loads.getByLabel(/公共投資・稼働後の年間電力量/).fill('8760');
   const conversion = page.getByTestId('load-conversion-public-investment');
   await expect(conversion).toContainText('稼働後ピーク 未評価');
   await loads.getByLabel(/公共投資・年間負荷率/).fill('0.5');
   await loads.getByLabel(/公共投資・系統ピークとの同時発生係数/).fill('0.75');
   await expect(conversion).toContainText('稼働後ピーク 0.750GW');
-  await expect(energyMeter).toHaveCount(0);
+  await evaluated(energyMeter, false);
   await loads.getByLabel(/公共投資・支出年の追加ピーク電力/).fill('0');
-  await expect(energyMeter).toHaveCount(1);
+  await evaluated(energyMeter, true);
   await loads.getByLabel(/公共投資・稼働後の系統ピークへの純追加電力/).fill('400');
   await expect(conversion).toContainText('稼働後ピーク 0.200GW');
   await expect(page.getByRole('region', { name: '政策期間の比較', exact: true })).toContainText('同額予算での比較ではありません');
@@ -274,8 +286,8 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await expect(page.getByTestId('input-overview')).toContainText('2.00兆円 / 年');
   await loads.locator('summary').click();
   await expect(conversion).toContainText('稼働後ピーク 0.200GW');
-  await expect(energyMeter).toHaveCount(1);
-  await expect(sectorMeter).toHaveCount(0);
+  await evaluated(energyMeter, true);
+  await evaluated(sectorMeter, false);
 });
 
 test('worker startup failure leaves inputs usable and retry calculates the edited form', async ({ page }) => {
