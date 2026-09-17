@@ -21,7 +21,7 @@ const LABELS: Record<string, string> = {
   maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益',
   energyCpi: 'エネルギーCPI', energyPolicyAdjustedCpi: 'エネルギーCPI・政策効果調整後（参考）', exchangeRate: '為替レート（円／ドル）',
   ureaDomesticShare: '肥料原料・尿素の国産割合',
-  context: '参考統計', coreCoreCpi: 'コアコアCPI', foodCpi: '食料CPI', calorieSelfSufficiency: '食料自給率（カロリー）',
+  context: '参考統計', totalFertilityRate: '合計特殊出生率', coreCoreCpi: 'コアコアCPI', foodCpi: '食料CPI', calorieSelfSufficiency: '食料自給率（カロリー）',
   valueSelfSufficiency: '食料自給率（生産額）', oecdGrossLiabilities: 'OECD平均・総金融負債GDP比', oecdJapanGrossLiabilities: 'OECD定義の日本・総金融負債GDP比',
   calibration: '公表モデルの反応', government: '政府支出増', governmentOneYear: '政府支出増（1年限り）', household: '所得税減税', corporate: '法人税減税',
   gdp: '実質GDP', prices: '消費者物価水準', deflator: 'GDPデフレーター', hours: '労働時間',

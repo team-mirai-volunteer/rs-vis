@@ -23,6 +23,7 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     ['食品CPI（統計の「食料」）', percent(context['context.foodCpi'].value), 'context.foodCpi'],
     ['エネルギーCPI', percent(context['context.energyCpi'].value), 'context.energyCpi'],
     ['就業者数', `${(s.labour.employment / 1e4).toLocaleString('ja-JP')}万人`, 'labour.employment'],
+    ['合計特殊出生率（人口動態統計）', context['context.totalFertilityRate'].value.toFixed(2), 'context.totalFertilityRate'],
     ['財・サービス輸入', money(s.external.imports, 1), 'external.imports'],
     ['財・サービス輸出', money(s.external.exports, 1), 'external.exports'],
     ['エネルギー自給率', percent(s.energy.domesticSupply / s.energy.primaryDemand), 'energy.domesticSupply'],
