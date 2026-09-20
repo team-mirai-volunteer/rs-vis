@@ -6,9 +6,30 @@ import { defaults, type FiscalForm } from '../client/lib/fiscal-space-form';
 import { createFiscalWorkerClient, type FiscalWorkerPort } from '../client/lib/fiscal-worker-client';
 import { simulate } from '../app/lib/fiscal-space/simulate';
 import { estimateFiscalSpace } from '../app/lib/fiscal-space/search';
+import { applyStressReserve } from '../app/lib/fiscal-space/stress-envelope';
+import { longRunScenario } from '../app/lib/fiscal-space/long-run';
 
 const calculate = createFiscalEngine();
 const zero = calculate(defaults());
+
+test('medium reference recomputes identical policy, shock, stress and long-run conditions', () => {
+  const form = defaults();
+  form.amounts.childcare = 5;
+  form.rateShock = 50;
+  form.energyShock = 10;
+  const result = calculate(form);
+  const p = { ...result.p, demographics: { ...result.p.demographics, fertilityVariant: 'medium' as const } };
+  const shock = { marketRateDelta: .005, energyPriceChange: .1, realGrowthDelta: 0 };
+  const projection = simulate(result.initial, result.allocated, 5, p, shock);
+  const baseline = simulate(result.initial, [], 5, p, shock);
+  assert.deepEqual(result.medium.projection, projection);
+  assert.deepEqual(result.medium.baseline, baseline);
+  const mix = result.policies.map(policy => ({ policy, weight: policy.annualCost }));
+  const searched = estimateFiscalSpace(result.initial, mix, form.thresholds, result.horizon, p, shock);
+  assert.deepEqual(result.medium.estimate, applyStressReserve(result.initial, mix, searched, form.thresholds, result.horizon, p, shock, form.stresses));
+  assert.deepEqual(result.medium.longRun, longRunScenario(result.initial, result.allocated, projection, baseline, p, form.longRun));
+  assert(result.projection.steps[4].demographics!.tfr < result.medium.projection.steps[4].demographics!.tfr);
+});
 
 test('worker engine preserves domain calculations, transport and published horizons', () => {
   for (const dataset of ['latest', '2024'] as const) {

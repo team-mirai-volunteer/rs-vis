@@ -42,9 +42,9 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   </section>;
 }
 
-export function InputOverview({ total, estimate, horizon, incomplete, projection, baseline, policies }: {
+export function InputOverview({ total, estimate, mediumEstimate, horizon, incomplete, projection, baseline, policies }: {
   riskAudit: FiscalCalculation['riskAudit'];
-  estimate: FiscalSpaceEstimate;
+  estimate: FiscalSpaceEstimate; mediumEstimate?: FiscalSpaceEstimate;
   total: number; horizon: number; incomplete: boolean;
   projection: Simulation; baseline: Simulation; policies: Policy[];
 }) {
@@ -56,6 +56,7 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
         <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
           <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
           <div><h3 className="text-sm">同じ配分の参考上限（ストレス耐性・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
+            {mediumEstimate && <p className="text-xs text-mirai-text-subtle" data-testid="medium-envelope-overview">出生中位 {mediumEstimate.status === 'unevaluated' ? '算出不可' : `${money(mediumEstimate.recommendedEnvelope, 1)} / 年`}</p>}
             {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
         </div>
         {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、ストレス耐性の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
@@ -150,8 +151,8 @@ export function DurationSensitivity({ rows }: { rows: FiscalCalculation['duratio
   </section>;
 }
 
-export function LongRun({ rows, value, onChange }: {
-  rows: FiscalCalculation['longRun']; value: LongRunAssumptions; onChange: (v: LongRunAssumptions) => void;
+export function LongRun({ rows, mediumRows, value, onChange }: {
+  rows: FiscalCalculation['longRun']; mediumRows?: FiscalCalculation['longRun']; value: LongRunAssumptions; onChange: (v: LongRunAssumptions) => void;
 }) {
   return <section id="long-run" className="scroll-mt-20 space-y-4 rounded-xl border border-mirai-border bg-card p-5" aria-label="長期シナリオ">
     <h2 className="text-lg font-bold">長期の債務・供給力シナリオ</h2>
@@ -162,7 +163,7 @@ export function LongRun({ rows, value, onChange }: {
       <RangeField label="長期の借換金利" value={value.rate * 100} min={0} max={6} step={.1} unit="%" onChange={n => onChange({ ...value, rate: n / 100 })} />
       <RangeField label="長期便益の実現率" value={value.realization * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, realization: n / 100 })} />
     </div>
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="長期投資の試算表"><table className="w-full min-w-[650px] text-right text-sm"><caption className="text-left text-xs">供給便益は年0価格。債務/GDP差は同じ長期条件の政策なし経路との差。</caption><thead><tr>{['年', '年間政策費用', '年間供給便益', '債務/GDP', '政策なしとの差', '借換金利', '利払い', '利払いの政策なしとの差', '労働力人口指数'].map(x => <th scope="col" key={x} className="p-2">{x}</th>)}</tr></thead><tbody>{rows.filter(r => [rows[0]?.year, 6, 10, 11, 20, 30].includes(r.year)).map(r => <tr key={r.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{r.year}</th><td>{money(r.policyCost)}</td><td>{money(r.supplyBenefit)}</td><td>{percent(r.debtGdp)}</td><td>{points(r.debtGdp - r.baselineDebtGdp)}</td><td>{percent(r.rate)}</td><td>{money(r.interest)}</td><td>{money(r.interest - r.baselineInterest)}</td><td>{r.labourForceIndex.toFixed(3)}{r.beyondProjection && '†'}</td></tr>)}</tbody></table></div>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="長期投資の試算表"><table className="w-full min-w-[650px] text-right text-sm"><caption className="text-left text-xs">供給便益は年0価格。小さい中位の値は同じ政策・経済条件の参考値。債務/GDP差は同じ長期条件の政策なし経路との差。</caption><thead><tr>{['年', '年間政策費用', '年間供給便益', '債務/GDP', '政策なしとの差', '借換金利', '利払い', '利払いの政策なしとの差', '労働力人口指数'].map(x => <th scope="col" key={x} className="p-2">{x}</th>)}</tr></thead><tbody>{rows.filter(r => [rows[0]?.year, 6, 10, 11, 20, 30].includes(r.year)).map(r => <tr key={r.year} className="border-t border-mirai-border"><th scope="row" className="p-2">{r.year}</th><td>{money(r.policyCost)}</td><td>{money(r.supplyBenefit)}</td><td>{percent(r.debtGdp)}{mediumRows?.find(m => m.year === r.year) && <small className="block text-xs text-mirai-text-subtle">中位 {percent(mediumRows.find(m => m.year === r.year)!.debtGdp)}</small>}</td><td>{points(r.debtGdp - r.baselineDebtGdp)}</td><td>{percent(r.rate)}</td><td>{money(r.interest)}</td><td>{money(r.interest - r.baselineInterest)}</td><td>{r.labourForceIndex.toFixed(3)}{r.beyondProjection && '†'}{mediumRows?.find(m => m.year === r.year) && <small className="block text-xs text-mirai-text-subtle">中位 {mediumRows.find(m => m.year === r.year)!.labourForceIndex.toFixed(3)}</small>}</td></tr>)}</tbody></table></div>
     <p className="text-xs">長期の年数は評価期間の終了後に最低5年を確保するため、評価期間15年では{Math.max(value.years, 20)}年まで計算します。短期末のGDP・価格の乖離は5年で解消する仮定。CPIの乖離による既存歳出の連動分も同じ期間で解消します。政策経路の借換金利は上の長期金利に、公表期間末の公表長期金利反応を同じ5年で解消させて加えます。政策なし経路は上の長期金利のままです。供給便益には設定した純追加性に加えて上記実現率を掛けます。金利からGDPへの追加効果、長期の産業・物価制約は未推計です。長期の実質成長率は労働力1人当たりの成長率として扱い、将来推計人口による労働力人口指数（右列、†は推計最終年で据え置き）に労働弾力性を掛けて基準GDPへ反映します。年金・医療・介護相当の歳出は65歳以上人口に、家族関係給付は0〜14歳人口に連動します。</p>
   </section>;
 }

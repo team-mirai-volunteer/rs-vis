@@ -12,9 +12,10 @@ import type { ConstraintId } from '@/types/fiscal-space';
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-17.1';
+export const FISCAL_MODEL_VERSION = '2026-09-20.1';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
+  fertilityVariant: ['low', 'medium'],
   dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'], inflationRule: ['peak', 'average'], mode: ['estimated', 'manual', 'included', 'off'],
   productionModel: ['leontief', 'ces', 'cobbDouglas'], kind: ['temporary', 'permanent', 'growth'],
   technology: ['solar', 'nuclear', 'hydro'], selected: ids,
@@ -67,7 +68,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     // 2026-09-16.6: the percentage haircut became stress-derived. Drop the old share and select the defaults.
     if (Object.hasOwn(payload.form, 'reserve')) {
@@ -98,6 +99,11 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
       if (!Object.hasOwn(calibration, 'demographics')) {
         Object.assign(calibration, { demographics: { ...PARAMETERS.demographics } });
         filled.push('calibration.demographics（人口動態の経路を既定で有効化）');
+      }
+      const demographics = (calibration as Record<string, unknown>).demographics;
+      if (demographics && typeof demographics === 'object' && !Object.hasOwn(demographics, 'fertilityVariant')) {
+        Object.assign(demographics, { fertilityVariant: 'low' });
+        filled.push('calibration.demographics.fertilityVariant（出生中位から低位へ更新・中位は参考併記）');
       }
       // 2026-09-17.1: social contributions have their own elasticity. Older links applied one
       // value to the whole tax + contribution total, so carry that value over instead of the new default.

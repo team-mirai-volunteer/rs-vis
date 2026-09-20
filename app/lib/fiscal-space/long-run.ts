@@ -83,7 +83,7 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     const interestRevenue = base.state.fiscal.interestRevenue * fiscalTrend;
     portfolio = financeDebt(rolled.buckets, rolled.interestPayments - interestRevenue - pb + p.stockFlowAdjustmentRatio * nominal, year, policyRate, p.newDebtMaturity).buckets;
     basePortfolio = financeDebt(baseRolled.buckets, baseRolled.interestPayments - interestRevenue - basePb + p.stockFlowAdjustmentRatio * baseNominal, year, c.rate, p.newDebtMaturity).buckets;
-    rows.push({ year, policyCost: cost, supplyBenefit: benefit * initialPrice, debtGdp: portfolio.reduce((s, x) => s + x.principal, 0) / nominal,
+    rows.push({ year, taxRevenue: revenue(nominalHistory, year), realGdp: real, demographics: policyDemo, policyCost: cost, supplyBenefit: benefit * initialPrice, debtGdp: portfolio.reduce((s, x) => s + x.principal, 0) / nominal,
       baselineDebtGdp: basePortfolio.reduce((s, x) => s + x.principal, 0) / baseNominal, interest: rolled.interestPayments,
       rate: policyRate, baselineInterest: baseRolled.interestPayments,
       labourForceIndex: policyDemo.labourForceIndex, baselineLabourForceIndex: baseDemo.labourForceIndex,

@@ -130,6 +130,20 @@
       "bytes": 1614098,
       "stored": false,
       "note": "原本は著作権者（IMF/OECD）の利用条件により再配布しないため未収録。URL と SHA-256 で同一性を確認する。"
+    },
+    "ipss2023_3-8.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/3-8.xlsx",
+      "title": "表3-8 出生低位・死亡中位",
+      "retrievedOn": "2026-09-20",
+      "sha256": "73baeea11343fe9492a578555b492f2b20a8eaa6dfc8786739ecb6ebe878fb75",
+      "bytes": 14989
+    },
+    "ipss2023_3-9.xlsx": {
+      "url": "https://www.ipss.go.jp/pp-zenkoku/j/zenkoku2023/db_zenkoku2023/s_tables/3-9.xlsx",
+      "title": "表3-9 出生低位・死亡中位",
+      "retrievedOn": "2026-09-20",
+      "sha256": "a1b9e794513d8f745a448e38b640ac19dcb2579ee0ace8e8aeab3d260dd52372",
+      "bytes": 349089
     }
   }
 }

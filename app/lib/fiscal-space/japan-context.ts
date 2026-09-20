@@ -41,7 +41,7 @@ export function japanContext(dataset: JapanDataset): Record<string, SourceValue>
     }] : []),
     { key: 'context.totalFertilityRate', value: 1.15, unit: '合計特殊出生率', referenceYear: '2024年', publishedAt: '2025-07-16',
       sourceName: '厚生労働省 令和6年（2024）人口動態統計（確定数）報道資料', sourceUrl: VITAL_STATISTICS_2024, status: 'verified' as const,
-      uncertaintyNote: `2024年の合計特殊出生率1.15（前年1.20、9年連続低下）、出生数686,173人。${latest ? '2025年の確定数は未公表のため2024年を継続採用。' : ''}モデルの人口動態経路は社人研の将来推計人口（2023年推計・出生中位）を使い、その2024年の仮定は1.268・出生77.9万人で実績を上回る。したがって基準経路の出生・子ども人口は実績より高めで、政策効果は仮定値に対する比率として計算する。SHA-256 f4d86603…3cc81b124。2026-09-17確認。` },
+      uncertaintyNote: `2024年の合計特殊出生率1.15（前年1.20、9年連続低下）、出生数686,173人。${latest ? '2025年の確定数は未公表のため2024年を継続採用。' : ''}モデルの人口動態経路は社人研の将来推計人口（2023年推計・出生低位）を既定とし、中位を参考併記する。推計の出生率は外国人を含む総人口ベースで、この日本人ベースの実績とは定義が異なる。政策効果は各推計の仮定値に対して計算する。SHA-256 f4d86603…3cc81b124。2026-09-17確認。` },
     food('calorieSelfSufficiency', latest ? .37 : .38, '供給熱量（カロリー）ベース。摂取熱量ベースとは異なる'),
     food('valueSelfSufficiency', latest ? .66 : .64, '生産額（金額）ベース。国内価格の上昇でも高まるため、供給量の増加とは限らない'),
   ];

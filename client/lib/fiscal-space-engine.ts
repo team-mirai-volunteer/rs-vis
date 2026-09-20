@@ -144,6 +144,18 @@ export function createFiscalEngine() {
     }) : [];
     // The long-run closure starts after the last evaluated year; keep at least five years of it.
     const longRun = longRunScenario(initial, allocated, projection, baseline, p, { ...form.longRun, years: Math.max(form.longRun.years, horizon + 5) });
+    // Recompute the same policies, shocks, constraints and long-run closure for the small medium reference.
+    const mediumParameters = { ...p, demographics: { ...p.demographics, fertilityVariant: 'medium' as const } };
+    const mediumProjection = simulate(initial, allocated, simulationYears, mediumParameters, shock);
+    const mediumBaseline = simulate(initial, [], simulationYears, mediumParameters, shock);
+    const mediumSearch = estimateFiscalSpace(initial, mix, form.thresholds, horizon, mediumParameters, shock);
+    const medium = {
+      projection: mediumProjection,
+      baseline: mediumBaseline,
+      estimate: applyStressReserve(initial, mix, mediumSearch, form.thresholds, horizon, mediumParameters, shock, form.stresses),
+      longRun: longRunScenario(initial, allocated, mediumProjection, mediumBaseline, mediumParameters,
+        { ...form.longRun, years: Math.max(form.longRun.years, horizon + 5) }),
+    };
     const publicCapitalSensitivity = allocated.some(policy => policy.supply?.kind === 'capital' && policy.supply.realizationRate !== undefined)
       ? [0, .5, 1].map(overlap => {
         const variants = allocated.map(policy => policy.supply?.kind === 'capital'
@@ -173,7 +185,7 @@ export function createFiscalEngine() {
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity, powerTimeline,
-      modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, durationSensitivity, records };
+      modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, medium, durationSensitivity, records };
   };
 }
 

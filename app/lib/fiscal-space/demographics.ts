@@ -1,14 +1,19 @@
 import type { SourceValue } from '@/types/fiscal-space';
 import projection from './data/population-projection.json';
+import lowProjection from './data/population-projection-low.json';
 import participation from './data/participation-by-age.json';
 import ageing from './data/ageing-expenditure.json';
 
-/** Official medium-variant population by five-year age group with 2024 participation rates
+export const FERTILITY_LABELS = { low: '出生低位', medium: '出生中位' };
+export type FertilityVariant = keyof typeof FERTILITY_LABELS;
+const projections = { low: lowProjection, medium: projection };
+/** Official population by five-year age group with 2024 participation rates
  * held fixed. The labour-force index is Σ population × rate relative to the base year.
  * Policy channels add births; they reach the labour force through the same age groups. */
 export interface DemographicAssumptions {
   /** 'off' keeps the pre-2026-09-17 flat labour force and expenditure path for comparison. */
   mode: 'included' | 'off';
+  fertilityVariant: FertilityVariant;
   /** Output elasticity of potential GDP to the labour-force index (labour share proxy). */
   labourElasticity: number;
   /** TFR change per +1 percentage point of GDP spent on families. A stated assumption, not a Japanese estimate. */
@@ -23,7 +28,7 @@ export interface DemographicAssumptions {
 export const DEMOGRAPHICS: DemographicAssumptions = {
   // 0.2: order of magnitude implied by Fenge & Scheubel (ECB WP 1734, 2014), contribution capacity vs marital
   // births in 1890s Germany (+1 Mark on ~20 → +0.4 per 1,000 on ~35). A conversion assumption, not a Japanese estimate.
-  mode: 'included', labourElasticity: .55, fertilityPerGdpPoint: .1, fertilityIncomeElasticity: .2,
+  mode: 'included', fertilityVariant: 'low', labourElasticity: .55, fertilityPerGdpPoint: .1, fertilityIncomeElasticity: .2,
   // FY2023 pension + medical + long-term care 19.08% of GDP over primary expenditure 35.9% of GDP (2024, IMF).
   ageingShare: Math.round(ageing.ageingLinkedShare.pensionMedicalLtcPercentGdp / 35.9 * 1000) / 1000,
   childBenefitShare: Math.round(ageing.fy2023.socialExpenditureByPolicyAreaPercentGdp.family / 35.9 * 1000) / 1000,
@@ -44,26 +49,27 @@ const rateFor = (group: string): number => {
 };
 const RATES = GROUPS.map(rateFor);
 const groupIndex = (age: number) => Math.min(GROUPS.length - 1, Math.floor(age / 5));
-const population = (calendarYear: number): number[] => {
+const population = (calendarYear: number, variant: FertilityVariant): number[] => {
   const year = Math.min(PROJECTION_YEARS.last, Math.max(PROJECTION_YEARS.first, calendarYear));
-  return (projection.population as Record<string, number[]>)[String(year)];
+  return (projections[variant].population as Record<string, number[]>)[String(year)];
 };
-const births = (calendarYear: number): number => {
-  const table = projection.births as Record<string, number>;
+const births = (calendarYear: number, variant: FertilityVariant): number => {
+  const table = projections[variant].births as Record<string, number>;
   const years = Object.keys(table).map(Number);
   const year = Math.min(Math.max(...years), Math.max(Math.min(...years), calendarYear));
   return table[String(year)];
 };
-const tfr = (calendarYear: number): number => {
-  const table = projection.tfr as Record<string, number>;
+const tfr = (calendarYear: number, variant: FertilityVariant): number => {
+  const table = projections[variant].tfr as Record<string, number>;
   const year = Math.min(PROJECTION_YEARS.last, Math.max(PROJECTION_YEARS.first, calendarYear));
   return table[String(year)];
 };
 
 export function validateDemographics(d: DemographicAssumptions): void {
   if (!['included', 'off'].includes(d.mode)) throw new RangeError('Invalid demographic mode');
+  if (!['low', 'medium'].includes(d.fertilityVariant)) throw new RangeError('Invalid fertility variant');
   for (const [key, value] of Object.entries(d)) {
-    if (key === 'mode') continue;
+    if (key === 'mode' || key === 'fertilityVariant') continue;
     if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) throw new RangeError(`Invalid demographic assumption: ${key}`);
   }
   if (d.labourElasticity > 1 || d.ageingShare + d.childBenefitShare > 1 || d.fertilityPerGdpPoint > 1 || d.fertilityIncomeElasticity > 2) throw new RangeError('Demographic assumption out of range');
@@ -72,16 +78,17 @@ export function validateDemographics(d: DemographicAssumptions): void {
 /** Extra births attributed to policy in a calendar year. Ratios are shares of that year's nominal GDP. */
 export interface BirthDriver { calendarYear: number; familySpendingGdpShare: number; netIncomeChange: number }
 export const extraBirths = (driver: BirthDriver, d: DemographicAssumptions): number => {
-  const base = births(driver.calendarYear), current = tfr(driver.calendarYear);
+  const base = births(driver.calendarYear, d.fertilityVariant), current = tfr(driver.calendarYear, d.fertilityVariant);
   const deltaTfr = d.fertilityPerGdpPoint * driver.familySpendingGdpShare * 100 + d.fertilityIncomeElasticity * driver.netIncomeChange * current;
   return Math.max(-base, base * deltaTfr / current);
 };
 
 export interface DemographicPath {
+  fertilityVariant: FertilityVariant;
   calendarYear: number;
   labourForceIndex: number; population65Index: number; childIndex: number; population15Index: number;
   births: number; extraBirths: number; cumulativeExtraBirths: number; beyondProjection: boolean;
-  /** Medium-variant total fertility rate and the rate implied by policy births in the same year. */
+  /** Selected variant's total fertility rate and the rate implied by policy births. */
   baselineTfr: number; tfr: number;
 }
 const sum = (values: number[], from: number, to = GROUPS.length) => values.slice(from, to).reduce((s, v) => s + v, 0);
@@ -90,7 +97,8 @@ const labourForce = (pop: number[]) => pop.reduce((s, n, i) => s + n * RATES[i],
 /** Indices relative to the base calendar year. Policy births accumulate from `drivers` (one per year, in order). */
 export function demographicPath(baseYear: number, calendarYear: number, d: DemographicAssumptions, drivers: BirthDriver[] = []): DemographicPath {
   validateDemographics(d);
-  const base = population(baseYear), current = population(calendarYear).slice();
+  const variant = d.fertilityVariant;
+  const base = population(baseYear, variant), current = population(calendarYear, variant).slice();
   let extra = 0, cumulative = 0, extraThisYear = 0;
   for (const driver of drivers) {
     if (driver.calendarYear > calendarYear) continue;
@@ -103,13 +111,13 @@ export function demographicPath(baseYear: number, calendarYear: number, d: Demog
   }
   void extra;
   const off = d.mode === 'off';
-  return { calendarYear,
+  return { calendarYear, fertilityVariant: variant,
     labourForceIndex: off ? 1 : labourForce(current) / labourForce(base),
     population65Index: off ? 1 : sum(current, 13) / sum(base, 13),
     childIndex: off ? 1 : sum(current, 0, 3) / sum(base, 0, 3),
     population15Index: off ? 1 : sum(current, 3) / sum(base, 3),
-    births: births(calendarYear) + extraThisYear, extraBirths: extraThisYear, cumulativeExtraBirths: cumulative,
-    baselineTfr: tfr(calendarYear), tfr: tfr(calendarYear) * (births(calendarYear) + extraThisYear) / births(calendarYear),
+    births: births(calendarYear, variant) + extraThisYear, extraBirths: extraThisYear, cumulativeExtraBirths: cumulative,
+    baselineTfr: tfr(calendarYear, variant), tfr: tfr(calendarYear, variant) * (births(calendarYear, variant) + extraThisYear) / births(calendarYear, variant),
     beyondProjection: calendarYear > PROJECTION_YEARS.last };
 }
 
@@ -118,7 +126,7 @@ export const expenditureDemographicFactor = (path: DemographicPath, d: Demograph
   d.mode === 'off' ? 1 : (1 - d.ageingShare - d.childBenefitShare) + d.ageingShare * path.population65Index + d.childBenefitShare * path.childIndex;
 
 export const DEMOGRAPHIC_SOURCES = {
-  projection: { name: projection.source as string, url: projection.sourcePage as string, retrievedOn: projection.retrievedOn as string },
+  projection: { name: '国立社会保障・人口問題研究所「日本の将来推計人口（令和5年推計）」出生低位・中位（死亡中位）', url: projection.sourcePage as string, retrievedOn: lowProjection.retrievedOn as string },
   participation: { name: participation.source as string, url: participation.sourcePage as string, retrievedOn: participation.retrievedOn as string },
   ageing: { name: (ageing.sources as { name: string; url: string }[])[0].name, url: (ageing.sources as { name: string; url: string }[])[0].url, retrievedOn: ageing.retrievedOn as string },
 };
@@ -128,7 +136,7 @@ export function demographicRecords(d: DemographicAssumptions, baseYear: number):
   const rows: SourceValue[] = [
     { key: 'demographics.labourForceIndex2040', value: at(2040).labourForceIndex, unit: `指数（${baseYear}年 = 1）`, referenceYear: '2040年',
       sourceName: `${DEMOGRAPHIC_SOURCES.projection.name}×${DEMOGRAPHIC_SOURCES.participation.name}`, sourceUrl: DEMOGRAPHIC_SOURCES.projection.url, status: 'derived',
-      uncertaintyNote: '年齢5歳階級別人口（出生中位・死亡中位）に2024年の年齢階級別労働力率を固定して掛けた指数。参加率の将来変化、外国人労働、労働時間は含まない。潜在GDPには労働弾力性を掛けて反映。' },
+      uncertaintyNote: `年齢5歳階級別人口（${FERTILITY_LABELS[d.fertilityVariant]}・死亡中位）に2024年の年齢階級別労働力率を固定して掛けた指数。参加率の将来変化、労働時間は含まない。潜在GDPには労働弾力性を掛けて反映。` },
     { key: 'demographics.population65Index2040', value: at(2040).population65Index, unit: `指数（${baseYear}年 = 1）`, referenceYear: '2040年',
       sourceName: DEMOGRAPHIC_SOURCES.projection.name, sourceUrl: DEMOGRAPHIC_SOURCES.projection.url, status: 'derived',
       uncertaintyNote: '65歳以上人口の指数。年金・医療・介護に相当する歳出割合に掛ける。1人当たり給付の制度改定・医療技術は共通の実質成長率に含めた仮定。' },

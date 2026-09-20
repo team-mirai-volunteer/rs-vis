@@ -178,14 +178,14 @@ export default function FiscalSpacePage() {
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
-      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
+      <MemoSummary medium={result.medium} estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
         onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
       <MemoResourceEstimation result={result} value={form.resource} onChange={change.resource} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />
-      <MemoLongRun rows={result.longRun} value={form.longRun} onChange={change.longRun} />
-      <MemoDemographics steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={form.calibration.demographics} onChange={change.demographics} baseYear={result.initial.baseCalendarYear} />
+      <MemoLongRun mediumRows={result.medium.longRun} rows={result.longRun} value={form.longRun} onChange={change.longRun} />
+      <MemoDemographics medium={result.medium} steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={form.calibration.demographics} onChange={change.demographics} baseYear={result.initial.baseCalendarYear} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>

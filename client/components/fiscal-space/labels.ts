@@ -6,7 +6,7 @@ const LABELS: Record<string, string> = {
   serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率',
   taxRevenueElasticity: '名目GDPに対する税収弾性値（税）', socialContributionElasticity: '名目GDPに対する社会負担の弾性値', taxCollectionLag: '税収への反映ラグ',
   taxes: '税（罰金を含む）', socialContributions: '社会負担（社会保険料）',
-  demographics: '人口動態', labourElasticity: '潜在GDPの労働弾力性', fertilityPerGdpPoint: '家族支出GDP比1ポイント当たりの出生率変化',
+  demographics: '人口動態', fertilityVariant: '出生の推計区分', labourElasticity: '潜在GDPの労働弾力性', fertilityPerGdpPoint: '家族支出GDP比1ポイント当たりの出生率変化',
   fertilityIncomeElasticity: '手取り増に対する出生率の弾力性', ageingShare: '高齢化に連動する歳出割合', childBenefitShare: '子ども人口に連動する歳出割合',
   baseCalendarYear: '初期状態の暦年', labourForceIndex2040: '労働力人口指数（2040年）', population65Index2040: '65歳以上人口指数（2040年）',
   gapDemandSensitivity: 'GDPギャップの需要感度', gapPriceSensitivity: 'GDPギャップの物価感度', gapInflationSlope: '基準インフレのギャップ係数',

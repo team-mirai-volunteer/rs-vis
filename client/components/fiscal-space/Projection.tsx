@@ -1,12 +1,13 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ModelParameters, ProjectionStep, Simulation } from '@/types/fiscal-space';
 import { money, percent, points } from './format';
+import { FERTILITY_LABELS } from '@/app/lib/fiscal-space/demographics';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { FiscalVintageBadge } from './ResultAssumptions';
 import { differenceChartScale, fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 
-export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
-  step: ProjectionStep; baseline: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
+export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
+  step: ProjectionStep; baseline: ProjectionStep; medium?: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
 }) {
   const s = step.state;
   const longRun = s.year > publishedYears;
@@ -23,7 +24,7 @@ export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = fa
     ['うち税（罰金を含む）', money(s.fiscal.taxes), `政策なしとの差 ${money(s.fiscal.taxes - baseline.state.fiscal.taxes)}`],
     ['うち社会保険料', money(s.fiscal.socialContributions), `政策なしとの差 ${money(s.fiscal.socialContributions - baseline.state.fiscal.socialContributions)}`],
     ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
-    ['合計特殊出生率', step.demographics ? step.demographics.tfr.toFixed(3) : '—', step.demographics ? `将来推計人口の出生中位 ${step.demographics.baselineTfr.toFixed(3)}（${step.demographics.calendarYear}年）。この年の政策による差 ${(step.demographics.tfr - step.demographics.baselineTfr >= 0 ? '+' : '')}${(step.demographics.tfr - step.demographics.baselineTfr).toFixed(3)}（追加出生 ${Math.round(step.demographics.extraBirths).toLocaleString('ja-JP')}人）、年1からの累計 ${Math.round(step.demographics.cumulativeExtraBirths).toLocaleString('ja-JP')}人。${step.demographics.extraBirths === 0 && step.demographics.cumulativeExtraBirths > 0 ? '一時政策の期間が終わり、この年の支出はありません。' : ''}子育て支出（実施年のみ）と保険料減税の手取り増からの換算仮定` : '人口動態の経路を「含めない」設定'],
+    ['合計特殊出生率', step.demographics ? step.demographics.tfr.toFixed(3) : '—', step.demographics ? `将来推計人口の${FERTILITY_LABELS[step.demographics.fertilityVariant]} ${step.demographics.baselineTfr.toFixed(3)}（${step.demographics.calendarYear}年）。この年の政策による差 ${(step.demographics.tfr - step.demographics.baselineTfr >= 0 ? '+' : '')}${(step.demographics.tfr - step.demographics.baselineTfr).toFixed(3)}（追加出生 ${Math.round(step.demographics.extraBirths).toLocaleString('ja-JP')}人）、年1からの累計 ${Math.round(step.demographics.cumulativeExtraBirths).toLocaleString('ja-JP')}人。${step.demographics.extraBirths === 0 && step.demographics.cumulativeExtraBirths > 0 ? '一時政策の期間が終わり、この年の支出はありません。' : ''}子育て支出（実施年のみ）と保険料減税の手取り増からの換算仮定` : '人口動態の経路を「含めない」設定'],
     ['労働力人口', `${Math.round(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`, `将来推計人口×2024年労働力率の指数 ${(step.demographics?.labourForceIndex ?? 1).toFixed(3)}（年0＝1）。政策なし ${Math.round(baseline.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`],
     ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
   ];
@@ -41,13 +42,23 @@ export function CurrentMetrics({ step, baseline, publishedYears = 5, latest = fa
     ['利払い / GDP', percent(step.metrics.interestGdp), '利払い / 税・社会負担収入 ' + percent(step.metrics.interestTax)],
     ['資金調達需要', money(step.metrics.grossFinancingNeeds), 'GDP比 ' + percent(step.metrics.gfnGdp)],
   ];
+  const mediumValues: Record<string, string> = medium ? {
+    '合計特殊出生率': medium.demographics?.tfr.toFixed(3) ?? '—',
+    '労働力人口': `${Math.round(medium.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`,
+    '実質GDP': money(medium.state.macro.realGdp), '名目GDP': money(medium.state.macro.nominalGdp),
+    '税・社会保険料収入': money(medium.state.fiscal.taxRevenue),
+    '歳出（利払いを含む）': money(medium.state.fiscal.primaryExpenditure + medium.state.fiscal.interestPayments),
+    '基礎的財政収支': money(medium.state.fiscal.primaryBalance),
+    '総債務 / GDP': percent(medium.metrics.grossDebtGdp),
+  } : {};
   const renderRows = (items: string[][]) => items.map(([label, value, note]) => <div key={label} data-metric={label}>
     <p className="text-xs">{label}</p><p className="mt-1 text-lg font-medium tabular-nums">{value}</p>
+    {mediumValues[label] && <p className="text-xs text-mirai-text-subtle" data-testid="medium-reference">中位 {mediumValues[label]}</p>}
     {["国民負担（GDP比）", "総債務 / GDP", "基礎的財政収支", "利払い / GDP", "資金調達需要"].includes(label) && <FiscalVintageBadge latest={latest} projected />}
     <p className="mt-1 text-xs text-mirai-text-subtle">{note}</p>
   </div>);
   return <Card data-testid="horizon-results"><CardHeader><h2 className="text-xl font-bold">{s.year}年目の結果（試算{longRun && '・公表期間外の延長'}）</h2>
-    <p className="text-sm">設定した追加予算を実施した場合。差額は同じ経済条件の「政策なし」との比較です。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、公表反応の末尾を据え置いた仮定です。`}</p>
+    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}、小さな「中位」は同じ政策・経済条件の参考値です。差額は同じ経済条件の「政策なし」との比較です。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、公表反応の末尾を据え置いた仮定です。`}</p>
     <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>
