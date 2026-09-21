@@ -250,7 +250,7 @@ export default function FiscalSpacePage() {
     <dialog ref={calibrationDialog} aria-labelledby="calibration-settings-title"
       className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
-        <h2 id="calibration-settings-title" className="text-lg font-bold">乗数・労働反応の条件</h2>
+        <h2 id="calibration-settings-title" className="text-lg font-bold">乗数・税収・労働反応の条件</h2>
         <Button variant="ghost" size="icon" aria-label="乗数・労働反応の設定を閉じる" onClick={() => calibrationDialog.current?.close()}><X aria-hidden="true" /></Button>
       </div>
       <div className="space-y-3 p-3 sm:p-5">

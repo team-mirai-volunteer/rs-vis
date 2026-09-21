@@ -41,8 +41,7 @@ test('mobile opens controls and model dialog without leaving the projection', as
   const panel = page.getByRole('region', { name: '政策の操作パネル' });
   await expect(panel).toBeInViewport();
   const economyOpener = panel.getByRole('button', { name: '経済状態・評価条件を変える', exact: true });
-  const settings = panel.locator('[aria-haspopup="dialog"]');
-  expect((await settings.allTextContents()).slice(-3)).toEqual(['経済状態・評価条件を変える', '乗数・労働反応の条件', '政策別の供給力・長期条件']);
+  await expect(panel.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true })).not.toBeVisible();
   await panel.getByText('詳細な条件', { exact: true }).click();
   await economyOpener.click();
   const economy = page.getByRole('dialog', { name: '経済状態・評価条件', exact: true });
@@ -51,11 +50,12 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await page.keyboard.press('Escape');
   await expect(economy).not.toBeVisible();
   await expect(economyOpener).toBeFocused();
-  const opener = page.getByRole('button', { name: '乗数・労働反応の条件', exact: true });
+  const opener = page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true });
   await opener.click();
-  const dialog = page.getByRole('dialog', { name: '乗数・労働反応の条件', exact: true });
+  const dialog = page.getByRole('dialog', { name: '乗数・税収・労働反応の条件', exact: true });
   await expect(dialog).toBeVisible();
-  await dialog.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
+  await expect(dialog.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true })).toBeVisible();
+  await dialog.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true }).fill('1.7');
   await dialog.getByLabel('GDP乗数の感度倍率・数値で入力', { exact: true }).fill('1.5');
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
@@ -63,6 +63,7 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await expect.poll(headingTop).toBe(topBefore);
   await opener.click();
   await expect(dialog.getByLabel('GDP乗数の感度倍率・数値で入力', { exact: true })).toHaveValue('1.5');
+  await expect(dialog.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true })).toHaveValue('1.7');
   await dialog.getByRole('button', { name: '乗数・労働反応の設定を閉じる', exact: true }).click();
   const supplyOpener = page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true });
   await supplyOpener.click();
@@ -84,8 +85,8 @@ test('mobile opens controls and model dialog without leaving the projection', as
   await expect(economy.getByLabel('潜在GDPギャップ（年0）・数値で入力', { exact: true })).toHaveValue('-2');
   await economy.getByRole('button', { name: '経済状態・評価条件を閉じる', exact: true }).click();
   await opener.click();
-  await dialog.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
   await expect(dialog.getByLabel('GDP乗数の感度倍率・数値で入力', { exact: true })).toHaveValue('1.5');
+  await expect(dialog.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true })).toHaveValue('1.7');
   await page.keyboard.press('Escape');
   await supplyOpener.click();
   await supplyDialog.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();

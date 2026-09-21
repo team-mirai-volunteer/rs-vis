@@ -58,7 +58,7 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
     {(policy.id === 'social-insurance' || revenue) && <details className="text-xs text-mirai-text-subtle">
       <summary className="cursor-pointer font-medium">入力上限・計算の前提</summary>
       <div className="mt-2 space-y-2">
-    {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・労働反応の条件」で変更できます。</p>}
+    {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・税収・労働反応の条件」で変更できます。</p>}
     {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(socialInsuranceMax * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
     {revenue && <p className="text-xs leading-relaxed text-mirai-text-subtle">入力上限：{money(max * 1e12, 1)}／年。<a className="underline" href={revenue.sourceUrl} target="_blank" rel="noreferrer">2024年度の{revenue.label}の税収</a>を限度とし、0.1兆円単位で切り下げます。{'municipalSourceUrl' in revenue && <><a className="underline" href={revenue.municipalSourceUrl} target="_blank" rel="noreferrer">市町村分の出典</a>。</>}{revenue.scope}評価期間中はこの基準額を固定します。税額を超える分は「現金給付」に入力してください。</p>}
     {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
@@ -123,7 +123,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
       <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border px-3 py-1.5" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer text-sm font-bold leading-tight [&::marker]:text-xs">予算を制約する条件<span className="block whitespace-nowrap text-[11px] font-normal leading-tight text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}% / 失業率 {(floor * 100).toFixed(1)}% / ギャップ {gap.toFixed(1)}%</span></summary>
         <div className="mt-2 space-y-3 pb-1">
-          <p className="text-xs text-mirai-text-subtle">参考上限を実際に動かすのは、この3つの条件と各政策の配分です。一度決めたら大きく変えない条件なので折りたたんでいます。ほかの条件は「詳細な条件」で変更できますが、既定の近傍では結論をほとんど動かしません。</p>
+          <p className="text-xs text-mirai-text-subtle">物価・労働需給・初期GDPギャップと政策の配分を設定します。税収・GDP・雇用の反応や供給力などは「詳細な条件」から変更できます。</p>
           <RangeField label="CPI許容上限" value={thresholds.inflation * 100} min={THRESHOLD_BOUNDS.inflation[0] * 100} max={THRESHOLD_BOUNDS.inflation[1] * 100} step={.1} unit="%" onChange={n => onThreshold('inflation', n / 100)} />
           <RangeField label="許容する失業率の下限" value={Number((floor * 100).toFixed(2))} min={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[1] * 100).toFixed(2))} max={Number((structuralUnemployment / THRESHOLD_BOUNDS.labour[0] * 100).toFixed(2))} step={.05} unit="%" onChange={n => onThreshold('labour', Math.min(THRESHOLD_BOUNDS.labour[1], Math.max(THRESHOLD_BOUNDS.labour[0], structuralUnemployment / (n / 100))))} />
           <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
@@ -144,7 +144,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <summary className="cursor-pointer text-sm font-bold">詳細な条件</summary>
         <div className="mt-3 space-y-3">
           <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => economyDialog.current?.showModal()}>経済状態・評価条件を変える</Button>
-          <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
+          <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・税収・労働反応の条件</Button>
           <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
           {additionalSettings}
         </div>
@@ -162,7 +162,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <p className="text-xs leading-relaxed">年0は選択したデータの初期状態。GDPギャップは（実際−潜在）÷潜在。マイナスが需要不足、プラスが需要超過で、公表値と同じ符号です。建設利用率と確実電力供給は仮定です。</p>
         <RangeField label="潜在GDPギャップ（年0）" value={gap} min={-10} max={3} step={.1} unit="%" onChange={onGap} />
         <RangeField label="CPI総合・初期インフレ率（年0）" value={inflation} min={-3} max={10} step={.1} unit="%" onChange={onInflation} />
-        <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準物価にはGDPギャップ感度も加わります。「乗数・労働反応の条件」で変更できます。</p>
+        <p className="text-xs leading-relaxed">CPIの変更は初期インフレ率に反映します。将来の基準物価にはGDPギャップ感度も加わります。「乗数・税収・労働反応の条件」で変更できます。</p>
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
         <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select aria-label="制約の評価期間" className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間（公表期間内）</option>)}<option value={15}>15年間（公表期間{maxHorizon}年を超える延長）</option></select>

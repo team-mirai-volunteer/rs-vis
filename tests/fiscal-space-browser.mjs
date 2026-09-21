@@ -87,11 +87,10 @@ try {
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
   await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   assert.equal(await page.getByRole('button', { name: '初期条件に戻す' }).evaluate(el => el.previousElementSibling?.querySelector('output')?.getAttribute('data-testid')), 'annual-total');
-  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
+  await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
   await expect.poll(() => budgetTotal.innerText()).not.toEqual(efBudget);
   await page.getByLabel('参照するマクロモデル').selectOption('ef2026');
-  await page.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
   await expect(page.getByLabel('社会保険料軽減の本人配分', { exact: true })).toHaveValue('50');
   await expect(page.getByLabel('手取り賃金に対する労働時間の弾力性', { exact: true })).toHaveValue('0');
   await page.getByLabel('手取り賃金に対する労働時間の弾力性・数値で入力', { exact: true }).fill('0.2');

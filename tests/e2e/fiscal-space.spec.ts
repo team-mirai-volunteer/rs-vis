@@ -78,8 +78,7 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(sensitivity.getByRole('row').filter({ hasText: '3.0%' })).toContainText('39.2兆円');
   await expect(sensitivity.getByRole('row').filter({ hasText: '3.5%' })).toContainText('39.2兆円');
   await openAdvanced(page);
-  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
-  await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
+  await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
   const elasticity = page.getByLabel('名目GDPに対する税収弾性値（税）・数値で入力', { exact: true });
   await expect(elasticity).toHaveValue('1.3');
   await expect(page.getByText('現在は1.2', { exact: true })).toBeVisible();
@@ -100,8 +99,7 @@ test('insurance relief stops at contributor revenue and readjusts when the split
   await expect(page.getByTestId('input-overview')).toContainText('78.70兆円 / 年');
   await expect(page.locator('[data-policy="social-insurance"]')).toHaveCount(0);
   await openAdvanced(page);
-  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
-  await page.getByText('乗数と本人・事業主の反応を変える', { exact: true }).click();
+  await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
   await page.getByLabel('社会保険料軽減の本人配分・数値で入力', { exact: true }).fill('100');
   await page.keyboard.press('Escape');
   await expect(input).toHaveValue('43.6');
@@ -152,7 +150,7 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await expect(page.getByTestId('baseline-inflation-sensitivity')).toBeVisible();
   await expect(page.locator('[data-observation-key="fiscal.grossDebt"]')).toContainText('214.50%');
   await openAdvanced(page);
-  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
+  await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
   await page.getByLabel('参照するマクロモデル').selectOption('esri2022');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('region', { name: '3年間の推計表' })).toBeVisible();

@@ -64,7 +64,7 @@ export function ConstraintMeters({ constraints, baseline = [], sensitivity, late
           {over && ' バーは120%で止めています。実測値は右のテキストと読み上げ値を参照。'}
         </p>
         {['debt', 'interestGdp', 'gfn'].includes(r.id) && <FiscalVintageBadge latest={latest} projected={r.year > 0} />}
-        {r.id === 'labour' && <p className="text-xs">構造的失業率{percent(structuralUnemployment, 1)}÷失業率。上限{r.threshold.toFixed(2)}は失業率が{percent(permittedUnemploymentFloor(structuralUnemployment, r.threshold), 2)}を下回らないという許容条件です。構造的失業率は推定値ではなく仮定で、「乗数・労働反応の条件」で変更できます。</p>}
+        {r.id === 'labour' && <p className="text-xs">構造的失業率{percent(structuralUnemployment, 1)}÷失業率。上限{r.threshold.toFixed(2)}は失業率が{percent(permittedUnemploymentFloor(structuralUnemployment, r.threshold), 2)}を下回らないという許容条件です。構造的失業率は推定値ではなく仮定で、「乗数・税収・労働反応の条件」で変更できます。</p>}
         {r.id === 'energy' && <p className="text-xs">数値が高いほど電力の余裕が少ない状態です。発電投資は稼働開始後に供給を増やします。バーは期間内で最も厳しい年の値なので、その後の改善は年ごとの表で確認してください。</p>}
         {r.id === 'debt' && <p className="text-xs">280%という既定閾値は出典のある持続可能性基準ではありません。この期間で境界に達しないことは、長期の債務持続性の検証にはなりません。</p>}
         <details><summary className="cursor-pointer text-sm text-primary-accent">なぜ？ 計算根拠を見る</summary><p className="mt-2 text-sm">{r.explanation}</p></details>

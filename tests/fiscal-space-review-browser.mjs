@@ -57,8 +57,7 @@ try {
   await taxDetails.click();
   await page.getByLabel('消費税減税・数値で入力', { exact: true }).fill('35');
   await expect(page.getByTestId('annual-total')).toHaveText('50.0兆円');
-  await page.getByRole('button', { name: '乗数・労働反応の条件', exact: true }).click();
-  await page.getByText('GDPギャップ・金利・消費税の接続条件', { exact: true }).click();
+  await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
   await page.getByLabel('消費税1ポイントの減収額・数値で入力', { exact: true }).fill('1');
   await expect(page.getByTestId('annual-total')).toHaveText('25.0兆円');
   await page.keyboard.press('Escape');
