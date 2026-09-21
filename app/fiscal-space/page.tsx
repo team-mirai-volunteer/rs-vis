@@ -12,6 +12,7 @@ import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/S
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
 import { Demographics } from '@/client/components/fiscal-space/Demographics';
+import { Poverty } from '@/client/components/fiscal-space/Poverty';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -52,6 +53,7 @@ const MemoPolicyLoads = memo(PolicyLoads);
 const MemoPolicyTrade = memo(PolicyTrade);
 const MemoResourceEstimation = memo(ResourceEstimation);
 const MemoDemographics = memo(Demographics);
+const MemoPoverty = memo(Poverty);
 
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
@@ -102,6 +104,7 @@ export default function FiscalSpacePage() {
     demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
     trade: (v: FiscalForm['trade']) => update('trade', v),
     resource: (v: FiscalForm['resource']) => update('resource', v),
+    poverty: (v: FiscalForm['poverty']) => update('poverty', v),
     power: (trade: FiscalForm['trade'], total: number) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } })),
     load: (id: string, load: FiscalForm['loads'][string]) => setForm(f => ({ ...f, loads: { ...f.loads, [id]: load } })),
     reset: () => setForm(f => defaults(f.dataset)),
@@ -178,6 +181,7 @@ export default function FiscalSpacePage() {
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
+      <MemoPoverty result={result.poverty} value={form.poverty} onChange={change.poverty} />
       <MemoSummary medium={result.medium} estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}

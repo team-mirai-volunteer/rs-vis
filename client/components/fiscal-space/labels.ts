@@ -3,9 +3,12 @@ import { INPUT_LABELS, SECTOR_LABELS } from '@/app/lib/fiscal-space/assumptions'
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 
 const LABELS: Record<string, string> = {
+  moneyM1: 'M1（月中平均残高）', moneyM2: 'M2（月中平均残高）', moneyM3: 'M3（月中平均残高）',
+  moneyM1Yoy: 'M1（前年同月比）', moneyM2Yoy: 'M2（前年同月比）', moneyM3Yoy: 'M3（前年同月比）',
   serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率',
   taxRevenueElasticity: '名目GDPに対する税収弾性値（税）', socialContributionElasticity: '名目GDPに対する社会負担の弾性値', taxCollectionLag: '税収への反映ラグ',
   taxes: '税（罰金を含む）', socialContributions: '社会負担（社会保険料）',
+  poverty: '貧困率', all: '相対的貧困率（再分配後）', child: '子どもの貧困率', cashTarget: '現金給付の配り方', childcareCashShare: '子育て予算の現金給付割合',
   demographics: '人口動態', fertilityVariant: '出生の推計区分', labourElasticity: '潜在GDPの労働弾力性', fertilityPerGdpPoint: '家族支出GDP比1ポイント当たりの出生率変化',
   fertilityIncomeElasticity: '手取り増に対する出生率の弾力性', ageingShare: '高齢化に連動する歳出割合', childBenefitShare: '子ども人口に連動する歳出割合',
   baseCalendarYear: '初期状態の暦年', labourForceIndex2040: '労働力人口指数（2040年）', population65Index2040: '65歳以上人口指数（2040年）',

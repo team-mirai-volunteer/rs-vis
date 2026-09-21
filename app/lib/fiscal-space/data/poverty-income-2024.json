@@ -1,0 +1,162 @@
+{
+  "sourceName": "厚生労働省 2025年国民生活基礎調査・統計表1、3、7／概況表11",
+  "sourceUrl": "https://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa25/dl/06.pdf",
+  "ratesSourceUrl": "https://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa25/dl/03.pdf",
+  "incomeYear": 2024,
+  "surveyYear": 2025,
+  "checkedAt": "2026-09-21",
+  "files": {
+    "mhlw2025-12.xlsx": {
+      "url": "https://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa25/xlsx/12.xlsx",
+      "sha256": "730aab3bee2d4a0de7f2e712c634a47448b9db95a8118fd72b41dd59a896288e",
+      "retrievedOn": "2026-09-21"
+    },
+    "mhlw2025-09.xlsx": {
+      "url": "https://www.mhlw.go.jp/toukei/saikin/hw/k-tyosa/k-tyosa25/xlsx/09.xlsx",
+      "sha256": "01c78945b29523cfd9f62d02189e2c3a6f8617f62b4aac546ba148fa735b5140",
+      "retrievedOn": "2026-09-21"
+    }
+  },
+  "allPovertyRate": 0.15,
+  "childPovertyRate": 0.11,
+  "publishedMedian": 2770000,
+  "publishedPovertyLine": 1380000,
+  "households": 55058000,
+  "meanHouseholdSize": 2.17,
+  "childHouseholds": 9174000,
+  "meanChildren": 1.63,
+  "meanChildHouseholdSize": 3.81,
+  "bins": [
+    {
+      "lower": 0,
+      "upper": 400000,
+      "allPercent": 0.9,
+      "childPercent": 0.5
+    },
+    {
+      "lower": 400000,
+      "upper": 600000,
+      "allPercent": 1.7,
+      "childPercent": 1.2
+    },
+    {
+      "lower": 600000,
+      "upper": 800000,
+      "allPercent": 2.4,
+      "childPercent": 1.4
+    },
+    {
+      "lower": 800000,
+      "upper": 1000000,
+      "allPercent": 3.2,
+      "childPercent": 2.7
+    },
+    {
+      "lower": 1000000,
+      "upper": 1200000,
+      "allPercent": 3.4,
+      "childPercent": 2.6
+    },
+    {
+      "lower": 1200000,
+      "upper": 1400000,
+      "allPercent": 3.8,
+      "childPercent": 2.9
+    },
+    {
+      "lower": 1400000,
+      "upper": 1600000,
+      "allPercent": 4.2,
+      "childPercent": 3.5
+    },
+    {
+      "lower": 1600000,
+      "upper": 1800000,
+      "allPercent": 5.5,
+      "childPercent": 4.5
+    },
+    {
+      "lower": 1800000,
+      "upper": 2000000,
+      "allPercent": 5.8,
+      "childPercent": 5
+    },
+    {
+      "lower": 2000000,
+      "upper": 2400000,
+      "allPercent": 10.6,
+      "childPercent": 9.2
+    },
+    {
+      "lower": 2400000,
+      "upper": 2800000,
+      "allPercent": 9.4,
+      "childPercent": 10
+    },
+    {
+      "lower": 2800000,
+      "upper": 3200000,
+      "allPercent": 8.7,
+      "childPercent": 10.9
+    },
+    {
+      "lower": 3200000,
+      "upper": 3600000,
+      "allPercent": 8.3,
+      "childPercent": 11.8
+    },
+    {
+      "lower": 3600000,
+      "upper": 4000000,
+      "allPercent": 6.2,
+      "childPercent": 9.4
+    },
+    {
+      "lower": 4000000,
+      "upper": 5000000,
+      "allPercent": 12.1,
+      "childPercent": 12.7
+    },
+    {
+      "lower": 5000000,
+      "upper": 6000000,
+      "allPercent": 6,
+      "childPercent": 5.1
+    },
+    {
+      "lower": 6000000,
+      "upper": 7000000,
+      "allPercent": 3.4,
+      "childPercent": 2.7
+    },
+    {
+      "lower": 7000000,
+      "upper": 8000000,
+      "allPercent": 1.8,
+      "childPercent": 2.2
+    },
+    {
+      "lower": 8000000,
+      "upper": 9000000,
+      "allPercent": 0.9,
+      "childPercent": 0.5
+    },
+    {
+      "lower": 9000000,
+      "upper": 10000000,
+      "allPercent": 0.6,
+      "childPercent": 0.3
+    },
+    {
+      "lower": 10000000,
+      "upper": null,
+      "allPercent": 1.1,
+      "childPercent": 0.8
+    }
+  ],
+  "notes": [
+    "所得不詳を除く世帯員の分布。公表百分率は丸め値。",
+    "人数は2025年の世帯数×平均人数から近似。所得分布の対象年は2024年。",
+    "世帯構成・税負担との同時分布は未観測。モデルで置く仮定は原統計と区別する。"
+  ]
+}

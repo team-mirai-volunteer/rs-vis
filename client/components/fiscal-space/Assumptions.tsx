@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ModelParameters, Policy, ProjectionStep, SourceValue } from '@/types/fiscal-space';
 import { money, percent } from './format';
+import { MONEY_STOCK_CHECKED, MONEY_STOCK_DEFINITIONS, MONEY_STOCK_DEFINITION_URL } from '@/app/lib/fiscal-space/money-stock';
 import { inputLabel } from './labels';
 import { initialEconomy } from '@/app/lib/fiscal-space/assumptions';
 import { CONTEXT_CHECKED, japanContext, OECD_DEBT_RECORDS, OECD_DEBT_SOURCE, FERTILIZER_SOURCE } from '@/app/lib/fiscal-space/japan-context';
@@ -10,6 +11,15 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
   const s = initialEconomy(dataset), sources = japanSources(dataset), latest = dataset === 'latest';
   const context = japanContext(dataset);
   const fiscalGdp = s.macro.nominalGdp;
+  const externalBalances = [
+    ['経常収支（SNA・経常対外収支）', 'currentAccount', '財・サービス収支と、海外との所得・経常移転の収支の合計。'],
+    ['貿易収支（SNA・財のみ）', 'goodsBalance', 'モノの輸出額から輸入額を差し引いた収支。'],
+    ['サービス収支（SNA）', 'servicesBalance', 'サービスの輸出額から輸入額を差し引いた収支。'],
+    ['財・サービス収支（SNA）', 'tradeBalance', '貿易収支（財のみ）＋サービス収支。'],
+    ['第一次所得収支（SNA）', 'primaryIncomeBalance', '海外との利子・配当などの財産所得や雇用者報酬の受取と支払の差。'],
+    ['経常移転収支（SNA）', 'secondaryIncomeBalance', '海外とのその他経常移転の受取と支払の差。'],
+  ] as const;
+  const externalNotes: Record<string, string> = Object.fromEntries(externalBalances.map(([, key, note]) => [`external.${key}`, note]));
   const rows = [
     ['名目GDP', money(s.macro.nominalGdp, 1), 'macro.nominalGdp'],
     ['総債務（一般政府）', money(s.fiscal.grossDebt, 1), 'fiscal.grossDebt'],
@@ -26,11 +36,13 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     ['合計特殊出生率（人口動態統計）', context['context.totalFertilityRate'].value.toFixed(2), 'context.totalFertilityRate'],
     ['財・サービス輸入', money(s.external.imports, 1), 'external.imports'],
     ['財・サービス輸出', money(s.external.exports, 1), 'external.exports'],
+    ...externalBalances.map(([label, key]) => [label, `${s.external[key] > 0 ? '+' : ''}${money(s.external[key], 1)}`, `external.${key}`]),
     ['エネルギー自給率', percent(s.energy.domesticSupply / s.energy.primaryDemand), 'energy.domesticSupply'],
     ['食料自給率（カロリーベース）', percent(context['context.calorieSelfSufficiency'].value, 0), 'context.calorieSelfSufficiency'],
     ['食料自給率（生産額・金額ベース）', percent(context['context.valueSelfSufficiency'].value, 0), 'context.valueSelfSufficiency'],
     ['肥料自給率の参考：尿素の国産割合', percent(context['context.ureaDomesticShare'].value, 0), 'context.ureaDomesticShare'],
     ['対外純資産', money(s.external.niip, 1), 'external.niip'],
+    ...Object.keys(MONEY_STOCK_DEFINITIONS).map(key => [`M${key.slice(-1)}（マネーストック）`, money(context[key].value, 1), key]),
   ];
   return <Card><CardHeader><h2 className="text-lg font-bold">日本のデータを選ぶ</h2>
     <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
@@ -43,12 +55,16 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
     <p className="text-xs leading-relaxed">以下は操作前の基準値です。切り替えると経済状態の操作を初期化し、政策・ショック・閾値は引き継ぎます。年0は選択した初期状態、年1以降は試算の経過年です。</p>
     <p className="text-xs text-mirai-text-subtle">GDPは国内総生産、CPIは消費者物価指数、IMFは国際通貨基金を指します。</p>
+    <p className="text-xs leading-relaxed">対外収支は2024暦年の国民経済計算（SNA）。プラスは黒字、マイナスは赤字です。経常収支＝財・サービス収支＋第一次所得収支＋経常移転収支（表示の丸め差あり）。国際収支統計や通関統計とは定義が異なります。最新値を優先する場合も、この一式は2024年値です。</p>
     <p className="text-xs leading-relaxed">コアコア・食品・エネルギーCPI、食料自給率・肥料原料の国産割合は参考観測値です。各指標の政策実施後の経路は未推計。追加統計・OECD比較の確認：{CONTEXT_CHECKED}。OECD比較は2024年の公表集計を使用します。</p>
+    <p className="text-xs leading-relaxed">M1・M2・M3は市中の通貨量の参考値です。2024年基準は12月、最新基準は2026年8月の月中平均・前年同月比を掲載。政策後の通貨量は未推計です。M2はM1と対象金融機関が異なります。<a className="text-primary-accent underline" href={MONEY_STOCK_DEFINITION_URL} target="_blank" rel="noreferrer">日銀の定義</a>。通貨統計の確認：{MONEY_STOCK_CHECKED}。</p>
   </CardHeader><CardContent><dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label, value, key]) => {
     const source = context[key] ?? sources[`initial.${key}`];
     const debt = key === 'fiscal.grossDebt' || key === 'fiscal.netDebt';
     const ratio = debt || key === 'fiscal.primaryBalance' || key === 'fiscal.interestPayments';
     return <div key={key} data-observation-key={key}><dt className="text-xs">{label}</dt><dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+      {externalNotes[key] && <dd className="mt-1 text-xs">{externalNotes[key]}</dd>}
+      {MONEY_STOCK_DEFINITIONS[key] && <dd className="mt-1 text-sm tabular-nums">前年同月比 {context[`${key}Yoy`].value > 0 ? '+' : ''}{percent(context[`${key}Yoy`].value, 1)}<p className="mt-1 text-xs">{MONEY_STOCK_DEFINITIONS[key]}季節調整前。</p></dd>}
       {debt && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent((key === 'fiscal.grossDebt' ? s.fiscal.grossDebt : s.fiscal.netDebt) / fiscalGdp)}</dd>}
       {key === 'fiscal.primaryBalance' && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent(s.fiscal.primaryBalance / fiscalGdp)}<p className="text-xs">利子の受払を除く収支。黒字がプラス、赤字がマイナス。</p></dd>}
       {key === 'fiscal.interestPayments' && <dd className="mt-1 text-sm tabular-nums">利払いGDP比 {percent(s.fiscal.interestPayments / fiscalGdp)}<p className="text-xs">受取利子を控除する前の支払利子。</p></dd>}

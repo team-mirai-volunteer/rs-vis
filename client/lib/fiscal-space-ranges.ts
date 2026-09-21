@@ -51,6 +51,7 @@ const load: Record<string, Bounds> = {
   annualLoadFactor: [.01, 1], peakCoincidence: [0, 1],
 };
 const root: Record<string, Bounds> = {
+  'poverty.childcareCashShare': [0, 1],
   'resource.loadScale': [.25, 2], 'resource.spendingShare': [0, 1], 'resource.priceIndex': [.8, 2],
   'resource.electricityPrice': [5, 50], 'resource.loadFactor': [.2, 1], 'resource.coincidence': [0, 1],
   'resource.operatingOutputRatio': [0, 2],

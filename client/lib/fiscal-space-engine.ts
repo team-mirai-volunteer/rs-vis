@@ -22,6 +22,7 @@ import { policyCostYen } from './fiscal-space-amounts';
 import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensitivity';
 import { estimatePolicyLoad, resourcePowerBalance, resourceRecords, validateResourceAssumptions } from '@/app/lib/fiscal-space/resource-estimate';
 import { buildDebtPortfolio, debtPortfolioRecords } from '@/app/lib/fiscal-space/debt-portfolio';
+import { povertyScenario, POVERTY_RECORDS, validatePoverty } from '@/app/lib/fiscal-space/poverty';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
 /** Optional evaluation horizon past the published years, so commissioning around year 11 (new nuclear) is visible. */
@@ -32,6 +33,7 @@ export function createFiscalEngine() {
   let cache: { key: string; singleSpaces: Map<string, FiscalSpaceEstimate> } | undefined;
   return (form: FiscalForm) => {
     validateResourceAssumptions(form.resource);
+    validatePoverty(form.poverty);
     const initial = initialEconomy(form.dataset);
     initial.production.inputs = { ...form.inputs };
     initial.macro.potentialGdp = initial.macro.realGdp / (1 + form.gap / 100);
@@ -176,6 +178,7 @@ export function createFiscalEngine() {
         };
       }) : [];
     const records = [
+      ...POVERTY_RECORDS,
       ...assumptionRecords({ initial, parameters: p, policies, thresholds: form.thresholds,
         shock, annualCost: totalYen, longRun: form.longRun }, '', form.dataset),
       ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...personalTaxRevenueRecords(), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,
@@ -185,7 +188,8 @@ export function createFiscalEngine() {
     ];
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity, powerTimeline,
-      modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, medium, durationSensitivity, records };
+      modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, medium, durationSensitivity, records,
+      poverty: povertyScenario(allocated, horizon, form.poverty, p.employeeReliefShare) };
   };
 }
 

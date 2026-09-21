@@ -1,6 +1,7 @@
 import type { SourceValue } from '@/types/fiscal-space';
 import type { JapanDataset } from './japan-data';
 import { adjustEnergyCpi, JULY_2026_ENERGY_ADJUSTMENT } from './energy-cpi';
+import { moneyStockRecords } from './money-stock';
 
 // Observations for comparison only. Do not carry these into future policy forecasts.
 export const CONTEXT_CHECKED = '2026-09-15';
@@ -27,6 +28,7 @@ export function japanContext(dataset: JapanDataset): Record<string, SourceValue>
     uncertaintyNote: `${definition}。輸入飼料・原料を考慮。供給途絶時に確保できる量の試算ではありません。${CONTEXT_CHECKED}確認。`,
   });
   const records = [
+    ...moneyStockRecords(dataset),
     { key: 'context.ureaDomesticShare', value: .03, unit: '比率（尿素の国産割合・数量ベース）',
       referenceYear: '2024肥料年度（2024年7月〜2025年6月）', publishedAt: '2026-04',
       sourceName: '農林水産省 肥料をめぐる情勢・4頁', sourceUrl: FERTILIZER_SOURCE, status: 'verified' as const,
