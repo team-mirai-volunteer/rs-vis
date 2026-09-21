@@ -39,6 +39,13 @@ export function Calibration({ value, onChange, embedded = false }: { value: Sens
   return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">乗数・税収・労働反応の条件</h2>}
     <p className="text-sm leading-relaxed">公表モデルの年次反応を比較条件に使います。観測された因果効果や「正解の係数」を意味しません。</p>
   </CardHeader><CardContent className="space-y-4 text-sm">
+    <label className="block space-y-2"><span>参照するマクロモデル</span><select className={fieldClass} value={value.referenceModel} onChange={e => change('referenceModel', e.target.value as ReferenceModel)}>
+      {Object.entries(REFERENCES).map(([id, r]) => <option key={id} value={id}>{r.name}</option>)}
+    </select></label>
+    <p className="text-xs leading-relaxed">{ref.note} <a className="text-primary-accent underline" href={ref.url} target="_blank" rel="noreferrer">原資料</a>。主表と制約評価は公表期間（{ref.years}年）内に限定します。経済財政モデルの1年限りの政府支出は公表表①を使用。2〜4年の支出は専用の公表実験がないため、継続実験の開始・終了を重ねる線形近似です。1年実験との一致は保証されず、終了後にGDPが基準を下回る場合があります。期間別の実証値ではありません。</p>
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="参照モデルの初年度乗数"><table className="w-full min-w-[420px] text-right text-xs"><caption className="mb-2 text-left">初年度の実質GDP増加額 / 財政措置額（感度倍率を掛ける前）</caption><thead><tr><th scope="col" className="p-2 text-left">参照条件</th><th scope="col" className="p-2">政府支出</th><th scope="col" className="p-2">所得税減税</th><th scope="col" className="p-2">法人税減税</th></tr></thead><tbody>{Object.entries(REFERENCES).map(([id, r]) => <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2 text-left font-medium">{r.name}</th>{[r.government.gdp[0], r.household.gdp[0], r.corporate.gdp[0]].map((n, i) => <td key={i} className="p-2 tabular-nums">{n.toFixed(2)}</td>)}</tr>)}</tbody></table></div>
+    <p className="text-xs leading-relaxed">社会保険料は本人・事業主の双方を軽減（初期配分は折半）。本人分は所得税、事業主分は法人税減税の反応を代用します。現金給付も所得税の代理です。消費税は2026年モデルの表⑤を符号反転し、税率ポイントと年額を換算します。2022年モデルでは需要を所得税で代用し、直接価格効果を別途加えます。その他の支出は共通の政府支出反応が基準です。</p>
+    <p className="text-xs leading-relaxed">住民税減税は個人の所得に比例する負担軽減として、所得税減税の需要・就労反応を代用します。住民税固有の乗数ではなく、均等割・徴収時期・自治体別の歳入補填や歳出削減は未反映です。</p>
     <p className="text-xs leading-relaxed">公表モデル以外の係数は、効果の大きさを比べるための仮定です。消費税の対象CPI比率85%・価格転嫁率100%、既存歳出のCPI連動率100%などは、日本全体の実績から推定した初期値ではありません。各項目の説明とともに変更してください。</p>
     <section aria-label="税収・社会負担の反応" className="space-y-3 rounded-xl border border-mirai-border p-4">
       <h3 className="font-bold">税収・社会負担の反応</h3>
@@ -51,13 +58,6 @@ export function Calibration({ value, onChange, embedded = false }: { value: Sens
       <RangeField label="税収への反映ラグ" value={value.taxCollectionLag} min={0} max={3} step={1} unit="年" onChange={n => change('taxCollectionLag', n)} />
     <p className="mt-3 text-xs">政府の税収弾性値は国の一般会計税収の値で、このモデルの「税」は一般政府の税（地方税・罰金を含む）です。社会負担（社会保険料）は別の弾性値で伸ばし、初期値は1994〜2024年度の実績に対する事後推定を丸めたもの（リポジトリの docs/fiscal-space-macro-backtest.md に記録）。税目別（所得・法人・消費）の課税ベース、短期と中期の違いは未反映です。</p>
     </section>
-    <label className="block space-y-2"><span>参照するマクロモデル</span><select className={fieldClass} value={value.referenceModel} onChange={e => change('referenceModel', e.target.value as ReferenceModel)}>
-      {Object.entries(REFERENCES).map(([id, r]) => <option key={id} value={id}>{r.name}</option>)}
-    </select></label>
-    <p className="text-xs leading-relaxed">{ref.note} <a className="text-primary-accent underline" href={ref.url} target="_blank" rel="noreferrer">原資料</a>。主表と制約評価は公表期間（{ref.years}年）内に限定します。経済財政モデルの1年限りの政府支出は公表表①を使用。2〜4年の支出は専用の公表実験がないため、継続実験の開始・終了を重ねる線形近似です。1年実験との一致は保証されず、終了後にGDPが基準を下回る場合があります。期間別の実証値ではありません。</p>
-    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="参照モデルの初年度乗数"><table className="w-full min-w-[420px] text-right text-xs"><caption className="mb-2 text-left">初年度の実質GDP増加額 / 財政措置額（感度倍率を掛ける前）</caption><thead><tr><th scope="col" className="p-2 text-left">参照条件</th><th scope="col" className="p-2">政府支出</th><th scope="col" className="p-2">所得税減税</th><th scope="col" className="p-2">法人税減税</th></tr></thead><tbody>{Object.entries(REFERENCES).map(([id, r]) => <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2 text-left font-medium">{r.name}</th>{[r.government.gdp[0], r.household.gdp[0], r.corporate.gdp[0]].map((n, i) => <td key={i} className="p-2 tabular-nums">{n.toFixed(2)}</td>)}</tr>)}</tbody></table></div>
-    <p className="text-xs leading-relaxed">社会保険料は本人・事業主の双方を軽減（初期配分は折半）。本人分は所得税、事業主分は法人税減税の反応を代用します。現金給付も所得税の代理です。消費税は2026年モデルの表⑤を符号反転し、税率ポイントと年額を換算します。2022年モデルでは需要を所得税で代用し、直接価格効果を別途加えます。その他の支出は共通の政府支出反応が基準です。</p>
-    <p className="text-xs leading-relaxed">住民税減税は個人の所得に比例する負担軽減として、所得税減税の需要・就労反応を代用します。住民税固有の乗数ではなく、均等割・徴収時期・自治体別の歳入補填や歳出削減は未反映です。</p>
     <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="乗数と本人・事業主の反応を変える"><h3 className="font-bold">乗数と本人・事業主の反応を変える</h3><div className="mt-4 grid gap-4 md:grid-cols-2">
       <RangeField label="GDP乗数の感度倍率" value={value.multiplierScale} min={0} max={3} step={.1} unit="倍" onChange={n => change('multiplierScale', n)} />
       <p className="text-xs">感度倍率は実質GDPの公表反応に掛けます。物価・輸出入・雇用の公表反応を同時に再推計する設定ではありません。初期値1倍でも、GDPギャップや供給制約によって実現する効果は変わります。</p>
