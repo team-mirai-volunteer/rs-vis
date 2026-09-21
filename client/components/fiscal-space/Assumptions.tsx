@@ -79,11 +79,11 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     <p className="text-xs leading-relaxed">以下は操作前の基準値です。切り替えると経済状態の操作を初期化し、政策・ショック・閾値は引き継ぎます。年0は選択した初期状態、年1以降は試算の経過年です。</p>
     <p className="text-xs text-mirai-text-subtle">GDPは国内総生産、CPIは消費者物価指数、IMFは国際通貨基金を指します。</p>
     <p className="text-xs leading-relaxed">コアコア・食品・エネルギーCPI、食料自給率・肥料原料の国産割合は参考観測値です。各指標の政策実施後の経路は未推計。追加統計・OECD比較の確認：{CONTEXT_CHECKED}。OECD比較は2024年の公表集計を使用します。</p>
-  </CardHeader><CardContent><dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label, value, key]) => {
+  </CardHeader><CardContent><dl data-testid="japan-data-tiles" className="columns-[16rem] gap-3 [&>div]:mb-3 [&>div]:break-inside-avoid-column [&>div]:rounded-xl [&>div]:border-mirai-border sm:[&>div]:border sm:[&>div]:p-3">{rows.map(([label, value, key]) => {
     const group = groups.find(g => g.items.some(([itemKey]) => itemKey === key));
     if (group) {
       if (group.items[0][0] !== key) return null;
-      return <div key={group.id} data-observation-group={group.id} className={['external-balances', 'food-self-sufficiency', 'money-stock'].includes(group.id) ? 'sm:col-span-2' : undefined}>
+      return <div key={group.id} data-observation-group={group.id}>
         <dt className="text-xs">{group.title}</dt>
         <dd className="mt-1"><dl className="flex flex-wrap gap-x-5 gap-y-2">{group.items.map(([itemKey, shortLabel]) =>
           <div key={itemKey} data-observation-key={itemKey}>
@@ -128,7 +128,7 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       {key === 'fiscal.interestPayments' && <dd className="mt-1 text-sm tabular-nums">利払いGDP比 {percent(s.fiscal.interestPayments / fiscalGdp)}<p className="text-xs">受取利子を控除する前の支払利子。</p></dd>}
       {key === 'labour.employment' && <dd className="mt-1 text-sm tabular-nums">完全失業率 {percent(s.labour.unemployment / s.labour.labourForce, 1)}
         <p className="text-xs">完全失業者{(s.labour.unemployment / 1e4).toLocaleString('ja-JP')}万人 ÷ 労働力人口{(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人。就業者数と同じ労働力調査から計算しています。</p></dd>}
-      <dd className="mt-1 text-sm text-mirai-text-subtle"><span className="rounded bg-mirai-surface-warm px-1">{SOURCE_STATUS_LABELS[source.status]}</span> {source.referenceYear}・{ratio ? '公表額から換算' : SOURCE_STATUS_LABELS[source.status]} <a className="text-primary-accent underline" href={source.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${label}の出典`}>出典</a></dd>
+      <dd className="mt-1 text-sm text-mirai-text-subtle"><span className="rounded bg-mirai-surface-warm px-1">{SOURCE_STATUS_LABELS[source.status]}</span> {source.referenceYear} <a className="text-primary-accent underline" href={source.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${label}の出典`}>出典</a></dd>
       {source.publishedAt && <dd className="mt-1 text-xs text-mirai-text-subtle">公表：{source.publishedAt}</dd>}
       {latest && ratio && <dd className="mt-1 text-xs">比率は分子・分母とも2024年。上の最新GDPは分母に使いません。</dd>}
       {latest && key === 'macro.nominalGdp' && <dd className="mt-1 text-xs">2次速報・季節調整済み年率</dd>}
