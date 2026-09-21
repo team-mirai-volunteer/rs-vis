@@ -4,6 +4,10 @@ import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
 import { fieldClass, money, percent } from './format';
 import { RangeField } from './Controls';
 
+function CashTaperNote() {
+  return <p className="text-xs">逓減は政策前の等価可処分所得（世帯の手取り÷世帯人数の平方根）で判定します。年{(POVERTY_DATA.publishedMedian / 2 / 1e4).toFixed(1)}万円までは1人当たり満額、そこから年{(POVERTY_DATA.publishedMedian / 1e4).toFixed(0)}万円まで直線的に減り、それ以上はゼロとする仮定です。満額は入力予算を全額配分するよう計算します。所得階級を20分割した区間の中点で給付額を近似し、給付後の所得では再判定しません。</p>;
+}
+
 const difference = (value: number) => {
   const rounded = Number((value * 100).toFixed(1)) || 0;
   return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}ポイント`;
@@ -28,6 +32,7 @@ export function Poverty({ result }: {
       </div>)}
     </div>
     <p className="text-xs">計算済みの配分：現金給付は「{CASH_TARGET_LABELS[result.assumptions.cashTarget]}」、子育て予算の{percent(result.assumptions.childcareCashShare, 0)}を子ども1人当たりの現金給付とする仮定です。これらは貧困率の比較条件で、既存のGDP・出生率の反応係数は変わりません。</p>
+    {result.assumptions.cashTarget === 'income-tapered' && <CashTaperNote />}
     <p className="text-xs">所得税・住民税は推定税額に比例した減税、社会保険料は本人負担分の軽減を反映します。モデル上で非課税の人には所得税減税を配分せず、還付は加算しません。子育て予算の現金割合の初期値は100%です。</p>
     <div className="overflow-x-auto" role="region" aria-label="貧困率の政策比較" tabIndex={0}>
       <table className="w-full min-w-[660px] text-right text-sm tabular-nums">
@@ -56,13 +61,18 @@ export function Poverty({ result }: {
   </CardContent></Card>;
 }
 
-export function PovertySettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {
-  return <div className="grid gap-4 sm:grid-cols-2">
+export function CashSettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {
+  return <div className="space-y-3">
       <label className="block space-y-1 text-sm"><span>現金給付の配り方</span>
         <select className={fieldClass} aria-label="現金給付の配り方" value={value.cashTarget} onChange={e => onChange({ ...value, cashTarget: e.target.value as PovertyAssumptions['cashTarget'] })}>
-          {Object.entries(CASH_TARGET_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+          {Object.entries(CASH_TARGET_LABELS).filter(([id]) => id !== 'children' || value.cashTarget === 'children').map(([id, label]) => <option key={id} value={id} disabled={id === 'children'}>{label}</option>)}
         </select>
       </label>
-      <RangeField label="子育て予算のうち現金給付に回す割合" value={value.childcareCashShare * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, childcareCashShare: n / 100 })} />
+      {value.cashTarget === 'income-tapered' && <CashTaperNote />}
+      {value.cashTarget === 'children' && <p className="text-xs">旧共有条件の子ども向け給付を復元しています。新しく選ぶ給付対象は所得に基づく方式です。</p>}
     </div>;
+}
+
+export function ChildcareCashSettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {
+  return <RangeField label="子育て予算のうち現金給付に回す割合" value={value.childcareCashShare * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, childcareCashShare: n / 100 })} />;
 }

@@ -8,12 +8,12 @@ import type { TaxParameters } from '@/types/tax-burden';
 
 export const POVERTY_DATA = data;
 export interface PovertyAssumptions {
-  cashTarget: 'universal' | 'low-income' | 'children';
+  cashTarget: 'universal' | 'low-income' | 'income-tapered' | 'children';
   /** Share of the childcare budget treated as cash, not services. */
   childcareCashShare: number;
 }
 export const POVERTY_DEFAULTS: PovertyAssumptions = { cashTarget: 'universal', childcareCashShare: 1 };
-export const CASH_TARGET_LABELS = { universal: '全国民へ一律（一般世帯で近似）', 'low-income': '政策なしで貧困線未満の人へ一律', children: '子ども1人当たり一律' };
+export const CASH_TARGET_LABELS = { universal: '全国民へ一律（一般世帯で近似）', 'low-income': '政策なしで貧困線未満の人へ一律', 'income-tapered': '所得に合わせて逓減', children: '子ども1人当たり一律（旧条件）' };
 const taxParameters = taxData as unknown as TaxParameters;
 const reform = baseReform(taxParameters);
 const population = data.households * data.meanHouseholdSize;
@@ -21,6 +21,12 @@ const children = data.childHouseholds * data.meanChildren;
 // Published median/line are independently rounded. Use exactly half the median in the model.
 const median = data.publishedMedian;
 const line = median / 2;
+/** Full per-person grant up to the baseline poverty line, tapering to zero at the median.
+ * This is a comparison assumption, not a calibrated tax/benefit schedule. */
+export function cashTaperWeight(equivalentIncome: number) {
+  return Math.max(0, Math.min(1, (median - equivalentIncome) / (median - line)));
+}
+
 const revenue = [PERSONAL_TAX_REVENUE['income-tax'].amount, PERSONAL_TAX_REVENUE['resident-tax'].amount, SOCIAL_INSURANCE_REVENUE.insured];
 
 export function validatePoverty(c: PovertyAssumptions) {
@@ -132,10 +138,15 @@ function evaluate(cells: Cell[], policies: Policy[], year: number, c: PovertyAss
   const cash = amount('cash'), childCash = amount('childcare') * c.childcareCashShare;
   const requested = [amount('income-tax'), amount('resident-tax'), amount('social-insurance') * employeeShare];
   const fractions = requested.map((v, j) => Math.min(1, v / revenue[j]));
-  const eligible = cells.reduce((s, r) => s + (c.cashTarget === 'children' ? r.children : c.cashTarget === 'low-income' ? (r.upper <= line ? r.people : 0) : r.people), 0);
+  // Preserve the children mode for old shared scenarios; new cash settings use income targeting.
+  // Income is fixed before policy. Midpoints approximate the taper within the 20 subintervals.
+  const units = (r: Cell) => c.cashTarget === 'children' ? r.childCount
+    : r.size * (c.cashTarget === 'low-income' ? (r.upper <= line ? 1 : 0)
+      : c.cashTarget === 'income-tapered' ? cashTaperWeight((r.lower + r.upper) / 2) : 1);
+  const eligible = cells.reduce((sum, r) => sum + units(r) * r.householdWeight, 0);
   let allocated = 0;
   const after = cells.map(r => {
-    const cashUnits = c.cashTarget === 'children' ? r.childCount : c.cashTarget === 'low-income' ? (r.upper <= line ? r.size : 0) : r.size;
+    const cashUnits = units(r);
     const gain = (eligible > 0 ? cash * cashUnits / eligible : 0) + childCash * r.childCount / children
       + r.taxes.reduce((sum, tax, j) => sum + tax * fractions[j], 0);
     allocated += gain * r.householdWeight;

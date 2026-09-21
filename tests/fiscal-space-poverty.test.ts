@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { povertyScenario, povertyMeasures, POVERTY_DEFAULTS, POVERTY_DATA } from '../app/lib/fiscal-space/poverty';
+import { povertyScenario, povertyMeasures, cashTaperWeight, POVERTY_DEFAULTS, POVERTY_DATA } from '../app/lib/fiscal-space/poverty';
 import { POLICIES } from '../app/lib/fiscal-space/assumptions';
 import { PERSONAL_TAX_REVENUE, SOCIAL_INSURANCE_REVENUE } from '../app/lib/fiscal-space/policy-limits';
 import { defaults } from '../client/lib/fiscal-space-form';
@@ -21,9 +21,9 @@ test('no policy reproduces published poverty rates in each year and sensitivity 
 });
 
 test('cash conserves the budget, targeting matters, and temporary grants do not accumulate', () => {
-  const run = (cashTarget: 'universal' | 'low-income' | 'children') => povertyScenario([policy('cash')], 5, { ...POVERTY_DEFAULTS, cashTarget }, .5);
-  const universal = run('universal'), targeted = run('low-income'), kids = run('children');
-  for (const r of [universal, targeted, kids]) {
+  const run = (cashTarget: 'universal' | 'low-income' | 'children' | 'income-tapered') => povertyScenario([policy('cash')], 5, { ...POVERTY_DEFAULTS, cashTarget }, .5);
+  const universal = run('universal'), targeted = run('low-income'), kids = run('children'), tapered = run('income-tapered');
+  for (const r of [universal, targeted, kids, tapered]) {
     near(r.rows[0].allocated, 1e12, 1);
     assert(r.rows[0].anchoredAll < r.baseline.all);
     near(r.rows[0].all, r.rows[2].all);
@@ -85,4 +85,29 @@ test('poverty choices round-trip, migrate with a notice and reject invalid input
   assert.throws(() => povertyScenario([], 5, { ...POVERTY_DEFAULTS, childcareCashShare: NaN }, .5));
   assert.throws(() => povertyScenario([], 5, { ...POVERTY_DEFAULTS, cashTarget: 'bad' as 'universal' }, .5));
   assert.throws(() => povertyScenario([policy('cash', -1)], 5, POVERTY_DEFAULTS, .5));
+});
+
+test('income taper is continuous at thresholds and independent of children', () => {
+  const median = POVERTY_DATA.publishedMedian, line = median / 2;
+  near(cashTaperWeight(0), 1);
+  near(cashTaperWeight(line), 1);
+  near(cashTaperWeight((line + median) / 2), .5);
+  near(cashTaperWeight(median), 0);
+  near(cashTaperWeight(median * 2), 0);
+  for (let income = 0; income < median * 2; income += 10000) {
+    assert(cashTaperWeight(income) >= cashTaperWeight(income + 10000));
+  }
+  for (const amount of [0, 1e12, 100e12]) {
+    const r = povertyScenario([policy('cash', amount)], 1, { ...POVERTY_DEFAULTS, cashTarget: 'income-tapered' }, .5).rows[0];
+    near(r.allocated, amount, 1);
+    assert(r.all >= 0 && r.all <= 1 && r.child >= 0 && r.child <= 1);
+  }
+  for (const cashTarget of ['income-tapered', 'children'] as const) {
+    const form = defaults(); form.poverty.cashTarget = cashTarget;
+    assert.equal(decodeScenarioDetailed(encodeScenario(form)).form.poverty.cashTarget, cashTarget);
+    if (cashTarget === 'children') {
+      const old = '#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-21.2', form }));
+      assert.equal(decodeScenarioDetailed(old).form.poverty.cashTarget, 'children');
+    }
+  }
 });

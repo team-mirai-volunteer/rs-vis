@@ -42,15 +42,6 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
     ['利払い / GDP', percent(step.metrics.interestGdp), '利払い / 税・社会負担収入 ' + percent(step.metrics.interestTax)],
     ['資金調達需要', money(step.metrics.grossFinancingNeeds), 'GDP比 ' + percent(step.metrics.gfnGdp)],
   ];
-  const mediumValues: Record<string, string> = medium ? {
-    '合計特殊出生率': medium.demographics?.tfr.toFixed(3) ?? '—',
-    '労働力人口': `${Math.round(medium.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`,
-    '実質GDP': money(medium.state.macro.realGdp), '名目GDP': money(medium.state.macro.nominalGdp),
-    '税・社会保険料収入': money(medium.state.fiscal.taxRevenue),
-    '歳出（利払いを含む）': money(medium.state.fiscal.primaryExpenditure + medium.state.fiscal.interestPayments),
-    '基礎的財政収支': money(medium.state.fiscal.primaryBalance),
-    '総債務 / GDP': percent(medium.metrics.grossDebtGdp),
-  } : {};
   const signedMoney = (value: number) => `${Number((value / 1e12).toFixed(2)) > 0 ? '+' : ''}${money(value)}`;
   const signedNumber = (value: number, digits: number) => {
     const rounded = Number(value.toFixed(digits));
@@ -82,13 +73,13 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
   };
   const renderRows = (items: string[][]) => items.map(([label, value, note]) => <div key={label} data-metric={label}>
     <p className="text-xs">{label}</p><p className="mt-1 text-lg font-medium tabular-nums">{value}</p>
-    {mediumValues[label] && <p className="text-xs text-mirai-text-subtle" data-testid="medium-reference">中位 {mediumValues[label]}</p>}
+    {label === '合計特殊出生率' && medium?.demographics && <p className="text-xs text-mirai-text-subtle" data-testid="medium-reference">出生中位 {medium.demographics.tfr.toFixed(3)}（同じ政策条件の参考値）</p>}
     {differences[label] !== undefined && <p className="mt-1 text-sm font-medium tabular-nums" data-testid="policy-difference"><span className="text-xs font-normal">政策なしとの差</span> <strong>{differences[label]}</strong></p>}
     {["国民負担（GDP比）", "総債務 / GDP", "基礎的財政収支", "利払い / GDP", "資金調達需要"].includes(label) && <FiscalVintageBadge latest={latest} projected />}
     {note && <p className="mt-1 text-xs text-mirai-text-subtle" data-testid="metric-note">{note}</p>}
   </div>);
   return <Card data-testid="horizon-results"><CardHeader><h2 className="text-xl font-bold">{s.year}年目の結果（試算{longRun && '・公表期間外の延長'}）</h2>
-    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}、小さな「中位」は同じ政策・経済条件の参考値です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、公表反応の末尾を据え置いた仮定です。`}</p>
+    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、公表反応の末尾を据え置いた仮定です。`}</p>
     <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>

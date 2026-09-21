@@ -13,7 +13,7 @@ import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation, ResourceSettings } from '@/client/components/fiscal-space/ResourceEstimation';
 import { Demographics, DemographicSettings } from '@/client/components/fiscal-space/Demographics';
 import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
-import { Poverty, PovertySettings } from '@/client/components/fiscal-space/Poverty';
+import { Poverty, CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -56,7 +56,7 @@ const MemoResourceEstimation = memo(ResourceEstimation);
 const MemoDemographics = memo(Demographics);
 const MemoPoverty = memo(Poverty);
 
-const DETAIL_SETTINGS = { poverty: '現金給付の対象・配分', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
+const DETAIL_SETTINGS = { poverty: '現金給付の対象', childcare: '子育て予算の現金給付割合', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
 type DetailSetting = keyof typeof DETAIL_SETTINGS;
 
 export default function FiscalSpacePage() {
@@ -66,6 +66,8 @@ export default function FiscalSpacePage() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const detailDialog = useRef<HTMLDialogElement>(null);
   const [detailSetting, setDetailSetting] = useState<DetailSetting>('poverty');
+  const openCashSettings = useCallback(() => { setDetailSetting('poverty'); detailDialog.current?.showModal(); }, []);
+  const openChildcareSettings = useCallback(() => { setDetailSetting('childcare'); detailDialog.current?.showModal(); }, []);
   const dataDialog = useRef<HTMLDialogElement>(null);
   const powerDialog = useRef<HTMLDialogElement>(null);
   const calibrationDialog = useRef<HTMLDialogElement>(null);
@@ -170,8 +172,8 @@ export default function FiscalSpacePage() {
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
-          additionalSettings={Object.entries(DETAIL_SETTINGS).map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
-          policies={policies} onPowerSettings={openPowerSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
+          additionalSettings={Object.entries(DETAIL_SETTINGS).filter(([key]) => key !== 'poverty' && key !== 'childcare').map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
+          policies={policies} onPowerSettings={openPowerSettings} onCashSettings={openCashSettings} onChildcareSettings={openChildcareSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
           horizon={form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
           maxHorizon={REFERENCES[form.calibration.referenceModel].years}
@@ -190,12 +192,12 @@ export default function FiscalSpacePage() {
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
       <MemoPoverty result={result.poverty} />
-      <MemoSummary medium={result.medium} estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
+      <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial} />
       <MemoResourceEstimation result={result} value={calculationForm!.resource} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />
-      <MemoLongRun mediumRows={result.medium.longRun} rows={result.longRun} value={calculationForm!.longRun} />
-      <MemoDemographics medium={result.medium} steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={calculationForm!.calibration.demographics} baseYear={result.initial.baseCalendarYear} />
+      <MemoLongRun rows={result.longRun} value={calculationForm!.longRun} />
+      <MemoDemographics steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={calculationForm!.calibration.demographics} baseYear={result.initial.baseCalendarYear} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>
@@ -218,7 +220,8 @@ export default function FiscalSpacePage() {
       </div>
       <div className="space-y-4 p-3 sm:p-5">
         <p className="text-sm">変更はすぐに計算へ反映されます。</p>
-        {detailSetting === 'poverty' && <><PovertySettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">貧困率の直接効果を比較する条件です。GDP・出生率の反応係数は変わりません。</p></>}
+        {detailSetting === 'poverty' && <><CashSettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">貧困率の直接効果を比較する条件です。GDP・出生率の反応係数は変わりません。</p></>}
+        {detailSetting === 'childcare' && <><ChildcareCashSettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">子ども1人当たりの現金給付として貧困率に反映する割合です。残りの現物サービスの効果は未推計で、GDP・出生率の反応係数は変わりません。</p></>}
         {detailSetting === 'capacity' && <>
           {result && <CapacityCalibration value={form.capacity} onChange={change.capacity} inputs={form.inputs} parameters={form.calibration} realGdp={result.initial.macro.realGdp} gap={form.gap} />}
           <h3 className="text-base font-bold">生産モデル・価格補正・初期投入指数</h3>

@@ -32,9 +32,11 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full" />
   </div>;
 }
-const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, onPowerSettings, onAmount, onPolicyKind, onPolicyDuration }: {
+const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
   policy: Policy; amount: number; consumptionTaxMax: number; socialInsuranceMax: number;
   onPowerSettings: () => void;
+  onCashSettings: () => void;
+  onChildcareSettings: () => void;
   onAmount: (id: string, n: number) => void;
   onPolicyKind: (id: string, kind: PolicyKind) => void;
   onPolicyDuration: (id: string, duration: number) => void;
@@ -43,6 +45,8 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   const max = policy.id === 'consumption-tax' ? consumptionTaxMax : policy.id === 'social-insurance' ? socialInsuranceMax : revenue ? Math.floor(revenue.amount / 1e11) / 10 : 100;
   return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
     <RangeField label={policy.name} value={Math.min(amount, max)} min={0} max={max} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    {policy.id === 'cash' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onCashSettings}>給付対象を設定</button>}
+    {policy.id === 'childcare' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onChildcareSettings}>現金給付の割合を設定</button>}
     {policy.id === 'generation' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onPowerSettings}>電源構成・稼働時期を設定</button>}
     <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
       {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
@@ -64,13 +68,15 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
   structuralUnemployment, headline, onClose, stresses, onStress,
-  onPowerSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
+  onPowerSettings, onCashSettings, onChildcareSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
   gap: number; inflation: number; construction: number; firmCapacity: number;
   structuralUnemployment: number; headline?: string; onClose?: () => void;
   onPowerSettings: () => void;
+  onCashSettings: () => void;
+  onChildcareSettings: () => void;
   onCalibrationSettings: () => void;
   onSupplySettings: () => void;
   additionalSettings?: ReactNode;
@@ -79,7 +85,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
-  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
+  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
   const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);

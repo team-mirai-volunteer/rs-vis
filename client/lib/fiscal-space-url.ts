@@ -14,10 +14,10 @@ import { POVERTY_DEFAULTS } from '@/app/lib/fiscal-space/poverty';
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-21.2';
+export const FISCAL_MODEL_VERSION = '2026-09-22.1';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
-  cashTarget: ['universal', 'low-income', 'children'],
+  cashTarget: ['universal', 'low-income', 'children', 'income-tapered'],
   fertilityVariant: ['low', 'medium'],
   dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'], inflationRule: ['peak', 'average'], mode: ['estimated', 'manual', 'included', 'off'],
   productionModel: ['leontief', 'ces', 'cobbDouglas'], kind: ['temporary', 'permanent', 'growth'],
@@ -71,7 +71,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     if (!Object.hasOwn(payload.form, 'capacity')) {
       Object.assign(payload.form, { capacity: { ...CAPACITY_DEFAULTS } });
