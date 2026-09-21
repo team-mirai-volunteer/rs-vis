@@ -42,11 +42,16 @@ try {
   await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   const models = page.getByRole('region', { name: '参考上限の感度' });
   await expect(models.locator('tbody tr')).toHaveCount(3);
+  await page.locator('details').filter({ has: page.getByText('詳細な条件', { exact: true }) }).evaluate(el => { el.open = true; });
+  await page.getByRole('button', { name: '最大GDP・生産モデルの条件', exact: true }).click();
   await page.getByLabel('使用する生産モデル').selectOption('ces');
   await expect(page.getByLabel('使用する生産モデル')).toHaveValue('ces');
+  await page.keyboard.press('Escape');
   const long = page.getByRole('region', { name: '長期シナリオ' });
   const lowRate = await long.locator('tbody').innerText();
+  await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
   await page.getByLabel('長期の借換金利・数値で入力', { exact: true }).fill('6');
+  await page.keyboard.press('Escape');
   await expect.poll(() => long.locator('tbody').innerText()).not.toEqual(lowRate);
   const taxDetails = page.getByText(/^ほかの.*政策を追加する$/);
   await taxDetails.click();

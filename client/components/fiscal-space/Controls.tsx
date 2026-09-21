@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, memo, useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,7 +64,7 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
 });
 export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
   structuralUnemployment, headline, onClose, stresses, onStress,
-  onPowerSettings, onCalibrationSettings, onSupplySettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
+  onPowerSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
   consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
@@ -73,6 +73,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onPowerSettings: () => void;
   onCalibrationSettings: () => void;
   onSupplySettings: () => void;
+  additionalSettings?: ReactNode;
   onAmount: (id: string, n: number) => void; onPolicyDuration: (id: string, n: number) => void;
   onPolicyKind: (id: string, v: PolicyKind) => void; onHorizon: (n: number) => void; onRateShock: (n: number) => void; onEnergyShock: (n: number) => void;
   onThreshold: (id: keyof Thresholds, n: number) => void;
@@ -139,6 +140,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
           <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => economyDialog.current?.showModal()}>経済状態・評価条件を変える</Button>
           <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onCalibrationSettings}>乗数・労働反応の条件</Button>
           <Button variant="outline" className="w-full" aria-haspopup="dialog" onClick={onSupplySettings}>政策別の供給力・長期条件</Button>
+          {additionalSettings}
         </div>
       </details>
     </CardContent>

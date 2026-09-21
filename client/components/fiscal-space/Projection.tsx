@@ -3,7 +3,7 @@ import type { ModelParameters, ProjectionStep, Simulation } from '@/types/fiscal
 import { money, percent, points } from './format';
 import { FERTILITY_LABELS } from '@/app/lib/fiscal-space/demographics';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
-import { FiscalVintageBadge } from './ResultAssumptions';
+import { DebtPortfolioNote, FiscalVintageBadge } from './ResultAssumptions';
 import { differenceChartScale, fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 
 export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
@@ -165,8 +165,8 @@ export function Projection({ simulation, baseline, peaksByYear, shocks, paramete
       <p>{years}年後の政策なし債務/GDP：{percent(baseLast.metrics.grossDebtGdp)}。現在の配分との差：{points(last.metrics.grossDebtGdp - baseLast.metrics.grossDebtGdp)}。</p>
       <p>当年の債務/GDP ＝ (1＋実効金利)÷(1＋名目成長率) × 前年の債務/GDP − 当年の基礎的財政収支/GDP ＋ 当年の残高調整/GDP。債務安定に必要な基礎的財政収支/GDP ＝ (実効金利−名目成長率)÷(1＋名目成長率) × 前年の債務/GDP ＋ 当年の残高調整/GDP。実効金利＝（支払利子−受取利子）÷期首債務。基礎的財政収支は利子受払を除く収支で黒字が正。利払いの負担率は受取利子を控除する前の額です。</p>
       <p>{years}年後の残高調整/GDPは{percent(last.metrics.stockFlowAdjustmentGdp)}。全債務を償還した後の余剰は金融資産となり、総債務の恒等式では資産取得分を残高調整へ計上します。</p>
-      <p>年0の債務総額・利払額は2024年実績から換算しています。満期1〜10年への均等配分と一律表面利率は仮定で、実際の償還予定を再現したものではありません。</p>
-      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年0の債務満期構成"><table className="w-full text-right"><caption className="text-left">年0の債務の満期構成（満期配分は仮定）</caption><thead><tr><th scope="col">満期年</th><th scope="col">元本</th><th scope="col">表面利率</th></tr></thead><tbody>{simulation.initial.state.debtPortfolio.map((b, i) => <tr key={i}><th scope="row" className="p-1">{b.maturityYear}</th><td>{money(b.principal)}</td><td>{percent(b.coupon)}</td></tr>)}</tbody></table></div>
+      <DebtPortfolioNote latest={latest} />
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年0の債務満期構成"><table className="w-full text-right"><caption className="text-left">年0の債務の満期構成（公表償還年次表＋残差の配分仮定）</caption><thead><tr><th scope="col">満期年</th><th scope="col">元本</th><th scope="col">表面利率</th></tr></thead><tbody>{simulation.initial.state.debtPortfolio.map((b, i) => <tr key={i}><th scope="row" className="p-1">{b.maturityYear}</th><td>{money(b.principal)}</td><td>{percent(b.coupon)}</td></tr>)}</tbody></table></div>
     </div></details>
   </CardContent></Card>;
 }

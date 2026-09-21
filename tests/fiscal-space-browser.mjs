@@ -199,7 +199,10 @@ try {
   const semiPotential = comparison.locator('[data-policy="semiconductors"] [data-metric="potentialGdpEffect"]');
   await expect(semiPotential.locator('[data-year="5"]')).toContainText('0.00');
   // Nonbinding capital/energy cannot increase Leontief supply; substitution can.
+  await page.locator('details').filter({ has: page.getByText('詳細な条件', { exact: true }) }).evaluate(el => { el.open = true; });
+  await page.getByRole('button', { name: '最大GDP・生産モデルの条件', exact: true }).click();
   await page.getByLabel('使用する生産モデル', { exact: true }).selectOption('cobbDouglas');
+  await page.keyboard.press('Escape');
   await expect(mature('semiconductors').locator('td').nth(1)).not.toContainText('0.00');
   await expect(mature('grid').locator('td').nth(1)).not.toContainText('0.00');
   await expect(semiPotential.locator('[data-year="5"]')).not.toContainText('0.00');
@@ -256,7 +259,10 @@ try {
   await page.getByLabel('事業の純追加性（%）', { exact: true }).fill('100');
   await page.getByLabel('事業の年間減耗率（%）', { exact: true }).fill('0');
   await expect(semiPotential.locator('[data-year="5"]')).toContainText('0.00');
+  await page.locator('details').filter({ has: page.getByText('詳細な条件', { exact: true }) }).evaluate(el => { el.open = true; });
+  await page.getByRole('button', { name: '最大GDP・生産モデルの条件', exact: true }).click();
   await page.getByLabel('使用する生産モデル', { exact: true }).selectOption('cobbDouglas');
+  await page.keyboard.press('Escape');
   await expect(semiPotential.locator('[data-year="5"]')).toContainText('+0.');
   await expect(semiPotential.locator('[data-year="1"]')).toContainText('0.00');
   const semiImports = comparison.locator('[data-policy="semiconductors"] [data-metric="imports"] [data-year="1"]');

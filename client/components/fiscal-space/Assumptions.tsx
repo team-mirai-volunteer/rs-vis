@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { ModelParameters, Policy, ProjectionStep, SourceValue } from '@/types/fiscal-space';
+import type { EconomyState, ModelParameters, Policy, ProjectionStep, SourceValue } from '@/types/fiscal-space';
 import { money, percent } from './format';
 import { MONEY_STOCK_CHECKED, MONEY_STOCK_DEFINITIONS, MONEY_STOCK_DEFINITION_URL } from '@/app/lib/fiscal-space/money-stock';
+import { STRESSES } from '@/app/lib/fiscal-space/stress-envelope';
 import { inputLabel } from './labels';
 import { initialEconomy } from '@/app/lib/fiscal-space/assumptions';
 import { CONTEXT_CHECKED, japanContext, OECD_DEBT_RECORDS, OECD_DEBT_SOURCE, FERTILIZER_SOURCE } from '@/app/lib/fiscal-space/japan-context';
@@ -68,6 +69,7 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       [key, `M${key.slice(-1)}`, note]) },
   ];
   return <Card><CardHeader><h2 className="text-lg font-bold">日本のデータを選ぶ</h2>
+    <p className="text-xs text-mirai-text-subtle">最大GDPギャップは投入条件・生産関数の仮定に基づく推計値のため、この一覧ではなく結果欄に表示しています。</p>
     <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
       {(Object.entries(JAPAN_DATASET_LABELS) as [JapanDataset, string][]).map(([id, label]) => <label key={id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold ${dataset === id ? 'border-primary bg-primary/10' : 'border-mirai-border'}`}>
         <input type="radio" name="japan-dataset" value={id} checked={dataset === id} onChange={() => onDataset(id)} className="accent-primary" />{label}
@@ -130,7 +132,7 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
         <p className="text-xs">完全失業者{(s.labour.unemployment / 1e4).toLocaleString('ja-JP')}万人 ÷ 労働力人口{(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人。就業者数と同じ労働力調査から計算しています。</p></dd>}
       <dd className="mt-1 text-sm text-mirai-text-subtle"><span className="rounded bg-mirai-surface-warm px-1">{SOURCE_STATUS_LABELS[source.status]}</span> {source.referenceYear} <a className="text-primary-accent underline" href={source.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${label}の出典`}>出典</a></dd>
       {source.publishedAt && <dd className="mt-1 text-xs text-mirai-text-subtle">公表：{source.publishedAt}</dd>}
-      {latest && ratio && <dd className="mt-1 text-xs">比率は分子・分母とも2024年。上の最新GDPは分母に使いません。</dd>}
+      {latest && ratio && <dd className="mt-1 text-xs">分子はIMFの2026年推計比率×最新GDPの橋渡し推計。GDP比の分母にも同じ最新GDPを使います。</dd>}
       {latest && key === 'macro.nominalGdp' && <dd className="mt-1 text-xs">2次速報・季節調整済み年率</dd>}
       {key === 'fiscal.grossDebt' && <dd className="mt-2 text-xs leading-relaxed">OECD平均：<strong>{percent(OECD_DEBT_RECORDS[0].value, 1)}</strong>（2024年・公表集計）。同じOECD定義の日本：{percent(OECD_DEBT_RECORDS[1].value, 1)}。時価等の定義差がある参考比較。<a href={OECD_DEBT_SOURCE} target="_blank" rel="noreferrer" className="text-primary-accent underline">比較出典</a></dd>}
       {key === 'fiscal.netDebt' && <dd className="mt-2 text-xs">OECD平均：同じ資産控除範囲の値は未取得。総金融資産を控除する「純金融負債」とは区別します。</dd>}
@@ -143,10 +145,10 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
   </ul></details>}<p className="mt-4 text-xs leading-relaxed">政策乗数、将来の成長率・物価・金利、産業別の供給能力、債務の満期構成、許容閾値は仮定です。表示する財政余力は、これらの設定に依存する試算です。出典確認：{JAPAN_DATA_CHECKED}。データは確認時点の固定値で、自動更新ではありません。</p></CardContent></Card>;
 }
 
-export function Explanations({ step, parameters, policies, records }: { step: ProjectionStep; parameters: ModelParameters; policies: Policy[]; records: SourceValue[] }) {
+export function Explanations({ initial, step, parameters, policies, records }: { initial: EconomyState; step: ProjectionStep; parameters: ModelParameters; policies: Policy[]; records: SourceValue[] }) {
   const s = step.state;
   return <Card id="model-notes"><CardHeader><h2 className="text-lg font-bold">計算根拠・データ・レジリエンス</h2><p className="text-sm leading-relaxed">選択した日本の公表データを初期状態に取り込み、換算値・推計・仮定を区別しています。政策の効果や将来経路は<strong>仮定に基づく試算</strong>です。表示額は現在の日本政府の支出可能額を確定するものではありません。</p></CardHeader><CardContent className="space-y-5 text-sm leading-relaxed">
-    <p className="text-xs">財政は地方・社会保障基金を含む一般政府。総債務は連結・額面ベース、純債務の控除対象資産は株式等を除く範囲です。税・社会負担収入とその他の非利子収入を分け、基礎的財政収支から利子の受払を除外します。基準年の支払利子は{money(initialEconomy().fiscal.interestPayments)}、受取利子は{money(initialEconomy().fiscal.interestRevenue)}です。受取利子・その他収入の将来額は基準の名目成長率で延長する仮定です。</p>
+    <p className="text-xs">財政は地方・社会保障基金を含む一般政府。総債務は連結・額面ベース、純債務の控除対象資産は株式等を除く範囲です。税・社会負担収入とその他の非利子収入を分け、基礎的財政収支から利子の受払を除外します。基準年の支払利子は{money(initial.fiscal.interestPayments)}、受取利子は{money(initial.fiscal.interestRevenue)}です。受取利子・その他収入の将来額は基準の名目成長率で延長する仮定です。</p>
     <details open><summary className="cursor-pointer font-bold">追加需要はどこへ向かう？（年{step.state.year}）</summary><div className="mt-3 space-y-3">
       <p>国内実質生産の変化 {money(step.demand.realOutput)}、実質輸入の変化 {money(step.demand.imports)}、供給上限を超えた価格圧力相当 {money(step.demand.prices)}。ここは基準年価格です。GDPへの反応と輸入への反応は別々に計算し、公表GDP乗数から輸入を再び差し引きません。</p>
       <p className="text-xs">年次の継続効果の差分を、その年までの支出に重ね合わせます。支出終了後の反動も残します。実質生産が仮定した供給上限に届く場合だけ縮小し、超過分の{percent(parameters.overflowImportShare, 0)}を輸入、残余を物価圧力へ配分します。これは上限付近の追加仮定です。公表の物価水準の変化率は前年との差からインフレ率に直し、GDPデフレーターと消費者物価を分けます。</p>
@@ -168,8 +170,8 @@ export function Explanations({ step, parameters, policies, records }: { step: Pr
     <details><summary className="cursor-pointer font-bold">数式・探索の限界とストレス控除</summary><div className="mt-3 space-y-2 text-xs">
       <p>コブ＝ダグラス型: A K^α L^β E^γ。代替弾力性一定型: A(Σw x^ρ)^(1/ρ)、ρ=1−1/σ、σ={parameters.cesSigma}。σ=1は幾何平均。レオンチェフ型: min(K/aK, L/aL, E/aE, M/aM)。投入は基準投入量を1とする指数で、共通の潜在GDPを掛けて円へ戻します。</p>
       <p>探索上限{money(parameters.searchCap)}、走査間隔{money(parameters.searchStep)}、境界区間の分解能{money(parameters.searchTolerance)}。成長投資では安全性が単調とは限らないため、ゼロから最初に観測した違反まで走査し、その区間を二分探索します。走査間隔より狭い違反領域を見逃す可能性があり、離れた許容領域の最大値は保証しません。</p>
-      <p>条件付き参考額 = 設定した制約内での探索上限と、選んだストレス（許容インフレ−0.3pt、輸入物価+3%、輸入エネルギー+20%、金利+100bp）ごとの再探索額の最小値。控除率は入力せず結果として表示します。ストレスの大きさは仮定で、安全性を実証した条件ではありません。条件付き参考額も支出を推奨する額ではなく、設定に依存する参考上限です。公表モデルの反応には各モデルの金融政策・民間投資等の経路が含まれますが、この試算は原モデル全体の再推定・再現ではありません。GDPギャップは明示した需要・物価感度で補正し、公表金利反応は借換に接続します。追加感度を実証推定したものではありません。外生金利変更のGDP反応は未推計です。モデル間の差は統計的な信頼区間ではありません。</p>
-      <p>減税は一般政府の税・社会負担収入を減らします。社会保険料の本人分・事業主分は配分を分けますが、賃金への転嫁、所得階層・年収の壁、給付変更を含む制度別の推計は未実施です。恒久費用は名目年額固定、既存歳出は基準経路に累積CPIの乖離を連動率に応じて反映します。公共資本・研究・教育・保育・送電網には供給シナリオを、半導体・発電には事業条件を適用します。医療・防衛等は未推計。分野別の資源制約は別途必要で、産業別利用率は初期値を保持します。</p>
+      <p>条件付き参考額 = 設定した制約内での探索上限と、選んだストレス（{Object.values(STRESSES).map(stress => stress.label).join('、')}）ごとの再探索額の最小値。未選択ならストレスなしの探索額です。CPI許容上限は別の設定で、ストレスには含めません。控除率は入力せず結果として表示します。ストレスの大きさは仮定で、安全性を実証した条件ではありません。条件付き参考額も支出を推奨する額ではなく、設定に依存する参考上限です。公表モデルの反応には各モデルの金融政策・民間投資等の経路が含まれますが、この試算は原モデル全体の再推定・再現ではありません。GDPギャップは明示した需要・物価感度で補正し、公表金利反応は借換に接続します。追加感度を実証推定したものではありません。外生金利変更のGDP反応は未推計です。モデル間の差は統計的な信頼区間ではありません。</p>
+      <p>減税は一般政府の税・社会負担収入を減らします。社会保険料の本人分・事業主分は配分を分けます。貧困率では現金給付・所得税・住民税・本人保険料の直接効果を所得階級別に近似しますが、賃金・物価への波及、年収の壁や既存給付の減額との相互作用は含めません。恒久費用は名目年額固定、既存歳出は基準経路に累積CPIの乖離を連動率に応じて反映します。公共資本・研究・教育・保育・送電網には供給シナリオを、半導体・発電には事業条件を適用します。医療・防衛等は未推計。産業別の基準利用率は保持し、追加政策の人員負荷等の概算を加えて制約を判定します。職種・地域・設備別の詳しい制約は未評価です。</p>
       <p>債務・資金調達需要の定義の参考：<a className="text-primary-accent underline" href="https://www.imf.org/en/publications/tnm/issues/2025/01/24/a-guide-and-tool-for-projecting-public-gross-financing-needs-555913" target="_blank" rel="noreferrer">国際通貨基金：政府の総資金調達需要の推計ガイド（2025年・英語資料）</a>（2026-09-14確認）。この文献は入力数値・政策係数の出典ではありません。</p>
     </div></details>
     <details><summary className="cursor-pointer font-bold">全入力値の出典・単位を見る（{records.length}項目）</summary><p className="my-3 text-xs">公表実績、実績からの換算、推計、仮定・設定を項目ごとに表示します。操作で基準値から変更した入力は「仮定・設定」になります。統計の改定・公表桁・対象期間は出典と注記を参照してください。政策係数の効果は費用1円あたり、資源増加係数は費用/GDPあたりの正規化指数です。</p>

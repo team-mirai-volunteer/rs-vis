@@ -9,8 +9,8 @@ const difference = (value: number) => {
   return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}ポイント`;
 };
 
-export function Poverty({ result, value, onChange }: {
-  result: FiscalCalculation['poverty']; value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void;
+export function Poverty({ result }: {
+  result: FiscalCalculation['poverty'];
 }) {
   const first = result.rows[0];
   const observed = { all: POVERTY_DATA.allPovertyRate, child: POVERTY_DATA.childPovertyRate };
@@ -26,14 +26,6 @@ export function Poverty({ result, value, onChange }: {
         <p className="text-sm tabular-nums">差 {difference(first[key] - result.baseline[key])}</p>
         <p className="mt-1 text-xs text-mirai-text-subtle">仮定を変えた場合 {percent(first.range[key].min, 1)}〜{percent(first.range[key].max, 1)}。統計的な信頼区間ではありません。</p>
       </div>)}
-    </div>
-    <div className="grid gap-4 sm:grid-cols-2">
-      <label className="block space-y-1 text-sm"><span>現金給付の配り方</span>
-        <select className={fieldClass} aria-label="現金給付の配り方" value={value.cashTarget} onChange={e => onChange({ ...value, cashTarget: e.target.value as PovertyAssumptions['cashTarget'] })}>
-          {Object.entries(CASH_TARGET_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-        </select>
-      </label>
-      <RangeField label="子育て予算のうち現金給付に回す割合" value={value.childcareCashShare * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, childcareCashShare: n / 100 })} />
     </div>
     <p className="text-xs">計算済みの配分：現金給付は「{CASH_TARGET_LABELS[result.assumptions.cashTarget]}」、子育て予算の{percent(result.assumptions.childcareCashShare, 0)}を子ども1人当たりの現金給付とする仮定です。これらは貧困率の比較条件で、既存のGDP・出生率の反応係数は変わりません。</p>
     <p className="text-xs">所得税・住民税は推定税額に比例した減税、社会保険料は本人負担分の軽減を反映します。モデル上で非課税の人には所得税減税を配分せず、還付は加算しません。子育て予算の現金割合の初期値は100%です。</p>
@@ -62,4 +54,15 @@ export function Poverty({ result, value, onChange }: {
       </div>
     </details>
   </CardContent></Card>;
+}
+
+export function PovertySettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {
+  return <div className="grid gap-4 sm:grid-cols-2">
+      <label className="block space-y-1 text-sm"><span>現金給付の配り方</span>
+        <select className={fieldClass} aria-label="現金給付の配り方" value={value.cashTarget} onChange={e => onChange({ ...value, cashTarget: e.target.value as PovertyAssumptions['cashTarget'] })}>
+          {Object.entries(CASH_TARGET_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+        </select>
+      </label>
+      <RangeField label="子育て予算のうち現金給付に回す割合" value={value.childcareCashShare * 100} min={0} max={100} step={10} unit="%" onChange={n => onChange({ ...value, childcareCashShare: n / 100 })} />
+    </div>;
 }

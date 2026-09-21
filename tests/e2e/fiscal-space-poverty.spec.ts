@@ -11,7 +11,10 @@ test('cash targeting and childcare cash share update the poverty comparison', as
   await page.getByLabel('現金給付・数値で入力', { exact: true }).fill('5');
   await expect(all).not.toHaveText('15.0%');
   const universal = await all.innerText();
+  await page.getByText('詳細な条件', { exact: true }).click();
+  await page.getByRole('button', { name: '現金給付の対象・配分', exact: true }).click();
   await page.getByLabel('現金給付の配り方', { exact: true }).selectOption('low-income');
+  await page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
   await expect(all).not.toHaveText(universal);
   await expect(card.locator('[data-poverty-year="5"]')).toContainText('15.0%');
   await expect(card.locator('[data-poverty-year="5"]')).toContainText('11.0%');
@@ -19,7 +22,9 @@ test('cash targeting and childcare cash share update the poverty comparison', as
   await page.getByLabel('子育て・数値で入力', { exact: true }).fill('5');
   await expect(child).not.toHaveText('11.0%');
   await expect(card.locator('[data-poverty-year="5"]')).not.toContainText('11.0%');
+  await page.getByRole('button', { name: '現金給付の対象・配分', exact: true }).click();
   await page.getByLabel('子育て予算のうち現金給付に回す割合', { exact: true }).fill('0');
+  await page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
   await expect(child).toHaveText('11.0%');
   await expect(page.getByTestId('poverty-coverage')).toContainText('未推計');
   await page.getByLabel('子育て・数値で入力', { exact: true }).fill('0');

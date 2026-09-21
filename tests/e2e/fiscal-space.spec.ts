@@ -250,7 +250,10 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await evaluated(sectorMeter, true);
   await evaluated(energyMeter, true);
   // 「手入力した負荷だけで評価」に切り替えると、係数未入力の負荷は未評価として扱われる。
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await page.getByRole('combobox', { name: '負荷の評価方法' }).selectOption('manual');
+  await page.keyboard.press('Escape');
   const loads = page.getByRole('region', { name: '政策別の負荷条件', exact: true });
   await loads.locator('summary').click();
   await loads.getByLabel('公共投資の負荷条件を入力する').check();
@@ -359,7 +362,10 @@ test('large supply scenarios keep a bounded chart and subsequent edits work', as
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('100');
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '最大GDP・生産モデルの条件', exact: true }).click();
   await page.getByLabel('使用する生産モデル', { exact: true }).selectOption('cobbDouglas');
+  await page.keyboard.press('Escape');
   await openAdvanced(page);
   await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
   await page.locator('summary').filter({ hasText: /^公共資本の蓄積/ }).click();

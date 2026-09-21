@@ -8,12 +8,12 @@ import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
 import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
 import { decodeScenarioDetailed, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
 import { money } from '@/client/components/fiscal-space/format';
-import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
+import { LongRun, LongRunSettings, ProductionSettings, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
-import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
-import { Demographics } from '@/client/components/fiscal-space/Demographics';
+import { ResourceEstimation, ResourceSettings } from '@/client/components/fiscal-space/ResourceEstimation';
+import { Demographics, DemographicSettings } from '@/client/components/fiscal-space/Demographics';
 import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
-import { Poverty } from '@/client/components/fiscal-space/Poverty';
+import { Poverty, PovertySettings } from '@/client/components/fiscal-space/Poverty';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -56,11 +56,16 @@ const MemoResourceEstimation = memo(ResourceEstimation);
 const MemoDemographics = memo(Demographics);
 const MemoPoverty = memo(Poverty);
 
+const DETAIL_SETTINGS = { poverty: '現金給付の対象・配分', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
+type DetailSetting = keyof typeof DETAIL_SETTINGS;
+
 export default function FiscalSpacePage() {
   const [form, setForm] = useState(() => defaults());
   const [shareError, setShareError] = useState('');
   const [restore, setRestore] = useState<ScenarioRestore | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const detailDialog = useRef<HTMLDialogElement>(null);
+  const [detailSetting, setDetailSetting] = useState<DetailSetting>('poverty');
   const dataDialog = useRef<HTMLDialogElement>(null);
   const powerDialog = useRef<HTMLDialogElement>(null);
   const calibrationDialog = useRef<HTMLDialogElement>(null);
@@ -128,7 +133,7 @@ export default function FiscalSpacePage() {
       </Button>
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
-      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）内でどこまで追加支出を許すかを条件付きで比較します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
+      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）でどこまで追加支出を許すかを条件付きで比較します。15年評価は公表期間外を仮定で延長します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
       <ShareScenario form={form} onPreset={change.preset} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
@@ -165,6 +170,7 @@ export default function FiscalSpacePage() {
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
+          additionalSettings={Object.entries(DETAIL_SETTINGS).map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
           policies={policies} onPowerSettings={openPowerSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
           horizon={form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}
           total={totalPolicyCostYen(form.amounts, form.calibration) / TRILLION}
@@ -183,16 +189,13 @@ export default function FiscalSpacePage() {
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
-      <MemoPoverty result={result.poverty} value={form.poverty} onChange={change.poverty} />
-      <CapacityCalibration value={form.capacity} onChange={change.capacity} inputs={form.inputs} parameters={form.calibration} realGdp={result.initial.macro.realGdp} gap={form.gap} />
+      <MemoPoverty result={result.poverty} />
       <MemoSummary medium={result.medium} estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
-        rows={result.modelSensitivity} initial={result.initial}
-        controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}
-        onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
-      <MemoResourceEstimation result={result} value={form.resource} onChange={change.resource} />
+        rows={result.modelSensitivity} initial={result.initial} />
+      <MemoResourceEstimation result={result} value={calculationForm!.resource} />
       <MemoDurationSensitivity rows={result.durationSensitivity} />
-      <MemoLongRun mediumRows={result.medium.longRun} rows={result.longRun} value={form.longRun} onChange={change.longRun} />
-      <MemoDemographics medium={result.medium} steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={form.calibration.demographics} onChange={change.demographics} baseYear={result.initial.baseCalendarYear} />
+      <MemoLongRun mediumRows={result.medium.longRun} rows={result.longRun} value={calculationForm!.longRun} />
+      <MemoDemographics medium={result.medium} steps={result.projection.steps} baseline={result.baseline.steps} longRun={result.longRun} value={calculationForm!.calibration.demographics} baseYear={result.initial.baseCalendarYear} />
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>
@@ -207,6 +210,26 @@ export default function FiscalSpacePage() {
         </div>
       </div>
     </main>
+    <dialog ref={detailDialog} aria-labelledby="detail-settings-title"
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id="detail-settings-title" className="text-lg font-bold">{DETAIL_SETTINGS[detailSetting]}</h2>
+        <Button variant="ghost" size="icon" aria-label="詳細条件を閉じる" onClick={() => detailDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-4 p-3 sm:p-5">
+        <p className="text-sm">変更はすぐに計算へ反映されます。</p>
+        {detailSetting === 'poverty' && <><PovertySettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">貧困率の直接効果を比較する条件です。GDP・出生率の反応係数は変わりません。</p></>}
+        {detailSetting === 'capacity' && <>
+          {result && <CapacityCalibration value={form.capacity} onChange={change.capacity} inputs={form.inputs} parameters={form.calibration} realGdp={result.initial.macro.realGdp} gap={form.gap} />}
+          <h3 className="text-base font-bold">生産モデル・価格補正・初期投入指数</h3>
+          <p className="text-xs">初期投入指数を変更すると、最大GDPの根拠は直接設定に戻ります。</p>
+          <ProductionSettings controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation} onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
+        </>}
+        {detailSetting === 'demographics' && <DemographicSettings value={form.calibration.demographics} onChange={change.demographics} />}
+        {detailSetting === 'resource' && <ResourceSettings value={form.resource} onChange={change.resource} />}
+        <Button variant="outline" onClick={() => detailDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
     <dialog ref={supplyDialog} aria-labelledby="supply-settings-title"
       className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
@@ -216,6 +239,8 @@ export default function FiscalSpacePage() {
       <div className="space-y-3 p-3 sm:p-5">
         <p className="text-sm">変更はすぐに計算へ反映されます。</p>
         <MemoSupplyConditions value={form.supply} onChange={change.supply} embedded />
+        <h3 className="text-base font-bold">長期の成長率・物価・借換金利</h3>
+        <LongRunSettings value={form.longRun} onChange={change.longRun} />
         <Button variant="outline" onClick={() => supplyDialog.current?.close()}>設定を閉じて結果を見る</Button>
       </div>
     </dialog>
@@ -256,7 +281,7 @@ export default function FiscalSpacePage() {
       <div className="space-y-5 p-3 text-sm leading-relaxed sm:p-6">
         {dialogOpen && result ? <>
           {(pending || error) && <p role="status">以下は直前に計算できた条件です。</p>}
-          <MemoExplanations step={result.projection.steps[0]} parameters={result.p} policies={result.policies} records={result.records} />
+          <MemoExplanations initial={result.initial} step={result.projection.steps[0]} parameters={result.p} policies={result.policies} records={result.records} />
         </> : <p>計算条件の詳細はデータ読み込み後に表示します。</p>}
         <Button variant="outline" onClick={() => dataDialog.current?.close()}>閉じる</Button>
       </div>
