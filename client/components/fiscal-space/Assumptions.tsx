@@ -19,7 +19,6 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     ['第一次所得収支（SNA）', 'primaryIncomeBalance', '海外との利子・配当などの財産所得や雇用者報酬の受取と支払の差。'],
     ['経常移転収支（SNA）', 'secondaryIncomeBalance', '海外とのその他経常移転の受取と支払の差。'],
   ] as const;
-  const externalNotes: Record<string, string> = Object.fromEntries(externalBalances.map(([, key, note]) => [`external.${key}`, note]));
   const rows = [
     ['名目GDP', money(s.macro.nominalGdp, 1), 'macro.nominalGdp'],
     ['総債務（一般政府）', money(s.fiscal.grossDebt, 1), 'fiscal.grossDebt'],
@@ -44,6 +43,30 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     ['対外純資産', money(s.external.niip, 1), 'external.niip'],
     ...Object.keys(MONEY_STOCK_DEFINITIONS).map(key => [`M${key.slice(-1)}（マネーストック）`, money(context[key].value, 1), key]),
   ];
+  const groups = [
+    { id: 'cpi', title: '消費者物価（CPI）', items: [
+      ['macro.inflation', '総合', '全国の総合指数。'],
+      ['macro.coreInflation', 'コア', '生鮮食品を除く総合。'],
+      ['context.coreCoreCpi', 'コアコア', '生鮮食品・エネルギーを除く総合。加工食品は含みます。'],
+    ] },
+    { id: 'food-energy-cpi', title: '食品・エネルギーCPI', items: [
+      ['context.foodCpi', '食品', '統計の「食料」。生鮮食品・酒類・外食を含む全国平均。'],
+      ['context.energyCpi', 'エネルギー', '電気・ガス・灯油・ガソリン。補助金・税制の影響を含む家計向け価格。'],
+    ] },
+    { id: 'food-self-sufficiency', title: '食料自給率・肥料原料の国産割合', items: [
+      ['context.calorieSelfSufficiency', '食料（カロリー）', '供給熱量ベース。摂取熱量ベースとは異なります。'],
+      ['context.valueSelfSufficiency', '食料（金額）', '国内価格の上昇でも高まるため、供給量の増加とは限りません。'],
+      ['context.ureaDomesticShare', '肥料原料（尿素）', '工業用を除く尿素の国産割合。肥料全体の自給率ではありません。'],
+    ] },
+    { id: 'exports-imports', title: '輸出入（財・サービス）', items: [
+      ['external.imports', '輸入', '財・サービスの輸入額。'],
+      ['external.exports', '輸出', '財・サービスの輸出額。'],
+    ] },
+    { id: 'external-balances', title: '経常収支と内訳（SNA）', items: externalBalances.map(([label, key, note]) =>
+      [`external.${key}`, label.replace(/（SNA.*）/, ''), note]) },
+    { id: 'money-stock', title: 'マネーストック', items: Object.entries(MONEY_STOCK_DEFINITIONS).map(([key, note]) =>
+      [key, `M${key.slice(-1)}`, note]) },
+  ];
   return <Card><CardHeader><h2 className="text-lg font-bold">日本のデータを選ぶ</h2>
     <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
       {(Object.entries(JAPAN_DATASET_LABELS) as [JapanDataset, string][]).map(([id, label]) => <label key={id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold ${dataset === id ? 'border-primary bg-primary/10' : 'border-mirai-border'}`}>
@@ -55,16 +78,51 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
     <p className="text-xs leading-relaxed">以下は操作前の基準値です。切り替えると経済状態の操作を初期化し、政策・ショック・閾値は引き継ぎます。年0は選択した初期状態、年1以降は試算の経過年です。</p>
     <p className="text-xs text-mirai-text-subtle">GDPは国内総生産、CPIは消費者物価指数、IMFは国際通貨基金を指します。</p>
-    <p className="text-xs leading-relaxed">対外収支は2024暦年の国民経済計算（SNA）。プラスは黒字、マイナスは赤字です。経常収支＝財・サービス収支＋第一次所得収支＋経常移転収支（表示の丸め差あり）。国際収支統計や通関統計とは定義が異なります。最新値を優先する場合も、この一式は2024年値です。</p>
     <p className="text-xs leading-relaxed">コアコア・食品・エネルギーCPI、食料自給率・肥料原料の国産割合は参考観測値です。各指標の政策実施後の経路は未推計。追加統計・OECD比較の確認：{CONTEXT_CHECKED}。OECD比較は2024年の公表集計を使用します。</p>
-    <p className="text-xs leading-relaxed">M1・M2・M3は市中の通貨量の参考値です。2024年基準は12月、最新基準は2026年8月の月中平均・前年同月比を掲載。政策後の通貨量は未推計です。M2はM1と対象金融機関が異なります。<a className="text-primary-accent underline" href={MONEY_STOCK_DEFINITION_URL} target="_blank" rel="noreferrer">日銀の定義</a>。通貨統計の確認：{MONEY_STOCK_CHECKED}。</p>
   </CardHeader><CardContent><dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{rows.map(([label, value, key]) => {
+    const group = groups.find(g => g.items.some(([itemKey]) => itemKey === key));
+    if (group) {
+      if (group.items[0][0] !== key) return null;
+      return <div key={group.id} data-observation-group={group.id} className={['external-balances', 'food-self-sufficiency', 'money-stock'].includes(group.id) ? 'sm:col-span-2' : undefined}>
+        <dt className="text-xs">{group.title}</dt>
+        <dd className="mt-1"><dl className="flex flex-wrap gap-x-5 gap-y-2">{group.items.map(([itemKey, shortLabel]) =>
+          <div key={itemKey} data-observation-key={itemKey}>
+            <dt className="text-xs text-mirai-text-subtle">{shortLabel}</dt>
+            <dd className="text-lg font-bold tabular-nums">{rows.find(row => row[2] === itemKey)![1]}</dd>
+            {group.id === 'money-stock' && <dd className="text-xs tabular-nums">前年同月比 {context[`${itemKey}Yoy`].value > 0 ? '+' : ''}{percent(context[`${itemKey}Yoy`].value, 1)}</dd>}
+            {group.id === 'food-self-sufficiency' && <dd className="mt-1 text-xs text-mirai-text-subtle">{itemKey === 'context.ureaDomesticShare' ? '2024肥料年度' : context[itemKey].referenceYear}</dd>}
+          </div>)}
+        </dl></dd>
+        {group.id !== 'food-self-sufficiency' && <dd className="mt-1 text-xs text-mirai-text-subtle">{
+          group.id === 'money-stock' ? `${context[key].referenceYear}・季節調整前`
+          : group.id === 'exports-imports' || group.id === 'external-balances' ? '2024暦年・国民経済計算（SNA）'
+          : `${context['context.foodCpi'].referenceYear}・全国・${latest ? '前年同月比' : '年平均の前年比'}`}</dd>}
+        {group.id === 'external-balances' && <dd className="mt-1 text-xs">プラスは黒字、マイナスは赤字。経常収支＝財・サービス収支＋第一次所得収支＋経常移転収支。</dd>}
+        {group.id === 'food-self-sufficiency' && <dd className="mt-1 text-xs">肥料原料の参考：りん安・塩化加里の国産割合はほぼ0%。</dd>}
+        {group.id === 'food-energy-cpi' && <dd className="mt-1 text-xs" data-testid="energy-cpi-adjusted">{latest
+          ? <>エネルギーの政策効果調整後（参考）：<strong>約{percent(context['context.energyPolicyAdjustedCpi'].value, 1)}</strong></>
+          : 'エネルギーの政策効果調整後：年平均は未推計'}</dd>}
+        <dd className="mt-2"><details className="text-xs leading-relaxed"><summary className="cursor-pointer text-primary-accent">定義・出典</summary>
+          <div className="mt-2 space-y-2">{group.items.map(([itemKey, shortLabel, note]) => {
+            const itemSource = context[itemKey] ?? sources[`initial.${itemKey}`];
+            return <p key={itemKey}><strong>{shortLabel}</strong>：{note}<br />
+              {itemSource.referenceYear}・{SOURCE_STATUS_LABELS[itemSource.status]}{itemSource.publishedAt && `・公表 ${itemSource.publishedAt}`} {' '}
+              <a className="text-primary-accent underline" href={itemSource.sourceUrl!} target="_blank" rel="noreferrer" aria-label={`${group.title}・${shortLabel}の出典`}>出典</a>
+            </p>;
+          })}
+          {group.id === 'food-self-sufficiency' && <><p>尿素の2024肥料年度は2024年7月〜2025年6月。主要3原料の参考値で、堆肥・硫安等を含む肥料全体や成分全体の自給率ではありません。国内製造でも原料・燃料を輸入する場合があります。<a href={FERTILIZER_SOURCE} className="underline" target="_blank" rel="noreferrer">肥料原料の出典</a></p><p>OECD平均：同一定義・対象年の食料・肥料原料の値は未取得。</p></>}
+          {(group.id === 'exports-imports' || group.id === 'external-balances') && <p>国際収支統計・通関統計とは定義が異なります。最新値を優先する場合も2024年の一式を継続採用。表示には丸め差があります。</p>}
+          {group.id === 'money-stock' && <p>市中の通貨量の参考値。M2はM1と対象金融機関が異なります。政策後の通貨量は未推計です。<a className="underline" href={MONEY_STOCK_DEFINITION_URL} target="_blank" rel="noreferrer">日銀の定義</a>。確認：{MONEY_STOCK_CHECKED}。</p>}
+          {group.id === 'food-energy-cpi' && (latest ? <p>調整後の参考値は当月と前年の補助金・ガソリン暫定税率廃止の効果を合わせて除いた前年比です。補助金だけの影響は分離できていません。公表丸め値からの近似で、即時廃止による値上がり予測ではありません。<a className="underline" href={context['context.energyPolicyAdjustedCpi'].sourceUrl!} target="_blank" rel="noreferrer">計算に用いた公表資料（3頁）</a></p>
+            : <p>調整後の年平均には2023年・2024年の同じ対象範囲の調整額が必要なため、単月の寄与度では代用しません。</p>)}
+          </div>
+        </details></dd>
+      </div>;
+    }
     const source = context[key] ?? sources[`initial.${key}`];
     const debt = key === 'fiscal.grossDebt' || key === 'fiscal.netDebt';
     const ratio = debt || key === 'fiscal.primaryBalance' || key === 'fiscal.interestPayments';
     return <div key={key} data-observation-key={key}><dt className="text-xs">{label}</dt><dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
-      {externalNotes[key] && <dd className="mt-1 text-xs">{externalNotes[key]}</dd>}
-      {MONEY_STOCK_DEFINITIONS[key] && <dd className="mt-1 text-sm tabular-nums">前年同月比 {context[`${key}Yoy`].value > 0 ? '+' : ''}{percent(context[`${key}Yoy`].value, 1)}<p className="mt-1 text-xs">{MONEY_STOCK_DEFINITIONS[key]}季節調整前。</p></dd>}
       {debt && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent((key === 'fiscal.grossDebt' ? s.fiscal.grossDebt : s.fiscal.netDebt) / fiscalGdp)}</dd>}
       {key === 'fiscal.primaryBalance' && <dd className="mt-1 text-sm tabular-nums">GDP比 {percent(s.fiscal.primaryBalance / fiscalGdp)}<p className="text-xs">利子の受払を除く収支。黒字がプラス、赤字がマイナス。</p></dd>}
       {key === 'fiscal.interestPayments' && <dd className="mt-1 text-sm tabular-nums">利払いGDP比 {percent(s.fiscal.interestPayments / fiscalGdp)}<p className="text-xs">受取利子を控除する前の支払利子。</p></dd>}
@@ -74,20 +132,9 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
       {source.publishedAt && <dd className="mt-1 text-xs text-mirai-text-subtle">公表：{source.publishedAt}</dd>}
       {latest && ratio && <dd className="mt-1 text-xs">比率は分子・分母とも2024年。上の最新GDPは分母に使いません。</dd>}
       {latest && key === 'macro.nominalGdp' && <dd className="mt-1 text-xs">2次速報・季節調整済み年率</dd>}
-      {key === 'macro.inflation' && <dd className="mt-1 text-xs">{latest ? '全国・前年同月比' : '全国・年平均の前年比'}</dd>}
-      {key === 'context.coreCoreCpi' && <dd className="mt-1 text-xs">生鮮食品・エネルギーを除く総合。加工食品は含みます。</dd>}
-      {key === 'context.foodCpi' && <dd className="mt-1 text-xs">生鮮食品・酒類・外食を含む全国平均。家計ごとの負担感は購入内容で異なります。</dd>}
-      {key === 'context.energyCpi' && <dd className="mt-1 text-xs">電気・ガス・灯油・ガソリン。補助金・税制の影響を含む家計向け価格で、輸入価格とは異なります。</dd>}
-      {key === 'context.energyCpi' && <dd className="mt-2 space-y-1 text-xs" data-testid="energy-cpi-adjusted">{latest ? <>
-        <p>政策効果を除く参考：<strong className="text-base tabular-nums">約{percent(context['context.energyPolicyAdjustedCpi'].value, 1)}</strong></p>
-        <p>補助金・ガソリン暫定税率廃止を合わせて調整。補助金だけの影響は公表内訳から分離できていません。</p>
-        <p>当月と前年の政策効果を両方除いた前年比です。公表丸め値からの近似で、補助金の即時廃止による値上がり予測ではありません。<a className="underline" href={context['context.energyPolicyAdjustedCpi'].sourceUrl!} target="_blank" rel="noreferrer">計算に用いた公表資料（3頁）</a></p>
-      </> : <p>補助金を除く年平均：未推計。2023年・2024年の同じ対象範囲の調整額が必要なため、単月の寄与度では代用しません。</p>}</dd>}
-      {key === 'context.ureaDomesticShare' && <dd className="mt-1 space-y-1 text-xs"><p>りん安・塩化加里：ほぼ全量を輸入（国産割合はほぼ0%）。<a href={FERTILIZER_SOURCE} className="underline" target="_blank" rel="noreferrer">農水省</a></p><p>主要3原料の参考値。堆肥・硫安等を含む肥料全体や、窒素・りん酸・加里の成分全体の自給率ではありません。国内製造でも原料・燃料を輸入する場合があります。</p><p>OECD平均：同じ対象原料・期間の値は未取得。</p></dd>}
-      {key === 'context.valueSelfSufficiency' && <dd className="mt-1 text-xs">国内価格の上昇でも高まるため、供給量の増加とは限りません。</dd>}
       {key === 'fiscal.grossDebt' && <dd className="mt-2 text-xs leading-relaxed">OECD平均：<strong>{percent(OECD_DEBT_RECORDS[0].value, 1)}</strong>（2024年・公表集計）。同じOECD定義の日本：{percent(OECD_DEBT_RECORDS[1].value, 1)}。時価等の定義差がある参考比較。<a href={OECD_DEBT_SOURCE} target="_blank" rel="noreferrer" className="text-primary-accent underline">比較出典</a></dd>}
       {key === 'fiscal.netDebt' && <dd className="mt-2 text-xs">OECD平均：同じ資産控除範囲の値は未取得。総金融資産を控除する「純金融負債」とは区別します。</dd>}
-      {(key === 'energy.domesticSupply' || key === 'context.calorieSelfSufficiency' || key === 'context.valueSelfSufficiency') && <dd className="mt-2 text-xs">OECD平均：同一定義・対象年の加盟国全体の値は未取得。</dd>}
+      {key === 'energy.domesticSupply' && <dd className="mt-2 text-xs">OECD平均：同一定義・対象年の加盟国全体の値は未取得。</dd>}
     </div>;
   })}</dl><p className="mt-3 text-xs leading-relaxed">総債務・純債務は地方・社会保障基金を含む一般政府の{latest ? '2026年推計値（IMF比率×最新GDP）' : '2024年値'}です。純債務は総債務から定義上の控除対象となる金融資産を差し引いた額です。</p>{latest && <details className="mt-4 text-xs leading-relaxed"><summary className="cursor-pointer font-bold">橋渡し推計と2024年を継続採用する項目</summary><ul className="mt-2 list-disc space-y-1 pl-5">
     <li>財政：歳入・歳出・利子・債務・資産は、IMF 2026年対日4条協議 表4の2026年推計欄（GDP比）に最新の名目GDPを掛けた推計値です。現金・預金の推計はないため2024年のGDP比を据え置き、構造的PBはPBからGDPギャップ分を差し引いた近似です。</li>
