@@ -30,7 +30,7 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
   ];
   const detailedRows = [
     ['GDPギャップ', percent(step.outputGap), '(実際 − 潜在) ÷ 潜在'],
-    ['最大GDPギャップ（仮定）', percent(step.maximumGap), '(実際 − 最大) ÷ 最大。労働時間・参加可能人口・設備稼働率からの実測推計は未実装'],
+    ['最大GDPギャップ（仮定）', percent(step.maximumGap), '（実質GDP − 設定した最大GDP）÷ 設定した最大GDP。負は供給余力。投入指数は直接設定または統計からの参考校正。「最大GDPの根拠を設定する」で確認'],
     ['稼働率による価格水準補正', points(step.demand.capacityPriceAdjustment), '政策による混雑の増分から参照条件の増分を控除。公表反応とは別の感度仮定'],
     ['輸入価格による実質所得変化（近似）', money(step.importPriceEffects?.tradingIncomeChange ?? 0), '数量固定・国内価格基準。所得から消費・生産への二次波及は未推計'],
     ['消費税直接効果を除くCPI', ext(percent(step.taxAdjustedInflation ?? s.macro.inflation)), '総合CPIと両方を制約判定に使用。分離は仮定'],

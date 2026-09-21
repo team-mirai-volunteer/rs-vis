@@ -1,3 +1,4 @@
+import { CAPACITY_BOUNDS } from '@/app/lib/fiscal-space/capacity-calibration';
 /** Numeric URL bounds in engine units, matching the editable controls.
  * Fields with no control stay at the versioned default. Unknown nullable fields fail closed.
  * These are input domains, not confidence intervals or plausibility judgements.
@@ -64,7 +65,8 @@ const root: Record<string, Bounds> = {
 export function validateScenarioNumber(value: number, template: number | null, path: string) {
   const name = path.slice('form.'.length), key = name.split('.').at(-1)!;
   let bounds: Bounds | undefined;
-  if (name.startsWith('calibration.')) bounds = calibration[name.slice('calibration.'.length)];
+  if (name.startsWith('capacity.')) bounds = CAPACITY_BOUNDS[key as keyof typeof CAPACITY_BOUNDS];
+  else if (name.startsWith('calibration.')) bounds = calibration[name.slice('calibration.'.length)];
   else if (name.startsWith('supply.')) bounds = supply[key];
   else if (name.startsWith('trade.industry.')) bounds = industry[key];
   else if (name.startsWith('trade.power')) bounds = power[key];

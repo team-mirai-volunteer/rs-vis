@@ -18,8 +18,8 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
   return <section className="space-y-4 border-t border-mirai-border pt-5" aria-label="参考上限の感度">
     <h3 className="text-lg font-bold">生産能力とモデル別の参考上限</h3>
     <p className="text-sm">比較の基準：年0の実質GDP {money(initial.macro.realGdp)}、潜在GDP {money(initial.macro.potentialGdp)}。同じ投入条件を3つの生産モデルで比較します。</p>
-    <p className="text-sm" data-testid="input-index-consequence">レオンチェフでは最大GDP能力 ＝ 実質GDP × 最小の投入指数。現在の最小値は{Math.min(...Object.values(controlInputs)).toFixed(2)}（{(Object.keys(INPUT_LABELS) as (keyof Inputs)[]).filter(k => controlInputs[k] === Math.min(...Object.values(controlInputs))).map(k => INPUT_LABELS[k]).join('・')}）で、年0の物理的余力は{percent(rows[0] ? rows[0].initialMaximum / initial.macro.realGdp - 1 : 0, 2)}。この1つの数字が供給余力の総量を決めています。下のスライダーで下げると、拘束制約が最大GDP能力へ交代します。</p>
-    <p className="text-sm">最大概念のGDPギャップは投入指数から作る仮定で、労働時間・参加可能人口・設備稼働率を組み合わせた実測データからの推計ではありません。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
+    <p className="text-sm" data-testid="input-index-consequence">レオンチェフでは最大GDP能力 ＝ 潜在GDP × 最小の投入指数。現在の最小値は{Math.min(...Object.values(initial.production.inputs)).toFixed(2)}（{(Object.keys(INPUT_LABELS) as (keyof Inputs)[]).filter(k => initial.production.inputs[k] === Math.min(...Object.values(initial.production.inputs))).map(k => INPUT_LABELS[k]).join('・')}）で、年0の物理的余力は{percent(rows[0] ? rows[0].initialMaximum / initial.macro.realGdp - 1 : 0, 2)}。この1つの数字が供給余力の総量を決めています。下の指数を直接変更すると、投入指数の直接設定で再計算します。</p>
+    <p className="text-sm">最大GDPギャップは投入指数から計算します。「最大GDPの根拠を設定する」で、直接設定と統計からの参考校正を比較できます。参考校正も就業実現割合や製造業の換算割合を含む仮定付きの値です。共通のTFP変化だけが残る場合や、別の制約・探索精度によって、生産関数を変えても同じ結果になる場合があります。</p>
     <p className="text-sm">政策による設備・有効労働・エネルギー・生産性の変化を、選択した生産関数へ渡します。初期の潜在GDPに合わせて通常稼働を校正し、最大稼働と区別します。産業・電力の概算に含まれない制約もあるため、政策額の推奨値ではありません。</p>
     <div className="overflow-x-auto" role="region" aria-label="生産モデル別の供給・物価・探索結果" tabIndex={0}><table className="w-full min-w-[850px] text-right text-sm">
       <caption className="text-left">GDP・潜在GDPの効果は追加予算の年{horizon}、CPIは評価期間のピーク。探索額は同じ配分を拡大した別の計算で、ストレス控除前です。</caption>
@@ -35,7 +35,7 @@ export function ModelSensitivity({ rows, horizon, initial, controlInputs, contro
       {(Object.keys(INPUT_LABELS) as (keyof Inputs)[]).map(key => <RangeField key={key} label={`${INPUT_LABELS[key]}の初期投入指数`} value={controlInputs[key]} min={1} max={1.5} step={.01} unit="倍" onChange={n => onInputs({ ...controlInputs, [key]: n })} />)}
     </div>
     <details><summary className="cursor-pointer text-sm font-bold">生産能力の計算方法と前提</summary><div className="mt-3 space-y-3">
-    <p className="text-xs">投入指数は観測された余力ではなく仮定です。1.08は潜在GDPに必要な基準投入の1.08倍。コブ＝ダグラスは中間財を含まない既存の定式化で、モデル間の違いには投入範囲も含みます。探索は代表消費税率がゼロになる額や、本人・事業主への配分に応じた社会保険料収入の限度でも止まります。</p>
+    <p className="text-xs">投入指数は直接設定または参考校正の値です。1.08は潜在GDPを基準とする投入の1.08倍。参考校正では実質GDPに対する余力をこの基準へ換算します。下の指数を直接変更すると直接設定へ戻ります。コブ＝ダグラスは中間財を含まない既存の定式化で、モデル間の違いには投入範囲も含みます。探索は代表消費税率がゼロになる額や、本人・事業主への配分に応じた社会保険料収入の限度でも止まります。</p>
     <p className="text-xs">通常稼働は初期投入の構成を保った比例利用と仮定し、各モデルで初期潜在GDPに一致させます。政策は投入量を変え、通常・最大能力を同じ関数で再計算します。研究はTFP、教育・保育・労働供給は有効労働、公共資本は公共サービスによる生産性と設備量、産業事業は設備、発電・系統の燃料節約は有効エネルギーへ換算します。公共資本の設備量経路と事業の供給係数は、設備0.35・エネルギー0.15という固定の参照弾力性で投入指数へ変換する仮定です。選択モデルの弾力性へ付け替えて効果を固定することはしません。発電の確実供給GWが設定されていれば、その増加率で有効エネルギー増分を制限します。未設定なら燃料節約由来の換算にとどまります。産業人員・電力ピークの制約は別途評価します。</p>
     <p className="text-xs">稼働率uの価格水準圧力を[max(0, min(1,u)−開始稼働率)/(1−開始稼働率)]²と仮定。政策による増分から、同じ需要を参照最大能力で処理した増分を差し引きます。0.5%・85%・参照能力1.10倍は未推定の設定で、公表モデルの供給構造を再現した値ではありません。補正強度0で公表物価反応のみとの比較ができます。補正は価格水準に一度加え、前年比へ変換します。供給拡大や余力の差で補正が負になる場合もあります。</p>
     </div></details>

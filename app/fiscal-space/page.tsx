@@ -12,6 +12,7 @@ import { LongRun, DurationSensitivity } from '@/client/components/fiscal-space/S
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation } from '@/client/components/fiscal-space/ResourceEstimation';
 import { Demographics } from '@/client/components/fiscal-space/Demographics';
+import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
 import { Poverty } from '@/client/components/fiscal-space/Poverty';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
@@ -96,7 +97,7 @@ export default function FiscalSpacePage() {
     construction: (n: number) => update('construction', n), firm: (n: number) => update('firmCapacity', n),
     threshold: (id: keyof Thresholds, n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, [id]: n } })),
     cpiLimit: (n: number) => setForm(f => ({ ...f, thresholds: { ...f.thresholds, inflation: n } })),
-    inputs: (v: FiscalForm['inputs']) => update('inputs', v), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
+    inputs: (v: FiscalForm['inputs']) => setForm(f => ({ ...f, inputs: v, capacity: { ...f.capacity, mode: 'manual' } })), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
     calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: f.horizon === EXTENDED_HORIZON ? f.horizon : Math.min(f.horizon, REFERENCES[v.referenceModel].years),
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
@@ -104,6 +105,7 @@ export default function FiscalSpacePage() {
     demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
     trade: (v: FiscalForm['trade']) => update('trade', v),
     resource: (v: FiscalForm['resource']) => update('resource', v),
+    capacity: (v: FiscalForm['capacity']) => update('capacity', v),
     poverty: (v: FiscalForm['poverty']) => update('poverty', v),
     power: (trade: FiscalForm['trade'], total: number) => setForm(f => ({ ...f, trade, amounts: { ...f.amounts, generation: total } })),
     load: (id: string, load: FiscalForm['loads'][string]) => setForm(f => ({ ...f, loads: { ...f.loads, [id]: load } })),
@@ -182,6 +184,7 @@ export default function FiscalSpacePage() {
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
       <MemoPoverty result={result.poverty} value={form.poverty} onChange={change.poverty} />
+      <CapacityCalibration value={form.capacity} onChange={change.capacity} inputs={form.inputs} parameters={form.calibration} realGdp={result.initial.macro.realGdp} gap={form.gap} />
       <MemoSummary medium={result.medium} estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial}
         controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation}

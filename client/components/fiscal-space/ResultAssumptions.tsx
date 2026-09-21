@@ -19,7 +19,7 @@ export function ResultAssumptions({ result, latest }: { result: FiscalCalculatio
     <p>政策なしでは労働力人口{(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人・就業者数{(s.labour.employment / 1e4).toLocaleString('ja-JP')}万人を評価期間中一定としています。人口動態の外生経路は未実装です。
       政策の雇用反応は別に計算します。{p.referenceModel === 'ef2026' ? 'EF2026の参照係数では労働力人口・労働時間の反応は0です。' : 'ESRI2022には労働力人口・労働時間の反応があります。'}追加の参加・時間感度や供給条件も結果を変えます。</p>
     <p>人数から見た余力（労働力人口÷就業者数−1）は{percent(s.labour.labourForce / s.labour.employment - 1)}。
-      最大生産能力の労働投入指数{s.production.inputs.labour.toFixed(3)}は通常投入を基準とする別の仮定で、人数・時間・参加可能人口から導出した値ではありません。両者の整合は未検証です。</p>
+      最大生産能力の労働投入指数{s.production.inputs.labour.toFixed(3)}は直接設定または統計からの参考校正を使用しています。参考校正は失業者・潜在労働力人口・追加就労希望者を時間に換算し、設備の参照稼働水準も組み合わせます。仮定と適用範囲は「最大GDPの根拠を設定する」で確認できます。</p>
     <div className="grid gap-2 sm:grid-cols-3">{[
       ['初期の総債務 / GDP', s.fiscal.grossDebt / s.macro.nominalGdp],
       ['初期のPB / GDP', s.fiscal.primaryBalance / s.macro.nominalGdp],

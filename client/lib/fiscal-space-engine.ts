@@ -22,6 +22,7 @@ import { policyCostYen } from './fiscal-space-amounts';
 import { constraintSensitivity } from '@/app/lib/fiscal-space/constraint-sensitivity';
 import { estimatePolicyLoad, resourcePowerBalance, resourceRecords, validateResourceAssumptions } from '@/app/lib/fiscal-space/resource-estimate';
 import { buildDebtPortfolio, debtPortfolioRecords } from '@/app/lib/fiscal-space/debt-portfolio';
+import { calibrateCapacity, capacityCalibrationRecords } from '@/app/lib/fiscal-space/capacity-calibration';
 import { povertyScenario, POVERTY_RECORDS, validatePoverty } from '@/app/lib/fiscal-space/poverty';
 
 export const MODEL_LABELS = { leontief: 'レオンチェフ', ces: 'CES', cobbDouglas: 'コブ＝ダグラス' };
@@ -35,7 +36,7 @@ export function createFiscalEngine() {
     validateResourceAssumptions(form.resource);
     validatePoverty(form.poverty);
     const initial = initialEconomy(form.dataset);
-    initial.production.inputs = { ...form.inputs };
+    initial.production.inputs = calibrateCapacity(form.capacity, form.inputs, 1 + form.gap / 100).inputs;
     initial.macro.potentialGdp = initial.macro.realGdp / (1 + form.gap / 100);
     initial.macro.inflation = form.inflation / 100;
     initial.labour.sectorUtilization.construction = form.construction / 100;
@@ -178,7 +179,7 @@ export function createFiscalEngine() {
         };
       }) : [];
     const records = [
-      ...POVERTY_RECORDS,
+      ...POVERTY_RECORDS, ...capacityCalibrationRecords(form.capacity, form.inputs, 1 + form.gap / 100),
       ...assumptionRecords({ initial, parameters: p, policies, thresholds: form.thresholds,
         shock, annualCost: totalYen, longRun: form.longRun }, '', form.dataset),
       ...referenceRecords(p.referenceModel), ...insuranceRevenueRecords(p), ...personalTaxRevenueRecords(), ...resourceRecords(form.resource, policies), ...Object.values(japanContext(form.dataset)), ...OECD_DEBT_RECORDS,

@@ -3,6 +3,12 @@ import { INPUT_LABELS, SECTOR_LABELS } from '@/app/lib/fiscal-space/assumptions'
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 
 const LABELS: Record<string, string> = {
+  weeklyHours: '延週間就業時間', averageWeeklyHours: '平均週間就業時間',
+  unemployed: '失業者（1か月以内に求職）', potentialWorkers: '潜在労働力人口', underemployed: '追加就労希望就業者',
+  equipmentIndex: '製造工業稼働率指数', equipmentReference: '設備の参照稼働水準（2022年）',
+  unemployedRealization: '失業者の就業実現割合', potentialRealization: '潜在労働力人口の参加実現割合',
+  newWorkerHours: '新規就業者の週労働時間', extraWeeklyHours: '追加就労希望者の週追加時間',
+  manufacturingWeight: '設備余力の全産業への換算割合', equipmentRecovery: '設備稼働の回復割合',
   moneyM1: 'M1（月中平均残高）', moneyM2: 'M2（月中平均残高）', moneyM3: 'M3（月中平均残高）',
   moneyM1Yoy: 'M1（前年同月比）', moneyM2Yoy: 'M2（前年同月比）', moneyM3Yoy: 'M3（前年同月比）',
   serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率',

@@ -8,11 +8,12 @@ import type { Policy, PolicyKind } from '@/types/fiscal-space';
 import type { TradeForm } from './fiscal-space-trade';
 import { RESOURCE_DEFAULTS, resourcePowerBalance } from '@/app/lib/fiscal-space/resource-estimate';
 import { DEFAULT_STRESSES } from '@/app/lib/fiscal-space/stress-envelope';
+import { CAPACITY_DEFAULTS } from '@/app/lib/fiscal-space/capacity-calibration';
 import { POVERTY_DEFAULTS } from '@/app/lib/fiscal-space/poverty';
 
 export const defaults = (dataset: JapanDataset = 'latest') => {
   const initial = initialEconomy(dataset);
-  return { dataset, horizon: 5, inputs: { ...initial.production.inputs }, longRun: { ...LONG_RUN }, loads: {} as Record<string, Policy['load']>, resource: { ...RESOURCE_DEFAULTS }, corporateShare: CORPORATE_WAGE_SHARE,
+  return { dataset, horizon: 5, capacity: { ...CAPACITY_DEFAULTS }, inputs: { ...initial.production.inputs }, longRun: { ...LONG_RUN }, loads: {} as Record<string, Policy['load']>, resource: { ...RESOURCE_DEFAULTS }, corporateShare: CORPORATE_WAGE_SHARE,
   supply: Object.fromEntries(Object.entries(SUPPLY_CASES).map(([id, ref]) => [id, { ...ref.settings }])),
   trade: { selected: 'semiconductors', industry: Object.fromEntries(POLICIES.map(policy => [policy.id, { ...(policy.id === 'semiconductors' ? SEMICONDUCTOR_CASE : INDUSTRY_CASE) }])), power: powerCase('solar') } as TradeForm,
   policySettings: Object.fromEntries(POLICIES.map(policy => [policy.id, { kind: policy.kind, duration: policy.duration }])) as Record<string, { kind: PolicyKind; duration: number }>,
