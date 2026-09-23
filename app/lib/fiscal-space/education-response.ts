@@ -3,11 +3,27 @@ import type { SupplyCase } from './supply';
 import type { InvestmentPricePath } from './investment-price';
 
 export const OECD_EDUCATION_SOURCE = 'https://www.oecd.org/en/publications/quantifying-the-effect-of-policies-to-promote-educational-performance-on-macroeconomic-productivity_b00051cc-en.html';
-export const OECD_EDUCATION_EVIDENCE = 'OECD Economics Department Working Paper 1781（2023）§4.1・表7では、支出増と学力の正の関係は低支出域に限られ、日本は支出の中央値への引上げ対象外。これは因果的な効果ゼロの証明ではないため、一般的な増額の学力改善は初期0点（上乗せ未算入）とする。§2.3の全国平均PISA約8点改善→長期生産性約1%を参考換算に使用。予算から学力への換算は未推定で、対象を絞った施策は利用者が別途設定する。';
+export const EDUCATION_SPENDING_SOURCE = 'https://www.aeaweb.org/articles?id=10.1257/app.20220279';
+/** Published quantities and explicit transfer assumptions; see docs/fiscal-space-education.md.
+ * PPP and Japanese GDP deflators put 2018 US dollars in 2024 Japanese yen.
+ * These are economy-wide price proxies, not an education-specific PPP. */
+export const EDUCATION_CALIBRATION = {
+  scoreSd: .0316, dollarsPerPupil: 1000, exposureYears: 4, pisaPointsPerSd: 100,
+  pupils: 9.3e6, yenPerDollar2018: 104.158636,
+  japanDeflator2018: 98.0183258646232, japanDeflator2024: 108.554052559848,
+  annualBudget: 1, schoolYears: 9, transfer: .5,
+} as const;
+export function calibratedEducationGain(transfer: number) {
+  const c = EDUCATION_CALIBRATION;
+  const yenPerDollar = c.yenPerDollar2018 * c.japanDeflator2024 / c.japanDeflator2018;
+  return Number((c.annualBudget * 1e12 / c.pupils / yenPerDollar / c.dollarsPerPupil
+    * c.scoreSd * c.pisaPointsPerSd * c.schoolYears / c.exposureYears * transfer).toFixed(2));
+}
+export const OECD_EDUCATION_EVIDENCE = 'Jackson・Mackevicius（2024）の米国の学校追加支出の因果研究メタ分析：1人年1,000ドル（2018年価格）を4年間追加すると学力0.0316標準偏差改善。日本の初期条件は約930万人・2024年価格への購買力換算・9年間への比例延長・移転率50%で校正。移転率は日本の実証推定ではない。OECD WP1781（2023）§2.3の全国平均PISA約8点→長期生産性約1%を参考換算に使用。高支出国での相関の弱さを因果効果ゼロとは扱わない。';
 export const OECD_EDUCATION_FORMULA = '各年の実質追加予算÷施策の基準年額（純追加性を反映、1で頭打ち）×設定した全国平均PISA改善幅。9学年へ均等配分し、5〜13年後に順次就労、40世代の就労人口へ反映する比較仮定。就労後の減耗と退職を控除し、PISA 1点あたり0.125%を生産性へ換算。';
 export const OECD_EDUCATION_SETTINGS = {
-  educationModel: 'oecd' as const, educationPisaGain: 0, educationAnnualBudget: 1, educationSchoolYears: 9,
-  additionality: .5, lag: 5, depreciation: .02, lifetime: 40, yield: .01 / 8,
+  educationModel: 'oecd' as const, educationPisaGain: calibratedEducationGain(EDUCATION_CALIBRATION.transfer), educationAnnualBudget: EDUCATION_CALIBRATION.annualBudget, educationSchoolYears: EDUCATION_CALIBRATION.schoolYears,
+  additionality: 1, lag: 5, depreciation: .02, lifetime: 40, yield: .01 / 8,
 };
 
 export function validateEducation(c: SupplyCase) {

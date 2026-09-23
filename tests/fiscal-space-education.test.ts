@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initialEconomy, PARAMETERS, POLICIES, TRILLION } from '../app/lib/fiscal-space/assumptions';
-import { educationProductivity, OECD_EDUCATION_SETTINGS } from '../app/lib/fiscal-space/education-response';
+import { educationProductivity, OECD_EDUCATION_SETTINGS, calibratedEducationGain } from '../app/lib/fiscal-space/education-response';
 import { SUPPLY_CASES, supplyInputs, supplyResponse, supplyTotal, supplyRecords } from '../app/lib/fiscal-space/supply';
 import { simulate } from '../app/lib/fiscal-space/simulate';
 import { defaults } from '../client/lib/fiscal-space-form';
@@ -17,8 +17,8 @@ const policy = (extra: Partial<Policy> = {}): Policy => ({ ...POLICIES.find(p =>
   supply: { ...SUPPLY_CASES.education.settings }, ...extra });
 const targeted = () => policy({ supply: { ...SUPPLY_CASES.education.settings, educationPisaGain: 8, additionality: 1, depreciation: 0 } });
 
-test('Japanese generic additional spending has no automatic schooling return but retains demand and fiscal effects', () => {
-  const education = policy();
+test('explicit zero learning scenario retains demand and fiscal effects', () => {
+  const education = policy({ supply: { ...SUPPLY_CASES.education.settings, educationPisaGain: 0 } });
   for (const year of [5, 15, 30, 60]) {
     near(educationProductivity(initial, [education], year, fixedPrices), 0);
     near(supplyResponse(initial, education, year, PARAMETERS), 0);
@@ -79,7 +79,11 @@ test('OECD assumptions are shared, validated and distinguished from legacy schoo
   const records = supplyRecords({ education: old.form.supply.education });
   assert(records.every(r => r.sourceUrl?.includes('worldbank')));
   assert(supplyRecords({ education: form.supply.education }).every(r => r.sourceUrl?.includes('oecd')));
-  assert.equal(OECD_EDUCATION_SETTINGS.educationPisaGain, 0);
+  assert.equal(OECD_EDUCATION_SETTINGS.educationPisaGain, calibratedEducationGain(.5));
+  const zero = defaults(); zero.supply.education.educationPisaGain = 0;
+  const previous = JSON.parse(decodeURIComponent(encodeScenario(zero).slice(10)));
+  previous.version = '2026-09-24.3';
+  assert.equal(decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify(previous))).form.supply.education.educationPisaGain, 0);
 });
 
 test('optimizer uses the same OECD education pathway for year 15', () => {
@@ -88,4 +92,20 @@ test('optimizer uses the same OECD education pathway for year 15', () => {
   form.supply.education.educationPisaGain = 8;
   const improved = createOptimizationEvaluator(form).evaluate(form.amounts);
   assert(improved.values.gdp! > base.values.gdp!);
+});
+
+
+test('positive central calibration converts prices and exposure years once, with ordered sensitivity', () => {
+  // Independent dimensional check: JPY2024 -> USD2018 per pupil -> four-year SD -> nine-year PISA.
+  const yenPerDollar = 104.158636 * 108.554052559848 / 98.0183258646232;
+  const expected = 1e12 / 9.3e6 / yenPerDollar / 1000 * .0316 * 100 * 9 / 4 * .5;
+  near(calibratedEducationGain(.5), Number(expected.toFixed(2)));
+  assert.equal(OECD_EDUCATION_SETTINGS.additionality, 1); // Transfer haircut already in the learning gain.
+  const gains = [0, .25, .5, 1].map(t => educationProductivity(initial, [policy({ supply: { ...SUPPLY_CASES.education.settings, educationPisaGain: calibratedEducationGain(t) } })], 15, fixedPrices));
+  assert(gains[0] === 0 && gains[1] > 0 && gains[2] > gains[1] && gains[3] > gains[2]);
+  near(educationProductivity(initial, [policy()], 5, fixedPrices), 0);
+  assert(gains[2] < .001); // At year 15 only a fraction of the workforce has benefited.
+  const baseline = simulate(initial, [policy({ supply: undefined })], 15, PARAMETERS);
+  const central = simulate(initial, [policy()], 15, PARAMETERS);
+  assert(central.steps[14].state.macro.realGdp > baseline.steps[14].state.macro.realGdp);
 });

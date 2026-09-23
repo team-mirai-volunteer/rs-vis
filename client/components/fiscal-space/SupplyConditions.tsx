@@ -1,10 +1,11 @@
 import { SUPPLY_CASES, supplyReference, type SupplyCase } from '@/app/lib/fiscal-space/supply';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { fieldClass } from './format';
+import { calibratedEducationGain, EDUCATION_SPENDING_SOURCE } from '@/app/lib/fiscal-space/education-response';
 
 export function SupplyConditions({ value, onChange, embedded = false }: { value: Record<string, SupplyCase>; onChange: (v: Record<string, SupplyCase>) => void; embedded?: boolean }) {
   return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>}
-    <p className="text-xs leading-relaxed">研究・公共資本・教育は支出後も残る効果、保育は利用中の就労効果を計算します。純追加性は、既存の投資の置換や実施失敗を除いて効果を生む割合。初期50%は比較条件で、日本の実証値ではありません。</p>
+    <p className="text-xs leading-relaxed">研究・公共資本・教育は支出後も残る効果、保育は利用中の就労効果を計算します。純追加性は、既存の投資の置換や実施失敗を除いて効果を生む割合。教育は日本への移転率を学力改善幅に織り込み、純追加性は初期100%。他の分野の初期50%も比較条件で、日本の実証値ではありません。</p>
     <p className="text-xs leading-relaxed">以下の式は投入への参照換算です。実際の供給力は設備・有効労働・エネルギー・生産性に変換し、選択した生産関数で再計算します。公共資本は物流・移動などを効率化する経路と、設備量を増やす経路を区別します。</p>
   </CardHeader><CardContent className="space-y-2 text-xs">{Object.keys(SUPPLY_CASES).map(id => { const ref = supplyReference(id, value[id]); const oecd = value[id].educationModel === 'oecd'; return <details key={id} className="rounded-lg border border-mirai-border p-3">
     <summary className="cursor-pointer font-bold">{ref.label}：純追加性{Math.round(value[id].additionality * 100)}%・{value[id].lag}年後から</summary>
@@ -12,9 +13,15 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
     <p className="mt-2 leading-relaxed">参照換算：{ref.formula}</p>
     {id === 'education' && <div className="mt-3 space-y-3" data-testid="education-supply-settings">
       {oecd ? <>
-        <p className="rounded bg-mirai-surface-warm p-2">{value[id].educationPisaGain === 0 ? '現在は一般的な増額として、生産性の上乗せを未算入にしています。支出の需要効果・財政費用・人員負荷は残ります。' : '学力改善を指定した条件付きシナリオです。予算から学力への因果効果は実証値ではありません。'}</p>
+        <p className="rounded bg-mirai-surface-warm p-2">{value[id].educationPisaGain === 0 ? 'この設定では生産性の上乗せを未算入にしています。支出の需要効果・財政費用・人員負荷は残ります。' : '追加支出の研究に基づく条件付きシナリオです。初期値は米国の効果を日本へ50%移転する比較仮定で、日本の因果効果の推定値ではありません。'}</p>
+        <p><a href={EDUCATION_SPENDING_SOURCE} className="underline" target="_blank" rel="noreferrer">学校追加支出の因果研究（米国・2024）</a>を出発点に、年1兆円÷約930万人÷約115円（2024年円／2018年購買力ドル）×0.0316標準偏差÷1,000×9年÷4年×PISA尺度100点×移転率50%＝{calibratedEducationGain(.5)}点。4年から9年への比例延長と、学力尺度の対応は比較仮定です。</p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="教育の感度条件">
+          {([[0, '効果ゼロ'], [.25, '慎重（移転25%）'], [.5, '中心（移転50%）'], [1, '米国並み（移転100%）']] as const).map(([transfer, label]) =>
+            <button key={transfer} type="button" className="rounded border border-mirai-border px-3 py-2" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings, educationPisaGain: calibratedEducationGain(transfer) } })}>{label}</button>)}
+        </div>
+        <p>感度条件を選ぶと、この教育欄の予算・対象学年・就労時期なども初期条件に戻します。幅は日本の信頼区間ではありません。最適化は選んだ条件で計算するため、条件を変えたら再探索してください。</p>
         <div className="grid gap-3 sm:grid-cols-2">{([
-          ['educationPisaGain', '施策を継続した場合の全国平均PISA改善上限', 1, 0, 100, .1, '点'],
+          ['educationPisaGain', '施策を継続した場合の全国平均PISA改善上限', 1, 0, 100, .01, '点'],
           ['educationAnnualBudget', '施策の基準年額（純追加分・基準価格）', 1, .01, 100, .1, '兆円／年'],
           ['educationSchoolYears', '対象学年数', 1, 1, 20, 1, '学年'],
           ['yield', 'PISA1点あたりの長期生産性変化', 100, 0, 100, .025, '%'],
@@ -26,7 +33,8 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
               onChange({ ...value, [id]: { ...value[id], [key]: (key === 'educationSchoolYears' ? Math.round(n) : n) / scale } });
             }} />
         </label>)}</div>
-        <p>基準年額1兆円は施策規模の入力枠で、推定された必要費用ではありません。特定施策の根拠がある場合だけ改善幅を設定してください。対象者だけの改善幅ではなく、対象割合も反映した全国平均を入力します。初期設定は9学年・最初の世代の就労まで5年・就労期間40年です。予算を基準額以上に増やしても改善幅を無制限に増やさず、世代交代に伴って効果が現れます。</p>
+        <p>初期設定は小中学校の継続的な教育サービスへの年1兆円の追加支出を想定。対象9学年・最初の世代の就労まで5年・就労期間40年・就労後の減耗年2%です。学力改善は9年間受けた世代の値で、単年支出はその1/9。5年目までの学力経由の生産性効果は0で、需要効果は別途残ります。</p>
+        <p>基準年額を超える純追加支出には、校正範囲を超えた効果を計上しません。これは実証された飽和点ではなく、過大な予算へ線形外挿しない計算上の制限です。全国平均の改善幅・基準年額は編集できます。予算だけを変更しても改善幅は自動で再校正されません。</p>
         <p>この経路は初等・中等教育の学力改善を対象にした参考換算です。大学・成人訓練への直接転用や、日本の教員確保・実施能力の実証評価ではありません。</p>
       </> : <button type="button" className="text-primary-accent underline" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings } })}>教育をOECDの追加支出方式に切り替える</button>}
     </div>}

@@ -1,3 +1,4 @@
+import { calibratedEducationGain } from '../../app/lib/fiscal-space/education-response';
 import { test, expect, type Page } from '@playwright/test';
 
 /** 「詳細な条件」は開閉状態を localStorage に保存し、既定は閉じている。 */
@@ -7,7 +8,7 @@ const openAdvanced = (page: Page) => page.evaluate(() => {
   if (details && !details.open) details.open = true;
 });
 
-test('OECD education defaults disclose unestimated gains, share targeted settings and retain legacy inputs', async ({ page }) => {
+test('OECD education defaults disclose calibrated gains, share targeted settings and retain legacy inputs', async ({ page }) => {
   const openEducation = async () => {
     await openAdvanced(page);
     await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
@@ -17,8 +18,13 @@ test('OECD education defaults disclose unestimated gains, share targeted setting
   await openEducation();
   const settings = page.getByTestId('education-supply-settings');
   const gain = page.getByLabel('教育・施策を継続した場合の全国平均PISA改善上限', { exact: true });
-  await expect(settings).toContainText('生産性の上乗せを未算入');
+  await expect(settings).toContainText('日本へ50%移転');
+  await expect(gain).toHaveValue(String(calibratedEducationGain(.5)));
+  await settings.getByRole('button', { name: '慎重（移転25%）', exact: true }).click();
+  await expect(gain).toHaveValue(String(calibratedEducationGain(.25)));
+  await settings.getByRole('button', { name: '効果ゼロ', exact: true }).click();
   await expect(gain).toHaveValue('0');
+  await expect(settings).toContainText('生産性の上乗せを未算入');
   await gain.fill('4');
   await expect(settings).toContainText('条件付きシナリオ');
   await page.keyboard.press('Escape');
@@ -38,8 +44,8 @@ test('OECD education defaults disclose unestimated gains, share targeted setting
   await openEducation();
   await expect(page.getByLabel('旧方式：追加就学・職業訓練・効果係数', { exact: true })).toHaveValue('0.09');
   await page.getByRole('button', { name: '教育をOECDの追加支出方式に切り替える', exact: true }).click();
-  await expect(gain).toHaveValue('0');
-  await expect(settings).toContainText('生産性の上乗せを未算入');
+  await expect(gain).toHaveValue(String(calibratedEducationGain(.5)));
+  await expect(settings).toContainText('日本へ50%移転');
 });
 
 test('public investment shows commissioned benefits separately and overlap controls change GDP', async ({ page }) => {

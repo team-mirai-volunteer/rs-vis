@@ -45,7 +45,7 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
     const row: Omit<PolicyComparison, 'space'> = { policy, publishedYears,
       supplyNote: hasCommercialSupply(policy) ? '事業条件による純輸出・輸入代替の寄与。一般均衡の予測ではない。'
         : policy.supply ? supplyReference(policy.id, policy.supply).label + (policy.supply.educationModel === 'oecd' && policy.supply.educationPisaGain === 0
-          ? '：使途未特定の増額による学力・生産性の上乗せは初期未算入。'
+          ? '：この設定では学力・生産性の上乗せを算入しない。'
           : '：支出年別の蓄積・遅れ・減耗を計算。')
         : ['income-tax', 'resident-tax', 'social-insurance'].includes(policy.id) ? '負担軽減中の労働時間・参加。1年限りの追加軽減は2年目以降には終了。'
         : SUPPLY_UNAVAILABLE[policy.id] ?? '供給経路の条件が必要',
