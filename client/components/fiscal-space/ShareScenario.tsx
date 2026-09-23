@@ -16,6 +16,7 @@ export function ShareScenario({ form, onPreset, onOptimizationSettings, error, r
   const share = async () => {
     try {
       const url = new URL(window.location.href);
+      url.searchParams.delete('panel');
       url.hash = encodeScenario(form);
       window.history.replaceState(null, '', url);
       setLink(url.href);

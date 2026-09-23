@@ -87,6 +87,7 @@ export default function FiscalSpacePage() {
           setForm(restored); setRestore(info);
         }
         setShareError('');
+        if (new URL(window.location.href).searchParams.get('panel') === 'optimization') optimizationDialog.current?.showModal();
       } catch { setForm(defaults()); setRestore(null); setShareError('共有条件を復元できません。初期状態（既定の条件）で計算しています。以下の数値は送信者の条件ではありません。'); }
     };
     restore(); window.addEventListener('hashchange', restore);

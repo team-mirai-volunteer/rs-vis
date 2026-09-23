@@ -1,5 +1,45 @@
 import { test, expect } from '@playwright/test';
 
+test('shared values open the optimization panel with the saved conditions', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async () => { throw new Error('Clipboard unavailable'); },
+    } });
+  });
+  await page.goto('/fiscal-space');
+  await page.getByRole('button', { name: '価値の重み・自動最適化', exact: true }).click();
+  const panel = page.getByRole('dialog', { name: '価値の重み・自動最適化', exact: true });
+  await panel.getByLabel('評価する時点', { exact: true }).selectOption('15:terminal');
+  await panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true }).fill('30');
+  await panel.getByLabel('追加予算の上限（兆円／年）', { exact: true }).fill('8');
+  await panel.getByLabel('実質GDP・望ましい方向', { exact: true }).selectOption('target');
+  await panel.getByLabel('実質GDP・目標値', { exact: true }).fill('700');
+  await panel.getByLabel('実質GDP・基準となる改善幅', { exact: true }).fill('20');
+  await panel.getByRole('checkbox').first().uncheck();
+  await panel.getByRole('button', { name: 'この価値観のURLをコピー', exact: true }).click();
+  await expect(panel.getByRole('status')).toContainText('下のURLをコピー');
+  const url = await panel.getByLabel('最適化の共有URL', { exact: true }).inputValue();
+  expect(new URL(url).searchParams.get('panel')).toBe('optimization');
+  await panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true }).fill('20');
+  await expect(panel.getByLabel('最適化の共有URL', { exact: true })).toHaveCount(0);
+  await page.goto(url);
+  await expect(panel).toBeVisible();
+  await expect(panel.getByLabel('評価する時点', { exact: true })).toHaveValue('15:terminal');
+  await expect(panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true })).toHaveValue('30');
+  await expect(panel.getByLabel('追加予算の上限（兆円／年）', { exact: true })).toHaveValue('8');
+  await expect(panel.getByLabel('実質GDP・目標値', { exact: true })).toHaveValue('700');
+  await expect(panel.getByLabel('実質GDP・基準となる改善幅', { exact: true })).toHaveValue('20');
+  await expect(panel.getByRole('checkbox').first()).not.toBeChecked();
+  await expect(panel.getByRole('button', { name: 'この価値観で自動探索', exact: true })).toBeEnabled();
+  await expect(panel.getByRole('region', { name: '自動探索の結果', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'この条件のURLをコピー', exact: true }).click();
+  const normalUrl = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  expect(new URL(normalUrl).searchParams.has('panel')).toBe(false);
+  await page.goto(normalUrl);
+  await expect(panel).not.toBeVisible();
+});
+
 test('weighted search previews, invalidates, applies and shares preferences', async ({ page }) => {
   await page.goto('/fiscal-space');
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');

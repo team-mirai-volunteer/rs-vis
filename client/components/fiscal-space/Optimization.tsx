@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { POLICIES } from '@/app/lib/fiscal-space/assumptions';
 import type { FiscalForm } from '@/client/lib/fiscal-space-form';
@@ -7,6 +8,7 @@ import { OBJECTIVES, OBJECTIVE_IDS, OBJECTIVE_WEIGHT_PRESETS, withObjectiveWeigh
 import { useFiscalOptimization } from '@/client/hooks/useFiscalOptimization';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { fieldClass } from './format';
+import { encodeScenario } from '@/client/lib/fiscal-space-url';
 
 const number = (value: number | null, digits = 3) => value === null ? '未推計' : value.toLocaleString('ja-JP', { maximumFractionDigits: digits });
 const signed = (value: number | null) => value === null ? '—' : `${value > 0 ? '+' : ''}${number(value)}`;
@@ -17,6 +19,19 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
   onApply: (amounts: FiscalForm['amounts']) => void;
 }) {
   const settings = form.optimization;
+  const [shareLink, setShareLink] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
+  useEffect(() => { setShareLink(''); setShareNotice(''); }, [form]);
+  const share = async () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('panel', 'optimization');
+      url.hash = encodeScenario(form);
+      setShareLink(url.href);
+      try { await navigator.clipboard.writeText(url.href); setShareNotice('最適化の共有URLをコピーしました。'); }
+      catch { setShareNotice('下のURLをコピーしてください。'); }
+    } catch { setShareNotice('共有できない入力があります。入力範囲を確認してください。'); }
+  };
   const search = useFiscalOptimization(form);
   const result = search.completed?.result;
   const best = result?.best;
@@ -26,6 +41,12 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
   const setting = <K extends keyof OptimizationSettings>(key: K, value: OptimizationSettings[K]) => onChange({ ...settings, [key]: value });
   return <div className="space-y-5" data-testid="policy-optimization">
     <p className="text-sm">「未来への期待」を、選んだ指標と重みで比較するための試算です。重みは価値の優先順位を表す編集可能な仮置きで、実証された係数ではありません。重み0は総合点から除外します。</p>
+    <section className="space-y-2 rounded-lg border border-mirai-border p-3" aria-label="価値の重みを共有">
+      <Button variant="outline" size="sm" onClick={share}>この価値観のURLをコピー</Button>
+      <p className="text-xs">重み・評価時点・予算範囲・探索対象と現在の政策条件を共有します。リンクを開くと、このパネルで自分の価値観と比べたり、同じ条件で探索したりできます。未適用の探索候補は含みません。</p>
+      {shareNotice && <p role="status" className="text-sm">{shareNotice}</p>}
+      {shareLink && <input aria-label="最適化の共有URL" className={`${fieldClass} w-full`} readOnly value={shareLink} onFocus={e => e.target.select()} />}
+    </section>
     <fieldset className="space-y-2"><legend className="text-sm font-bold">重みの例から選ぶ</legend>
       <div className="flex flex-wrap gap-2">{Object.values(OBJECTIVE_WEIGHT_PRESETS).map(preset => <Button key={preset.label} variant="outline" size="sm" aria-pressed={weightPreset === preset} onClick={() => onChange(withObjectiveWeights(settings, preset.weights))}>{preset.label}</Button>)}</div>
       <p className="text-xs">{weightPreset ? weightPreset.description : '重みを個別に調整しています。'}例を選ぶと重みだけを変更します。</p>
