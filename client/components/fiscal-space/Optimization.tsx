@@ -41,12 +41,6 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
   const setting = <K extends keyof OptimizationSettings>(key: K, value: OptimizationSettings[K]) => onChange({ ...settings, [key]: value });
   return <div className="space-y-5" data-testid="policy-optimization">
     <p className="text-sm">「未来への期待」を、選んだ指標と重みで比較するための試算です。重みは価値の優先順位を表す編集可能な仮置きで、実証された係数ではありません。重み0は総合点から除外します。</p>
-    <section className="space-y-2 rounded-lg border border-mirai-border p-3" aria-label="価値の重みを共有">
-      <Button variant="outline" size="sm" onClick={share}>この価値観のURLをコピー</Button>
-      <p className="text-xs">重み・評価時点・予算範囲・探索対象と現在の政策条件を共有します。リンクを開くと、このパネルで自分の価値観と比べたり、同じ条件で探索したりできます。未適用の探索候補は含みません。</p>
-      {shareNotice && <p role="status" className="text-sm">{shareNotice}</p>}
-      {shareLink && <input aria-label="最適化の共有URL" className={`${fieldClass} w-full`} readOnly value={shareLink} onFocus={e => e.target.select()} />}
-    </section>
     <fieldset className="space-y-2"><legend className="text-sm font-bold">重みの例から選ぶ</legend>
       <div className="flex flex-wrap gap-2">{Object.values(OBJECTIVE_WEIGHT_PRESETS).map(preset => <Button key={preset.label} variant="outline" size="sm" aria-pressed={weightPreset === preset} onClick={() => onChange(withObjectiveWeights(settings, preset.weights))}>{preset.label}</Button>)}</div>
       <p className="text-xs">{weightPreset ? weightPreset.description : '重みを個別に調整しています。'}例を選ぶと重みだけを変更します。</p>
@@ -107,7 +101,13 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
       <Button onClick={search.start} disabled={search.running}>この価値観で自動探索</Button>
       {search.running && <Button variant="outline" onClick={search.cancel}>探索を中止</Button>}
       <Button variant="outline" onClick={() => onChange(optimizationDefaults())}>重み・探索条件を初期設定に戻す</Button>
+      <Button variant="outline" onClick={share}>この価値観のURLをコピー</Button>
     </div>
+    <section className="space-y-2" aria-label="価値の重みを共有">
+      <p className="text-xs">重み・評価時点・予算範囲・探索対象と現在の政策条件を共有します。リンクを開くと、このパネルで自分の価値観と比べたり、同じ条件で探索したりできます。未適用の探索候補は含みません。</p>
+      {shareNotice && <p role="status" className="text-sm">{shareNotice}</p>}
+      {shareLink && <input aria-label="最適化の共有URL" className={`${fieldClass} w-full`} readOnly value={shareLink} onFocus={e => e.target.select()} />}
+    </section>
     {search.running && <p role="status" className="text-sm">探索中：{search.progress?.evaluations ?? 0}候補を評価。{search.progress?.bestScore !== null && search.progress?.bestScore !== undefined && `制約内の最高点 ${number(search.progress.bestScore)}`}</p>}
     {search.error && <p role="alert" className="text-sm">{search.error}</p>}
     {result && <section className="space-y-3 rounded-xl border border-mirai-border p-4" aria-label="自動探索の結果">
