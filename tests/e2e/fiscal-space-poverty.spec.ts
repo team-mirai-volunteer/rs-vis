@@ -2,9 +2,18 @@ import { test, expect } from '@playwright/test';
 
 test('cash targeting and childcare cash share update the poverty comparison', async ({ page }) => {
   await page.goto('/fiscal-space');
-  const card = page.getByTestId('poverty-comparison');
-  const all = page.getByTestId('poverty-all-after');
-  const child = page.getByTestId('poverty-child-after');
+  const card = page.getByTestId('horizon-results').getByTestId('poverty-details');
+  await expect(card).not.toHaveAttribute('open', '');
+  await expect(page.getByRole('heading', { name: '現金給付・減税による貧困率の変化', exact: true })).toHaveCount(0);
+  await card.locator('summary').first().click();
+  const all = page.getByTestId('poverty-all-year-1');
+  const child = page.getByTestId('poverty-child-year-1');
+  const results = page.getByTestId('horizon-results');
+  const incomeMetric = results.locator('[data-metric="実質可処分所得（固定価格・中央値）"]');
+  const childMetric = results.locator('[data-metric="子どもの貧困率（直接効果）"]');
+  await expect(incomeMetric.getByTestId('policy-difference')).toContainText('+0.0万円／年');
+  await expect(childMetric.locator('p').nth(1)).toHaveText('11.00%');
+  await expect(results.getByTestId('household-metrics-scope')).toContainText('2024年の所得分布・価格・人口を固定');
   await expect(all).toHaveText('15.0%');
   await expect(child).toHaveText('11.0%');
   await expect(card).toContainText('将来の貧困率の予測ではありません');
@@ -25,14 +34,21 @@ test('cash targeting and childcare cash share update the poverty comparison', as
   await expect(all).not.toHaveText(universal);
   await expect(card.locator('[data-poverty-year="5"]')).toContainText('15.0%');
   await expect(card.locator('[data-poverty-year="5"]')).toContainText('11.0%');
+  // The three-year cash grant has expired at the five-year headline.
+  await expect(incomeMetric.getByTestId('policy-difference')).toContainText('+0.0万円／年');
+  await expect(childMetric.getByTestId('policy-difference')).toContainText('+0.000ポイント');
   await page.getByLabel('現金給付・数値で入力', { exact: true }).fill('0');
   await page.getByLabel('子育て・数値で入力', { exact: true }).fill('5');
   await expect(child).not.toHaveText('11.0%');
   await expect(card.locator('[data-poverty-year="5"]')).not.toContainText('11.0%');
+  await expect(childMetric.locator('p').nth(1)).not.toHaveText('11.00%');
+  await expect(incomeMetric.getByTestId('policy-difference')).not.toContainText('+0.0万円／年');
   await page.getByRole('button', { name: '現金給付の割合を設定', exact: true }).click();
   await page.getByLabel('子育て予算のうち現金給付に回す割合', { exact: true }).fill('0');
   await page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
   await expect(child).toHaveText('11.0%');
+  await expect(childMetric.locator('p').nth(1)).toHaveText('11.00%');
+  await expect(incomeMetric.getByTestId('policy-difference')).toContainText('+0.0万円／年');
   await expect(page.getByTestId('poverty-coverage')).toContainText('未推計');
   await page.getByLabel('子育て・数値で入力', { exact: true }).fill('0');
   await page.getByLabel('所得税減税・数値で入力', { exact: true }).fill('5');

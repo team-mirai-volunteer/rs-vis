@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { INDUSTRY_TRADE_REFERENCE as io, SEMICONDUCTOR_CASE, industryTrade, industryImportBreakEven } from '../app/lib/fiscal-space/policy-trade';
+import { INDUSTRY_TRADE_REFERENCE as io, PROJECT_IMPORT_REFERENCE, RESEARCH_CASE, SEMICONDUCTOR_CASE, industryTrade, industryImportBreakEven, powerCase, powerTrade } from '../app/lib/fiscal-space/policy-trade';
+import { SUPPLY_CASES, supplyResponse } from '../app/lib/fiscal-space/supply';
+import { projectResponse, projectNetOutput } from '../app/lib/fiscal-space/project-response';
 import { initialEconomy, PARAMETERS, POLICIES, TRILLION, NO_SHOCK, THRESHOLDS } from '../app/lib/fiscal-space/assumptions';
 import { compareNextTrillion } from '../app/lib/fiscal-space/compare';
 import { simulate } from '../app/lib/fiscal-space/simulate';
@@ -11,6 +13,39 @@ import { decodeScenario } from '../client/lib/fiscal-space-url';
 const near = (a: number, b: number) => assert(Math.abs(a - b) < 1e-8 * Math.max(1, Math.abs(a), Math.abs(b)), `${a} != ${b}`);
 const policy: Policy = { ...POLICIES.find(p => p.id === 'semiconductors')!, annualCost: TRILLION, duration: 1,
   trade: { kind: 'industry', assumptions: SEMICONDUCTOR_CASE } };
+
+test('provisional project defaults give complete flows while explicit blanks survive sharing', () => {
+  const form = defaults();
+  near(PROJECT_IMPORT_REFERENCE.capexImportShare, PROJECT_IMPORT_REFERENCE.directImportShare + PROJECT_IMPORT_REFERENCE.upstreamImportShare);
+  assert(PROJECT_IMPORT_REFERENCE.capexImportShare > .17 && PROJECT_IMPORT_REFERENCE.capexImportShare < .18);
+  for (const id of ['semiconductors', 'rd']) {
+    for (const year of [1, 5, 20]) {
+      const row = industryTrade(policy, year, form.trade.industry[id]);
+      assert(Object.values(row).every(value => value !== null && Number.isFinite(value)));
+    }
+    form.trade.industry[id].capexImportShare = null;
+    form.trade.industry[id].annualSalesPerInvestment = null;
+  }
+  for (const technology of ['solar', 'nuclear', 'hydro'] as const) {
+    for (const year of [1, 5, 20]) {
+      assert(Object.values(powerTrade(policy, year, powerCase(technology))).every(value => value !== null && Number.isFinite(value)));
+    }
+  }
+  form.trade.power.capexImportShare = null;
+  const restored = decodeScenario('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-16.2', form })));
+  assert.deepEqual(restored.trade, form.trade);
+});
+
+test('research sales proxy preserves the reference net yield without adding knowledge supply twice', () => {
+  const initial = initialEconomy();
+  const research: Policy = { ...POLICIES.find(p => p.id === 'rd')!, annualCost: TRILLION, kind: 'temporary', duration: 1,
+    supply: { ...SUPPLY_CASES.rd.settings }, trade: { kind: 'industry', assumptions: { ...RESEARCH_CASE } } };
+  near(projectNetOutput(projectResponse(initial, research, 3, PARAMETERS)), 0);
+  for (const year of [4, 5, 10]) {
+    near(projectNetOutput(projectResponse(initial, research, year, PARAMETERS)), supplyResponse(initial, { ...research, trade: undefined }, year, PARAMETERS));
+    assert.equal(supplyResponse(initial, research, year, PARAMETERS), 0);
+  }
+});
 
 test('IO benchmark uses domestic production and excludes import taxes from foreign payments', () => {
   near(io.exportShare, 3713.3 / 5369.6);

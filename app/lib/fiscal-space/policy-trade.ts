@@ -1,5 +1,10 @@
 import type { Policy, SourceValue } from '@/types/fiscal-space';
 import industryReference from './data/industry-trade-reference.json';
+import projectImportReference from './data/project-import-reference.json';
+export const PROJECT_IMPORT_REFERENCE = projectImportReference;
+export const PROJECT_IMPORT_NOTE = `建設・導入費の輸入割合の初期値${(projectImportReference.capexImportShare * 100).toFixed(1)}%は、2020年全国産業連関表の固定資本形成から概算（直接輸入${(projectImportReference.directImportShare * 100).toFixed(1)}%＋国内供給網の輸入${(projectImportReference.upstreamImportShare * 100).toFixed(1)}%）。負の純処分額を除いた調達構成を使用し、関税・輸入品商品税は除外。半導体・研究開発・各電源に全国平均を代用する仮置きで、分野別の実測値ではありません。`;
+export const RESEARCH_PROJECT_SOURCE = 'https://www.rieti.go.jp/jp/publications/pdp/13p010.pdf';
+export const RESEARCH_PROJECT_NOTE = '研究開発の年間売上/投資額は0.6円で仮置き。既存の供給モデルが参考にする研究開発収益率30%を、輸出50%＋国内販売50%×輸入置換50%−輸入原価25%＝純寄与50%という仮定で割った逆算値です。売上や輸出割合の実測推定ではありません。純追加性50%、稼働3年後、減耗15%、便益20年を仮定。知識蓄積の供給効果とは加算せず、この事業経路へ切り替えます。';
 export const INDUSTRY_TRADE_REFERENCE = industryReference;
 /** Percent text for the IO benchmark so UI, provenance and docs never drift from the JSON. */
 export const INDUSTRY_TRADE_REFERENCE_PERCENT = {
@@ -44,10 +49,17 @@ export interface IndustryTradeCase {
 export const INDUSTRY_CASE: IndustryTradeCase = { annualSalesPerInvestment: null, capexImportShare: null,
   exportShare: .5, domesticReplacementShare: .5, operatingImportShare: .25, lag: 3, lifetime: 10 };
 
+// Calibrate net operating contribution to the existing research scenario, not gross sales to GDP.
+export const RESEARCH_CASE: IndustryTradeCase = { ...INDUSTRY_CASE,
+  annualSalesPerInvestment: .3 / (.5 + (1 - .5) * .5 - .25),
+  capexImportShare: projectImportReference.capexImportShare,
+  additionality: .5, depreciation: .15, lifetime: 20 };
+
 export const SEMICONDUCTOR_FINANCIAL_SOURCE = 'https://investor.tsmc.com/sites/ir/financial-report/2024/TSMC%202024Q4%20Consolidated%20Financial%20Statements_E_1.pdf';
 // TSMC 2024 revenue / year-end net PPE (both NT$ thousand), not sales / annual capex.
 // This is a foreign firm benchmark, not the causal return on a Japanese subsidy.
 export const SEMICONDUCTOR_CASE: IndustryTradeCase = { ...INDUSTRY_CASE,
+  capexImportShare: projectImportReference.capexImportShare,
   exportShare: industryReference.exportShare,
   domesticReplacementShare: industryReference.domesticReplacementShare,
   operatingImportShare: industryReference.operatingImportShare,
@@ -113,7 +125,7 @@ export function powerCase(technology: PowerTechnology): PowerCase {
   const t = POWER_TECHNOLOGIES[technology];
   return { technology, capexPerKw: t.capexPerKw, capacityFactor: t.capacityFactor, lag: t.lag,
     curtailment: 0, thermalReplacement: .8, displacedFuelYenPerKwh: 9,
-    operatingImportYenPerKwh: technology === 'nuclear' ? .95 : 0, capexImportShare: null, firmShare: POWER_FIRM_SHARES[technology] };
+    operatingImportYenPerKwh: technology === 'nuclear' ? .95 : 0, capexImportShare: projectImportReference.capexImportShare, firmShare: POWER_FIRM_SHARES[technology] };
 }
 /** Investment shares, not generation shares. Zero allocations have no effect. */
 export function powerComponents(c: PowerCase): { share: number; assumptions: PowerCase }[] {
@@ -151,7 +163,7 @@ export function powerTrade(policy: InvestmentSchedule, year: number, c: PowerCas
 }
 
 export function policyTradeRecords(value: { industry: Record<string, IndustryTradeCase>; power: PowerCase; mix?: Record<PowerTechnology, number>; powerCases?: Record<PowerTechnology, PowerCase> }): SourceValue[] {
-  const groups = [...Object.entries(value.industry).map(([id, settings]) => ({ key: `policyTrade.${id}`, settings, source: id === 'semiconductors' ? SEMICONDUCTOR_FINANCIAL_SOURCE : SEMICONDUCTOR_SOURCE })),
+  const groups = [...Object.entries(value.industry).map(([id, settings]) => ({ key: `policyTrade.${id}`, settings, source: id === 'semiconductors' ? SEMICONDUCTOR_FINANCIAL_SOURCE : id === 'rd' ? RESEARCH_PROJECT_SOURCE : SEMICONDUCTOR_SOURCE })),
     { key: 'policyTrade.power', settings: value.power, source: POWER_SOURCE },
     ...value.powerCases ? Object.entries(value.powerCases).map(([id, settings]) => ({ key: `policyTrade.powerMix.${id}`, settings, source: POWER_SOURCE })) : [],
     ...value.mix ? [{ key: 'policyTrade.powerMix.weights', settings: value.mix, source: POWER_SOURCE }] : []];
@@ -159,7 +171,7 @@ export function policyTradeRecords(value: { industry: Record<string, IndustryTra
     key: `${group.key}.${key}`, value: v as number,
     unit: key === 'lag' || key === 'lifetime' ? '年' : key === 'capexPerKw' ? '円/kW' : key.includes('YenPerKwh') ? '円/kWh' : key === 'annualSalesPerInvestment' ? '年あたり売上/投資額' : '比率',
     referenceYear: '事業別試算の入力条件（2026-09-15）', sourceName: group.key.startsWith('policyTrade.power') ? '電源別の公表諸元を参考にした条件' : '政策固有の事業条件',
-    sourceUrl: group.key === 'policyTrade.semiconductors' && IO_REFERENCE_KEYS.includes(key) ? industryReference.sourceUrl : key === 'firmShare' ? null : key === 'lag' && 'technology' in group.settings && group.settings.technology === 'solar' ? POWER_CONSTRUCTION_SOURCE : group.source, status: 'assumption' as const,
-    uncertaintyNote: (group.key === 'policyTrade.semiconductors' && IO_REFERENCE_KEYS.includes(key) ? `初期条件は${industryReference.referenceYear}年全国産業連関表の${industryReference.sectorName}部門を参照。輸出${INDUSTRY_TRADE_REFERENCE_PERCENT.exportShare}%、供給網輸入原価${INDUSTRY_TRADE_REFERENCE_PERCENT.operatingImportShare}%（比例配分推計）、国内置換${INDUSTRY_TRADE_REFERENCE_PERCENT.domesticReplacementShare}%は輸入浸透率を代用する仮定。新設工場の因果推計ではない。` : '') + (key === 'lag' && 'technology' in group.settings && group.settings.technology === 'solar' ? SOLAR_LAG_NOTE : '') + (key === 'firmShare' ? POWER_FIRM_NOTE : '') + ('technology' in group.settings && group.settings.technology === 'nuclear' && key === 'operatingImportYenPerKwh' ? '初期値0.95円/kWhは公表核燃料サイクル費1.9円/kWh×海外支払割合50%という仮定。輸入割合は未校正。' : '') + '資産投資の条件は本体のGDP・財政枠へ反映。原資料は経路・諸元の参考で、任意の入力値を実証するものではない。売上の純追加性、調達先、稼働遅れ、火力置換、確実供給は案件別の校正が必要。未設定値は出典表からも除外。',
+    sourceUrl: key === 'capexImportShare' ? projectImportReference.sourceUrl : group.key === 'policyTrade.semiconductors' && IO_REFERENCE_KEYS.includes(key) ? industryReference.sourceUrl : key === 'firmShare' ? null : key === 'lag' && 'technology' in group.settings && group.settings.technology === 'solar' ? POWER_CONSTRUCTION_SOURCE : group.source, status: 'assumption' as const,
+    uncertaintyNote: (key === 'capexImportShare' ? PROJECT_IMPORT_NOTE : '') + (group.key === 'policyTrade.rd' ? RESEARCH_PROJECT_NOTE : '') + (group.key === 'policyTrade.semiconductors' && IO_REFERENCE_KEYS.includes(key) ? `初期条件は${industryReference.referenceYear}年全国産業連関表の${industryReference.sectorName}部門を参照。輸出${INDUSTRY_TRADE_REFERENCE_PERCENT.exportShare}%、供給網輸入原価${INDUSTRY_TRADE_REFERENCE_PERCENT.operatingImportShare}%（比例配分推計）、国内置換${INDUSTRY_TRADE_REFERENCE_PERCENT.domesticReplacementShare}%は輸入浸透率を代用する仮定。新設工場の因果推計ではない。` : '') + (key === 'lag' && 'technology' in group.settings && group.settings.technology === 'solar' ? SOLAR_LAG_NOTE : '') + (key === 'firmShare' ? POWER_FIRM_NOTE : '') + ('technology' in group.settings && group.settings.technology === 'nuclear' && key === 'operatingImportYenPerKwh' ? '初期値0.95円/kWhは公表核燃料サイクル費1.9円/kWh×海外支払割合50%という仮定。輸入割合は未校正。' : '') + '資産投資の条件は本体のGDP・財政枠へ反映。原資料は経路・諸元の参考で、任意の入力値を実証するものではない。売上の純追加性、調達先、稼働遅れ、火力置換、確実供給は案件別の校正が必要。未設定値は出典表からも除外。',
   })));
 }

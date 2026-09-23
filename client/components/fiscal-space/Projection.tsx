@@ -5,20 +5,28 @@ import { FERTILITY_LABELS } from '@/app/lib/fiscal-space/demographics';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { DebtPortfolioNote, FiscalVintageBadge } from './ResultAssumptions';
 import { differenceChartScale, fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
+import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
+import { PovertyDetails } from './Poverty';
 
-export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
+export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
   step: ProjectionStep; baseline: ProjectionStep; medium?: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
+  poverty: FiscalCalculation['poverty'];
 }) {
   const s = step.state;
   const longRun = s.year > publishedYears;
   const ext = (value: string) => longRun ? `${value}†` : value;
   const burden = s.fiscal.taxRevenue / s.macro.nominalGdp;
   const baselineBurden = baseline.state.fiscal.taxRevenue / baseline.state.macro.nominalGdp;
+  const household = poverty.rows[s.year - 1];
+  const income = (value: number) => `${(value / 1e4).toLocaleString('ja-JP', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}万円／年`;
   const rows = [
     ['実質GDP', money(s.macro.realGdp), ''],
     ['名目GDP', money(s.macro.nominalGdp), ''],
     ['インフレ率', ext(percent(s.macro.inflation)), longRun ? '公表期間外の延長計算（†）。' : ''],
     ['国民負担（GDP比）', percent(burden), `税・社会保険料 ÷ 名目GDP。政策なし ${percent(baselineBurden)}。国民所得比ではありません。`],
+    ['実質可処分所得（固定価格・中央値）', income(household.medianDisposableIncome), `給付・減税の直接効果のみの参考値。世帯の手取りを世帯人数の平方根で割った等価可処分所得。政策なし ${income(poverty.baseline.medianDisposableIncome)}。`],
+    ['相対的貧困率（直接効果）', percent(household.all), `全体・再分配後。政策後の所得中央値の半分を貧困線として再計算。政策なし ${percent(poverty.baseline.all)}。`],
+    ['子どもの貧困率（直接効果）', percent(household.child), `17歳以下・再分配後。政策後の所得中央値から貧困線を再計算。政策なし ${percent(poverty.baseline.child)}。`],
     ['歳出（利払いを含む）', money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments), '元本の借換を除く。'],
     ['税・社会保険料収入', money(s.fiscal.taxRevenue), ''],
     ['うち税（罰金を含む）', money(s.fiscal.taxes), ''],
@@ -52,6 +60,9 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
     '名目GDP': signedMoney(s.macro.nominalGdp - baseline.state.macro.nominalGdp),
     'インフレ率': points(s.macro.inflation - baseline.state.macro.inflation),
     '国民負担（GDP比）': points(burden - baselineBurden),
+    '実質可処分所得（固定価格・中央値）': `${signedNumber((household.medianDisposableIncome - poverty.baseline.medianDisposableIncome) / 1e4, 1)}万円／年`,
+    '相対的貧困率（直接効果）': points(household.all - poverty.baseline.all),
+    '子どもの貧困率（直接効果）': points(household.child - poverty.baseline.child),
     '歳出（利払いを含む）': signedMoney(s.fiscal.primaryExpenditure + s.fiscal.interestPayments - baseline.state.fiscal.primaryExpenditure - baseline.state.fiscal.interestPayments),
     '税・社会保険料収入': signedMoney(s.fiscal.taxRevenue - baseline.state.fiscal.taxRevenue),
     'うち税（罰金を含む）': signedMoney(s.fiscal.taxes - baseline.state.fiscal.taxes),
@@ -83,6 +94,8 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
     <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>
+    <p className="text-xs text-mirai-text-subtle" data-testid="household-metrics-scope">所得・貧困率は、2024年の所得分布・価格・人口を固定し、{s.year}年目に実施中の給付・所得税・住民税・本人保険料の軽減を適用した比較です。賃金成長・将来の物価・雇用の変化、消費税減税、現物サービスの効果は未反映で、将来の家計所得や貧困率そのものの予測ではありません。</p>
+    <PovertyDetails result={poverty} />
     <details><summary className="cursor-pointer text-sm font-bold">GDPギャップ・輸出入・資金調達などの詳細</summary>
       <p className="my-3 text-xs text-mirai-text-subtle">GDPギャップは負が需要不足、正が需要超過です。最大GDP基準も同じ符号で、負の値が供給余力を示します。{longRun && '公表期間後のGDP・財政は、成長率・物価の基準経路と供給効果の実現を仮定した条件付き計算です。'}</p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(detailedRows)}</div>

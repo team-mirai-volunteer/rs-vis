@@ -13,7 +13,7 @@ import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
 import { ResourceEstimation, ResourceSettings } from '@/client/components/fiscal-space/ResourceEstimation';
 import { Demographics, DemographicSettings } from '@/client/components/fiscal-space/Demographics';
 import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
-import { Poverty, CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
+import { CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -53,7 +53,6 @@ const MemoPolicyLoads = memo(PolicyLoads);
 const MemoPolicyTrade = memo(PolicyTrade);
 const MemoResourceEstimation = memo(ResourceEstimation);
 const MemoDemographics = memo(Demographics);
-const MemoPoverty = memo(Poverty);
 
 const DETAIL_SETTINGS = { baseline: '基準データ・初期条件', burden: '家計負担の推計条件', trade: '政策別の事業条件', poverty: '現金給付の対象', childcare: '子育て予算の現金給付割合', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
 type DetailSetting = keyof typeof DETAIL_SETTINGS;
@@ -67,7 +66,6 @@ export default function FiscalSpacePage() {
   const [detailSetting, setDetailSetting] = useState<DetailSetting>('poverty');
   const openBaselineSettings = useCallback(() => { setDetailSetting('baseline'); detailDialog.current?.showModal(); }, []);
   const openBurdenSettings = useCallback(() => { setDetailSetting('burden'); detailDialog.current?.showModal(); }, []);
-  const openTradeSettings = useCallback(() => { setDetailSetting('trade'); detailDialog.current?.showModal(); }, []);
   const openCashSettings = useCallback(() => { setDetailSetting('poverty'); detailDialog.current?.showModal(); }, []);
   const openChildcareSettings = useCallback(() => { setDetailSetting('childcare'); detailDialog.current?.showModal(); }, []);
   const dataDialog = useRef<HTMLDialogElement>(null);
@@ -196,7 +194,6 @@ export default function FiscalSpacePage() {
           ? '入力を調整するか、上のボタンで計算を再試行してください。'
           : '政策を入力できます。計算結果を準備しています。'}</p>}
       {result && <>
-      <MemoPoverty result={result.poverty} />
       <MemoSummary estimate={result.estimate} horizon={result.horizon} riskAudit={result.riskAudit} longRun={result.longRun}
         rows={result.modelSensitivity} initial={result.initial} />
       <MemoResourceEstimation result={result} value={calculationForm!.resource} />
@@ -210,7 +207,7 @@ export default function FiscalSpacePage() {
       <MemoBurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onOpenSettings={openBurdenSettings} />
       {result && <>
       <MemoElectricityBaseline baseline={result.baseline} projection={result.projection} />
-      <MemoPolicyTrade policies={result.policies} value={calculationForm!.trade} onOpenSettings={openTradeSettings} />
+      <MemoPolicyTrade policies={result.policies} value={calculationForm!.trade} />
       </>}
         </div>
       </div>

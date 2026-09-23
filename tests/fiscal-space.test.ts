@@ -598,7 +598,8 @@ test('power options distinguish capacity, generation, lag, fuel imports and firm
   near(operating.generationTwh, T / 176000 * 8760 * .183 / 1e9);
   near(operating.firmGw!, operating.capacityGw * .1);
   assert.equal(powerTrade(policy, 5, { ...solar, firmShare: null }).firmGw, null);
-  assert.equal(operating.tradeBalance, null);
+  near(operating.tradeBalance!, operating.substitution);
+  assert.equal(powerTrade(policy, 5, { ...solar, capexImportShare: null }).tradeBalance, null);
   near(powerTrade(policy, 5, { ...solar, curtailment: .5 }).substitution, operating.substitution / 2);
   assert.equal(powerTrade(policy, 5, { ...solar, thermalReplacement: 0 }).substitution, 0);
   assert.equal(powerTrade(policy, 10, powerCase('nuclear')).capacityGw, 0);

@@ -1,0 +1,9 @@
+{
+  "sourceUrl": "https://www.e-stat.go.jp/stat-search/file-download?statInfId=000040187026&fileKind=0",
+  "referenceYear": 2020,
+  "sha256": "8115f7f605e0c8dfa546bad1655a171b3c21a353a245a3af5e40c5924a2e5607",
+  "directImportShare": 0.09314311510941051,
+  "upstreamImportShare": 0.08301764793767899,
+  "capexImportShare": 0.1761607630470895,
+  "method": "公的・民間の国内総固定資本形成を品目別に合算し、負の純処分額を除いて調達構成を正規化。輸入浸透率による直接輸入＋国内投入逆行列による供給網輸入。関税・輸入品商品税は海外支払から除外。全事業への適用は全国平均による代理仮定で、事業別調達率の実測ではない。"
+}

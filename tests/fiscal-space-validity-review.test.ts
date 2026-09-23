@@ -81,7 +81,8 @@ test('average inflation rule compares the horizon mean and is looser than the si
 // 1-C: realized supply inside the horizon is zero by design for non-capital cases.
 test('comparison reports realized supply at the horizon: positive for public capital, zero for research and education', () => {
   // Supply cases are attached by the engine from the form; raw POLICIES carry none.
-  const rows = createFiscalEngine()(example()).comparison;
+  const knowledge = example(); knowledge.trade.industry.rd.annualSalesPerInvestment = null;
+  const rows = createFiscalEngine()(knowledge).comparison;
   const row = (id: string) => rows.find(r => r.policy.id === id)!;
   assert(compareNextTrillion(initialEconomy(), [], PARAMETERS).every(r => Number.isFinite(r.realizedSupplyEffect)));
   assert(row('public-investment').realizedSupplyEffect > 0);
@@ -113,7 +114,7 @@ test('difference chart scale always includes zero and nice ticks', () => {
 // Extended horizon: an explicit extrapolation that lets late commissioning enter the same evaluation.
 test('15-year horizon extends the simulation, adds 10/15-year comparison periods and shows late supply', () => {
   const engine = createFiscalEngine();
-  const f = defaults(); f.amounts.rd = 3; f.horizon = 15;
+  const f = defaults(); f.amounts.rd = 3; f.horizon = 15; f.trade.industry.rd.annualSalesPerInvestment = null;
   const r = engine(f);
   assert.equal(r.horizon, 15);
   assert.equal(r.projection.steps.length, 15);
@@ -121,7 +122,7 @@ test('15-year horizon extends the simulation, adds 10/15-year comparison periods
   const rd = r.comparison.find(row => row.policy.id === 'rd')!;
   assert.deepEqual(rd.periods.map(p => p.year), [1, 3, 5, 10, 15]);
   // Non-capital supply ramps only after the published years: zero realized at 5, positive at 15.
-  const five = defaults(); five.amounts.rd = 3; five.horizon = 5;
+  const five = defaults(); five.amounts.rd = 3; five.horizon = 5; five.trade.industry.rd.annualSalesPerInvestment = null;
   near(engine(five).comparison.find(row => row.policy.id === 'rd')!.realizedSupplyEffect, 0);
   assert(rd.realizedSupplyEffect > 0);
   assert.equal(r.longRun[0].year, 16);

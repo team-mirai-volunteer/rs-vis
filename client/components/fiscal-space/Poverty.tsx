@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CASH_TARGET_LABELS, POVERTY_DATA, type PovertyAssumptions } from '@/app/lib/fiscal-space/poverty';
 import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
 import { fieldClass, money, percent } from './format';
@@ -13,37 +12,27 @@ const difference = (value: number) => {
   return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}ポイント`;
 };
 
-export function Poverty({ result }: {
+export function PovertyDetails({ result }: {
   result: FiscalCalculation['poverty'];
 }) {
   const first = result.rows[0];
   const observed = { all: POVERTY_DATA.allPovertyRate, child: POVERTY_DATA.childPovertyRate };
-  return <Card data-testid="poverty-comparison"><CardHeader>
-    <h2 className="text-lg font-bold">現金給付・減税による貧困率の変化</h2>
-    <p className="text-sm">2024年の所得分布に、設定した政策の年額を適用した直接効果の比較です。所得・物価・人口を固定しているため、将来の貧困率の予測ではありません。</p>
-  </CardHeader><CardContent className="space-y-4">
-    <div className="grid gap-4 sm:grid-cols-2">
-      {(['all', 'child'] as const).map(key => <div key={key} className="rounded-lg border border-mirai-border p-3" data-testid={`poverty-${key}`}>
-        <h3 className="text-sm font-bold">{key === 'all' ? '相対的貧困率（再分配後）' : '子どもの貧困率（17歳以下・再分配後）'}</h3>
-        <p className="mt-2 text-xs">追加施策なし → 年1の追加施策あり</p>
-        <p className="mt-1 text-xl font-bold tabular-nums">{percent(observed[key], 1)} → <span data-testid={`poverty-${key}-after`}>{percent(first[key], 1)}</span></p>
-        <p className="text-sm tabular-nums">差 {difference(first[key] - result.baseline[key])}</p>
-        <p className="mt-1 text-xs text-mirai-text-subtle">仮定を変えた場合 {percent(first.range[key].min, 1)}〜{percent(first.range[key].max, 1)}。統計的な信頼区間ではありません。</p>
-      </div>)}
-    </div>
+  return <details data-testid="poverty-details"><summary className="cursor-pointer text-sm font-bold">所得・貧困率の年別内訳と計算根拠</summary>
+    <div className="mt-3 space-y-3">
+    <p className="text-xs">2024年の所得分布に、設定した政策の年額を適用した直接効果の比較です。所得・物価・人口を固定しているため、将来の貧困率の予測ではありません。</p>
     <p className="text-xs">計算済みの配分：現金給付は「{CASH_TARGET_LABELS[result.assumptions.cashTarget]}」、子育て予算の{percent(result.assumptions.childcareCashShare, 0)}を子ども1人当たりの現金給付とする仮定です。これらは貧困率の比較条件で、既存のGDP・出生率の反応係数は変わりません。</p>
     {result.assumptions.cashTarget === 'income-tapered' && <CashTaperNote />}
     <p className="text-xs">所得税・住民税は推定税額に比例した減税、社会保険料は本人負担分の軽減を反映します。モデル上で非課税の人には所得税減税を配分せず、還付は加算しません。子育て予算の現金割合の初期値は100%です。</p>
     <div className="overflow-x-auto" role="region" aria-label="貧困率の政策比較" tabIndex={0}>
-      <table className="w-full min-w-[660px] text-right text-sm tabular-nums">
+      <table className="w-full min-w-[860px] text-right text-sm tabular-nums">
         <caption className="text-left text-xs">各年の有効な政策だけを適用。現金給付を貯蓄として累積せず、一時政策の終了後は直接効果がなくなります。</caption>
-        <thead><tr>{['適用年', '全体', '子ども', '貧困線固定：全体', '貧困線固定：子ども', '反映する給付・軽減額'].map(label => <th scope="col" key={label} className="p-2">{label}</th>)}</tr></thead>
-        <tbody><tr><th scope="row" className="p-2">追加施策なし</th><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>—</td></tr>
+        <thead><tr>{['適用年', '全体', '子ども', '貧困線固定：全体', '貧困線固定：子ども', '所得中央値（万円／年）', '反映する給付・軽減額'].map(label => <th scope="col" key={label} className="p-2">{label}</th>)}</tr></thead>
+        <tbody><tr><th scope="row" className="p-2">追加施策なし</th><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>{(result.baseline.medianDisposableIncome / 1e4).toFixed(1)}</td><td>—</td></tr>
           {result.rows.map(row => <tr key={row.year} className="border-t border-mirai-border" data-poverty-year={row.year}>
             <th scope="row" className="p-2">年{row.year}</th>
-            <td>{percent(row.all, 1)}<small className="block text-xs text-mirai-text-subtle">{difference(row.all - result.baseline.all)}</small></td>
-            <td>{percent(row.child, 1)}<small className="block text-xs text-mirai-text-subtle">{difference(row.child - result.baseline.child)}</small></td>
-            <td>{percent(row.anchoredAll, 1)}</td><td>{percent(row.anchoredChild, 1)}</td><td>{money(row.allocated)}</td>
+            <td><span data-testid={`poverty-all-year-${row.year}`}>{percent(row.all, 1)}</span><small className="block text-xs text-mirai-text-subtle">{difference(row.all - result.baseline.all)}</small></td>
+            <td><span data-testid={`poverty-child-year-${row.year}`}>{percent(row.child, 1)}</span><small className="block text-xs text-mirai-text-subtle">{difference(row.child - result.baseline.child)}</small></td>
+            <td>{percent(row.anchoredAll, 1)}</td><td>{percent(row.anchoredChild, 1)}</td><td>{(row.medianDisposableIncome / 1e4).toFixed(1)}</td><td>{money(row.allocated)}</td>
           </tr>)}
         </tbody>
       </table>
@@ -58,7 +47,9 @@ export function Poverty({ result }: {
         <p>入力額を2024年の価格・所得水準へそのまま適用しています。物価・賃金・出生の将来経路との接続は未実装です。給付先を変えた際の消費性向やGDP効果も共通のままです。</p>
       </div>
     </details>
-  </CardContent></Card>;
+    <p className="text-xs">終端年の貧困率：仮定を変えた場合、全体 {percent(result.rows.at(-1)!.range.all.min, 1)}〜{percent(result.rows.at(-1)!.range.all.max, 1)}、子ども {percent(result.rows.at(-1)!.range.child.min, 1)}〜{percent(result.rows.at(-1)!.range.child.max, 1)}。統計的な信頼区間ではありません。</p>
+    </div>
+  </details>;
 }
 
 export function CashSettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {

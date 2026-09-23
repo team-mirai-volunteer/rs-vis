@@ -451,8 +451,15 @@ test('remaining assumptions are edited in panels and restored from the shared UR
   await page.getByRole('button', { name: '家計負担の推計条件を設定', exact: true }).click();
   await page.getByRole('dialog', { name: '家計負担の推計条件', exact: true }).getByLabel('法人税の賃金帰着割合').selectOption('0.5');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: '政策別の事業条件を設定', exact: true }).click();
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '政策別の事業条件', exact: true }).click();
   const trade = page.getByRole('dialog', { name: '政策別の事業条件', exact: true });
+  await expect(trade.getByTestId('project-import-estimate')).toContainText('17.6%');
+  await expect(trade.getByRole('region', { name: '政策固有の輸出入試算' })).not.toContainText('未推計');
+  await trade.getByLabel('試算する政策', { exact: true }).selectOption('rd');
+  await expect(trade.getByLabel('投資1円あたり稼働後の年間売上（円/年）', { exact: true })).toHaveValue('0.6');
+  await expect(trade.getByTestId('research-project-estimate')).toContainText('逆算値');
+  await expect(trade.getByRole('region', { name: '政策固有の輸出入試算' })).not.toContainText('未推計');
   await trade.getByLabel('試算する政策', { exact: true }).selectOption('semiconductors');
   await trade.getByLabel('売上の輸出割合（仮定）（%）', { exact: true }).fill('60');
   await trade.getByLabel('試算する政策', { exact: true }).selectOption('generation');
@@ -468,7 +475,8 @@ test('remaining assumptions are edited in panels and restored from the shared UR
   await page.getByRole('button', { name: '家計負担の推計条件を設定', exact: true }).click();
   await expect(page.getByLabel('法人税の賃金帰着割合')).toHaveValue('0.5');
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: '政策別の事業条件を設定', exact: true }).click();
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '政策別の事業条件', exact: true }).click();
   await trade.getByLabel('試算する政策', { exact: true }).selectOption('semiconductors');
   await expect(trade.getByLabel('売上の輸出割合（仮定）（%）', { exact: true })).toHaveValue('60');
   await page.keyboard.press('Escape');

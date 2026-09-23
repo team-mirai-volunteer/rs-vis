@@ -128,8 +128,9 @@ export function povertyMeasures(cells: IncomeCell[], anchoredLine = line) {
   const below = (limit: number, key: 'people' | 'children') => cells.reduce((s, c) => s + c[key] * Math.max(0, Math.min(1, (limit - c.lower) / (c.upper - c.lower))), 0);
   let lo = Math.min(...cells.map(c => c.lower)), hi = Math.max(...cells.map(c => c.upper));
   for (let i = 0; i < 55; i++) { const mid = (lo + hi) / 2; if (below(mid, 'people') < n / 2) lo = mid; else hi = mid; }
-  const povertyLine = (lo + hi) / 4;
-  return { povertyLine, all: below(povertyLine, 'people') / n, child: kids > 0 ? below(povertyLine, 'children') / kids : 0,
+  const medianDisposableIncome = (lo + hi) / 2;
+  const povertyLine = medianDisposableIncome / 2;
+  return { povertyLine, medianDisposableIncome, all: below(povertyLine, 'people') / n, child: kids > 0 ? below(povertyLine, 'children') / kids : 0,
     anchoredAll: below(anchoredLine, 'people') / n, anchoredChild: kids > 0 ? below(anchoredLine, 'children') / kids : 0 };
 }
 

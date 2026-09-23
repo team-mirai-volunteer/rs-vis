@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { POLICIES } from '@/app/lib/fiscal-space/assumptions';
 import type { FiscalForm } from '@/client/lib/fiscal-space-form';
-import { OBJECTIVES, OBJECTIVE_IDS, optimizationDefaults, type ObjectiveDirection, type OptimizationSettings } from '@/client/lib/fiscal-objective';
+import { OBJECTIVES, OBJECTIVE_IDS, OBJECTIVE_WEIGHT_PRESETS, withObjectiveWeights, optimizationDefaults, type ObjectiveDirection, type OptimizationSettings } from '@/client/lib/fiscal-objective';
 import { useFiscalOptimization } from '@/client/hooks/useFiscalOptimization';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { fieldClass } from './format';
@@ -18,10 +18,17 @@ export function Optimization({ form, onChange, onApply }: {
   const search = useFiscalOptimization(form);
   const result = search.completed?.result;
   const best = result?.best;
+  const weightTotal = OBJECTIVE_IDS.reduce((sum, id) => sum + settings.objectives[id].weight, 0);
+  const weightPreset = Object.values(OBJECTIVE_WEIGHT_PRESETS).find(preset => OBJECTIVE_IDS.every(id => settings.objectives[id].weight === preset.weights[id]));
   const horizon = form.horizon === 15 ? 15 : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years);
   const setting = <K extends keyof OptimizationSettings>(key: K, value: OptimizationSettings[K]) => onChange({ ...settings, [key]: value });
   return <div className="space-y-5" data-testid="policy-optimization">
-    <p className="text-sm">「未来への期待」を、選んだ指標と重みで比較するための試算です。初期の重みはすべて同じで、社会的な合意や推奨を表しません。重み0は総合点から除外します。</p>
+    <p className="text-sm">「未来への期待」を、選んだ指標と重みで比較するための試算です。重みは価値の優先順位を表す編集可能な仮置きで、実証された係数ではありません。重み0は総合点から除外します。</p>
+    <fieldset className="space-y-2"><legend className="text-sm font-bold">重みの例から選ぶ</legend>
+      <div className="flex flex-wrap gap-2">{Object.values(OBJECTIVE_WEIGHT_PRESETS).map(preset => <Button key={preset.label} variant="outline" size="sm" aria-pressed={weightPreset === preset} onClick={() => onChange(withObjectiveWeights(settings, preset.weights))}>{preset.label}</Button>)}</div>
+      <p className="text-xs">{weightPreset ? weightPreset.description : '重みを個別に調整しています。'}例を選ぶと重みだけを変更します。</p>
+      <p className="text-xs">同じ改善幅を達成したときの優先順位です。実際の点数への寄与は、各指標の変化量と下の「基準となる改善幅」で決まります。</p>
+    </fieldset>
     <div className="grid gap-4 sm:grid-cols-3">
       {(['minBudget', 'maxBudget'] as const).map((key, i) => <label key={key} className="text-sm">追加予算の{i === 0 ? '下限' : '上限'}（兆円／年）
         <input className={fieldClass} type="number" min={0} max={100} step={.1} value={settings[key]} onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) setting(key, e.target.valueAsNumber); }} />
@@ -40,7 +47,7 @@ export function Optimization({ form, onChange, onApply }: {
           const input = (key: 'weight' | 'scale' | 'target', label: string, min: number, max: number) => <input className={`${fieldClass} min-w-20`} type="number" aria-label={`${metric.label}・${label}`} min={min} max={max} step={key === 'weight' ? 1 : .1} value={value[key]}
             onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) change({ [key]: e.target.valueAsNumber }); }} />;
           return <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{metric.label}</th>
-            <td className="p-2">{input('weight', '重み', 0, 100)}</td>
+            <td className="p-2">{input('weight', '重み', 0, 100)}<span className="text-xs">重みの合計の{weightTotal > 0 ? number(value.weight / weightTotal * 100, 1) : '0'}%</span></td>
             <td className="p-2"><select className={`${fieldClass} min-w-32`} aria-label={`${metric.label}・望ましい方向`} value={value.direction} onChange={e => change({ direction: e.target.value as ObjectiveDirection })}>
               <option value="increase">高いほどよい</option><option value="decrease">低いほどよい</option><option value="target">目標に近いほどよい</option>
             </select></td>
@@ -52,7 +59,8 @@ export function Optimization({ form, onChange, onApply }: {
     </div>
     <details><summary className="cursor-pointer text-sm font-bold">点数の計算方法と指標の範囲</summary><div className="mt-2 space-y-2 text-xs">
       <p>総合点＝Σ（重み÷重みの合計）×（政策なしからの改善量÷基準となる改善幅）。政策なしは0点です。改善幅が小さいほど同じ変化を強く評価します。目標型は「政策なしと目標の距離 − 政策ありと目標の距離」を改善量にします。</p>
-      <p>例えばGDPの改善幅1兆円、貧困率の改善幅1ポイントを同じ重みにすると、その改善を同等に評価します。目標型の期間平均は、各年の目標からの距離を平均して評価します。</p>
+      <p>初期設定ではGDPは10兆円の増加、貧困率・国民負担率はそれぞれ1ポイントの低下を基準に重みを掛けます。出生率は0.1の上昇、失業率は0.5ポイントの低下、CPIは1ポイントの低下、利払いは1兆円の減少、輸出入は10兆円の変化を基準にします。これらの改善幅も編集可能な価値判断です。目標型の期間平均は、各年の目標からの距離を平均して評価します。</p>
+      <p>国民負担率は、地方・社会保障基金を含む税・社会保険料収入を名目GDPで割ったモデル値です。国民所得比や個々の家計の負担率とは異なり、GDPが増えることでも低下します。給付や公共サービスの便益は差し引いていません。</p>
       <p>貧困率は2024年の所得分布に給付・減税だけを反映した直接効果で、将来の雇用・物価による変化を含みません。出生率は入力した弾力性の仮定に依存します。輸出・輸入・利払いは名目額で、価格や規模の変化も含みます。</p>
       <p>輸入の減少は消費・投資の減少でも起こります。医療の質、安全保障、自由、環境など未計測の価値は点数に入っていません。複数の指標が同じ効果を重複して評価することもあります。</p>
     </div></details>

@@ -64,11 +64,14 @@ test('relative poverty recomputes its median; anchored poverty retains the basel
   const cells = [{ lower: 0, upper: 400, people: 100, children: 20 }];
   const before = povertyMeasures(cells, 100);
   near(before.povertyLine, 100);
+  near(before.medianDisposableIncome, 200);
   near(before.all, .25);
   const scaled = povertyMeasures([{ ...cells[0], upper: 800 }], 100);
+  near(scaled.medianDisposableIncome, 400);
   near(scaled.all, before.all);
   near(scaled.anchoredAll, .125);
   const shifted = povertyMeasures([{ ...cells[0], lower: 100, upper: 500 }], 100);
+  near(shifted.medianDisposableIncome, 300);
   near(shifted.povertyLine, 150); near(shifted.all, .125); near(shifted.anchoredAll, 0);
 });
 

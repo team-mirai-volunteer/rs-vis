@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
-import { POWER_TECHNOLOGIES, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, POWER_CONSTRUCTION_SOURCE, SOLAR_LAG_NOTE, powerCase, powerTrade, type PowerTechnology, type PowerCase } from '@/app/lib/fiscal-space/policy-trade';
+import { POWER_TECHNOLOGIES, POWER_DETAIL_SOURCE, POWER_FIRM_NOTE, PROJECT_IMPORT_REFERENCE, PROJECT_IMPORT_NOTE, POWER_CONSTRUCTION_SOURCE, SOLAR_LAG_NOTE, powerCase, powerTrade, type PowerTechnology, type PowerCase } from '@/app/lib/fiscal-space/policy-trade';
 import { fieldClass, money } from './format';
 import type { TradeForm } from './PolicyTrade';
 
@@ -53,6 +53,7 @@ export function PowerMix({ value, total, onChange }: { value: TradeForm; total: 
     </details>
     <p>発電投資の合計：<strong data-testid="power-investment-total">{total.toFixed(1)}兆円／年</strong>。初回支出は年1で、稼働まで2年なら年3から効果を計上します。</p>
     <p>{SOLAR_LAG_NOTE} <a href={POWER_CONSTRUCTION_SOURCE} className="underline" target="_blank" rel="noreferrer">建設期間の出典</a></p>
+    <p>{PROJECT_IMPORT_NOTE} <a className="underline" href={PROJECT_IMPORT_REFERENCE.sourceUrl} target="_blank" rel="noreferrer">産業連関表</a></p>
     <p>{POWER_FIRM_NOTE} 建設中の電力需要は先に増えるため、稼働前や需要増が供給増を上回る期間は逼迫する場合があります。</p>
     {total > 0 && technologies.some(id => weights[id] > 0 && cases[id].firmShare === null) && <p role="status" className="font-bold">確実供給への寄与率が空欄の電源があります。その電源への投資は電力供給能力の改善に反映されていません。上の寄与率を入力してください。</p>}
     <p>原子力は新設の条件です。<a href={POWER_DETAIL_SOURCE} className="underline" target="_blank" rel="noreferrer">公表の核燃料サイクル費1.9円/kWh</a>のうち海外支払50%と仮定し、輸入費を0.95円/kWhに設定。実測の輸入比率ではありません。70%の利用率・建設期間・燃料費を含めて比較し、再稼働案件とは区別します。火力置換率・出力制御・建設費の輸入割合は「電源別の輸入・火力置換の条件」で変更できます。</p>
