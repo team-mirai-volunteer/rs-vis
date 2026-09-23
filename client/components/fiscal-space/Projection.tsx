@@ -23,7 +23,7 @@ export function CurrentMetrics({ step, baseline, medium, publishedYears = 5, lat
     ['税・社会保険料収入', money(s.fiscal.taxRevenue), ''],
     ['うち税（罰金を含む）', money(s.fiscal.taxes), ''],
     ['うち社会保険料', money(s.fiscal.socialContributions), ''],
-    ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}・黒字がプラス`],
+    ['基礎的財政収支', money(s.fiscal.primaryBalance), `GDP比 ${percent(step.metrics.primaryBalanceGdp)}（政策なし ${percent(baseline.metrics.primaryBalanceGdp)}、政策なしとの差 ${points(step.metrics.primaryBalanceGdp - baseline.metrics.primaryBalanceGdp)}）。黒字がプラス`],
     ['合計特殊出生率', step.demographics ? step.demographics.tfr.toFixed(3) : '—', step.demographics ? `将来推計人口の${FERTILITY_LABELS[step.demographics.fertilityVariant]} ${step.demographics.baselineTfr.toFixed(3)}（${step.demographics.calendarYear}年）。この年の追加出生 ${Math.round(step.demographics.extraBirths).toLocaleString('ja-JP')}人、年1からの累計 ${Math.round(step.demographics.cumulativeExtraBirths).toLocaleString('ja-JP')}人。${step.demographics.extraBirths === 0 && step.demographics.cumulativeExtraBirths > 0 ? '一時政策の期間が終わり、この年の支出はありません。' : ''}子育て支出（実施年のみ）と保険料減税の手取り増からの換算仮定` : '人口動態の経路を「含めない」設定'],
     ['労働力人口', `${Math.round(s.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`, `将来推計人口×2024年労働力率の指数 ${(step.demographics?.labourForceIndex ?? 1).toFixed(3)}（年0＝1）。政策なし ${Math.round(baseline.state.labour.labourForce / 1e4).toLocaleString('ja-JP')}万人`],
     ['総債務 / GDP', percent(step.metrics.grossDebtGdp), '純債務 ' + percent(step.metrics.netDebtGdp)],
