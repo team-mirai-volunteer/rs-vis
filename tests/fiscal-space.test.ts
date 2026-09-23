@@ -242,7 +242,7 @@ test('late spending does not inherit an earlier cohorts long-run realization', (
 
 test('education enters after schooling while childcare operating support expires without creating future workers', () => {
   const initial = initialEconomy();
-  const education = preset('education', { duration: 1, supply: { ...SUPPLY_CASES.education.settings } });
+  const education = preset('education', { duration: 1, supply: { ...SUPPLY_CASES.education.settings, educationPisaGain: 8 } });
   // Childcare defaults to a permanent policy since 2026-09-17; this test checks the one-year operating case.
   const childcare = preset('childcare', { kind: 'temporary', duration: 1, supply: { ...SUPPLY_CASES.childcare.settings } });
   assert.equal(supplyResponse(initial, education, 3, P), 0);

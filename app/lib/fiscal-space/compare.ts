@@ -3,7 +3,7 @@ import { NO_SHOCK, PARAMETERS, POLICIES, SECTORS, SECTOR_LABELS, THRESHOLDS, TRI
 import { simulate } from './simulate';
 import { REFERENCES } from './calibration';
 import { policyReliefLimit } from './policy-limits';
-import { hasCommercialSupply, SUPPLY_CASES, SUPPLY_UNAVAILABLE } from './supply';
+import { hasCommercialSupply, supplyReference, SUPPLY_UNAVAILABLE } from './supply';
 import { investmentAtCommissioning } from './investment';
 import { policyProduction } from './policy-production';
 import { projectNetOutput, projectResponses } from './project-response';
@@ -44,7 +44,9 @@ export function compareNextTrillion(initial: EconomyState, current: Policy[], p:
       (['income-tax', 'resident-tax', 'social-insurance'].includes(policy.id) && (p.hoursElasticity > 0 || p.participationElasticity > 0));
     const row: Omit<PolicyComparison, 'space'> = { policy, publishedYears,
       supplyNote: hasCommercialSupply(policy) ? '事業条件による純輸出・輸入代替の寄与。一般均衡の予測ではない。'
-        : policy.supply ? SUPPLY_CASES[policy.id].label + '：支出年別の蓄積・遅れ・減耗を計算。'
+        : policy.supply ? supplyReference(policy.id, policy.supply).label + (policy.supply.educationModel === 'oecd' && policy.supply.educationPisaGain === 0
+          ? '：使途未特定の増額による学力・生産性の上乗せは初期未算入。'
+          : '：支出年別の蓄積・遅れ・減耗を計算。')
         : ['income-tax', 'resident-tax', 'social-insurance'].includes(policy.id) ? '負担軽減中の労働時間・参加。1年限りの追加軽減は2年目以降には終了。'
         : SUPPLY_UNAVAILABLE[policy.id] ?? '供給経路の条件が必要',
       investment: investmentAtCommissioning(initial, current, incremental, p),

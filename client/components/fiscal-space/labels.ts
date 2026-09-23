@@ -92,7 +92,7 @@ export function inputLabel(key: string, policies: Policy[]): string {
     displacedFuelYenPerKwh: '置換燃料単価', operatingImportYenPerKwh: '運転時輸入単価', firmShare: '確実供給寄与率' };
   if (key.startsWith('externalStress.')) return `為替ストレス / ${tradeLabels[key.split('.')[1]] ?? '未分類'}`;
   if (key.startsWith('supply.')) {
-    const labels: Record<string, string> = { additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算' };
+    const labels: Record<string, string> = { educationPisaGain: '全国平均PISA改善上限', educationAnnualBudget: '施策の基準年額', educationSchoolYears: '対象学年数', additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算' };
     return `供給力 / ${policies.find(p => p.id === key.split('.')[1])?.name ?? key.split('.')[1]} / ${labels[key.split('.')[2]] ?? LABELS[key.split('.')[2]] ?? '未分類'}`;
   }
   if (key.startsWith('policyTrade.powerMix.')) { const parts = key.split('.'); return parts[2] === 'weights' ? `発電投資の配分重み / ${LABELS[parts[3]]}` : `電源別条件 / ${LABELS[parts[2]]} / ${tradeLabels[parts[3]] ?? '未分類'}`; }

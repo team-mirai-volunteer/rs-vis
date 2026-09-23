@@ -2,12 +2,14 @@ import type { EconomyState, ModelParameters, Policy, SourceValue } from '@/types
 import { REFERENCES } from './calibration';
 import { powerComponents } from './policy-trade';
 import { investmentPricePath, type InvestmentPricePath } from './investment-price';
+import { educationProductivity, OECD_EDUCATION_SOURCE, OECD_EDUCATION_EVIDENCE, OECD_EDUCATION_FORMULA, OECD_EDUCATION_SETTINGS, validateEducation } from './education-response';
 
 export interface SupplyCase {
   kind: 'capital' | 'research' | 'education' | 'childcare' | 'grid';
   additionality: number; lag: number; depreciation: number; lifetime: number;
   yield: number; unitCost: number; employment: number;
   maintenanceRate?: number; maintenanceImportShare?: number; generationOverlapShare?: number;
+  educationModel?: 'oecd' | 'schooling'; educationPisaGain?: number; educationAnnualBudget?: number; educationSchoolYears?: number;
   serviceShare?: number; realizationRate?: number; rampYears?: number; referenceOverlap?: number;
 }
 
@@ -29,10 +31,9 @@ export const SUPPLY_CASES: Record<string, { label: string; source: string; evide
     settings: { kind: 'research', additionality: .5, lag: 3, depreciation: .15, lifetime: 20, yield: .3, unitCost: 1, employment: 0 },
   },
   education: {
-    label: '追加就学・職業訓練', source: 'https://documents.worldbank.org/en/publication/documents-reports/documentdetail/442521523465644318',
-    evidence: '世界銀行（2018）の追加就学1年に対する賃金収益率約9%を参考。私的賃金収益を生産性へ換算する仮定で、教育支出のGDP乗数ではない。1人年150万円・追加性50%・就労まで4年・就労率80%・技能減耗2%。幼児教育や授業料だけの補助にはそのまま適用できない。',
-    formula: '追加就学人数 × 就労率 × 労働分配率 × 1人当たり実質GDP × (exp(就学1年の収益率)−1)。',
-    settings: { kind: 'education', additionality: .5, lag: 4, depreciation: .02, lifetime: 35, yield: .09, unitCost: 1.5e6, employment: .8 },
+    label: '教育の追加支出・学力改善', source: OECD_EDUCATION_SOURCE,
+    evidence: OECD_EDUCATION_EVIDENCE, formula: OECD_EDUCATION_FORMULA,
+    settings: { kind: 'education', ...OECD_EDUCATION_SETTINGS, unitCost: 1.5e6, employment: .8 },
   },
   childcare: {
     label: '1歳児保育の利用拡大', source: 'https://www.esri.cao.go.jp/en/esri/archive/e_dis/2024/e_dis387-e.html',
@@ -56,6 +57,16 @@ export const SUPPLY_UNAVAILABLE: Record<string, string> = {
   healthcare: '治療・予防・復職支援の内訳と健康改善による就労効果が必要',
 };
 
+export function supplyReference(id: string, c: SupplyCase) {
+  if (c.kind === 'education' && c.educationModel !== 'oecd') return {
+    ...SUPPLY_CASES.education, label: '旧方式：追加就学・職業訓練',
+    source: 'https://documents.worldbank.org/en/publication/documents-reports/documentdetail/442521523465644318',
+    evidence: '旧共有条件の再現用。世界銀行の世界平均の就学年数と個人賃金の関係を参考にした係数で、日本の追加支出の限界効果ではない。OECD方式への切替を推奨。',
+    formula: '追加就学人数×就労率×労働分配率×1人当たり実質GDP×(exp(就学1年の収益率)−1)。',
+  };
+  return SUPPLY_CASES[id];
+}
+
 export function hasCommercialSupply(policy: Policy) {
   return policy.trade?.kind === 'industry' ? policy.trade.assumptions.annualSalesPerInvestment !== null
     : policy.trade?.kind === 'power' && powerComponents(policy.trade.assumptions).every(x => x.assumptions.operatingImportYenPerKwh !== null);
@@ -64,6 +75,7 @@ export function hasCommercialSupply(policy: Policy) {
 export function effectiveSupplyStock(initial: EconomyState, policy: Policy, year: number, p: ModelParameters, realized = false, prices = investmentPricePath(initial, p)) {
   const c = policy.supply;
   if (!c) return 0;
+  validateEducation(c);
   if ([policy.potentialGdpEffect, policy.tfpEffect, policy.labourProductivityEffect, policy.capitalEffect, policy.energyCapacityEffect].some(v => v !== 0)) {
     throw new RangeError('Supply scenario and manual productivity coefficients cannot be combined');
   }
@@ -95,6 +107,7 @@ export function supplyResponse(initial: EconomyState, policy: Policy, year: numb
   const c = policy.supply;
   // Grid savings now enter through the energy/trade path, exactly once.
   if (!c || c.kind === 'grid' || hasCommercialSupply(policy)) return 0;
+  if (c.kind === 'education' && c.educationModel === 'oecd') return initial.macro.potentialGdp * educationProductivity(initial, [policy], year, investmentPricePath(initial, p));
   const stock = effectiveSupplyStock(initial, policy, year, p, realized);
   return supplyFromStock(initial, c, stock, p);
 }
@@ -117,11 +130,12 @@ function supplyFromStock(initial: EconomyState, c: SupplyCase, stock: number, p:
  * conversion assumptions, not re-estimated effects for each selected model. */
 export function supplyInputs(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false, prices = investmentPricePath(initial, p)) {
   const result = { capital: 1, labour: 1, energy: 1, materials: 1, tfp: 1 };
+  result.tfp += educationProductivity(initial, policies, year, prices);
   const publicCapital = { stock: 0, capital: 0, tfp: 1 };
   const pooled = new Map<string, { c: SupplyCase; stock: number }>();
   for (const policy of policies) {
     const c = policy.supply;
-    if (!c || c.kind === 'grid' || hasCommercialSupply(policy)) continue;
+    if (!c || c.kind === 'grid' || hasCommercialSupply(policy) || (c.kind === 'education' && c.educationModel === 'oecd')) continue;
     const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment, c.serviceShare, c.realizationRate, c.rampYears, c.referenceOverlap]);
     const stock = effectiveSupplyStock(initial, policy, year, p, realized, prices);
     pooled.set(key, { c, stock: (pooled.get(key)?.stock ?? 0) + stock });
@@ -152,23 +166,24 @@ export function supplyInputs(initial: EconomyState, policies: Policy[], year: nu
 export function supplyTotal(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters, realized = false, prices: InvestmentPricePath = investmentPricePath(initial, p)) {
   const pooled = new Map<string, { supply: SupplyCase; stock: number }>();
   for (const policy of policies) {
-    if (!policy.supply || policy.supply.kind === 'grid' || hasCommercialSupply(policy)) continue;
+    if (!policy.supply || policy.supply.kind === 'grid' || hasCommercialSupply(policy) || (policy.supply.kind === 'education' && policy.supply.educationModel === 'oecd')) continue;
     const c = policy.supply;
     const key = JSON.stringify([c.kind, c.yield, c.unitCost, c.employment]);
     const stock = effectiveSupplyStock(initial, policy, year, p, realized, prices);
     const old = pooled.get(key);
     pooled.set(key, { supply: c, stock: (old?.stock ?? 0) + stock });
   }
-  return [...pooled.values()].reduce((sum, x) => sum + supplyFromStock(initial, x.supply, x.stock, p), 0);
+  return initial.macro.potentialGdp * educationProductivity(initial, policies, year, prices)
+    + [...pooled.values()].reduce((sum, x) => sum + supplyFromStock(initial, x.supply, x.stock, p), 0);
 }
 
 export function supplyRecords(cases: Record<string, SupplyCase>): SourceValue[] {
-  const labels: Record<string, string> = { additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算', maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益', serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率' };
-  return Object.entries(cases).flatMap(([id, c]) => Object.entries(c).filter(([, v]) => typeof v === 'number').map(([key, value]) => ({
+  const labels: Record<string, string> = { educationPisaGain: '全国平均PISA改善上限', educationAnnualBudget: '施策の基準年額', educationSchoolYears: '対象学年数', additionality: '純追加性', lag: '効果までの年数', depreciation: '年間減耗率', lifetime: '効果期間', yield: '効果係数', unitCost: '単位費用・基準資本比', employment: '就労・常勤換算', maintenanceRate: '年間保守費率', maintenanceImportShare: '保守費の輸入割合', generationOverlapShare: '追加再エネと重複し得る便益', serviceShare: '公共サービスの生産性経路の割合', realizationRate: '追加資本の稼働割合', rampYears: '供用後の立上がり年数', referenceOverlap: '公表反応との重複控除率' };
+  return Object.entries(cases).flatMap(([id, c]) => Object.entries(c).filter(([key, v]) => typeof v === 'number' && !(c.educationModel === 'oecd' && ['unitCost', 'employment'].includes(key))).map(([key, value]) => ({
     key: `supply.${id}.${key}`, value: value as number,
-    unit: key === 'lag' || key === 'lifetime' || key === 'rampYears' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
-    referenceYear: `政策別供給シナリオ・${labels[key]}`, sourceName: SUPPLY_CASES[id].label,
-    sourceUrl: SUPPLY_CASES[id].source, status: 'assumption' as const,
-    uncertaintyNote: `${SUPPLY_CASES[id].evidence} 参照換算式：${SUPPLY_CASES[id].formula} 実際の潜在GDPは、研究をTFP、公共資本を公共サービスによる生産性と設備量、教育・保育を有効労働、燃料節約の純額を国内付加価値（TFP）増分に換算して選択した生産関数で再計算。設備0.35の固定参照弾力性と確実供給GWによるエネルギー上限0.15は換算仮定。公共資本の既定は生産性経路100%、純追加資本の稼働割合50%、供用後3年の立上がり、公表期間内の便益重複控除50%。係数・時期は変更可能な条件で、信頼区間ではない。`,
+    unit: key === 'educationPisaGain' ? 'PISA点' : key === 'educationAnnualBudget' ? '兆円/年（基準価格）' : key === 'educationSchoolYears' ? '学年' : key === 'lag' || key === 'lifetime' || key === 'rampYears' ? '年' : key === 'unitCost' && ['education', 'childcare'].includes(c.kind) ? '円/人年' : '比率・換算係数',
+    referenceYear: `政策別供給シナリオ・${labels[key] ?? key}`, sourceName: supplyReference(id, c).label,
+    sourceUrl: supplyReference(id, c).source, status: 'assumption' as const,
+    uncertaintyNote: `${supplyReference(id, c).evidence} 参照換算式：${supplyReference(id, c).formula} 実際の潜在GDPは、研究とOECD方式の学力改善をTFP、公共資本を公共サービスによる生産性と設備量、旧教育・保育を有効労働、燃料節約の純額を国内付加価値（TFP）増分に換算して選択した生産関数で再計算。設備0.35の固定参照弾力性と確実供給GWによるエネルギー上限0.15は換算仮定。公共資本の既定は生産性経路100%、純追加資本の稼働割合50%、供用後3年の立上がり、公表期間内の便益重複控除50%。係数・時期は変更可能な条件で、信頼区間ではない。`,
   })));
 }

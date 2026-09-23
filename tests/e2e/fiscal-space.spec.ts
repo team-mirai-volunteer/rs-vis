@@ -7,6 +7,41 @@ const openAdvanced = (page: Page) => page.evaluate(() => {
   if (details && !details.open) details.open = true;
 });
 
+test('OECD education defaults disclose unestimated gains, share targeted settings and retain legacy inputs', async ({ page }) => {
+  const openEducation = async () => {
+    await openAdvanced(page);
+    await page.getByRole('button', { name: '政策別の供給力・長期条件', exact: true }).click();
+    await page.locator('summary').filter({ hasText: /^教育の追加支出・学力改善|^旧方式：追加就学/ }).click();
+  };
+  await page.goto('/fiscal-space');
+  await openEducation();
+  const settings = page.getByTestId('education-supply-settings');
+  const gain = page.getByLabel('教育・施策を継続した場合の全国平均PISA改善上限', { exact: true });
+  await expect(settings).toContainText('生産性の上乗せを未算入');
+  await expect(gain).toHaveValue('0');
+  await gain.fill('4');
+  await expect(settings).toContainText('条件付きシナリオ');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'この条件のURLをコピー', exact: true }).click();
+  const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(url);
+  await openEducation();
+  await expect(gain).toHaveValue('4');
+  const oldUrl = new URL(url);
+  const payload = JSON.parse(decodeURIComponent(oldUrl.hash.slice(10)));
+  payload.version = '2026-09-24.2';
+  payload.form.supply.education = { kind: 'education', additionality: .5, lag: 4, depreciation: .02, lifetime: 35, yield: .09, unitCost: 1.5e6, employment: .8 };
+  oldUrl.hash = '#scenario=' + encodeURIComponent(JSON.stringify(payload));
+  await page.goto(oldUrl.href);
+  await page.reload();
+  await expect(page.getByTestId('restore-notice')).toContainText('旧就学年数方式');
+  await openEducation();
+  await expect(page.getByLabel('旧方式：追加就学・職業訓練・効果係数', { exact: true })).toHaveValue('0.09');
+  await page.getByRole('button', { name: '教育をOECDの追加支出方式に切り替える', exact: true }).click();
+  await expect(gain).toHaveValue('0');
+  await expect(settings).toContainText('生産性の上乗せを未算入');
+});
+
 test('public investment shows commissioned benefits separately and overlap controls change GDP', async ({ page }) => {
   await page.goto('/fiscal-space');
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');

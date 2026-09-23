@@ -30,6 +30,7 @@ const calibration: Record<string, Bounds> = {
   'demographics.ageingShare': [0, .8], 'demographics.childBenefitShare': [0, .2],
 };
 const supply: Record<string, Bounds> = {
+  educationPisaGain: [0, 100], educationAnnualBudget: [.01, 100], educationSchoolYears: [1, 20],
   serviceShare: [0, 1], realizationRate: [0, 1], rampYears: [1, 10], referenceOverlap: [0, 1],
   additionality: [0, 1], lag: [0, 30], depreciation: [0, 1], lifetime: [1, 60], yield: [0, 1],
   unitCost: [.01, 1e8], employment: [0, 1], maintenanceRate: [0, 1], maintenanceImportShare: [0, 1], generationOverlapShare: [0, 1],

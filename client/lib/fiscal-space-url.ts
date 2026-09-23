@@ -11,11 +11,12 @@ import type { ConstraintId } from '@/types/fiscal-space';
 import { CAPACITY_DEFAULTS } from '@/app/lib/fiscal-space/capacity-calibration';
 import { POVERTY_DEFAULTS } from '@/app/lib/fiscal-space/poverty';
 import { OBJECTIVES, optimizationDefaults, validateOptimization } from './fiscal-objective';
+import { validateEducation } from '@/app/lib/fiscal-space/education-response';
 
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-24.2';
+export const FISCAL_MODEL_VERSION = '2026-09-24.3';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
   aggregation: ['average', 'terminal'], direction: ['increase', 'decrease', 'target'],
@@ -42,7 +43,7 @@ function shape(value: unknown, template: unknown, path: string): void {
     return;
   }
   if (typeof template === 'string') {
-    const allowed = path === 'form.capacity.mode' ? ['manual', 'estimated'] : path.startsWith('form.supply.') ? [template] : enums[key] ?? [template];
+    const allowed = key === 'educationModel' ? ['oecd', 'schooling'] : path === 'form.capacity.mode' ? ['manual', 'estimated'] : path.startsWith('form.supply.') ? [template] : enums[key] ?? [template];
     if (typeof value !== 'string' || !allowed.includes(value)) throw new Error(path);
     return;
   }
@@ -58,7 +59,7 @@ function shape(value: unknown, template: unknown, path: string): void {
       ['additionality', 'depreciation'].includes(k);
     const optionalLoadBasis = path.startsWith('form.loads.') && (k === 'basis' || k === 'annualConstructionGwh' ||
       ['annualGwhPerTrillion', 'operatingAnnualGwhPerTrillion'].includes(k));
-    const optionalCapitalField = path.startsWith('form.supply.') && ['serviceShare', 'realizationRate', 'rampYears', 'referenceOverlap'].includes(k);
+    const optionalCapitalField = path.startsWith('form.supply.') && ['serviceShare', 'realizationRate', 'rampYears', 'referenceOverlap', 'educationModel', 'educationPisaGain', 'educationAnnualBudget', 'educationSchoolYears'].includes(k);
     const optionalTradeField = path === 'form.trade' && ['mix', 'powerCases'].includes(k);
     if (!Object.hasOwn(actual, k) && !optionalIndustryField && !optionalTradeField && !optionalLoadBasis && !optionalCapitalField && path !== 'form.loads') {
       throw new Error(`${path}.${k}`);
@@ -73,7 +74,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-24.2', '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     if (!Object.hasOwn(payload.form, 'capacity')) {
       Object.assign(payload.form, { capacity: { ...CAPACITY_DEFAULTS } });
@@ -192,6 +193,8 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   shape(payload.form, template, 'form');
   const form = payload.form as FiscalForm;
   validateOptimization(form.optimization);
+  validateEducation(form.supply.education);
+  if (form.supply.education.educationModel !== 'oecd') filled.push('supply.education（旧就学年数方式を維持：日本の追加支出の推計にはOECD方式への切替を推奨）');
   const range = (v: number, min: number, max: number) => { if (v < min || v > max) throw new Error('Out of range'); };
   if (![1, 3, 5, 15].includes(form.horizon)) throw new Error('Invalid horizon');
   range(form.gap, -10, 3); range(form.inflation, -3, 10);

@@ -1,4 +1,4 @@
-import { SUPPLY_CASES, type SupplyCase } from '@/app/lib/fiscal-space/supply';
+import { SUPPLY_CASES, supplyReference, type SupplyCase } from '@/app/lib/fiscal-space/supply';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { fieldClass } from './format';
 
@@ -6,16 +6,36 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
   return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>}
     <p className="text-xs leading-relaxed">研究・公共資本・教育は支出後も残る効果、保育は利用中の就労効果を計算します。純追加性は、既存の投資の置換や実施失敗を除いて効果を生む割合。初期50%は比較条件で、日本の実証値ではありません。</p>
     <p className="text-xs leading-relaxed">以下の式は投入への参照換算です。実際の供給力は設備・有効労働・エネルギー・生産性に変換し、選択した生産関数で再計算します。公共資本は物流・移動などを効率化する経路と、設備量を増やす経路を区別します。</p>
-  </CardHeader><CardContent className="space-y-2 text-xs">{Object.entries(SUPPLY_CASES).map(([id, ref]) => <details key={id} className="rounded-lg border border-mirai-border p-3">
+  </CardHeader><CardContent className="space-y-2 text-xs">{Object.keys(SUPPLY_CASES).map(id => { const ref = supplyReference(id, value[id]); const oecd = value[id].educationModel === 'oecd'; return <details key={id} className="rounded-lg border border-mirai-border p-3">
     <summary className="cursor-pointer font-bold">{ref.label}：純追加性{Math.round(value[id].additionality * 100)}%・{value[id].lag}年後から</summary>
     <p className="mt-3 leading-relaxed">{ref.evidence} <a href={ref.source} className="underline" target="_blank" rel="noreferrer">出典</a></p>
     <p className="mt-2 leading-relaxed">参照換算：{ref.formula}</p>
+    {id === 'education' && <div className="mt-3 space-y-3" data-testid="education-supply-settings">
+      {oecd ? <>
+        <p className="rounded bg-mirai-surface-warm p-2">{value[id].educationPisaGain === 0 ? '現在は一般的な増額として、生産性の上乗せを未算入にしています。支出の需要効果・財政費用・人員負荷は残ります。' : '学力改善を指定した条件付きシナリオです。予算から学力への因果効果は実証値ではありません。'}</p>
+        <div className="grid gap-3 sm:grid-cols-2">{([
+          ['educationPisaGain', '施策を継続した場合の全国平均PISA改善上限', 1, 0, 100, .1, '点'],
+          ['educationAnnualBudget', '施策の基準年額（純追加分・基準価格）', 1, .01, 100, .1, '兆円／年'],
+          ['educationSchoolYears', '対象学年数', 1, 1, 20, 1, '学年'],
+          ['yield', 'PISA1点あたりの長期生産性変化', 100, 0, 100, .025, '%'],
+        ] as const).map(([key, label, scale, min, max, step, unit]) => <label key={key}>{label}（{unit}）
+          <input type="number" aria-label={`教育・${label}`} className={`${fieldClass} mt-1`} min={min} max={max} step={step}
+            value={Number(((value[id][key] ?? 0) * scale).toFixed(6))} onChange={e => {
+              if (e.target.value === '' || !Number.isFinite(e.target.valueAsNumber)) return;
+              const n = Math.min(max, Math.max(min, e.target.valueAsNumber));
+              onChange({ ...value, [id]: { ...value[id], [key]: (key === 'educationSchoolYears' ? Math.round(n) : n) / scale } });
+            }} />
+        </label>)}</div>
+        <p>基準年額1兆円は施策規模の入力枠で、推定された必要費用ではありません。特定施策の根拠がある場合だけ改善幅を設定してください。対象者だけの改善幅ではなく、対象割合も反映した全国平均を入力します。初期設定は9学年・最初の世代の就労まで5年・就労期間40年です。予算を基準額以上に増やしても改善幅を無制限に増やさず、世代交代に伴って効果が現れます。</p>
+        <p>この経路は初等・中等教育の学力改善を対象にした参考換算です。大学・成人訓練への直接転用や、日本の教員確保・実施能力の実証評価ではありません。</p>
+      </> : <button type="button" className="text-primary-accent underline" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings } })}>教育をOECDの追加支出方式に切り替える</button>}
+    </div>}
     <div className="mt-3 grid gap-3 sm:grid-cols-3">{([
       ['additionality', '純追加性', 100, 0, 100, 5], ['lag', '効果までの年数', 1, 0, 30, 1],
       ['depreciation', '年間減耗率', 100, 0, 100, 1], ['lifetime', '効果期間', 1, 1, 60, 1],
       ['yield', '効果係数', 1, 0, 1, .01], ['unitCost', '単位費用・基準資本比', 1, .01, 1e8, 1],
       ['employment', '就労・常勤換算', 100, 0, 100, 5],
-    ] as const).filter(([key]) => !(['capital', 'research', 'grid'].includes(value[id].kind) && key === 'employment')).map(([key, label, scale, min, max, step]) =>
+    ] as const).filter(([key]) => !(oecd && ['yield', 'unitCost', 'employment'].includes(key)) && !(['capital', 'research', 'grid'].includes(value[id].kind) && key === 'employment')).map(([key, label, scale, min, max, step]) =>
       <label key={key}>{label}{scale === 100 ? '（%）' : key === 'lag' || key === 'lifetime' ? '（年）' : key === 'unitCost' && ['education', 'childcare'].includes(value[id].kind) ? '（円/人年）' : ''}
         <input type="number" aria-label={`${ref.label}・${label}`} className={`${fieldClass} mt-1`} value={Number((value[id][key] * scale).toFixed(6))} min={min} max={max} step={step} onChange={e => {
           if (e.target.value === '') return;
@@ -55,7 +75,7 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
     ] as const).map(([key, label, fallback]) => <label key={key}>{label}（%）<input type="number" aria-label={`送電網・${label}`} className={`${fieldClass} mt-1`} min={0} max={100} step={1} value={Number(((value[id][key] ?? fallback) * 100).toFixed(4))} onChange={e => {
       if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) onChange({ ...value, [id]: { ...value[id], [key]: Math.min(100, Math.max(0, e.target.valueAsNumber)) / 100 } });
     }} /></label>)}</div>}
-  </details>)}
-    <p className="leading-relaxed">主表は1・3・5年の比較、長期投資は稼働開始時の年間供給効果を別に示します。公共資本のGDPへの便益は上記の稼働・重複控除条件で反映します。研究・教育は公表期間内に供給能力をそのままGDPへ加算しません。発電・送電網の稼働後の貿易・資源節約は、保守費や便益の重複を控除して計上します。年間効果は事業条件に基づき、将来のGDP予測ではありません。医療・防衛・給付・消費税の供給効果は、政策設計を特定できないため数値を表示しません。</p>
+  </details>; })}
+    <p className="leading-relaxed">主表は1・3・5年の比較、長期投資は稼働開始時の年間供給効果を別に示します。公共資本のGDPへの便益は上記の稼働・重複控除条件で反映します。研究・旧教育方式は公表期間内に供給能力をそのままGDPへ加算しません。OECD教育方式は受益世代の就労時期に応じて生産性へ反映します。発電・送電網の稼働後の貿易・資源節約は、保守費や便益の重複を控除して計上します。年間効果は事業条件に基づき、将来のGDP予測ではありません。医療・防衛・給付・消費税の供給効果は、政策設計を特定できないため数値を表示しません。</p>
   </CardContent></Card>;
 }
