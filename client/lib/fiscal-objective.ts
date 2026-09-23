@@ -3,6 +3,8 @@ import { POLICIES } from '@/app/lib/fiscal-space/assumptions';
 export const OBJECTIVES = {
   gdp: { label: '実質GDP', unit: '兆円', scale: 10, direction: 'increase' },
   poverty: { label: '相対的貧困率（直接効果）', unit: '%', scale: 1, direction: 'decrease' },
+  childPoverty: { label: '子どもの貧困率（直接効果）', unit: '%', scale: 1, direction: 'decrease' },
+  disposableIncome: { label: '実質可処分所得（固定価格・中央値）', unit: '万円／年', scale: 10, direction: 'increase' },
   burden: { label: '国民負担率（GDP比）', unit: '%', scale: 1, direction: 'decrease' },
   interest: { label: '利払い', unit: '兆円', scale: 1, direction: 'decrease' },
   cpi: { label: 'CPI上昇率', unit: '%', scale: 1, direction: 'decrease' },
@@ -25,12 +27,12 @@ export type ObjectiveValues = Record<ObjectiveId, number | null>;
 
 /** Editable value judgments, not empirically estimated welfare coefficients. */
 export const OBJECTIVE_WEIGHT_PRESETS = {
-  living: { label: '暮らしと将来への希望（初期設定）', description: '暮らしの底上げと成長を最優先に、出生率・雇用・税と社会保険料の負担軽減を重視します。物価・利払いにも重みを置き、輸出入は補助的に評価します。',
-    weights: { gdp: 25, poverty: 20, burden: 10, unemployment: 10, fertility: 20, cpi: 8, interest: 5, exports: 1, imports: 1 } },
+  living: { label: '暮らしと将来への希望（初期設定）', description: '所得の底上げ・子どもの貧困改善と成長を重視し、出生率・雇用・税と社会保険料の負担軽減も評価します。物価・利払いにも重みを置き、輸出入は補助的に評価します。',
+    weights: { gdp: 25, poverty: 10, childPoverty: 15, disposableIncome: 15, burden: 10, unemployment: 10, fertility: 20, cpi: 5, interest: 5, exports: 5, imports: 5 } },
   future: { label: '将来世代重視', description: 'GDPと出生率を最優先に、貧困改善を次に重視します。',
-    weights: { gdp: 6, poverty: 4, burden: 2, unemployment: 2, fertility: 6, cpi: 2, interest: 2, exports: 1, imports: 1 } },
+    weights: { gdp: 6, poverty: 4, childPoverty: 6, disposableIncome: 4, burden: 2, unemployment: 2, fertility: 6, cpi: 2, interest: 2, exports: 1, imports: 1 } },
   stability: { label: '安定重視', description: '物価と利払いを最優先に、GDP・貧困改善を次に重視します。',
-    weights: { gdp: 4, poverty: 4, burden: 2, unemployment: 2, fertility: 2, cpi: 6, interest: 6, exports: 1, imports: 1 } },
+    weights: { gdp: 4, poverty: 4, childPoverty: 4, disposableIncome: 4, burden: 2, unemployment: 2, fertility: 2, cpi: 6, interest: 6, exports: 1, imports: 1 } },
 } satisfies Record<string, { label: string; description: string; weights: Record<ObjectiveId, number> }>;
 
 export function withObjectiveWeights(settings: OptimizationSettings, weights: Record<ObjectiveId, number>): OptimizationSettings {

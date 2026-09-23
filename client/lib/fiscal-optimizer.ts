@@ -26,6 +26,7 @@ export function projectionObjectiveValues(path: Simulation, poverty: ReturnType<
   const read = (i: number): ObjectiveValues => {
     const s = path.steps[i];
     return { gdp: s.state.macro.realGdp / TRILLION, poverty: poverty.rows[i].all * 100,
+      childPoverty: poverty.rows[i].child * 100, disposableIncome: poverty.rows[i].medianDisposableIncome / 1e4,
       burden: s.state.fiscal.taxRevenue / s.state.macro.nominalGdp * 100,
       interest: s.state.fiscal.interestPayments / TRILLION, cpi: s.state.macro.inflation * 100,
       unemployment: unemploymentRate(s) * 100, fertility: s.demographics?.tfr ?? null,

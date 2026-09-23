@@ -9,10 +9,16 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await panel.getByLabel('追加予算の上限（兆円／年）', { exact: true }).fill('1');
   await panel.getByLabel('相対的貧困率（直接効果）・重み', { exact: true }).fill('4');
   await panel.getByLabel('国民負担率（GDP比）・重み', { exact: true }).fill('12');
+  await expect(panel.getByLabel('輸出（名目）・重み', { exact: true })).toHaveValue('5');
+  await expect(panel.getByLabel('輸入（名目）・重み', { exact: true })).toHaveValue('5');
+  await panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true }).fill('18');
+  await panel.getByLabel('実質可処分所得（固定価格・中央値）・重み', { exact: true }).fill('13');
   await panel.getByRole('button', { name: 'この価値観で自動探索', exact: true }).click();
   const result = panel.getByRole('region', { name: '自動探索の結果', exact: true });
   await expect(result).toContainText('候補：1兆円／年', { timeout: 60_000 });
   await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('国民負担率（GDP比）');
+  await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('子どもの貧困率（直接効果）');
+  await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('実質可処分所得（固定価格・中央値）');
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');
   await panel.getByLabel('実質GDP・重み', { exact: true }).fill('2');
   await expect(result).toContainText('条件が変わったため');
@@ -30,6 +36,8 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await expect(panel.getByLabel('実質GDP・重み', { exact: true })).toHaveValue('2');
   await expect(panel.getByLabel('相対的貧困率（直接効果）・重み', { exact: true })).toHaveValue('4');
   await expect(panel.getByLabel('国民負担率（GDP比）・重み', { exact: true })).toHaveValue('12');
+  await expect(panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true })).toHaveValue('18');
+  await expect(panel.getByLabel('実質可処分所得（固定価格・中央値）・重み', { exact: true })).toHaveValue('13');
   await expect(panel.getByLabel('追加予算の下限（兆円／年）', { exact: true })).toHaveValue('1');
 });
 

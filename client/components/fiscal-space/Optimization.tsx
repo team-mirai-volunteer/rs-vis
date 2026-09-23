@@ -46,7 +46,7 @@ export function Optimization({ form, onChange, onApply }: {
           const change = (patch: Partial<typeof value>) => setting('objectives', { ...settings.objectives, [id]: { ...value, ...patch } });
           const input = (key: 'weight' | 'scale' | 'target', label: string, min: number, max: number) => <input className={`${fieldClass} min-w-20`} type="number" aria-label={`${metric.label}・${label}`} min={min} max={max} step={key === 'weight' ? 1 : .1} value={value[key]}
             onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) change({ [key]: e.target.valueAsNumber }); }} />;
-          return <tr key={id} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{metric.label}</th>
+          return <tr key={id} className="border-t border-mirai-border [&>th]:align-top [&>td]:align-top"><th scope="row" className="p-2 font-medium">{metric.label}</th>
             <td className="p-2">{input('weight', '重み', 0, 100)}<span className="text-xs">重みの合計の{weightTotal > 0 ? number(value.weight / weightTotal * 100, 1) : '0'}%</span></td>
             <td className="p-2"><select className={`${fieldClass} min-w-32`} aria-label={`${metric.label}・望ましい方向`} value={value.direction} onChange={e => change({ direction: e.target.value as ObjectiveDirection })}>
               <option value="increase">高いほどよい</option><option value="decrease">低いほどよい</option><option value="target">目標に近いほどよい</option>
@@ -59,9 +59,9 @@ export function Optimization({ form, onChange, onApply }: {
     </div>
     <details><summary className="cursor-pointer text-sm font-bold">点数の計算方法と指標の範囲</summary><div className="mt-2 space-y-2 text-xs">
       <p>総合点＝Σ（重み÷重みの合計）×（政策なしからの改善量÷基準となる改善幅）。政策なしは0点です。改善幅が小さいほど同じ変化を強く評価します。目標型は「政策なしと目標の距離 − 政策ありと目標の距離」を改善量にします。</p>
-      <p>初期設定ではGDPは10兆円の増加、貧困率・国民負担率はそれぞれ1ポイントの低下を基準に重みを掛けます。出生率は0.1の上昇、失業率は0.5ポイントの低下、CPIは1ポイントの低下、利払いは1兆円の減少、輸出入は10兆円の変化を基準にします。これらの改善幅も編集可能な価値判断です。目標型の期間平均は、各年の目標からの距離を平均して評価します。</p>
+      <p>初期設定ではGDPは10兆円の増加、全体・子どもの貧困率と国民負担率はそれぞれ1ポイントの低下、実質可処分所得は年10万円の増加を基準に重みを掛けます。出生率は0.1の上昇、失業率は0.5ポイントの低下、CPIは1ポイントの低下、利払いは1兆円の減少、輸出入は10兆円の変化を基準にします。これらの改善幅も編集可能な価値判断です。目標型の期間平均は、各年の目標からの距離を平均して評価します。</p>
       <p>国民負担率は、地方・社会保障基金を含む税・社会保険料収入を名目GDPで割ったモデル値です。国民所得比や個々の家計の負担率とは異なり、GDPが増えることでも低下します。給付や公共サービスの便益は差し引いていません。</p>
-      <p>貧困率は2024年の所得分布に給付・減税だけを反映した直接効果で、将来の雇用・物価による変化を含みません。出生率は入力した弾力性の仮定に依存します。輸出・輸入・利払いは名目額で、価格や規模の変化も含みます。</p>
+      <p>全体・子どもの貧困率と実質可処分所得は「5年目の結果」と同じ直接効果のモデルを使います。所得は世帯人数の平方根で調整した等価可処分所得の中央値（万円／年）です。2024年の所得分布・価格・人口構成を固定し、各年に有効な給付・減税だけを反映する参考値で、将来の賃金・雇用・物価による変化は含みません。出生率は入力した弾力性の仮定に依存します。輸出・輸入・利払いは名目額で、価格や規模の変化も含みます。</p>
       <p>輸入の減少は消費・投資の減少でも起こります。医療の質、安全保障、自由、環境など未計測の価値は点数に入っていません。複数の指標が同じ効果を重複して評価することもあります。</p>
     </div></details>
     <fieldset><legend className="mb-2 text-sm font-bold">探索する政策（外した政策は現在額で固定）</legend>

@@ -37,6 +37,8 @@ test('optimization preferences round-trip and legacy links receive explicit defa
   form.optimization.objectives.cpi.target = 1.5;
   form.optimization.objectives.poverty.weight = 4;
   form.optimization.objectives.burden.weight = 12;
+  form.optimization.objectives.childPoverty.weight = 18;
+  form.optimization.objectives.disposableIncome.weight = 13;
   form.optimization.eligible.defence = false;
   assert.deepEqual(decodeScenario(encodeScenario(form)), form);
   const payload = JSON.parse(decodeURIComponent(encodeScenario(form).slice(10)));
@@ -46,10 +48,20 @@ test('optimization preferences round-trip and legacy links receive explicit defa
   assert(old.filled.some(x => x.startsWith('optimization')));
   const previous = JSON.parse(decodeURIComponent(encodeScenario(form).slice(10)));
   delete previous.form.optimization.objectives.burden;
+  delete previous.form.optimization.objectives.childPoverty;
+  delete previous.form.optimization.objectives.disposableIncome;
+  previous.form.optimization.objectives.exports.weight = 1;
+  previous.form.optimization.objectives.imports.weight = 2;
   const restored = decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify(previous)));
   assert.equal(restored.form.optimization.objectives.burden.weight, 0);
   assert.deepEqual(restored.form.optimization.objectives.poverty, form.optimization.objectives.poverty);
   assert(restored.filled.some(x => x.includes('burden')));
+  for (const id of ['childPoverty', 'disposableIncome'] as const) {
+    assert.equal(restored.form.optimization.objectives[id].weight, 0);
+    assert(restored.filled.some(x => x.includes(id)));
+  }
+  assert.equal(restored.form.optimization.objectives.exports.weight, 1);
+  assert.equal(restored.form.optimization.objectives.imports.weight, 2);
   form.optimization.objectives.gdp.scale = 0;
   assert.throws(() => decodeScenario(encodeScenario(form)));
   form.optimization.objectives.gdp.scale = 1;
@@ -65,6 +77,8 @@ test('candidate metrics match the displayed simulation and target deviations do 
   const candidate = evaluator.evaluate(form.amounts);
   assert.deepEqual(candidate.values, projectionObjectiveValues(result.projection, result.poverty, form.optimization));
   near(candidate.values.poverty!, result.poverty.rows.reduce((s, x) => s + x.all * 100, 0) / 5);
+  near(candidate.values.childPoverty!, result.poverty.rows.reduce((s, x) => s + x.child * 100, 0) / 5);
+  near(candidate.values.disposableIncome!, result.poverty.rows.reduce((s, x) => s + x.medianDisposableIncome / 1e4, 0) / 5);
   near(candidate.values.burden!, result.projection.steps.reduce((sum, s) => sum + s.state.fiscal.taxRevenue / s.state.macro.nominalGdp * 100, 0) / 5);
   only(form, 'burden', ['social-insurance']);
   const burden = createOptimizationEvaluator(form);
@@ -79,7 +93,34 @@ test('candidate metrics match the displayed simulation and target deviations do 
   form.optimization.objectives.cpi.direction = 'target';
   near(projectionObjectiveScore(modified, result.poverty, baseline, result.poverty, form.optimization).score!, -1);
   form.optimization.aggregation = 'terminal';
-  near(createOptimizationEvaluator(form).evaluate(form.amounts).values.gdp!, result.projection.steps[4].state.macro.realGdp / 1e12);
+  const terminal = createOptimizationEvaluator(form).evaluate(form.amounts);
+  near(terminal.values.gdp!, result.projection.steps[4].state.macro.realGdp / 1e12);
+  near(terminal.values.childPoverty!, result.poverty.rows[4].child * 100);
+  near(terminal.values.disposableIncome!, result.poverty.rows[4].medianDisposableIncome / 1e4);
+});
+
+test('household objectives reward improvement and independently drive a policy search', () => {
+  const settings = optimizationDefaults();
+  assert.equal(settings.objectives.exports.weight, 5);
+  assert.equal(settings.objectives.imports.weight, 5);
+  assert.equal(settings.objectives.childPoverty.weight, 15);
+  assert.equal(settings.objectives.disposableIncome.weight, 15);
+  const base = Object.fromEntries(OBJECTIVE_IDS.map(id => [id, 10])) as ObjectiveValues;
+  const improved = objectiveScore({ ...base, childPoverty: 9, disposableIncome: 20 }, base, settings);
+  assert(improved.contributions.childPoverty! > 0);
+  near(improved.contributions.childPoverty!, improved.contributions.disposableIncome!);
+  const worse = objectiveScore({ ...base, childPoverty: 11, disposableIncome: 0 }, base, settings);
+  near(worse.score!, -improved.score!);
+  for (const id of ['childPoverty', 'disposableIncome'] as const) {
+    const form = defaults();
+    form.optimization.maxBudget = 1;
+    only(form, id, ['childcare', 'cash']);
+    const result = optimizeFiscalPolicy(form, undefined, 100);
+    assert(result.best && result.best.score! > 0);
+    assert(result.best.contributions[id]! > 0);
+    const evaluator = createOptimizationEvaluator(form);
+    near(evaluator.evaluate(result.best.amounts).score!, result.best.score!);
+  }
 });
 
 test('search respects fixed policies, budget and revenue caps and can change total and allocation', () => {
