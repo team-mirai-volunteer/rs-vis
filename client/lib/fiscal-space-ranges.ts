@@ -65,7 +65,8 @@ const root: Record<string, Bounds> = {
 export function validateScenarioNumber(value: number, template: number | null, path: string) {
   const name = path.slice('form.'.length), key = name.split('.').at(-1)!;
   let bounds: Bounds | undefined;
-  if (name.startsWith('capacity.')) bounds = CAPACITY_BOUNDS[key as keyof typeof CAPACITY_BOUNDS];
+  if (name.startsWith('optimization.')) bounds = key === 'weight' ? [0, 100] : key === 'scale' ? [.001, 1000] : key === 'target' ? [-10000, 10000] : [0, 100];
+  else if (name.startsWith('capacity.')) bounds = CAPACITY_BOUNDS[key as keyof typeof CAPACITY_BOUNDS];
   else if (name.startsWith('calibration.')) bounds = calibration[name.slice('calibration.'.length)];
   else if (name.startsWith('supply.')) bounds = supply[key];
   else if (name.startsWith('trade.industry.')) bounds = industry[key];

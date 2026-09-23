@@ -10,6 +10,7 @@ import { DEFAULT_STRESSES } from '@/app/lib/fiscal-space/stress-envelope';
 import type { ConstraintId } from '@/types/fiscal-space';
 import { CAPACITY_DEFAULTS } from '@/app/lib/fiscal-space/capacity-calibration';
 import { POVERTY_DEFAULTS } from '@/app/lib/fiscal-space/poverty';
+import { optimizationDefaults, validateOptimization } from './fiscal-objective';
 
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
@@ -17,6 +18,7 @@ export interface ScenarioRestore { sourceVersion: string; filled: string[]; clip
 export const FISCAL_MODEL_VERSION = '2026-09-22.1';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
+  aggregation: ['average', 'terminal'], direction: ['increase', 'decrease', 'target'],
   cashTarget: ['universal', 'low-income', 'children', 'income-tapered'],
   fertilityVariant: ['low', 'medium'],
   dataset: ['2024', 'latest'], referenceModel: ['ef2026', 'esri2022'], inflationRule: ['peak', 'average'], mode: ['estimated', 'manual', 'included', 'off'],
@@ -169,8 +171,13 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
     operatingPeakGwPerTrillion: null, annualGwhPerTrillion: null, operatingAnnualGwhPerTrillion: null,
     lag: 0, lifetime: 1, depreciation: 0, basis: { ...EMPTY_PROJECT_BASIS },
   };
+  if (payload.form && typeof payload.form === 'object' && !Object.hasOwn(payload.form, 'optimization')) {
+    Object.assign(payload.form, { optimization: optimizationDefaults() });
+    filled.push('optimization（価値の重みと探索条件を初期設定で補完）');
+  }
   shape(payload.form, template, 'form');
   const form = payload.form as FiscalForm;
+  validateOptimization(form.optimization);
   const range = (v: number, min: number, max: number) => { if (v < min || v > max) throw new Error('Out of range'); };
   if (![1, 3, 5, 15].includes(form.horizon)) throw new Error('Invalid horizon');
   range(form.gap, -10, 3); range(form.inflation, -3, 10);

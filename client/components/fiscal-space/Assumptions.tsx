@@ -8,7 +8,7 @@ import { initialEconomy } from '@/app/lib/fiscal-space/assumptions';
 import { CONTEXT_CHECKED, japanContext, OECD_DEBT_RECORDS, OECD_DEBT_SOURCE, FERTILIZER_SOURCE } from '@/app/lib/fiscal-space/japan-context';
 import { JAPAN_DATA_CHECKED, JAPAN_DATASET_LABELS, japanSources, SOURCE_STATUS_LABELS, type JapanDataset } from '@/app/lib/fiscal-space/japan-data';
 
-export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; onDataset: (value: JapanDataset) => void }) {
+export function JapanBaseline({ dataset, onOpenSettings }: { dataset: JapanDataset; onOpenSettings: () => void }) {
   const s = initialEconomy(dataset), sources = japanSources(dataset), latest = dataset === 'latest';
   const context = japanContext(dataset);
   const fiscalGdp = s.macro.nominalGdp;
@@ -68,13 +68,10 @@ export function JapanBaseline({ dataset, onDataset }: { dataset: JapanDataset; o
     { id: 'money-stock', title: 'マネーストック', items: Object.entries(MONEY_STOCK_DEFINITIONS).map(([key, note]) =>
       [key, `M${key.slice(-1)}`, note]) },
   ];
-  return <Card><CardHeader><h2 className="text-lg font-bold">日本のデータを選ぶ</h2>
+  return <Card><CardHeader><h2 className="text-lg font-bold">日本の基準データ</h2>
     <p className="text-xs text-mirai-text-subtle">最大GDPギャップは投入条件・生産関数の仮定に基づく推計値のため、この一覧ではなく結果欄に表示しています。</p>
-    <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
-      {(Object.entries(JAPAN_DATASET_LABELS) as [JapanDataset, string][]).map(([id, label]) => <label key={id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold ${dataset === id ? 'border-primary bg-primary/10' : 'border-mirai-border'}`}>
-        <input type="radio" name="japan-dataset" value={id} checked={dataset === id} onChange={() => onDataset(id)} className="accent-primary" />{label}
-      </label>)}
-    </fieldset>
+    <p className="text-sm">基準データ：{JAPAN_DATASET_LABELS[dataset]}</p>
+    <button type="button" className="text-sm text-primary-accent underline" onClick={onOpenSettings}>基準データ・初期条件を設定</button>
     <p className="text-sm leading-relaxed">{latest
       ? '2026年9月17日までに確認した公表値を採用。GDP・GDPギャップ・CPI・雇用・対外純資産を更新し、食料自給率は2025年度概算。一般政府の財政額はIMFの2026年推計比率を最新の名目GDPに掛けた橋渡し推計で、2024年実績と最新GDPを一つの比率に混ぜていません。国民経済計算の対外収支は2024年の一式を継続採用しています。'
       : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
@@ -178,4 +175,15 @@ export function Explanations({ initial, step, parameters, policies, records }: {
       <div className="max-h-96 overflow-auto" tabIndex={0} role="region" aria-label="入力値の出典一覧"><table className="w-full min-w-[750px] text-left text-xs"><caption className="sr-only">入力値・区分・単位・参照年・出典・不確実性</caption><thead><tr>{['入力', '値', '区分', '単位', '参照年・出典', '不確実性'].map(h => <th key={h} scope="col" className="p-2">{h}</th>)}</tr></thead><tbody>{records.map(r => <tr key={r.key} data-source-key={r.key} className="border-t border-mirai-border"><th scope="row" className="p-2 font-medium">{inputLabel(r.key, policies)}</th><td className="p-2 tabular-nums">{r.value.toLocaleString('ja-JP', { maximumFractionDigits: 6 })}</td><td className="p-2 whitespace-nowrap">{SOURCE_STATUS_LABELS[r.status]}</td><td className="p-2">{r.unit}</td><td className="p-2">{r.referenceYear}{r.publishedAt && ` (${r.publishedAt})`} / {r.sourceUrl ? <a className="text-primary-accent underline" href={r.sourceUrl} target="_blank" rel="noreferrer">{r.sourceName}</a> : r.sourceName}</td><td className="p-2">{r.uncertaintyNote}{r.retainedReason && <p className="mt-1 font-medium">{r.retainedReason}</p>}</td></tr>)}</tbody></table></div>
     </details>
   </CardContent></Card>;
+}
+
+export function DatasetSettings({ dataset, onDataset }: { dataset: JapanDataset; onDataset: (value: JapanDataset) => void }) {
+  return <div>
+    <fieldset className="mt-2 flex flex-wrap gap-3"><legend className="sr-only">基準データ</legend>
+      {(Object.entries(JAPAN_DATASET_LABELS) as [JapanDataset, string][]).map(([id, label]) => <label key={id} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold ${dataset === id ? 'border-primary bg-primary/10' : 'border-mirai-border'}`}>
+        <input type="radio" name="japan-dataset" value={id} checked={dataset === id} onChange={() => onDataset(id)} className="accent-primary" />{label}
+      </label>)}
+    </fieldset>
+    <p className="mt-3 text-sm">切り替えるとGDPギャップ・物価・建設稼働率・電力供給力の初期値が切り替わります。政策・ショック・閾値は引き継ぎます。</p>
+  </div>;
 }

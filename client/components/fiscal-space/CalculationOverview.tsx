@@ -5,7 +5,7 @@ import { TRILLION } from '@/app/lib/fiscal-space/assumptions';
 import { InputOverview } from './ScenarioConditions';
 import { ConstraintMeters } from './ConstraintMeters';
 import { ResultAssumptions } from './ResultAssumptions';
-import { CurrentMetrics } from './Projection';
+import { CurrentMetrics, Projection } from './Projection';
 import { FiscalExternal } from './FiscalExternal';
 import { PublicCapital } from './PublicCapital';
 import { PowerTimeline } from './PowerTimeline';
@@ -15,6 +15,7 @@ export const CalculationOverview = memo(function CalculationOverview({ result, l
   return <>
     <InputOverview total={result.totalYen} estimate={result.estimate} riskAudit={result.riskAudit} horizon={result.horizon} incomplete={result.constraints.some(x => x.coverageComplete === false)} projection={result.projection} baseline={result.baseline} policies={result.allocated} />
     <CurrentMetrics medium={result.medium.projection.steps[result.horizon - 1]} step={result.projection.steps[result.horizon - 1]} baseline={result.baseline.steps[result.horizon - 1]} referenceModel={result.p.referenceModel} publishedYears={REFERENCES[result.p.referenceModel].years} latest={latest} />
+    <Projection simulation={result.projection} baseline={result.baseline} peaksByYear={result.peaksByYear} shocks={result.shocks} parameters={result.p} latest={latest} />
     <PublicCapital result={result} />
     <ConstraintMeters constraints={result.constraints} baseline={result.baselineConstraints} sensitivity={result.sensitivity} latest={latest} structuralUnemployment={result.p.structuralUnemployment} />
     <PowerTimeline rows={result.powerTimeline} />

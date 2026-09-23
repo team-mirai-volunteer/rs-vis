@@ -6,6 +6,10 @@ import type { FiscalCalculation } from '../lib/fiscal-space-engine';
 import { createFiscalWorkerClient, type FiscalWorkerError } from '../lib/fiscal-worker-client';
 
 export function useFiscalCalculation(form: FiscalForm) {
+  // Preferences change candidate ranking, not the economic projection.
+  const modelKey = JSON.stringify({ ...form, optimization: undefined });
+  const latestForm = useRef(form);
+  latestForm.current = form;
   const [completed, setCompleted] = useState<{ form: FiscalForm; result: FiscalCalculation }>();
   const [error, setError] = useState<FiscalWorkerError>();
   const [attempt, setAttempt] = useState(0);
@@ -26,10 +30,10 @@ export function useFiscalCalculation(form: FiscalForm) {
   useEffect(() => {
     if (client.current) {
       setError(undefined);
-      client.current.submit(form);
+      client.current.submit(latestForm.current);
     }
-  }, [form, attempt]);
-  return { completed, error, pending: !error && completed?.form !== form,
+  }, [modelKey, attempt]);
+  return { completed, error, pending: !error && (!completed || JSON.stringify({ ...completed.form, optimization: undefined }) !== modelKey),
     retry: () => {
       // Stop a stalled/obsolete computation immediately, before starting a fresh worker.
       client.current?.dispose(); client.current = undefined;

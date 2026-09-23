@@ -2,7 +2,7 @@ import { AGE_BURDEN, AGE_BURDEN_SOURCE, EMPLOYER_SOURCE, NATIONAL_BURDEN, NATION
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { percent } from './format';
 
-export function BurdenIndicators({ latest, corporateShare, onCorporateShare }: { latest: boolean; corporateShare: number; onCorporateShare: (value: number) => void }) {
+export function BurdenIndicators({ latest, corporateShare, onOpenSettings }: { latest: boolean; corporateShare: number; onOpenSettings: () => void }) {
   const working = workingHouseholdBurden(corporateShare);
   const benchmark = OECD_WORKING_BURDEN[latest ? 1 : 0];
   const amount = (n: number) => `${(n / 1e4).toFixed(1)}万円`;
@@ -20,7 +20,7 @@ export function BurdenIndicators({ latest, corporateShare, onCorporateShare }: {
         <p>2024年・世帯主65歳未満の二人以上勤労者世帯。平均は調査の世帯数分布（抽出率調整済み）で負担額と所得を集計し、負担総額÷所得総額で算出。1世帯あたり負担 {amount(working.burden)}・分母の所得 {amount(working.income)}／年。</p>
         <p>幅は年齢階級別の最小〜最大で、誤差幅ではありません。単身・自営業を含む15〜64歳個人の全国平均は、この資料からは算出できません。</p></div>
     </div>
-    <label className="flex flex-wrap items-center gap-2 font-bold">法人課税のうち賃金へ帰着する割合（仮定）<select aria-label="法人税の賃金帰着割合" className="rounded border p-2" value={corporateShare} onChange={e => onCorporateShare(Number(e.target.value))}>{[0, .25, .5, 1].map(n => <option key={n} value={n}>{percent(n, 0)}</option>)}</select></label>
+    <button type="button" className="text-sm text-primary-accent underline" onClick={onOpenSettings}>家計負担の推計条件を設定</button>
     <p>法人課税も賃金抑制を通じた負担に含めます。国・地方の法人課税{(BURDEN_INCIDENCE.corporateTaxTotal / 1e12).toFixed(2)}兆円の{percent(corporateShare, 0)}を、全国の賃金・俸給{(BURDEN_INCIDENCE.wagesAndSalaries / 1e12).toFixed(2)}兆円に比例配賦。25%は日本の実証値ではなく比較用の初期仮定です。株主や消費者に帰着する分はこの試算に未配賦で、法人税全体を現役世代だけに割り振ってはいません。<a href={CORPORATE_SOURCE} className="underline" target="_blank" rel="noreferrer">課税総額の出典</a></p>
     <p>家計負担率＝（本人直接税＋本人保険料＋事業主負担＋消費税＋法人税の賃金帰着）÷（家計実収入＋事業主負担＋法人税の賃金帰着）。失われた賃金に相当する配賦額を分母にも戻します。分母は年金・給付も含む家計所得で、NIやGDPそのものではありません。国全体のGDP比・NI比との差を、そのまま世代間の負担差とは解釈できません。</p>
     <p className="rounded-lg bg-mirai-surface-warm p-3">国全体の税・社会保険料と同じ範囲での「生産年齢人口の負担率」は未推計です。企業課税の世代別帰着や、GDP・NIの年齢別配分が必要です。</p>
@@ -40,4 +40,11 @@ export function BurdenIndicators({ latest, corporateShare, onCorporateShare }: {
       <p>無職世帯は世帯主が無職という分類で、同居家族の勤め先収入を含みます。実収入には公的年金・給付を含み、借入・資産売却を除きます。<a className="underline" href={AGE_BURDEN_SOURCE} target="_blank" rel="noreferrer">家計調査の原表</a>。両プリセットとも内訳が揃う2024年資料を使用。</p>
     </div></details>
   </CardContent></Card>;
+}
+
+export function BurdenSettings({ corporateShare, onCorporateShare }: { corporateShare: number; onCorporateShare: (value: number) => void }) {
+  return <div className="space-y-3">
+    <label className="flex flex-wrap items-center gap-2 font-bold">法人課税のうち賃金へ帰着する割合（仮定）<select aria-label="法人税の賃金帰着割合" className="rounded border p-2" value={corporateShare} onChange={e => onCorporateShare(Number(e.target.value))}>{[0, .25, .5, 1].map(n => <option key={n} value={n}>{percent(n, 0)}</option>)}</select></label>
+    <p className="text-sm">家計負担の参考推計に用いる割合です。GDP・税収の政策シミュレーションは変わりません。</p>
+  </div>;
 }

@@ -13,6 +13,8 @@ try {
   await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
   const commonFirst = page.locator('[data-electricity-year="1"] [data-electricity="common"]');
   await expect(commonFirst).toHaveText('0.045兆円');
+  await page.getByText('詳細な条件', { exact: true }).click();
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await page.getByLabel('共通の電力需要増加率', { exact: true }).fill('1');
   await expect(commonFirst).toHaveText('0.089兆円');
   await page.getByLabel('既定計画の非化石発電の年間追加量', { exact: true }).fill('10');
@@ -20,6 +22,7 @@ try {
   await page.getByLabel('既定計画の非化石発電の年間追加量', { exact: true }).fill('0');
   await page.getByLabel('共通の電力需要増加率', { exact: true }).fill('0.5');
   await expect(commonFirst).toHaveText('0.045兆円');
+  await page.keyboard.press('Escape');
   await expect(page.locator('[data-fuel-comparison="solar"] [data-fuel="saving"]')).toHaveText('0.066兆円');
   await expect(page.locator('[data-fuel-comparison="nuclear"] [data-fuel="saving"]')).toHaveText('0.061兆円');
   await expect(page.locator('[data-fuel-comparison="hydro"] [data-fuel="saving"]')).toHaveText('0.052兆円');

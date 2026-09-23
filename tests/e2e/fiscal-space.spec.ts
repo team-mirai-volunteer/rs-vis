@@ -125,6 +125,8 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await expect(page.getByTestId('input-overview')).toContainText('政策なし経路を下回ります');
   await expect(page.getByRole('region', { name: '負荷推計の感度表' })).toBeVisible();
   await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(1);
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   // Consecutive edits must read immediate form state, not the debounced result.
   const planned = page.getByLabel('既定計画の非化石発電の年間追加量', { exact: true });
   const demand = page.getByLabel('共通の電力需要増加率', { exact: true });
@@ -132,6 +134,7 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   await demand.fill('1');
   await expect(planned).toHaveValue('10');
   await expect(demand).toHaveValue('1');
+  await page.keyboard.press('Escape');
   await expect(page.getByText('入力を反映しています。結果は直前の条件です。')).toHaveCount(0);
   await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
   await expect(page.getByLabel('共有URL', { exact: true })).toHaveValue(/#scenario=/);
@@ -139,9 +142,14 @@ test('neutral input, editable amounts, model conditions and shared URL restore t
   const before = await page.getByTestId('input-overview').innerText();
   await page.goto(url);
   await expect.poll(() => page.getByTestId('input-overview').innerText()).toEqual(before);
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await expect(planned).toHaveValue('10');
   await expect(demand).toHaveValue('1');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '基準データ・初期条件を設定', exact: true }).click();
   await page.getByRole('radio', { name: '2024年で揃える' }).check();
+  await page.keyboard.press('Escape');
   await expect(amount).toHaveValue('10');
   await expect(page.getByTestId('recommended-envelope')).not.toHaveText('0.0兆円 / 年');
   await expect(page.getByTestId('input-overview').getByTestId('baseline-inflation-sensitivity')).toHaveCount(0);
@@ -199,7 +207,7 @@ test('pending results are visible, data dialog is lazy, and tables remain keyboa
   await expect(page.getByTestId('calculation-status').getByRole('status')).toBeVisible();
   await expect(page.getByTestId('input-overview')).toContainText('10.00兆円');
   await expect(page.getByTestId('calculation-status')).toBeEmpty();
-  await expect(page.getByRole('region', { name: '結果を左右する前提' })).toContainText('評価期間中一定');
+  await expect(page.getByRole('region', { name: '結果を左右する前提' })).toContainText('財政の評価は5年まで');
   await expect(page.locator('[data-constraint]').first()).toHaveAttribute('data-constraint', 'debt');
   await expect(page.getByTestId('fiscal-vintage').first()).toContainText('分子はIMF 2026年推計比率×分母2026Q2');
   await page.getByRole('button', { name: 'データについて', exact: true }).click();
@@ -251,10 +259,10 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await openAdvanced(page);
   await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await page.getByRole('combobox', { name: '負荷の評価方法' }).selectOption('manual');
-  await page.keyboard.press('Escape');
   const loads = page.getByRole('region', { name: '政策別の負荷条件', exact: true });
   await loads.locator('summary').click();
   await loads.getByLabel('公共投資の負荷条件を入力する').check();
+  await page.keyboard.press('Escape');
   await evaluated(sectorMeter, false);
   await evaluated(energyMeter, false);
   await expect(page.getByTestId('recommended-envelope')).toContainText('算出不可：負荷が未評価');
@@ -264,6 +272,8 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await notes.locator('summary').click();
   await expect(notes.getByText('産業別・電力の追加負荷に未評価の項目があります。')).toBeVisible();
   await notes.locator('summary').click();
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await loads.getByLabel(/公共投資・支出1兆円の産業稼働率増分/).fill('0');
   await evaluated(sectorMeter, true);
   await evaluated(energyMeter, false);
@@ -280,11 +290,14 @@ test('worker calculation keeps partial loads unevaluated and restores project co
   await evaluated(energyMeter, true);
   await loads.getByLabel(/公共投資・稼働後の系統ピークへの純追加電力/).fill('400');
   await expect(conversion).toContainText('稼働後ピーク 0.200GW');
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('region', { name: '政策期間の比較', exact: true })).toContainText('同額予算での比較ではありません');
   await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
   const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
   await page.goto(url);
   await expect(page.getByTestId('input-overview')).toContainText('2.00兆円 / 年');
+  await openAdvanced(page);
+  await page.getByRole('button', { name: '産業・電力負荷の条件', exact: true }).click();
   await loads.locator('summary').click();
   await expect(conversion).toContainText('稼働後ピーク 0.200GW');
   await evaluated(energyMeter, true);
@@ -425,4 +438,41 @@ test('generation settings open beside the amount and stay linked to results and 
   await expect(amount).toHaveValue('2');
   await trigger.click();
   await expect(dialog.getByLabel('太陽光・稼働まで', { exact: true })).toHaveValue('1');
+});
+
+
+test('remaining assumptions are edited in panels and restored from the shared URL', async ({ page }) => {
+  await page.goto('/fiscal-space');
+  await expect(page.getByTestId('horizon-results')).toBeVisible();
+  const results = page.locator('main').getByRole('heading', { name: '詳細条件・出典', exact: true });
+  await expect(results).toBeVisible();
+  await expect(page.locator('main').getByLabel('法人税の賃金帰着割合')).toHaveCount(0);
+  await expect(page.locator('main').getByLabel('試算する政策', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: '家計負担の推計条件を設定', exact: true }).click();
+  await page.getByRole('dialog', { name: '家計負担の推計条件', exact: true }).getByLabel('法人税の賃金帰着割合').selectOption('0.5');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '政策別の事業条件を設定', exact: true }).click();
+  const trade = page.getByRole('dialog', { name: '政策別の事業条件', exact: true });
+  await trade.getByLabel('試算する政策', { exact: true }).selectOption('semiconductors');
+  await trade.getByLabel('売上の輸出割合（仮定）（%）', { exact: true }).fill('60');
+  await trade.getByLabel('試算する政策', { exact: true }).selectOption('generation');
+  await trade.getByRole('button', { name: '電源構成・稼働時期を設定', exact: true }).click();
+  const power = page.getByRole('dialog', { name: '発電設備投資の設定', exact: true });
+  await expect(trade).not.toBeVisible();
+  await power.getByText('電源別の輸入・火力置換の条件', { exact: true }).click();
+  await power.getByLabel('太陽光・追加の出力制御率（仮定）', { exact: true }).fill('12');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'この条件のURLをコピー' }).click();
+  const url = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(url);
+  await page.getByRole('button', { name: '家計負担の推計条件を設定', exact: true }).click();
+  await expect(page.getByLabel('法人税の賃金帰着割合')).toHaveValue('0.5');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '政策別の事業条件を設定', exact: true }).click();
+  await trade.getByLabel('試算する政策', { exact: true }).selectOption('semiconductors');
+  await expect(trade.getByLabel('売上の輸出割合（仮定）（%）', { exact: true })).toHaveValue('60');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '電源構成・稼働時期を設定', exact: true }).click();
+  await power.getByText('電源別の輸入・火力置換の条件', { exact: true }).click();
+  await expect(power.getByLabel('太陽光・追加の出力制御率（仮定）', { exact: true })).toHaveValue('12');
 });

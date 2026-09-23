@@ -23,13 +23,13 @@ import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 import { Controls } from '@/client/components/fiscal-space/Controls';
 import { Summary } from '@/client/components/fiscal-space/Summary';
 import { Comparison } from '@/client/components/fiscal-space/Comparison';
-import { Projection } from '@/client/components/fiscal-space/Projection';
-import { Explanations, JapanBaseline } from '@/client/components/fiscal-space/Assumptions';
+import { Explanations, JapanBaseline, DatasetSettings } from '@/client/components/fiscal-space/Assumptions';
 import { Calibration } from '@/client/components/fiscal-space/Calibration';
-import { BurdenIndicators } from '@/client/components/fiscal-space/BurdenIndicators';
+import { BurdenIndicators, BurdenSettings } from '@/client/components/fiscal-space/BurdenIndicators';
 import { PolicyTrade } from '@/client/components/fiscal-space/PolicyTrade';
+import { Optimization } from '@/client/components/fiscal-space/Optimization';
 import { PowerMix } from '@/client/components/fiscal-space/PowerMix';
-import { ElectricityBaseline } from '@/client/components/fiscal-space/ElectricityBaseline';
+import { ElectricityBaseline, ElectricitySettings } from '@/client/components/fiscal-space/ElectricityBaseline';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
 import type { StressId } from '@/app/lib/fiscal-space/stress-envelope';
@@ -39,7 +39,6 @@ import type { PolicyKind, Thresholds } from '@/types/fiscal-space';
 
 const MemoExplanations = memo(Explanations);
 const MemoComparison = memo(Comparison);
-const MemoProjection = memo(Projection);
 const MemoControls = memo(Controls);
 const MemoSummary = memo(Summary);
 const MemoLongRun = memo(LongRun);
@@ -56,7 +55,7 @@ const MemoResourceEstimation = memo(ResourceEstimation);
 const MemoDemographics = memo(Demographics);
 const MemoPoverty = memo(Poverty);
 
-const DETAIL_SETTINGS = { poverty: '現金給付の対象', childcare: '子育て予算の現金給付割合', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
+const DETAIL_SETTINGS = { baseline: '基準データ・初期条件', burden: '家計負担の推計条件', trade: '政策別の事業条件', poverty: '現金給付の対象', childcare: '子育て予算の現金給付割合', capacity: '最大GDP・生産モデルの条件', demographics: '人口動態・出生率の条件', resource: '産業・電力負荷の条件' };
 type DetailSetting = keyof typeof DETAIL_SETTINGS;
 
 export default function FiscalSpacePage() {
@@ -66,9 +65,14 @@ export default function FiscalSpacePage() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const detailDialog = useRef<HTMLDialogElement>(null);
   const [detailSetting, setDetailSetting] = useState<DetailSetting>('poverty');
+  const openBaselineSettings = useCallback(() => { setDetailSetting('baseline'); detailDialog.current?.showModal(); }, []);
+  const openBurdenSettings = useCallback(() => { setDetailSetting('burden'); detailDialog.current?.showModal(); }, []);
+  const openTradeSettings = useCallback(() => { setDetailSetting('trade'); detailDialog.current?.showModal(); }, []);
   const openCashSettings = useCallback(() => { setDetailSetting('poverty'); detailDialog.current?.showModal(); }, []);
   const openChildcareSettings = useCallback(() => { setDetailSetting('childcare'); detailDialog.current?.showModal(); }, []);
   const dataDialog = useRef<HTMLDialogElement>(null);
+  const optimizationDialog = useRef<HTMLDialogElement>(null);
+  const openOptimizationSettings = useCallback(() => optimizationDialog.current?.showModal(), []);
   const powerDialog = useRef<HTMLDialogElement>(null);
   const calibrationDialog = useRef<HTMLDialogElement>(null);
   const supplyDialog = useRef<HTMLDialogElement>(null);
@@ -95,6 +99,7 @@ export default function FiscalSpacePage() {
   // Stable callbacks let unchanged controls skip rendering without retaining stale form values.
   const change = useMemo(() => ({
     amount: (id: string, n: number) => setForm(f => f.amounts[id] === n ? f : { ...f, amounts: { ...f.amounts, [id]: n } }),
+    optimization: (v: FiscalForm['optimization']) => update('optimization', v),
     preset: (amounts: FiscalForm['amounts']) => update('amounts', amounts),
     kind: (id: string, kind: PolicyKind) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], kind } } })),
     duration: (id: string, duration: number) => setForm(f => ({ ...f, policySettings: { ...f.policySettings, [id]: { ...f.policySettings[id], duration } } })),
@@ -136,7 +141,7 @@ export default function FiscalSpacePage() {
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
       <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）でどこまで追加支出を許すかを条件付きで比較します。15年評価は公表期間外を仮定で延長します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
-      <ShareScenario form={form} onPreset={change.preset} error={shareError} restore={restore} />
+      <ShareScenario form={form} onPreset={change.preset} onOptimizationSettings={openOptimizationSettings} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
         {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg lg:bottom-3 lg:top-auto">
@@ -201,17 +206,26 @@ export default function FiscalSpacePage() {
       <MemoComparison rows={result.comparison} horizon={result.horizon} />
       </>}
       <h2 className="pt-4 text-xl font-bold">詳細条件・出典</h2>
-      <MemoJapanBaseline dataset={form.dataset} onDataset={change.dataset} />
-      <MemoBurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onCorporateShare={change.corporate} />
+      <MemoJapanBaseline dataset={form.dataset} onOpenSettings={openBaselineSettings} />
+      <MemoBurdenIndicators latest={form.dataset === 'latest'} corporateShare={form.corporateShare} onOpenSettings={openBurdenSettings} />
       {result && <>
-      <MemoElectricityBaseline value={form.calibration.electricity} onChange={change.electricity} baseline={result.baseline} projection={result.projection} />
-      <MemoPolicyLoads policies={loadedPolicies} onChange={change.load} />
-      <MemoPolicyTrade policies={result.policies} value={form.trade} onChange={change.trade} />
-      <MemoProjection simulation={result.projection} baseline={result.baseline} peaksByYear={result.peaksByYear} shocks={result.shocks} parameters={result.p} latest={calculationForm?.dataset === 'latest'} />
+      <MemoElectricityBaseline baseline={result.baseline} projection={result.projection} />
+      <MemoPolicyTrade policies={result.policies} value={calculationForm!.trade} onOpenSettings={openTradeSettings} />
       </>}
         </div>
       </div>
     </main>
+    <dialog ref={optimizationDialog} aria-labelledby="optimization-title"
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
+        <h2 id="optimization-title" className="text-lg font-bold">価値の重み・自動最適化</h2>
+        <Button variant="ghost" size="icon" aria-label="自動最適化のパネルを閉じる" onClick={() => optimizationDialog.current?.close()}><X aria-hidden="true" /></Button>
+      </div>
+      <div className="space-y-4 p-3 sm:p-5">
+        <Optimization form={form} onChange={change.optimization} onApply={change.preset} />
+        <Button variant="outline" onClick={() => optimizationDialog.current?.close()}>設定を閉じて結果を見る</Button>
+      </div>
+    </dialog>
     <dialog ref={detailDialog} aria-labelledby="detail-settings-title"
       className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-4xl overflow-y-auto rounded-2xl border border-mirai-border bg-card p-0 text-mirai-text backdrop:bg-foreground/30">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-mirai-border bg-card p-4">
@@ -220,6 +234,9 @@ export default function FiscalSpacePage() {
       </div>
       <div className="space-y-4 p-3 sm:p-5">
         <p className="text-sm">変更はすぐに計算へ反映されます。</p>
+        {detailSetting === 'baseline' && <DatasetSettings dataset={form.dataset} onDataset={change.dataset} />}
+        {detailSetting === 'burden' && <BurdenSettings corporateShare={form.corporateShare} onCorporateShare={change.corporate} />}
+        {detailSetting === 'trade' && <PolicyTrade policies={result?.policies ?? policies} value={form.trade} onChange={change.trade} settings onPowerSettings={() => { detailDialog.current?.close(); openPowerSettings(); }} />}
         {detailSetting === 'poverty' && <><CashSettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">貧困率の直接効果を比較する条件です。GDP・出生率の反応係数は変わりません。</p></>}
         {detailSetting === 'childcare' && <><ChildcareCashSettings value={form.poverty} onChange={change.poverty} /><p className="text-xs">子ども1人当たりの現金給付として貧困率に反映する割合です。残りの現物サービスの効果は未推計で、GDP・出生率の反応係数は変わりません。</p></>}
         {detailSetting === 'capacity' && <>
@@ -229,7 +246,12 @@ export default function FiscalSpacePage() {
           <ProductionSettings controlInputs={form.inputs} controlParameters={form.calibration} controlInflation={form.thresholds.inflation} onParameters={change.calibration} onInputs={change.inputs} onInflation={change.cpiLimit} />
         </>}
         {detailSetting === 'demographics' && <DemographicSettings value={form.calibration.demographics} onChange={change.demographics} />}
-        {detailSetting === 'resource' && <ResourceSettings value={form.resource} onChange={change.resource} />}
+        {detailSetting === 'resource' && <>
+          <h3 className="text-base font-bold">産業・電力負荷の概算条件</h3>
+          <ResourceSettings value={form.resource} onChange={change.resource} />
+          <ElectricitySettings value={form.calibration.electricity} onChange={change.electricity} estimated={form.resource.mode === 'estimated'} />
+          <MemoPolicyLoads policies={loadedPolicies} onChange={change.load} />
+        </>}
         <Button variant="outline" onClick={() => detailDialog.current?.close()}>設定を閉じて結果を見る</Button>
       </div>
     </dialog>

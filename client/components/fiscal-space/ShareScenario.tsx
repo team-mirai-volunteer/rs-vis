@@ -3,8 +3,8 @@ import type { FiscalForm } from '@/client/lib/fiscal-space-form';
 import { encodeScenario, FISCAL_MODEL_VERSION, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
 import { Button } from '@/components/ui/button';
 
-export function ShareScenario({ form, onPreset, error, restore }: {
-  form: FiscalForm; onPreset: (amounts: Record<string, number>) => void; error: string; restore?: ScenarioRestore | null;
+export function ShareScenario({ form, onPreset, onOptimizationSettings, error, restore }: {
+  form: FiscalForm; onPreset: (amounts: Record<string, number>) => void; onOptimizationSettings: () => void; error: string; restore?: ScenarioRestore | null;
 }) {
   const [link, setLink] = useState('');
   const [notice, setNotice] = useState('');
@@ -31,6 +31,7 @@ export function ShareScenario({ form, onPreset, error, restore }: {
         ...Object.fromEntries(Object.keys(form.amounts).map(id => [id, 0])),
         'social-insurance': 15,
       })}>例：社会保険料減税だけで15兆円</Button>
+      <Button variant="outline" size="sm" aria-haspopup="dialog" onClick={onOptimizationSettings}>価値の重み・自動最適化</Button>
       <span data-testid="model-version">モデル {FISCAL_MODEL_VERSION}{calculatedOn && `・計算日 ${calculatedOn}`}</span>
     </div>
     {migrated && <p role="status" data-testid="restore-notice" className="rounded-lg bg-mirai-surface-warm p-2 text-xs">
