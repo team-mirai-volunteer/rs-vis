@@ -71,6 +71,7 @@ test('optimization preferences round-trip and legacy links receive explicit defa
 
 test('candidate metrics match the displayed simulation and target deviations do not cancel across years', () => {
   const form = defaults();
+  form.optimization.aggregation = 'average';
   form.amounts.childcare = 1; form.amounts['social-insurance'] = 2;
   const result = createFiscalEngine()(form);
   const evaluator = createOptimizationEvaluator(form);
@@ -101,6 +102,7 @@ test('candidate metrics match the displayed simulation and target deviations do 
 
 test('household objectives reward improvement and independently drive a policy search', () => {
   const settings = optimizationDefaults();
+  assert.equal(settings.aggregation, 'terminal');
   assert.equal(settings.objectives.exports.weight, 5);
   assert.equal(settings.objectives.imports.weight, 5);
   assert.equal(settings.objectives.childPoverty.weight, 15);
@@ -123,6 +125,27 @@ test('household objectives reward improvement and independently drive a policy s
   }
 });
 
+test('15-year terminal search matches year 15 results and checks the entire projection', () => {
+  const form = defaults();
+  form.horizon = 15; form.optimization.aggregation = 'terminal';
+  form.optimization.maxBudget = 1;
+  only(form, 'disposableIncome', ['childcare', 'cash']);
+  const result = optimizeFiscalPolicy(form, undefined, 100);
+  assert.equal(result.horizon, 15);
+  assert.equal(result.aggregation, 'terminal');
+  assert(result.best && result.best.score! > 0);
+  form.amounts = result.best.amounts;
+  const displayed = createFiscalEngine()(form);
+  near(result.best.values.disposableIncome!, displayed.poverty.rows[14].medianDisposableIncome / 1e4);
+  near(result.best.values.childPoverty!, displayed.poverty.rows[14].child * 100);
+  near(result.best.values.gdp!, displayed.projection.steps[14].state.macro.realGdp / 1e12);
+  assert.equal(displayed.projection.steps.length, 15);
+  assert(displayed.constraints.every(c => c.status !== 'violated' && c.status !== 'unevaluated'));
+  const restored = decodeScenario(encodeScenario(form));
+  assert.equal(restored.horizon, 15);
+  assert.equal(restored.optimization.aggregation, 'terminal');
+});
+
 test('search respects fixed policies, budget and revenue caps and can change total and allocation', () => {
   const form = defaults();
   form.optimization.minBudget = 1; form.optimization.maxBudget = 2;
@@ -142,6 +165,7 @@ test('search respects fixed policies, budget and revenue caps and can change tot
 
 test('poverty preference finds a different allocation from real GDP preference', () => {
   const form = defaults();
+  form.optimization.aggregation = 'average';
   form.poverty.cashTarget = 'income-tapered';
   form.optimization.maxBudget = 2;
   only(form, 'poverty', ['cash', 'semiconductors']);

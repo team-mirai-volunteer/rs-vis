@@ -219,7 +219,9 @@ export default function FiscalSpacePage() {
         <Button variant="ghost" size="icon" aria-label="自動最適化のパネルを閉じる" onClick={() => optimizationDialog.current?.close()}><X aria-hidden="true" /></Button>
       </div>
       <div className="space-y-4 p-3 sm:p-5">
-        <Optimization form={form} onChange={change.optimization} onApply={change.preset} />
+        <Optimization form={form} onChange={change.optimization} onEvaluationChange={(horizon, aggregation) => setForm(f => ({
+          ...f, horizon, optimization: { ...f.optimization, aggregation },
+        }))} onApply={change.preset} />
         <Button variant="outline" onClick={() => optimizationDialog.current?.close()}>設定を閉じて結果を見る</Button>
       </div>
     </dialog>

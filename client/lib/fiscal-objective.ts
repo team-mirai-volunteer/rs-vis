@@ -42,7 +42,7 @@ export function withObjectiveWeights(settings: OptimizationSettings, weights: Re
 }
 
 export function optimizationDefaults(): OptimizationSettings {
-  return { minBudget: 0, maxBudget: 15, aggregation: 'average',
+  return { minBudget: 0, maxBudget: 15, aggregation: 'terminal',
     eligible: Object.fromEntries(POLICIES.map(p => [p.id, true])),
     objectives: Object.fromEntries(OBJECTIVE_IDS.map(id => [id, {
       weight: OBJECTIVE_WEIGHT_PRESETS.living.weights[id], scale: OBJECTIVES[id].scale, direction: OBJECTIVES[id].direction,

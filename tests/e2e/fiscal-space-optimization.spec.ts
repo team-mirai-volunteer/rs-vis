@@ -5,6 +5,8 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');
   await page.getByRole('button', { name: '価値の重み・自動最適化', exact: true }).click();
   const panel = page.getByRole('dialog', { name: '価値の重み・自動最適化', exact: true });
+  await expect(panel.getByLabel('評価する時点', { exact: true })).toHaveValue('5:terminal');
+  await expect(panel.getByLabel('評価する時点', { exact: true }).locator('option')).toHaveText(['5年目', '5年間の平均', '15年目', '15年間の平均']);
   await panel.getByLabel('追加予算の下限（兆円／年）', { exact: true }).fill('1');
   await panel.getByLabel('追加予算の上限（兆円／年）', { exact: true }).fill('1');
   await panel.getByLabel('相対的貧困率（直接効果）・重み', { exact: true }).fill('4');
@@ -20,11 +22,13 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('子どもの貧困率（直接効果）');
   await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('実質可処分所得（固定価格・中央値）');
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');
+  await panel.getByLabel('評価する時点', { exact: true }).selectOption('15:terminal');
   await panel.getByLabel('実質GDP・重み', { exact: true }).fill('2');
   await expect(result).toContainText('条件が変わったため');
   await expect(result.getByRole('button', { name: 'この配分を適用', exact: true })).toBeDisabled();
   await panel.getByRole('button', { name: 'この価値観で自動探索', exact: true }).click();
   await expect(result).toContainText('候補：1兆円／年', { timeout: 60_000 });
+  await expect(result.getByRole('region', { name: '指標と点数の比較', exact: true })).toContainText('15年目の指標');
   await result.getByRole('button', { name: 'この配分を適用', exact: true }).click();
   await expect(result.getByRole('button', { name: 'この配分を適用しました', exact: true })).toBeDisabled();
   await expect(page.getByTestId('annual-total')).toHaveText('1.0兆円');
@@ -34,6 +38,7 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await page.goto(url);
   await page.getByRole('button', { name: '価値の重み・自動最適化', exact: true }).click();
   await expect(panel.getByLabel('実質GDP・重み', { exact: true })).toHaveValue('2');
+  await expect(panel.getByLabel('評価する時点', { exact: true })).toHaveValue('15:terminal');
   await expect(panel.getByLabel('相対的貧困率（直接効果）・重み', { exact: true })).toHaveValue('4');
   await expect(panel.getByLabel('国民負担率（GDP比）・重み', { exact: true })).toHaveValue('12');
   await expect(panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true })).toHaveValue('18');

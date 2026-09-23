@@ -11,8 +11,10 @@ import { fieldClass } from './format';
 const number = (value: number | null, digits = 3) => value === null ? '未推計' : value.toLocaleString('ja-JP', { maximumFractionDigits: digits });
 const signed = (value: number | null) => value === null ? '—' : `${value > 0 ? '+' : ''}${number(value)}`;
 
-export function Optimization({ form, onChange, onApply }: {
-  form: FiscalForm; onChange: (settings: OptimizationSettings) => void; onApply: (amounts: FiscalForm['amounts']) => void;
+export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
+  form: FiscalForm; onChange: (settings: OptimizationSettings) => void;
+  onEvaluationChange: (horizon: number, aggregation: OptimizationSettings['aggregation']) => void;
+  onApply: (amounts: FiscalForm['amounts']) => void;
 }) {
   const settings = form.optimization;
   const search = useFiscalOptimization(form);
@@ -33,11 +35,20 @@ export function Optimization({ form, onChange, onApply }: {
       {(['minBudget', 'maxBudget'] as const).map((key, i) => <label key={key} className="text-sm">追加予算の{i === 0 ? '下限' : '上限'}（兆円／年）
         <input className={fieldClass} type="number" min={0} max={100} step={.1} value={settings[key]} onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) setting(key, e.target.valueAsNumber); }} />
       </label>)}
-      <label className="text-sm">評価する時点<select className={fieldClass} value={settings.aggregation} onChange={e => setting('aggregation', e.target.value as OptimizationSettings['aggregation'])}>
-        <option value="average">{horizon}年間の平均</option><option value="terminal">{horizon}年目</option>
+      <label className="text-sm">評価する時点<select aria-label="評価する時点" className={fieldClass} value={`${horizon}:${settings.aggregation}`} onChange={e => {
+        const [years, aggregation] = e.target.value.split(':');
+        onEvaluationChange(Number(years), aggregation as OptimizationSettings['aggregation']);
+      }}>
+        {horizon < 5 && <option hidden value={`${horizon}:${settings.aggregation}`}>{horizon}{settings.aggregation === 'terminal' ? '年目' : '年間の平均'}（現在の評価期間）</option>}
+        <option value="5:terminal" disabled={REFERENCES[form.calibration.referenceModel].years < 5}>5年目</option>
+        <option value="5:average" disabled={REFERENCES[form.calibration.referenceModel].years < 5}>5年間の平均</option>
+        <option value="15:terminal">15年目</option>
+        <option value="15:average">15年間の平均</option>
       </select></label>
     </div>
     <p className="text-xs">予算は各政策の年間入力額の合計です。実施期間・減税対象収入の上限・電源構成・事業条件は現在の設定を使います。{horizon === 15 ? '15年は公表期間外の延長計算を含みます。' : '評価期間後に生じる投資効果は点数に含みません。'}</p>
+    <p className="text-xs">期間を変更するとメイン画面の試算・制約の評価期間もそろいます。年目の評価でも、制約はその年までの全期間で確認します。</p>
+    {REFERENCES[form.calibration.referenceModel].years < 5 && <p className="text-xs">現在の参照モデルは公表期間が3年のため、5年の選択は無効です。5年評価には経済財政モデルへ切り替えてください。15年の延長評価は選択できます。</p>}
     <div className="overflow-x-auto" role="region" aria-label="価値の重み" tabIndex={0}>
       <table className="w-full min-w-[640px] text-left text-sm"><caption className="mb-2 text-left font-bold">何をどれだけ重視するか<span className="block text-xs font-normal sm:hidden">横にスクロールすると改善幅・目標値を設定できます →</span></caption>
         <thead><tr>{['指標', '重み', '望ましい方向', '基準となる改善幅', '目標値'].map(label => <th key={label} scope="col" className="p-2">{label}</th>)}</tr></thead>
