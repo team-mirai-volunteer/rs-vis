@@ -33,6 +33,7 @@ import type {
 import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
+import { BlockBalance } from '@/client/components/subcontract/BlockBalance';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import type { ProjectDetail } from '@/types/project-details';
 import { sankeySvgProjectUrl } from '@/app/lib/subcontracts/links';
@@ -901,6 +902,7 @@ function SidePane({
                     {formatYen(block.totalAmount)} ／ 支出先 {block.recipientCount.toLocaleString()}件
                     ／ 構成比 {percentOf(block.totalAmount, Math.max(graph.execution, graph.budget, block.totalAmount))}
                   </div>
+                  <BlockBalance graph={graph} block={block} />
                   {block.role && (
                     <div className="mt-1 rounded-md border border-border bg-card px-1.5 py-[3px] text-[11px] text-mirai-text-secondary">
                       {block.role}

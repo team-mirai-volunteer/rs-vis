@@ -237,6 +237,9 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await content.getByRole('button').first().click();
     await expect(panel.getByRole('tab', { name: /^支出先/ })).toHaveAttribute('aria-selected', 'true');
     await expect(content.getByText(`ブロック ${block.blockId} ${block.blockName}`, { exact: true })).toBeVisible();
+    const balance = content.getByRole('region', { name: 'ブロックの差額' });
+    await expect(balance).toBeVisible();
+    await expect(balance).toContainText('このブロックの記載額 − 直下の再委託先の記載額');
     if (block.recipients.length) await expect(content.getByText(block.recipients[0].name, { exact: true }).first()).toBeVisible();
     await content.getByRole('button', { name: '絞り込みを解除', exact: true }).click();
     await expect(content.getByText(`ブロック ${block.blockId} ${block.blockName}`, { exact: true })).toHaveCount(0);

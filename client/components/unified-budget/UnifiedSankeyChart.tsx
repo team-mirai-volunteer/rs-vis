@@ -778,8 +778,8 @@ export function UnifiedSankeyChart({
                         setBlockSelection({ projectId: selectedDetails.projectId!, year: rsSheetYear, blockId: block.blockId });
                         setPanelTab('recipient');
                       }} />
-                    ) : activeTab === 'recipient' && selectedBlock ? (
-                      <UnifiedBlockRecipients block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                    ) : activeTab === 'recipient' && selectedBlock && projectBlocks ? (
+                      <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
                     ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
                       <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList

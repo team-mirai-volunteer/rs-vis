@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { TagChip } from '@/client/components/TagChip';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { useCached } from './policy-summary-cache';
+import { BlockBalance } from '@/client/components/subcontract/BlockBalance';
 
 type ProjectBlocks = SubcontractGraph & { budgetSummary?: BudgetSummary; budgetBreakdown?: BudgetBreakdownItem[] };
 const cache = new Map<string, ProjectBlocks | null>();
@@ -49,12 +50,13 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
   </>;
 }
 
-export function UnifiedBlockRecipients({ block, onClear }: { block: BlockNode; onClear: () => void }) {
+export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: SubcontractGraph; block: BlockNode; onClear: () => void }) {
   return <>
     <div className="flex items-start justify-between gap-2 border-b border-border py-2 text-xs">
       <span className="text-mirai-text-secondary">ブロック {block.blockId} {block.blockName}</span>
       <Button variant="ghost" size="xs" onClick={onClear} className="shrink-0 text-[11px] text-primary">絞り込みを解除</Button>
     </div>
+    <BlockBalance graph={graph} block={block} />
     {block.recipients.length === 0 && <p className="py-2 text-xs text-mirai-text-muted">このブロックに支出先の記載はありません。</p>}
     {block.recipients.map((recipient, index) => <div key={`${recipient.name}-${index}`} className="border-b border-border px-1 py-1.5">
       <div className="flex items-baseline justify-between gap-3">
