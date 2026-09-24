@@ -82,6 +82,11 @@
     "tailwind-merge": "^3.7.0",
     "three": "^0.183.2"
   },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.28"
+    }
+  },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^22.10.1",
