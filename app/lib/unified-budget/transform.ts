@@ -42,7 +42,9 @@ export const columnIndex = (c: UnifiedColumn) => COLUMN_INDEX.get(c) ?? 0;
  * 当初予算のビューに補正の事業が当初予算として出る）。府省庁基準は keepZeroPrograms で残す
  */
 export function toViewGraph(graph: UnifiedGraph, opts?: { keepZeroPrograms?: boolean }): UnifiedViewGraph {
-  const source = opts?.keepZeroPrograms ? graph.nodes : graph.nodes.filter(n => !(n.col === 'program' && n.kind === 'rs' && n.value <= 0));
+  const excludedProjects = new Set(opts?.keepZeroPrograms ? [] : graph.nodes
+    .filter(n => n.col === 'program' && n.kind === 'rs' && n.value <= 0).map(n => n.projectId));
+  const source = graph.nodes.filter(n => !((n.col === 'program' || n.col === 'program-spending') && excludedProjects.has(n.projectId)));
   const nodes: UnifiedViewNode[] = source.map(n => {
     const { id, name, value, col, ...rest } = n;
     return { id, name, value, type: col, details: { ...rest, column: col } };
@@ -118,11 +120,14 @@ export function recomputeValues(view: UnifiedViewGraph): UnifiedViewGraph {
       const o = outflow.get(n.id) ?? 0;
       const budget = n.details.column === 'program' && (n.details.kind === 'rs' || n.details.aggregated);
       // 会計の表示額は歳出。積立等で歳入が多くても予算額に上書きしない。
-      const value = budget ? n.value : n.details.column === 'account' ? o : Math.max(i, o);
+      const rsProject = (n.details.kind === 'rs' || n.details.aggregated) && (n.details.column === 'program' || n.details.column === 'program-spending');
+      const value = budget || (rsProject && i === 0 && o === 0) ? n.value : n.details.column === 'account' ? o : Math.max(i, o);
       return { ...n, value, layoutValue: Math.max(value, i, o),
         details: budget ? { ...n.details, spendingFlow: o } : n.details };
     })
-    .filter(n => (inflow.get(n.id) ?? 0) > 0 || (outflow.get(n.id) ?? 0) > 0);
+    // 支出の記載がない事業(支出)も、金額の辺を捏造せず独立したノードとして残す。
+    .filter(n => (inflow.get(n.id) ?? 0) > 0 || (outflow.get(n.id) ?? 0) > 0
+      || ((n.details.kind === 'rs' || n.details.aggregated) && (n.details.column === 'program' || n.details.column === 'program-spending')));
   const ids = new Set(nodes.map(n => n.id));
   return { nodes, links: links.filter(l => ids.has(l.source) && ids.has(l.target) && l.value > 0) };
 }
@@ -184,6 +189,13 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
     const reachable = new Set<string>();
     const childrenOf = new Map<string, string[]>();
     for (const l of current.links) childrenOf.set(l.source, [...(childrenOf.get(l.source) ?? []), l.target]);
+    // 金額の辺がなくても、事業と事業(支出)は同じ事業IDに属する。
+    const programs = new Map(current.nodes.filter(isRsProgram).map(n => [n.details.projectId, n.id]));
+    for (const n of current.nodes) {
+      if (n.details.column !== 'program-spending') continue;
+      const program = programs.get(n.details.projectId);
+      if (program) childrenOf.set(program, [...(childrenOf.get(program) ?? []), n.id]);
+    }
     const roots = current.nodes.filter(n => n.details.column === 'revenue' || n.details.column === 'account' || n.details.column === 'ministry' || n.details.standalone).map(n => n.id);
     const stack = [...roots];
     for (const r of roots) reachable.add(r);
@@ -207,6 +219,10 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
         if (srcs && [...srcs].every(s => standaloneIds.has(s))) outsideOnly.add(n.id);
       }
       const drop = new Set(current.nodes.filter(n => !reachable.has(n.id) || outsideOnly.has(n.id)).map(n => n.id));
+      const droppedProjects = new Set(current.nodes.filter(n => n.details.column === 'program' && drop.has(n.id)).map(n => n.details.projectId));
+      for (const n of current.nodes) {
+        if (n.details.column === 'program-spending' && droppedProjects.has(n.details.projectId)) drop.add(n.id);
+      }
       current = removeNodes(current, drop);
       // 事業を落としたので、その下流（支出・支出先）で孤立したものを落とす
       current = removeUnreachable(current);
@@ -385,7 +401,7 @@ export function unifiedFilterIssues(filter: UnifiedViewFilter): { projectRegexIn
   };
 }
 
-/** 流入も流出も無くなったノードを落とす（recomputeValues が value=0 で落とすので通常は不要だが、明示） */
+/** 値を再計算し、RS事業以外で流入も流出も無くなったノードを落とす */
 function removeUnreachable(view: UnifiedViewGraph): UnifiedViewGraph {
   return recomputeValues(view);
 }

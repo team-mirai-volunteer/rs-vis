@@ -1,5 +1,4 @@
-import { focusSankey } from '@/app/lib/sankey-focus';
-export { relatedNodeIds } from '@/app/lib/sankey-focus';
+import { focusSankey, relatedNodeIds as relatedByLinks } from '@/app/lib/sankey-focus';
 
 /**
  * 統合ビューの「選択したノードに連なる筋」の計算（純関数）。
@@ -12,6 +11,26 @@ import type { SankeyLink } from '@/types/sankey';
 import type { UnifiedColumn } from '@/types/unified-budget';
 import type { UnifiedViewNode } from '@/types/unified-budget-view';
 import { columnIndex } from './transform';
+
+/** 金額の辺がない双子も、同じ事業として選択・強調表示する。 */
+function projectSeeds(nodes: UnifiedViewNode[], links: SankeyLink[], selectedId: string): Set<string> {
+  const related = relatedByLinks(links, selectedId);
+  const projectIds = new Set(nodes.filter(n => related.has(n.id)
+    && (n.details.column === 'program' || n.details.column === 'program-spending'))
+    .map(n => n.details.projectId).filter(id => id !== undefined));
+  return new Set([selectedId, ...nodes.filter(n => n.details.projectId !== undefined
+    && projectIds.has(n.details.projectId)
+    && (n.details.column === 'program' || n.details.column === 'program-spending')
+    && !related.has(n.id)).map(n => n.id)]);
+}
+
+export function relatedNodeIds(links: SankeyLink[], selectedId: string, nodes: UnifiedViewNode[] = []): Set<string> {
+  const related = new Set<string>();
+  for (const seed of projectSeeds(nodes, links, selectedId)) {
+    for (const id of relatedByLinks(links, seed)) related.add(id);
+  }
+  return related;
+}
 
 /**
  * 選択ノードの子孫を列ごとに、選択ノードからの寄与額（辺を按分して伝播）で並べる。
@@ -87,7 +106,22 @@ export function ancestorsByColumn(nodes: UnifiedViewNode[], links: SankeyLink[],
  * 上流: 選択ノードの値を祖先へ比例配分で遡らせる。下流: 集約ノードの流出を流入に合わせて縮める。
  */
 export function focusGraph(nodes: UnifiedViewNode[], links: SankeyLink[], selectedId: string): { nodes: UnifiedViewNode[]; links: SankeyLink[] } {
-  const focused = focusSankey(nodes, links, selectedId, { columnIndex: column => columnIndex(column as UnifiedColumn), downstream: 'all' });
+  const focusedNodes = new Map<string, UnifiedViewNode>();
+  const focusedLinks = new Map<string, SankeyLink>();
+  for (const seed of projectSeeds(nodes, links, selectedId)) {
+    const branch = focusSankey(nodes, links, seed, { columnIndex: column => columnIndex(column as UnifiedColumn), downstream: 'all' });
+    for (const n of branch.nodes) if (!focusedNodes.has(n.id)) focusedNodes.set(n.id, n);
+    // 0円で孤立した選択ノードも描画対象にする。
+    const selected = nodes.find(n => n.id === seed);
+    if (selected && (selected.details.kind === 'rs' || selected.details.aggregated)
+      && (selected.details.column === 'program' || selected.details.column === 'program-spending')
+      && !focusedNodes.has(seed)) focusedNodes.set(seed, selected);
+    for (const l of branch.links) {
+      const key = `${l.source}→${l.target}`;
+      if (!focusedLinks.has(key)) focusedLinks.set(key, l);
+    }
+  }
+  const focused = { nodes: nodes.filter(n => focusedNodes.has(n.id)).map(n => focusedNodes.get(n.id)!), links: [...focusedLinks.values()] };
   const original = new Map(nodes.map(n => [n.id, n]));
   return { ...focused, nodes: focused.nodes.map(n => n.details.column === 'account'
     ? { ...n, value: Math.min(n.value, original.get(n.id)?.value ?? n.value) } : n) };

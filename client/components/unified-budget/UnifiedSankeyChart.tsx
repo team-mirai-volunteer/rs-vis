@@ -162,10 +162,10 @@ export function UnifiedSankeyChart({
   const related = useMemo(() => {
     if (!selectedId) return null;
     if (!nodes.some(n => n.id === selectedId)) return null;
-    return relatedNodeIds(links, selectedId);
+    return relatedNodeIds(links, selectedId, nodes);
   }, [selectedId, links, nodes]);
 
-  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedNodeIds(links, hovered.id) : null), [hovered, selectedId, focusRelated, links]);
+  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedNodeIds(links, hovered.id, nodes) : null), [hovered, selectedId, focusRelated, links, nodes]);
 
   const visible = useMemo(() => {
     if (!focusRelated || !selectedId || !related) return { nodes, links };
