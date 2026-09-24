@@ -9,7 +9,7 @@ async function main() {
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: 1 });
-    for (const item of SHARE_PAGES) {
+    for (const item of SHARE_PAGES.filter(item => !process.argv[2] || item.href === process.argv[2])) {
       await page.setContent(`<html lang="ja"><style>
         *{box-sizing:border-box}body{margin:0;background:#f5f8f6;color:#123b35;font-family:'Yu Gothic',Meiryo,sans-serif}
         main{position:relative;width:1200px;height:630px;padding:60px 68px;overflow:hidden;border-top:12px solid #2aa693}

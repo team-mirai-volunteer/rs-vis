@@ -7,6 +7,7 @@ export const PAGES = [
   { href: '/project-bubble', label: 'バブルチャート', description: '5,000 超の事業を内容の近さで配置し、評価の低い事業を大きく表示する', primary: true },
   { href: '/quality', label: '評価一覧', description: '事業ごとの政策評価・執行透明性スコアを一覧で見る', primary: true },
   { href: '/subcontracts', label: '委託構造', description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true },
+  { href: '/tax-expenditures', label: '租税特別措置(試作)', description: '法人税の租税特別措置の適用実態と、関連するRS事業を調べる', primary: true },
   { href: '/tax-burden', label: '歳入・国民負担（試作）', description: '年収・家族構成別の税と保険料の負担率、国の税目別歳入を見る', primary: true },
   { href: '/fiscal-space', label: '財政余力シミュレータ（試作）', description: '次の1兆円で何が最初に足りなくなるか。政策・物価・労働・エネルギー・国債借換を仮定モデルで比較する', primary: true },
   { href: '/mof-budget-overview', label: '予算全体（MOF）', description: '一般会計・特別会計の歳入から歳出までの全体フロー', primary: false },
