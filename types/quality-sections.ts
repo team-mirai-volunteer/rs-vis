@@ -17,6 +17,7 @@ export interface QualitySectionItem extends PolicyAggregate {
   sectionName: string;
   /** 項に紐づく RS事業の計上額合計（円。加重平均の重みの合計） */
   rsAmount: number;
+  programs?: Array<{ pid: number; name: string; amount: number; score: number | null; recommendation: string | null }>;
 }
 
 export interface QualitySectionsResponse {

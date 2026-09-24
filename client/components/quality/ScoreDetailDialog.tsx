@@ -7,7 +7,10 @@
  * キャッシュする（同一事業への同時リクエストは1本にまとめる）。
  */
 
-import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
+import { fiscalYearLabel, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
+import Link from 'next/link';
+import { ScoreProjectStructure } from './ScoreProjectStructure';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,6 +56,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [showAxisDetail, setShowAxisDetail] = useState(false);
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
+  const [showStructure, setShowStructure] = useState(false);
   // 法人番号列（index 2）は13桁＋gBizINFOアイコンが入るため 130 まで広げる（旧ダイアログと同じ）
   const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
@@ -82,6 +86,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
     setShowAxisDetail(false);
     setShowPolicy(true);
     setShowProjectInfo(true);
+    setShowStructure(false);
   }, [item.pid, year]);
 
   const displayedRecipients = useMemo(() => {
@@ -162,6 +167,12 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
               <ProjectDetailShare pid={item.pid} year={year} />
               <p className="mt-1 text-xs text-mirai-text-muted">{fiscalYearLabel(year)}</p>
               {navigation}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-primary-accent">
+              <Link href={rsViewUrl(`/subcontracts/${item.pid}`, sourceYear)} className="hover:underline">
+                委託構造ブラウザで見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗
+              </Link>
+              <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗</Link>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
               <span className="font-mono bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
@@ -263,6 +274,19 @@ ${a.desc}`}>
         */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
+
+          <section className="border-b border-mirai-border px-6 py-3" aria-label="予算・委託構造">
+            <Button variant="ghost" size="xs" aria-expanded={showStructure} aria-controls="score-project-structure"
+              onClick={() => setShowStructure(v => !v)} className="px-0 text-primary-accent">
+              {showStructure ? '▾' : '▸'} 予算内訳・ブロック・再委託構造
+            </Button>
+            <div id="score-project-structure">
+              {showStructure && <>
+                {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の実績です。{year}年度の要求額・委託構造ではありません。</p>}
+                <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} />
+              </>}
+            </div>
+          </section>
 
         {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料 */}
         {showProjectInfo && (

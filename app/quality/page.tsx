@@ -413,7 +413,7 @@ export default function QualityPage() {
   const policyRows = policyByPid ? [...policyByPid.values()] : [];
   // 幅は固定。<select> は選択中の文言で幅が変わるため、放っておくと類型を選ぶたびに
   // 隣のUIが横に動く。truncate と併せて、選んでもレイアウトが動かないようにする。
-  const selCls = 'shrink-0 truncate px-2 py-1 text-xs border border-mirai-border '
+  const selCls = 'h-8 shrink-0 truncate px-2 py-1 text-xs border border-mirai-border '
     + 'rounded-md bg-card text-mirai-text-secondary cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
 
   return (
@@ -459,12 +459,12 @@ export default function QualityPage() {
             <details className="text-xs text-mirai-text-muted">
               <summary className="cursor-pointer">集計方法</summary>
               <p className="mt-1 max-w-3xl leading-relaxed">
-                配下の RS事業の評価を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名からサンキー図を開けます。
+                配下の RS事業の評価を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名から評価内訳・推奨の分布・配下事業を確認できます。
                 {isRequestYear && '2026年度は要求ベース（採点はシート2025）です。'}
               </p>
             </details>
           </div>
-          <SectionScoreTable year={year} />
+          <SectionScoreTable year={year} onOpenProject={openDetail} />
         </>
       )}
       {mode === 'project' && (<>
@@ -609,7 +609,7 @@ export default function QualityPage() {
                 </Button>
               </div>
               <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="text"
                     placeholder="事業名・PID・組織名で検索..."
@@ -636,6 +636,7 @@ export default function QualityPage() {
                           <div key={name} className="w-[170px] max-w-full">
                             <MultiSelectDropdown options={labels} selected={selected} onChange={setSelected}
                               allLabel={name} placeholder={`${name}：すべて`} minWidth={0} placeholderTone="strong"
+                              triggerClassName={`${selCls} pr-10`}
                               optionLabel={label => `${label}（${policyRows.filter(p => p[field] === label).length.toLocaleString()}）`} />
                           </div>
                         ))}

@@ -15,6 +15,7 @@ interface MultiSelectDropdownProps {
   /** 未選択（すべて）表示を本文色で濃く出したい画面は 'strong' を指定する */
   placeholderTone?: 'muted' | 'strong';
   optionLabel?: (option: string) => string;
+  triggerClassName?: string;
 }
 
 export function MultiSelectDropdown({
@@ -26,6 +27,7 @@ export function MultiSelectDropdown({
   minWidth = 160,
   placeholderTone = 'muted',
   optionLabel,
+  triggerClassName,
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -75,7 +77,8 @@ export function MultiSelectDropdown({
         className={cn(
           FILTER_INPUT_CLASS,
           'h-auto justify-start rounded-md font-normal overflow-hidden text-ellipsis whitespace-nowrap pr-6 text-left hover:bg-mirai-surface',
-          allSelected && (placeholderTone === 'muted' ? 'text-mirai-text-placeholder' : 'text-mirai-text')
+          allSelected && (placeholderTone === 'muted' ? 'text-mirai-text-placeholder' : 'text-mirai-text'),
+          triggerClassName
         )}
       >
         <span className="block w-full overflow-hidden text-ellipsis">{label}</span>

@@ -67,6 +67,7 @@ export function loadQualitySections(year: QualityYear): QualitySectionsResponse 
   type Bucket = { meta: Omit<QualitySectionItem, keyof ReturnType<typeof aggregatePolicy> | 'rsAmount'>; weights: Map<number, number> };
   const buckets = new Map<string, Bucket>();
   const allPids = new Set<number>();
+  const programNames = new Map<number, string>();
   for (const l of linkage.links) {
     if (l.mofBudgetType !== '当初予算' || l.rsAmount <= 0) continue;
     if (l.mofAccountType !== 'general' && l.mofAccountType !== 'special') continue;
@@ -89,13 +90,18 @@ export function loadQualitySections(year: QualityYear): QualitySectionsResponse 
     }
     b.weights.set(l.projectId, (b.weights.get(l.projectId) ?? 0) + l.rsAmount);
     allPids.add(l.projectId);
+    programNames.set(l.projectId, l.projectName);
   }
 
   const items: QualitySectionItem[] = [];
   for (const b of buckets.values()) {
     const programs: WeightedProgram[] = [...b.weights].map(([pid, weight]) => ({ pid, weight }));
     const agg = aggregatePolicy(programs, entries, recommendationLabels);
-    items.push({ ...b.meta, ...agg, rsAmount: programs.reduce((s, p) => s + p.weight, 0) });
+    items.push({ ...b.meta, ...agg, rsAmount: programs.reduce((s, p) => s + p.weight, 0),
+      programs: programs.map(p => ({ pid: p.pid, name: programNames.get(p.pid) ?? String(p.pid), amount: p.weight,
+        score: entries[p.pid]?.o ?? null, recommendation: recommendationLabels[entries[p.pid]?.r ?? 0] ?? null,
+      })).sort((a, b) => b.amount - a.amount),
+    });
   }
   items.sort((a, b) => b.rsAmount - a.rsAmount);
 

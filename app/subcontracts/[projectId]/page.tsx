@@ -1514,7 +1514,8 @@ function SubcontractDetailPageInner() {
   // ページタイトル
   useEffect(() => {
     if (graph) document.title = `再委託 ${graph.projectName}`;
-    return () => { document.title = '再委託構造ブラウザ'; };
+    // 遷移先のタイトルは各ルートの metadata に任せる。
+    // cleanup で書き換えると、遷移先が設定したタイトルを上書きしてしまう。
   }, [graph]);
 
   // Hooks はすべて early return より前に呼ぶ必要がある

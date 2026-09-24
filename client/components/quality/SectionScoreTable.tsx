@@ -4,12 +4,12 @@ import { fiscalYear } from '@/app/lib/rs-fiscal-year';
 
 /**
  * /quality の「項」表示。予算書の項ごとに、配下 RS事業の政策評価を計上額で加重平均した一覧。
- * データは /api/quality-sections。行の項名から統合ビュー（その項を選択した状態）へ飛べる。
+ * データは /api/quality-sections。行の項名から項の詳細モーダルを開く。
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Search, X } from 'lucide-react';
+import { SectionDetailDialog } from './SectionDetailDialog';
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { cn } from '@/lib/utils';
@@ -40,9 +40,10 @@ function visibleRecommendations(item: QualitySectionItem) {
   return item.recommendationShare.slice(0, 2).filter(s => Math.round(s.share * 100) > 0);
 }
 
-export function SectionScoreTable({ year }: { year: string }) {
+export function SectionScoreTable({ year, onOpenProject }: { year: string; onOpenProject: (pid: string) => void }) {
   const [data, setData] = useState<QualitySectionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [ministry, setMinistry] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('rsAmount');
@@ -55,6 +56,7 @@ export function SectionScoreTable({ year }: { year: string }) {
   useEffect(() => {
     let cancelled = false;
     setData(null);
+    setSelectedId(null);
     setError(null);
     fetch(`/api/quality-sections?year=${year}`)
       .then(res => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
@@ -149,6 +151,8 @@ export function SectionScoreTable({ year }: { year: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {data.items.filter(item => item.id === selectedId).map(item => <SectionDetailDialog key={item.id} item={item} year={year}
+        budgetYear={data.budgetYear} amountLabel={amountLabel} onClose={() => setSelectedId(null)} onOpenProject={pid => { setSelectedId(null); onOpenProject(pid); }} />)}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-mirai-border bg-card px-3 py-2 text-xs">
         <div className="relative min-w-[180px] flex-1 sm:max-w-[280px]">
           <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted" />
@@ -256,15 +260,14 @@ export function SectionScoreTable({ year }: { year: string }) {
                   {r.subAccount ? `${r.organization}／${r.subAccount}` : r.organization}
                 </td>
                 <td className="px-2 py-1.5">
-                  <Link
-                    href={`/budget-sankey?year=${data.budgetYear}&sel=${encodeURIComponent(r.id)}`}
+                  <button type="button"
+                    onClick={() => setSelectedId(r.id)}
                     className="inline-flex max-w-full items-center gap-1 font-medium text-primary-accent hover:underline"
-                    title={`${r.sectionName} — 統合ビューでこの項を開く`}
+                    title={`${r.sectionName} — 項の詳細を開く`}
                   >
                     <span className="truncate">{r.sectionName}</span>
                     <span className="shrink-0 text-[10px] text-mirai-text-muted">{r.sectionCode}</span>
-                    <ExternalLink className="size-3 shrink-0 text-mirai-text-muted" aria-hidden="true" />
-                  </Link>
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-secondary">
                   {r.evaluatedCount.toLocaleString()}<span className="text-mirai-text-muted"> / {r.programCount.toLocaleString()}</span>

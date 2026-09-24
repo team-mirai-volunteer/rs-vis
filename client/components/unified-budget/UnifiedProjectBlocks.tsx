@@ -1,3 +1,4 @@
+import { buildBlockTree, type BlockTreeNode } from '@/app/lib/subcontracts/block-tree';
 import type { SubcontractGraph, BlockNode } from '@/types/subcontract';
 import type { BudgetSummary, BudgetBreakdownItem } from '@/types/sankey-svg';
 import { Button } from '@/components/ui/button';
@@ -27,15 +28,9 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
   const direct = graph.blocks.filter(block => block.originKind === 'direct').length;
   const subcontract = graph.blocks.filter(block => block.originKind === 'subcontract').length;
   const separate = graph.blocks.length - direct - subcontract;
-  return <>
-    <div className="flex flex-wrap items-center gap-1.5 border-b border-border py-2 text-[11px] text-mirai-text-muted">
-      <TagChip kind="direct">直接 {direct}</TagChip>
-      {subcontract > 0 && <TagChip kind="subcontract">再委託 {subcontract}</TagChip>}
-      {separate > 0 && <TagChip kind="separate-origin">別財源 {separate}</TagChip>}
-      <span>階層 {graph.maxDepth}</span>
-      <a href={rsViewUrl(`/subcontracts/${graph.projectId}`, year)} className="ml-auto text-primary hover:underline">フローを見る ↗</a>
-    </div>
-    {graph.blocks.map(block => <Button key={block.blockId} variant="ghost" onClick={() => onSelect(block)}
+  const availableGraph = graph;
+  function renderNode({ block, children }: BlockTreeNode): React.ReactNode {
+    const card = <Button variant="ghost" onClick={() => onSelect(block)}
       className="flex h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-none border-b border-border px-1 py-1.5 text-left font-normal hover:bg-mirai-surface">
       <span className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-xs text-mirai-text-secondary">{block.blockId} {block.blockName}</span>
@@ -47,9 +42,26 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
         </TagChip>
         <span>支出先 {block.recipients.length.toLocaleString()}件</span>
       </span>
-      <BlockSources graph={graph} blockId={block.blockId} />
+      <BlockSources graph={availableGraph} blockId={block.blockId} />
       {block.role && <span className="text-[11px] leading-relaxed text-mirai-text-muted">{block.role}</span>}
-    </Button>)}
+    </Button>;
+    return <div key={block.blockId}>
+      {card}
+      {children.length > 0 && <details open className="ml-3 border-l-2 border-mirai-border pl-2 sm:ml-5 sm:pl-3">
+        <summary className="cursor-pointer py-1.5 text-[11px] text-mirai-text-muted">{block.blockId}からの再委託内訳（{children.length}ブロック）</summary>
+        {children.map(renderNode)}
+      </details>}
+    </div>;
+  }
+  return <>
+    <div className="flex flex-wrap items-center gap-1.5 border-b border-border py-2 text-[11px] text-mirai-text-muted">
+      <TagChip kind="direct">直接 {direct}</TagChip>
+      {subcontract > 0 && <TagChip kind="subcontract">再委託 {subcontract}</TagChip>}
+      {separate > 0 && <TagChip kind="separate-origin">別財源 {separate}</TagChip>}
+      <span>階層 {graph.maxDepth}</span>
+      <a href={rsViewUrl(`/subcontracts/${graph.projectId}`, year)} className="ml-auto text-primary hover:underline">フローを見る ↗</a>
+    </div>
+    {buildBlockTree(graph).map(renderNode)}
   </>;
 }
 
