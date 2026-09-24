@@ -46,7 +46,7 @@ export function UnifiedViewSelect({
         aria-label="表示プリセット"
         onChange={e => {
           const p = e.target.value as UnifiedPreset;
-          onChange(p, UNIFIED_PRESET_COLUMNS[p].filter(c => availableColumns.includes(c)));
+          onChange(p, UNIFIED_PRESET_COLUMNS[p]);
         }}
         className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >

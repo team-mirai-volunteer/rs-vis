@@ -45,7 +45,7 @@ async function openPage(page: Page, query = 'year=2024'): Promise<string[]> {
 
 /** 列見出し（`事業_2024` のような `<text>`）。tspan の測定量は含めずに前方一致で探す */
 function columnHeader(page: Page, label: string) {
-  return page.locator(`${CANVAS} text`).filter({ hasText: new RegExp(`^${label}`) });
+  return page.locator(`${CANVAS} text`).filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) });
 }
 
 /** 列見出しの並び（x 座標順）を返す */
@@ -265,6 +265,42 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(page).toHaveURL(/[?&]b=settlement/);
     await expect(columnHeader(page, '項_2024').first()).toContainText('支出済額', { timeout: RENDER_TIMEOUT });
     await expect(columnHeader(page, '事業_2024').first()).toContainText('執行額');
+  });
+
+  test('spending columns return after selecting a preset in 2026 and reloading', async ({ page }) => {
+    await openPage(page, 'year=2026');
+    await page.getByLabel('表示プリセット').selectOption('rs');
+    await expect(columnHeader(page, '支出先_2026')).toHaveCount(0);
+    await expect.poll(() => urlParams(page).get('cols')).toBe('mi,pr,ps,re');
+    await page.reload();
+    await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await page.getByLabel('年度').selectOption('2024');
+    await expect(columnHeader(page, '支出先_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    expect(await headerOrder(page)).toEqual(['所管_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
+  });
+
+  test('editing available columns in 2026 preserves hidden spending preferences', async ({ page }) => {
+    await openPage(page, 'year=2024&cols=mi,pr,ps,re');
+    await page.getByLabel('年度').selectOption('2026');
+    await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+    await page.getByRole('button', { name: '項', exact: true }).click();
+    await expect.poll(() => urlParams(page).get('cols')).toBe('mi,se,pr,ps,re');
+    await page.getByLabel('年度').selectOption('2024');
+    await expect(columnHeader(page, '支出先_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await expect(columnHeader(page, '事業(支出)_2024').first()).toBeAttached();
+  });
+
+  test('explicitly hidden spending columns stay hidden across years', async ({ page }) => {
+    await openPage(page, 'year=2024&cols=mi,pr');
+    await page.getByLabel('年度').selectOption('2026');
+    await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await page.reload();
+    await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await page.getByLabel('年度').selectOption('2024');
+    await expect(columnHeader(page, '事業_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
+    await expect(columnHeader(page, '事業(支出)_2024')).toHaveCount(0);
+    await expect(columnHeader(page, '支出先_2024')).toHaveCount(0);
   });
 
   test('preset RSのみ hides 会計 and starts with 所管; URL cols updates', async ({ page }) => {

@@ -322,7 +322,8 @@ function UnifiedBudgetSankeyContent() {
     const params = new URLSearchParams();
     params.set('year', String(year));
     if (effectiveBasis !== DEFAULT_BASIS) params.set('b', effectiveBasis);
-    params.set('cols', serializeColumns(effectiveColumns));
+    // 年度による一時的な非表示を、ユーザーが列を隠した設定として保存しない。
+    params.set('cols', serializeColumns(visibleColumns));
     for (const c of UNIFIED_COLUMNS) {
       if (topN[c] !== undefined) params.set(`t${COL_KEY[c]}`, String(topN[c]));
       if (offset[c]) params.set(`o${COL_KEY[c]}`, String(offset[c]));
@@ -336,7 +337,7 @@ function UnifiedBudgetSankeyContent() {
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, visibleColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -397,7 +398,8 @@ function UnifiedBudgetSankeyContent() {
       onFocusRelatedChange={setFocusRelated}
       visibleColumns={effectiveColumns}
       availableColumns={availableColumns}
-      onVisibleColumnsChange={setVisibleColumns}
+      onVisibleColumnsChange={columns => setVisibleColumns(previous => UNIFIED_COLUMNS.filter(c =>
+        availableColumns.includes(c) ? columns.includes(c) : previous.includes(c)))}
       summary={summary}
     />
   );
