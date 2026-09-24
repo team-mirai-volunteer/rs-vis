@@ -65,7 +65,7 @@ test('mobile pinch scales both axes around the two-finger midpoint', async ({ br
 });
 
 test('tax receipts open with provenance and retain their account when columns change', async ({ page }) => {
-  const query = new URLSearchParams({ year: '2024', sel: 'revenue-acct-general|tax|消費税' });
+  const query = new URLSearchParams({ year: '2024', b: 'initial', sel: 'revenue-acct-general|tax|消費税' });
   await page.goto(`/budget-sankey?${query}`);
   const panel = page.getByTestId('unified-side-panel');
   await expect(panel).toContainText('消費税');

@@ -27,7 +27,7 @@ test('cash targeting and childcare cash share update the poverty comparison', as
   await page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
   await expect(card).toContainText('現金給付は「所得に合わせて逓減」');
   await expect(all).not.toHaveText(universal);
-  await expect(page.getByTestId('poverty-coverage')).toContainText('軽減は 5.00兆円');
+  await expect(page.getByTestId('poverty-coverage')).toContainText('ここで反映した給付・本人負担の軽減・手取り賃上げは 5.00兆円');
   await page.getByRole('button', { name: '給付対象を設定', exact: true }).click();
   await page.getByLabel('現金給付の配り方', { exact: true }).selectOption('low-income');
   await page.getByRole('button', { name: '設定を閉じて結果を見る', exact: true }).click();
@@ -52,7 +52,7 @@ test('cash targeting and childcare cash share update the poverty comparison', as
   await expect(page.getByTestId('poverty-coverage')).toContainText('未推計');
   await page.getByLabel('子育て・数値で入力', { exact: true }).fill('0');
   await page.getByLabel('所得税減税・数値で入力', { exact: true }).fill('5');
-  await expect(page.getByTestId('poverty-coverage')).toContainText('軽減は 5.00兆円');
+  await expect(page.getByTestId('poverty-coverage')).toContainText('ここで反映した給付・本人負担の軽減・手取り賃上げは 5.00兆円');
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(card).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
