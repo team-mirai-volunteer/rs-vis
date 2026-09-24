@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { encodeSharedScenario } from '@/client/lib/fiscal-space-share';
+import { useEffect, useRef, useState } from 'react';
 import type { FiscalForm } from '@/client/lib/fiscal-space-form';
-import { encodeScenario, FISCAL_MODEL_VERSION, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
+import { FISCAL_MODEL_VERSION, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
 import { Button } from '@/components/ui/button';
 
 export function ShareScenario({ form, onPreset, onOptimizationSettings, error, restore }: {
@@ -13,11 +14,14 @@ export function ShareScenario({ form, onPreset, onOptimizationSettings, error, r
     setLink(''); setNotice('');
     setCalculatedOn(new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(new Date()));
   }, [form]);
+  const latestForm = useRef(form);
+  latestForm.current = form;
   const share = async () => {
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete('panel');
-      url.hash = encodeScenario(form);
+      url.hash = await encodeSharedScenario(form);
+      if (latestForm.current !== form) return;
       window.history.replaceState(null, '', url);
       setLink(url.href);
       try { await navigator.clipboard.writeText(url.href); setNotice('条件付きURLをコピーしました。'); }

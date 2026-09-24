@@ -1,3 +1,4 @@
+import { decodeSharedScenario } from '../../client/lib/fiscal-space-share';
 import { calibratedEducationGain } from '../../app/lib/fiscal-space/education-response';
 import { test, expect, type Page } from '@playwright/test';
 
@@ -30,7 +31,7 @@ test('insurance incidence and macro tail controls are editable and shared, inclu
   await expect(wage).toHaveValue('25');
   await expect(tail).toHaveValue('10');
   const old = new URL(shared);
-  const payload = JSON.parse(decodeURIComponent(old.hash.slice(10)));
+  const payload = { version: '', form: (await decodeSharedScenario(old.hash)).form };
   payload.version = '2026-09-24.4';
   delete payload.form.calibration.insurance; delete payload.form.calibration.macroTailYears;
   old.hash = '#scenario=' + encodeURIComponent(JSON.stringify(payload));
@@ -67,7 +68,7 @@ test('OECD education defaults disclose calibrated gains, share targeted settings
   await openEducation();
   await expect(gain).toHaveValue('4');
   const oldUrl = new URL(url);
-  const payload = JSON.parse(decodeURIComponent(oldUrl.hash.slice(10)));
+  const payload = { version: '', form: (await decodeSharedScenario(oldUrl.hash)).form };
   payload.version = '2026-09-24.2';
   payload.form.supply.education = { kind: 'education', additionality: .5, lag: 4, depreciation: .02, lifetime: 35, yield: .09, unitCost: 1.5e6, employment: .8 };
   oldUrl.hash = '#scenario=' + encodeURIComponent(JSON.stringify(payload));

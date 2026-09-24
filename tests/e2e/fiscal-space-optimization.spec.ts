@@ -20,6 +20,8 @@ test('shared values open the optimization panel with the saved conditions', asyn
   await expect(panel.getByRole('status')).toContainText('下のURLをコピー');
   const url = await panel.getByLabel('最適化の共有URL', { exact: true }).inputValue();
   expect(new URL(url).searchParams.get('panel')).toBe('optimization');
+  expect(new URL(url).hash).toMatch(/^#scenario=s1\./);
+  expect(url.length).toBeLessThan(1500);
   await panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true }).fill('20');
   await expect(panel.getByLabel('最適化の共有URL', { exact: true })).toHaveCount(0);
   await page.goto(url);

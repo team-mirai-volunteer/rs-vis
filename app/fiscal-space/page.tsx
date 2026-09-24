@@ -1,12 +1,14 @@
 'use client';
 
+import { decodeSharedScenario } from '@/client/lib/fiscal-space-share';
+
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { policyCostYen, policyInputLimitYen, totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
 import { CalculationOverview } from '@/client/components/fiscal-space/CalculationOverview';
 import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
 import { useFiscalCalculation } from '@/client/hooks/useFiscalCalculation';
-import { decodeScenarioDetailed, type ScenarioRestore } from '@/client/lib/fiscal-space-url';
+import { type ScenarioRestore } from '@/client/lib/fiscal-space-url';
 import { money } from '@/client/components/fiscal-space/format';
 import { LongRun, LongRunSettings, ProductionSettings, DurationSensitivity } from '@/client/components/fiscal-space/ScenarioConditions';
 import { PolicyLoads } from '@/client/components/fiscal-space/PolicyLoads';
@@ -80,18 +82,21 @@ export default function FiscalSpacePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { completed, error, pending, retry } = useFiscalCalculation(form);
   useEffect(() => {
-    const restore = () => {
+    let restoreSequence = 0;
+    const restore = async () => {
+      const sequence = ++restoreSequence;
       try {
         if (window.location.hash.startsWith('#scenario=')) {
-          const { form: restored, ...info } = decodeScenarioDetailed(window.location.hash);
+          const { form: restored, ...info } = await decodeSharedScenario(window.location.hash);
+          if (sequence !== restoreSequence) return;
           setForm(restored); setRestore(info);
         }
         setShareError('');
         if (new URL(window.location.href).searchParams.get('panel') === 'optimization') optimizationDialog.current?.showModal();
-      } catch { setForm(defaults()); setRestore(null); setShareError('共有条件を復元できません。初期状態（既定の条件）で計算しています。以下の数値は送信者の条件ではありません。'); }
+      } catch { if (sequence !== restoreSequence) return; setForm(defaults()); setRestore(null); setShareError('共有条件を復元できません。初期状態（既定の条件）で計算しています。以下の数値は送信者の条件ではありません。'); }
     };
     restore(); window.addEventListener('hashchange', restore);
-    return () => window.removeEventListener('hashchange', restore);
+    return () => { restoreSequence++; window.removeEventListener('hashchange', restore); };
   }, []);
   const update = useCallback(<K extends keyof FiscalForm>(key: K, value: FiscalForm[K]) =>
     setForm(f => Object.is(f[key], value) ? f : { ...f, [key]: value }), []);

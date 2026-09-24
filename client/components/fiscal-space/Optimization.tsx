@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { encodeSharedScenario } from '@/client/lib/fiscal-space-share';
+
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { POLICIES } from '@/app/lib/fiscal-space/assumptions';
 import type { FiscalForm } from '@/client/lib/fiscal-space-form';
@@ -8,7 +10,6 @@ import { OBJECTIVES, OBJECTIVE_IDS, OBJECTIVE_WEIGHT_PRESETS, withObjectiveWeigh
 import { useFiscalOptimization } from '@/client/hooks/useFiscalOptimization';
 import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { fieldClass } from './format';
-import { encodeScenario } from '@/client/lib/fiscal-space-url';
 
 const number = (value: number | null, digits = 3) => value === null ? '未推計' : value.toLocaleString('ja-JP', { maximumFractionDigits: digits });
 const signed = (value: number | null) => value === null ? '—' : `${value > 0 ? '+' : ''}${number(value)}`;
@@ -22,11 +23,14 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
   const [shareLink, setShareLink] = useState('');
   const [shareNotice, setShareNotice] = useState('');
   useEffect(() => { setShareLink(''); setShareNotice(''); }, [form]);
+  const latestForm = useRef(form);
+  latestForm.current = form;
   const share = async () => {
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('panel', 'optimization');
-      url.hash = encodeScenario(form);
+      url.hash = await encodeSharedScenario(form);
+      if (latestForm.current !== form) return;
       setShareLink(url.href);
       try { await navigator.clipboard.writeText(url.href); setShareNotice('最適化の共有URLをコピーしました。'); }
       catch { setShareNotice('下のURLをコピーしてください。'); }
