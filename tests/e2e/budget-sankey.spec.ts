@@ -17,6 +17,22 @@ test('GIGA budget label retains the initial budget when spending is larger', asy
   await expect(page.getByTestId('unified-label').filter({ hasText: 'GIGA' }).filter({ hasText: '5.08億円' })).toBeVisible();
 });
 
+for (const basis of ['initial', 'ministry']) {
+  test(`MyKey spending remains visible with no individual budget (${basis})`, async ({ page }) => {
+    const errors = await openPage(page, `year=2024&b=${basis}&sel=project-budget-56&fr=1`);
+    const panel = page.getByTestId('unified-side-panel');
+    await expect(panel).toContainText('マイキープラットフォーム関連システム');
+    await expect(page.locator('[data-testid="unified-node"][data-column="program"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="unified-node"][data-column="program-spending"]')).toHaveCount(1);
+    await expect(page.getByTestId('unified-label').filter({ hasText: 'マイキー' }).filter({ hasText: '9.38億円' })).toBeVisible();
+    await panel.getByRole('tab', { name: /^支出先/ }).click();
+    await expect(panel.getByRole('tabpanel').getByRole('button').first()).toBeVisible();
+    await page.getByLabel('ノードを検索').fill('マイキー');
+    await expect(searchResults(page).filter({ hasText: 'マイキー' }).first()).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+}
+
 /** ページを開いて図が出るまで待つ。ページエラーは呼び出し側で検証できるよう配列に集める */
 async function openPage(page: Page, query = 'year=2024'): Promise<string[]> {
   const pageErrors: string[] = [];

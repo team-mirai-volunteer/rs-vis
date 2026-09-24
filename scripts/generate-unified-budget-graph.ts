@@ -474,12 +474,14 @@ function main() {
   let outsideTotal = 0;
   let overLinked = 0;
   const outsideId = kindNodeId('outside');
+  const projectsWithSpending = new Set(svgGraph?.nodes
+    .filter(n => n.type === 'project-spending' && n.value > 0).map(n => n.projectId));
   for (const [pid, node] of programNode) {
     const inFlow = linkedIn.get(pid) ?? 0;
     const target = programValue.get(pid) ?? 0;
-    // 何も流れない事業は出さない。ただし歳出予算現額があるもの（当初予算 0 円＝補正・繰越のみの事業）は
-    // 値 0 のまま残す: 府省庁基準がこの値を使うため。予算書の基準では表示側（toViewGraph）が落とす
-    if (inFlow === 0 && target === 0 && !((node.rsCurrentBudget ?? 0) > 0)) continue;
+    // 歳出予算現額があるもの（補正・繰越のみ）や支出実績があるものは、予算0円でも残す。
+    // 個別予算0円・支出ありの事業を消すと、一括計上されたシステムの支出先も欠落する。
+    if (inFlow === 0 && target === 0 && !((node.rsCurrentBudget ?? 0) > 0) && !projectsWithSpending.has(pid)) continue;
     if (target < inFlow) {
       // 目からの流入が事業の値を上回る（2-2 > 2-1 など）。ノード値は流入に合わせる
       node.value = inFlow;

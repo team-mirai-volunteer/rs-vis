@@ -42,6 +42,14 @@ export function descendantsByColumn(nodes: UnifiedViewNode[], links: SankeyLink[
   for (const l of links) outgoing.set(l.source, [...(outgoing.get(l.source) ?? []), l]);
   const weight = new Map<string, number>();
   weight.set(selectedId, nodeById.get(selectedId)?.value ?? 0);
+  const selected = nodeById.get(selectedId);
+  if (selected?.details.column === 'program' && selected.value === 0 && selected.details.projectId !== undefined) {
+    for (const node of nodes) {
+      if (node.details.column === 'program-spending' && node.details.projectId === selected.details.projectId) {
+        weight.set(node.id, node.value);
+      }
+    }
+  }
   // 列順に伝播（DAG なので列の昇順で処理すれば親が先に確定する）
   const order = [...nodes].sort((a, b) => columnIndex(a.details.column) - columnIndex(b.details.column));
   for (const n of order) {

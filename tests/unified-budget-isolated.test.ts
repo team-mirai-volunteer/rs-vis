@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { applyFilter, applyTopN, collapseColumns, toRsMinistryGraph, toViewGraph } from '../app/lib/unified-budget/transform';
-import { focusGraph, relatedNodeIds } from '../app/lib/unified-budget/focus';
+import { descendantsByColumn, focusGraph, relatedNodeIds } from '../app/lib/unified-budget/focus';
 import { computeMOFSankeyLayout } from '../app/lib/mof-sankey-layout';
 import { UNIFIED_LAYOUT } from '../app/lib/unified-budget/constants';
 import { UNIFIED_FILTER_DEFAULT, type UnifiedViewGraph } from '../types/unified-budget-view';
@@ -55,7 +55,49 @@ test('当初予算0円の除外では支出側も残さない', () => {
   ], edges: [] } as unknown as UnifiedGraph;
   assert.equal(toViewGraph(graph).nodes.length, 0);
   assert.equal(toViewGraph(graph, { keepZeroPrograms: true }).nodes.length, 2);
+  // 補正・繰越による予算がある事業は、支出があっても当初予算の対象にはしない。
+  graph.nodes[0].rsCurrentBudget = 100;
+  graph.nodes[1].value = 80;
+  assert.equal(toViewGraph(graph).nodes.length, 0);
+  assert.equal(toViewGraph(graph, { keepZeroPrograms: true }).nodes.length, 2);
 });
+
+for (const year of [2023, 2024]) {
+  for (const basis of ['initial', 'supplementary']) {
+    test(`${year} ${basis}: 個別予算0円のマイキー事業を支出先とともに残す`, () => {
+      const graph: UnifiedGraph = JSON.parse(gunzipSync(readFileSync(
+        new URL(`../public/data/unified-budget-${year}-${basis}-graph.json.gz`, import.meta.url)
+      )).toString());
+      const programId = 'project-budget-56';
+      const spendingId = 'project-spending-56';
+      const amount = year === 2023 ? 1553699000 : 938276000;
+      assert.equal(graph.nodes.find(n => n.id === programId)?.value, 0);
+      assert.equal(graph.nodes.find(n => n.id === spendingId)?.value, amount);
+      assert.ok(!graph.edges.some(e => e.target === programId || e.source === programId));
+      for (const ministryMode of [false, true]) {
+        const raw = toViewGraph(graph, { keepZeroPrograms: ministryMode });
+        const base = ministryMode ? toRsMinistryGraph(raw) : raw;
+        const filtered = applyFilter(base, { ...UNIFIED_FILTER_DEFAULT, ministries: ['デジタル庁'], accountTypes: ['general'], projectQuery: 'マイキー' });
+        const display = applyTopN(collapseColumns(filtered, ['program', 'program-spending', 'recipient']), {}, {});
+        assert.equal(display.nodes.find(n => n.id === programId)?.value, 0);
+        assert.equal(display.nodes.find(n => n.id === spendingId)?.value, amount);
+        const descendants = descendantsByColumn(display.nodes, display.links, programId);
+        assert.equal(descendants.get('program-spending')?.[0].value, amount);
+        assert.ok(descendants.get('recipient')?.length);
+        for (const selectedId of [programId, spendingId]) {
+          const focused = focusGraph(display.nodes, display.links, selectedId);
+          assert.equal(focused.nodes.find(n => n.id === programId)?.value, 0);
+          assert.equal(focused.nodes.find(n => n.id === spendingId)?.value, amount);
+          assert.ok(focused.nodes.some(n => n.details.column === 'recipient'));
+        }
+        for (const patch of [{ ministries: ['厚生労働省'] }, { accountTypes: ['special'] as const }, { budgetMin: '1' }]) {
+          const excluded = applyFilter(base, { ...UNIFIED_FILTER_DEFAULT, ...patch } as typeof UNIFIED_FILTER_DEFAULT);
+          assert.ok(!excluded.nodes.some(n => n.id === programId || n.id === spendingId));
+        }
+      }
+    });
+  }
+}
 
 test('孤立した0円の支出ノードもTopNの集約件数に含め、集約を選択できる', () => {
   const view: UnifiedViewGraph = { nodes: [1, 2, 3].flatMap(projectId => [

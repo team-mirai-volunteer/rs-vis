@@ -38,12 +38,15 @@ export const columnIndex = (c: UnifiedColumn) => COLUMN_INDEX.get(c) ?? 0;
  * 1. 生成物 → 表示ノード。
  *
  * 生成物には「その基準では 0 円だが歳出予算現額はある」RS事業（当初予算 0 円＝補正・繰越のみ）が
- * value 0 で入っている。予算書の基準ではこれを落とす（残すと recomputeValues が支出額で埋めてしまい、
- * 当初予算のビューに補正の事業が当初予算として出る）。府省庁基準は keepZeroPrograms で残す
+ * value 0 で入っている。予算書の基準ではこれを落とす。府省庁基準は keepZeroPrograms で残す。
+ * ただし個別シートの歳出予算現額も0円で支出実績がある事業は、予算0円のまま両側を残す。
  */
 export function toViewGraph(graph: UnifiedGraph, opts?: { keepZeroPrograms?: boolean }): UnifiedViewGraph {
+  // 一括計上などで個別の予算記載がなくても、支出実績のある事業は0円の予算とともに残す。
+  const projectsWithSpending = new Set(graph.nodes.filter(n => n.col === 'program-spending' && n.value > 0).map(n => n.projectId));
   const excludedProjects = new Set(opts?.keepZeroPrograms ? [] : graph.nodes
-    .filter(n => n.col === 'program' && n.kind === 'rs' && n.value <= 0).map(n => n.projectId));
+    .filter(n => n.col === 'program' && n.kind === 'rs' && n.value <= 0
+      && !((n.rsCurrentBudget ?? n.budgetSummary?.totalBudget ?? 0) === 0 && projectsWithSpending.has(n.projectId))).map(n => n.projectId));
   const source = graph.nodes.filter(n => !((n.col === 'program' || n.col === 'program-spending') && excludedProjects.has(n.projectId)));
   const nodes: UnifiedViewNode[] = source.map(n => {
     const { id, name, value, col, ...rest } = n;
@@ -197,6 +200,16 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
       if (program) childrenOf.set(program, [...(childrenOf.get(program) ?? []), n.id]);
     }
     const roots = current.nodes.filter(n => n.details.column === 'revenue' || n.details.column === 'account' || n.details.column === 'ministry' || n.details.standalone).map(n => n.id);
+    // 元から予算の接続がない事業は、RSの府省庁・会計区分で絞り込む。
+    // フィルタで接続が切れた事業を復活させないよう、元のグラフの流入を確認する。
+    const originalIncoming = new Set(view.links.map(l => l.target));
+    for (const n of current.nodes) {
+      if (!isRsProgram(n) || originalIncoming.has(n.id)) continue;
+      const d = n.details;
+      if (filter.ministries.length > 0 && !filter.ministries.includes(d.rsMinistry ?? '')) continue;
+      if (filter.accountTypes.length > 0 && !filter.accountTypes.some(type => d.accountCategory === type || d.accountCategory === 'both')) continue;
+      roots.push(n.id);
+    }
     const stack = [...roots];
     for (const r of roots) reachable.add(r);
     while (stack.length > 0) {
