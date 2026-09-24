@@ -60,39 +60,28 @@ function parseAmountInput(input: string): number | null {
   }
 }
 
-/**
- * 金額フィルタの増減ラダー（1-2-5 系列）。
- * 金額は桁で効くので +1 ずつでは実用にならない。「1億 → 2億 → 5億 → 10億 …」で刻む。
- */
-const AMOUNT_STEPS: number[] = (() => {
-  const out: number[] = [];
-  for (let e = 8; e <= 14; e += 1) for (const m of [1, 2, 5]) out.push(m * 10 ** e);
-  return out;   // 1億 ~ 500兆
-})();
+/** 金額フィルタは1,000万円刻みで増減する。 */
+const AMOUNT_STEP = 10_000_000;
 
 /**
  * 表示用に整形。1000億以上は「兆」、それ未満は「億」。
- * 入力欄はスコア側と同じ50px幅に揃えているため「5000億」（6文字）は収まらない。
- * 1000億から兆表記に切り替えると「0.5兆」（4文字）で済み、parseAmountInput でも読み戻せる。
+ * 兆表記でも1,000万円の増減や手入力した金額が丸められないよう、円単位の精度を保つ。
  */
 function formatAmountInput(yen: number): string {
   if (yen >= 1e11) {
     const v = yen / 1e12;
-    return `${Number.isInteger(v) ? v : v.toFixed(1)}兆`;
+    return `${Number(v.toFixed(12))}兆`;
   }
   const v = yen / 1e8;
-  return `${Number.isInteger(v) ? v : v.toFixed(1)}億`;
+  return `${Number(v.toFixed(8))}億`;
 }
 
-/** 金額を1段上げ下げする。空欄からは最小値へ、最小値を下回ると空欄へ戻る */
+/** 金額を1,000万円上げ下げする。空欄からは1,000万円へ、0未満は空欄へ戻る */
 function stepAmount(current: string, dir: 1 | -1): string {
   const now = parseAmountInput(current);
-  if (now === null) return dir > 0 ? formatAmountInput(AMOUNT_STEPS[0]) : '';
-  const next = dir > 0
-    ? AMOUNT_STEPS.find((s) => s > now)
-    : [...AMOUNT_STEPS].reverse().find((s) => s < now);
-  if (next === undefined) return dir > 0 ? formatAmountInput(AMOUNT_STEPS[AMOUNT_STEPS.length - 1]) : '';
-  return formatAmountInput(next);
+  if (now === null) return dir > 0 ? formatAmountInput(AMOUNT_STEP) : '';
+  const next = now + dir * AMOUNT_STEP;
+  return next < 0 ? '' : formatAmountInput(next);
 }
 
 /** 0-100 のスコアを step 刻みで上げ下げする。0 未満に下げると空欄へ戻る */
@@ -185,8 +174,8 @@ export default function QualityPage() {
   });
   const [selectedMinistry, setSelectedMinistry] = useState<string>('');
   const [scoreRange, setScoreRange] = useState<ScoreRange>('all');
-  const [selectedRecommendation, setSelectedRecommendation] = useState('');
-  const [selectedAction, setSelectedAction] = useState('');
+  const [selectedRecommendation, setSelectedRecommendation] = useState<string[]>([]);
+  const [selectedAction, setSelectedAction] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [distMetric, setDistMetric] = useState<DistMetric>('overallScore');
   const [showGuide, setShowGuide] = useState(false);
@@ -280,8 +269,8 @@ export default function QualityPage() {
     }
 
     if (policyByPid) {
-      if (selectedRecommendation) items = items.filter(i => policyByPid.get(i.pid)?.recommendation === selectedRecommendation);
-      if (selectedAction) items = items.filter(i => policyByPid.get(i.pid)?.improvementAction === selectedAction);
+      if (selectedRecommendation.length) items = items.filter(i => selectedRecommendation.includes(policyByPid.get(i.pid)?.recommendation ?? ''));
+      if (selectedAction.length) items = items.filter(i => selectedAction.includes(policyByPid.get(i.pid)?.improvementAction ?? ''));
       if (selectedCategory) items = items.filter(i => policyByPid.get(i.pid)?.policyCategory === selectedCategory);
     }
 
@@ -471,7 +460,7 @@ export default function QualityPage() {
               {isRequestYear && ' 2026 年度は要求ベース（採点はシート 2025）です。'}
             </p>
           </div>
-          <SectionScoreTable year={year} />
+          <SectionScoreTable year={year} filterOpen={filterOpen} />
         </>
       )}
       {mode === 'project' && (<>
@@ -634,24 +623,8 @@ export default function QualityPage() {
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
-                  {/* 政策評価の絞り込み。1行に収めるため検索・府省庁と同居させる */}
+                  {/* 政策類型の絞り込み */}
                   {policyByPid && <>
-                        <select value={selectedRecommendation} onChange={e => setSelectedRecommendation(e.target.value)} className={`w-[154px] ${selCls}`}>
-                          <option value="">推奨: すべて</option>
-                          {RECOMMENDATION_LABELS.map(label => (
-                            <option key={label} value={label}>
-                              {label}（{policyRows.filter(p => p.recommendation === label).length.toLocaleString()}）
-                            </option>
-                          ))}
-                        </select>
-                        <select value={selectedAction} onChange={e => setSelectedAction(e.target.value)} className={`w-[142px] ${selCls}`}>
-                          <option value="">改善: すべて</option>
-                          {IMPROVEMENT_ACTION_LABELS.map(label => (
-                            <option key={label} value={label}>
-                              {label}（{policyRows.filter(p => p.improvementAction === label).length.toLocaleString()}）
-                            </option>
-                          ))}
-                        </select>
                         <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={`w-[194px] ${selCls}`}>
                           {/* 政策類型は32分類あるため、7つの上位グループで optgroup にまとめる */}
                           <option value="">類型: すべて</option>
@@ -672,8 +645,8 @@ export default function QualityPage() {
                         <Button
                           variant="ghost"
                           size="xs"
-                          onClick={() => { setSelectedRecommendation(''); setSelectedAction(''); setSelectedCategory(''); }}
-                          disabled={!(selectedRecommendation || selectedAction || selectedCategory)}
+                          onClick={() => { setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory(''); }}
+                          disabled={!(selectedRecommendation.length || selectedAction.length || selectedCategory)}
                           title="推奨・改善・類型の絞り込みを解除"
                           className="h-auto shrink-0 px-1 text-[11px] font-normal text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-secondary disabled:opacity-30"
                         >
@@ -681,6 +654,31 @@ export default function QualityPage() {
                         </Button>
                   </>}
                 </div>
+                {policyByPid && <div className="space-y-2">
+                  {([
+                    { name: '推奨', labels: RECOMMENDATION_LABELS, selected: selectedRecommendation, setSelected: setSelectedRecommendation, field: 'recommendation' },
+                    { name: '改善', labels: IMPROVEMENT_ACTION_LABELS, selected: selectedAction, setSelected: setSelectedAction, field: 'improvementAction' },
+                  ] as const).map(({ name, labels, selected, setSelected, field }) => (
+                    <fieldset key={name} className="min-w-0">
+                      <legend className="mb-1 text-xs text-mirai-text-muted">{name}（複数選択可・未選択はすべて）</legend>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {labels.map(label => (
+                          <label key={label} className={cn(
+                            'flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs',
+                            selected.includes(label) ? 'border-primary bg-primary/10 text-mirai-text' : 'border-mirai-border bg-card text-mirai-text-secondary',
+                          )}>
+                            <input type="checkbox" checked={selected.includes(label)}
+                              onChange={e => setSelected(prev => e.target.checked ? [...prev, label] : prev.filter(value => value !== label))}
+                              className="size-3.5 accent-primary" />
+                            <span>{label}（{policyRows.filter(p => p[field] === label).length.toLocaleString()}）</span>
+                          </label>
+                        ))}
+                        <Button variant="ghost" size="xs" disabled={!selected.length}
+                          onClick={() => setSelected([])} aria-label={`${name}の絞り込みを解除`}>解除</Button>
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>}
                 {/* 金額の範囲フィルタ */}
                 <div className="flex items-center gap-1 text-xs flex-wrap">
                   {([
@@ -718,13 +716,13 @@ export default function QualityPage() {
                         <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">年数</span>
                         <RangeStepInput
                           value={yearsFilter.min} width={50} placeholder="下限" title="下限（年）"
-                          onStep={(c, d) => stepScore(c, d, 110, 5)}
+                          onStep={(c, d) => stepScore(c, d, 110, 1)}
                           onChange={v => setYearsFilter(prev => ({ ...prev, min: v }))}
                         />
                         <span className="text-mirai-text-muted mx-px">~</span>
                         <RangeStepInput
                           value={yearsFilter.max} width={50} placeholder="上限" title="上限（年）"
-                          onStep={(c, d) => stepScore(c, d, 110, 5)}
+                          onStep={(c, d) => stepScore(c, d, 110, 1)}
                           onChange={v => setYearsFilter(prev => ({ ...prev, max: v }))}
                         />
                         <Button
@@ -1068,7 +1066,7 @@ ${a.desc}`}
                 size="sm"
                 onClick={() => {
                   setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
-                  setSelectedRecommendation(''); setSelectedAction(''); setSelectedCategory('');
+                  setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
                   setScoreFilters(EMPTY_SCORE_FILTERS());
                   setYearsFilter({ min: '', max: '' });
                   setAmountFilters({

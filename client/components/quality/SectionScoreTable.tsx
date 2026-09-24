@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { scoreColor, formatAmount } from '@/client/components/quality/score-format';
 import { POLICY_AXES, type PolicyAxis } from '@/app/lib/unified-budget/policy-aggregate';
+import { RECOMMENDATION_LABELS } from '@/client/components/quality/score-meta';
 import type { QualitySectionItem, QualitySectionsResponse } from '@/types/quality-sections';
 
 type SortKey = 'rsAmount' | 'programCount' | 'coverage' | 'ministry' | 'sectionName' | PolicyAxis;
@@ -28,13 +29,19 @@ const AXIS_DESC: Record<PolicyAxis, string> = {
   n: '必要性の加重平均',
 };
 
-export function SectionScoreTable({ year }: { year: string }) {
+type RangeKey = 'rsAmount' | 'programCount' | 'coverage' | PolicyAxis;
+type Ranges = Partial<Record<RangeKey, { min: string; max: string }>>;
+
+export function SectionScoreTable({ year, filterOpen = false }: { year: string; filterOpen?: boolean }) {
   const [data, setData] = useState<QualitySectionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [ministry, setMinistry] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('rsAmount');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [ranges, setRanges] = useState<Ranges>({});
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [account, setAccount] = useState('');
   const [onlyEvaluated, setOnlyEvaluated] = useState(true);
 
   useEffect(() => {
@@ -63,6 +70,19 @@ export function SectionScoreTable({ year }: { year: string }) {
     if (onlyEvaluated) items = items.filter(i => i.evaluatedCount > 0);
     if (ministry) items = items.filter(i => i.ministry === ministry);
     if (q) items = items.filter(i => [i.sectionName, i.ministry, i.organization, i.subAccount, i.sectionCode].some(v => v.includes(q)));
+    if (account) items = items.filter(i => i.accountType === account);
+    if (recommendations.length) items = items.filter(i => i.recommendationShare.some(s => s.share > 0 && recommendations.includes(s.label)));
+    for (const [key, range] of Object.entries(ranges)) {
+      const min = range.min.trim() === '' ? null : Number(range.min);
+      const max = range.max.trim() === '' ? null : Number(range.max);
+      if (min === null && max === null) continue;
+      items = items.filter(i => {
+        const value = key === 'rsAmount' ? i.rsAmount / 1e8
+          : key === 'programCount' ? i.programCount
+          : key === 'coverage' ? i.coverage * 100 : i.scores[key as PolicyAxis];
+        return value !== null && (min === null || value >= min) && (max === null || value <= max);
+      });
+    }
     const dir = sortDir === 'asc' ? 1 : -1;
     const val = (i: QualitySectionItem): number | string | null => {
       if (sortKey === 'ministry' || sortKey === 'sectionName') return i[sortKey];
@@ -78,7 +98,7 @@ export function SectionScoreTable({ year }: { year: string }) {
       if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb, 'ja') * dir;
       return ((va as number) - (vb as number)) * dir;
     });
-  }, [data, query, ministry, sortKey, sortDir, onlyEvaluated]);
+  }, [data, query, ministry, sortKey, sortDir, onlyEvaluated, account, ranges, recommendations]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
@@ -140,7 +160,7 @@ export function SectionScoreTable({ year }: { year: string }) {
           value={ministry}
           onChange={e => setMinistry(e.target.value)}
           aria-label="所管で絞り込み"
-          className="h-8 shrink-0 cursor-pointer truncate rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text-secondary"
+          className="h-8 w-48 max-w-full shrink-0 cursor-pointer truncate rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text-secondary"
         >
           <option value="">全所管</option>
           {ministries.map(m => (
@@ -154,6 +174,61 @@ export function SectionScoreTable({ year }: { year: string }) {
         <span className="ml-auto text-mirai-text-muted">
           {rows.length.toLocaleString()} / {data.summary.sectionCount.toLocaleString()} 項 ・ 紐づく RS事業 {data.summary.programCount.toLocaleString()} 件 ・ 重みは RS 2-2 の{amountLabel}
         </span>
+      </div>
+
+
+      <div className={cn('max-h-[50dvh] shrink-0 space-y-2 overflow-y-auto border-b border-mirai-border bg-card px-3 py-2 text-xs sm:block', filterOpen ? 'block' : 'hidden')}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="会計で絞り込み" value={account} onChange={e => setAccount(e.target.value)}
+            className="h-8 rounded-md border border-mirai-border bg-card px-2">
+            <option value="">全会計</option><option value="general">一般会計</option><option value="special">特別会計</option>
+          </select>
+          <Button variant="ghost" size="xs" onClick={() => {
+            setQuery(''); setMinistry(''); setAccount(''); setRanges({}); setRecommendations([]); setOnlyEvaluated(true);
+          }}>絞り込みを初期化</Button>
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {([
+            { key: 'rsAmount', label: `${amountLabel}（億円）`, step: 0.1 },
+            { key: 'programCount', label: '事業数', step: 1 },
+            { key: 'coverage', label: '評価カバー率（%）', step: 1, max: 100 },
+            ...POLICY_AXES.map(a => ({ key: a.key, label: a.label, step: 1, max: 100 })),
+          ] as { key: RangeKey; label: string; step: number; max?: number }[]).map(({ key, label, step, max }) => (
+            <fieldset key={key} className="min-w-0">
+              <legend className="mb-1 text-mirai-text-muted">{label}</legend>
+              <div className="flex items-center gap-1">
+                {(['min', 'max'] as const).map((bound, index) => (
+                  <span key={bound} className="flex items-center gap-1">
+                    {index === 1 && <span>〜</span>}
+                    <input type="number" min={0} max={max} step={step}
+                      aria-label={`${label}の${bound === 'min' ? '下限' : '上限'}`}
+                      placeholder={bound === 'min' ? '下限' : '上限'} value={ranges[key]?.[bound] ?? ''}
+                      onChange={e => {
+                        const value = e.target.value;
+                        setRanges(prev => ({ ...prev, [key]: { min: '', max: '', ...prev[key], [bound]: value } }));
+                      }} className="h-8 w-20 rounded-md border border-mirai-border bg-card px-1 text-mirai-text" />
+                  </span>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+        </div>
+        <fieldset>
+          <legend className="mb-1 text-mirai-text-muted">推奨（複数選択可・未選択はすべて）</legend>
+          <div className="flex flex-wrap gap-2">
+            {RECOMMENDATION_LABELS.map(label => (
+              <label key={label} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-mirai-border px-2 py-1">
+                <input type="checkbox" checked={recommendations.includes(label)} className="size-3.5 accent-primary"
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setRecommendations(prev => checked ? [...prev, label] : prev.filter(v => v !== label));
+                  }} />{label}
+              </label>
+            ))}
+            <Button variant="ghost" size="xs" disabled={!recommendations.length} onClick={() => setRecommendations([])}>推奨を解除</Button>
+          </div>
+          <p className="mt-1 text-mirai-text-muted">選んだ推奨の金額比率が0%を超える項を表示します。点数は項の加重平均、事業数は未評価を含む全体が対象です。</p>
+        </fieldset>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
