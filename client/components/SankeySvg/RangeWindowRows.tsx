@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -52,6 +52,20 @@ export function RangeWindowRow({
   const repeat = useRepeatPress();
   const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; startX: number; startOffset: number } | null>(null);
+  const holdRef = useRef<{ pointerId: number; target: number; current: number; started: number } | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const changeRef = useRef(onOffsetChange);
+  useLayoutEffect(() => { changeRef.current = onOffsetChange; });
+  const stopHold = () => {
+    if (holdTimer.current !== null) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    holdRef.current = null;
+  };
+  useEffect(() => {
+    const stop = () => { stopHold(); dragRef.current = null; };
+    window.addEventListener('blur', stop);
+    return () => { stop(); window.removeEventListener('blur', stop); };
+  }, [total, topN, maxOffset]);
   const rangeStart = offset + 1;
   const rangeEnd = Math.min(offset + topN, total);
   const commitTop = (v: number) => { markReplace(); setTopN(clampTop(v)); };
@@ -72,33 +86,60 @@ export function RangeWindowRow({
   };
 
   const onThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    stopHold();
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startOffset: offset };
   };
   const onThumbPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (holdRef.current?.pointerId === e.pointerId) {
+      holdRef.current.target = pointerOffset(e.clientX);
+      return;
+    }
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
     onOffsetChange(clampOffset(drag.startOffset + dxToOffset(e.clientX - drag.startX)));
   };
   const onThumbPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.pointerId === e.pointerId) dragRef.current = null;
+    if (holdRef.current?.pointerId === e.pointerId) stopHold();
   };
 
-  /** トラックの素の部分をクリック: クリック位置がつまみの中心になるようにジャンプ */
-  const onTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const pointerOffset = (clientX: number) => {
     const track = trackRef.current;
-    if (!track || maxOffset <= 0) return;
-    e.preventDefault();
+    if (!track || maxOffset <= 0) return 0;
     const rect = track.getBoundingClientRect();
     const thumbW = Math.max((Math.min(topN, total) / Math.max(total, 1)) * rect.width, THUMB_MIN_PX);
     const freeW = Math.max(rect.width - thumbW, 1);
-    const next = clampOffset(((e.clientX - rect.left - thumbW / 2) / freeW) * maxOffset);
-    onOffsetChange(next);
-    // そのままドラッグへ移行できるようにする
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    dragRef.current = { pointerId: e.pointerId, startX: e.clientX, startOffset: next };
+    return clampOffset(((clientX - rect.left - thumbW / 2) / freeW) * maxOffset);
+  };
+
+  /** クリックは1件、長押しは加速。ポインタ位置で止め、飛び越さない。 */
+  const onTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || maxOffset <= 0) return;
+    e.preventDefault();
+    stopHold();
+    e.currentTarget.focus();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const target = pointerOffset(e.clientX);
+    const current = clampOffset(offset + Math.sign(target - offset));
+    holdRef.current = { pointerId: e.pointerId, target, current, started: performance.now() };
+    onOffsetChange(current);
+    const advance = () => {
+      const hold = holdRef.current;
+      if (!hold) return;
+      const seconds = (performance.now() - hold.started - 350) / 1000;
+      const step = Math.max(1, Math.floor(maxOffset * Math.min(0.15, seconds * seconds * 0.02)));
+      const distance = hold.target - hold.current;
+      if (distance !== 0) {
+        hold.current = clampOffset(hold.current + Math.sign(distance) * Math.min(Math.abs(distance), step));
+        changeRef.current(hold.current);
+      }
+      holdTimer.current = setTimeout(advance, 120);
+    };
+    holdTimer.current = setTimeout(advance, 350);
   };
 
   const onSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -130,6 +171,7 @@ export function RangeWindowRow({
         onPointerMove={onThumbPointerMove}
         onPointerUp={onThumbPointerEnd}
         onPointerCancel={onThumbPointerEnd}
+        onLostPointerCapture={onThumbPointerEnd}
         className="relative h-4 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-mirai-progress-track ring-1 ring-inset ring-black/5"
       >
         <div

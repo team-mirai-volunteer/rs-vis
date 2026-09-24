@@ -12,6 +12,39 @@ import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified
 const CANVAS = '[data-testid="unified-canvas"]';
 const RENDER_TIMEOUT = 60_000;
 
+test('range track clicks step once and holding accelerates to the pointer', async ({ page }) => {
+  const errors = await openPage(page, 'year=2024&cols=mi,pr,ps,re');
+  const slider = page.getByRole('slider', { name: '事業の表示開始位置', exact: true });
+  const box = (await slider.boundingBox())!;
+  const x = box.x + box.width * 0.8;
+  const y = box.y + box.height / 2;
+  await page.mouse.click(x, y);
+  await expect(slider).toHaveAttribute('aria-valuenow', '1');
+  await page.waitForTimeout(500);
+  await expect(slider).toHaveAttribute('aria-valuenow', '1');
+  const target = await slider.evaluate(el => {
+    const width = el.getBoundingClientRect().width;
+    const thumb = el.firstElementChild!.getBoundingClientRect().width;
+    const max = Number(el.getAttribute('aria-valuemax'));
+    return Math.round(((width * 0.8 - thumb / 2) / (width - thumb)) * max);
+  });
+  await page.mouse.down();
+  await expect.poll(async () => Number(await slider.getAttribute('aria-valuenow')), { timeout: 10000 }).toBe(target);
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  await expect(slider).toHaveAttribute('aria-valuenow', String(target));
+  await page.mouse.click(box.x + 2, y);
+  await expect(slider).toHaveAttribute('aria-valuenow', String(target - 1));
+  await slider.press('Home');
+  await expect(slider).toHaveAttribute('aria-valuenow', '0');
+  await page.mouse.move(box.x + 3, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, y);
+  await page.mouse.up();
+  expect(Number(await slider.getAttribute('aria-valuenow'))).toBeGreaterThan(1);
+  expect(errors).toEqual([]);
+});
+
 test('GIGA budget label retains the initial budget when spending is larger', async ({ page }) => {
   await openPage(page, 'year=2024&b=initial&sel=project-budget-1503');
   await expect(page.getByTestId('unified-label').filter({ hasText: 'GIGA' }).filter({ hasText: '5.08億円' })).toBeVisible();

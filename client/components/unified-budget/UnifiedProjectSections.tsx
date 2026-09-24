@@ -101,6 +101,7 @@ export function UnifiedProjectSections({
         expanded={overviewExpanded}
         onToggle={() => setOverviewExpanded(v => !v)}
         previewHeight={OVERVIEW_PREVIEW_HEIGHT}
+        showBottomBorder={false}
         isLoading={overviewExpanded && detail === undefined}
       />
 

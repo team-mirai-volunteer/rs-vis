@@ -34,6 +34,7 @@ export function ProjectOverviewSection({
   onResizeStart,
   onResizeReset,
   isLoading = false,
+  showBottomBorder = true,
 }: {
   detail: ProjectDetail | null | undefined;
   projectName: string;
@@ -47,6 +48,7 @@ export function ProjectOverviewSection({
   onResizeStart?: (e: React.MouseEvent) => void;
   onResizeReset?: () => void;
   isLoading?: boolean;
+  showBottomBorder?: boolean;
 }) {
   const META_PX = scaleFont(11);
   const PANEL_META_PX = scaleFont(11);
@@ -54,7 +56,7 @@ export function ProjectOverviewSection({
   const Chevron = expanded ? ChevronDown : ChevronRight;
 
   return (
-    <div className="shrink-0 border-b border-border">
+    <div className={showBottomBorder ? 'shrink-0 border-b border-border' : 'shrink-0'}>
       <div className="flex items-center gap-1 px-3.5 py-[7px]">
         <Button
           variant="ghost"
