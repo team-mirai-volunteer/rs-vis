@@ -24,7 +24,7 @@ export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears
     ['名目GDP', money(s.macro.nominalGdp), ''],
     ['インフレ率', ext(percent(s.macro.inflation)), longRun ? '公表期間外の延長計算（†）。' : ''],
     ['国民負担（GDP比）', percent(burden), `税・社会保険料 ÷ 名目GDP。政策なし ${percent(baselineBurden)}。国民所得比ではありません。`],
-    ['実質可処分所得（固定価格・中央値）', income(household.medianDisposableIncome), `給付・減税の直接効果のみの参考値。世帯の手取りを世帯人数の平方根で割った等価可処分所得。政策なし ${income(poverty.baseline.medianDisposableIncome)}。`],
+    ['実質可処分所得（固定価格・中央値）', income(household.medianDisposableIncome), `給付・減税と、設定した社保の賃金転嫁による参考値。世帯の手取りを世帯人数の平方根で割った等価可処分所得。政策なし ${income(poverty.baseline.medianDisposableIncome)}。`],
     ['相対的貧困率（直接効果）', percent(household.all), `全体・再分配後。政策後の所得中央値の半分を貧困線として再計算。政策なし ${percent(poverty.baseline.all)}。`],
     ['子どもの貧困率（直接効果）', percent(household.child), `17歳以下・再分配後。政策後の所得中央値から貧困線を再計算。政策なし ${percent(poverty.baseline.child)}。`],
     ['歳出（利払いを含む）', money(s.fiscal.primaryExpenditure + s.fiscal.interestPayments), '元本の借換を除く。'],
@@ -46,7 +46,7 @@ export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears
       ? '2022年短期モデルは長期金利の反応を公表しておらず未接続。基準借換金利＋外生ショックのみ'
       : `うち公表政策反応 ${points(step.referenceRateEffect ?? 0)}。公表GDP・CPIに含まれる金融引締めは再加算しない`],
     ['輸入', ext(money(s.external.imports)), ''],
-    ['輸出', ext(money(s.external.exports)), `公表モデルの輸出反応を反映${longRun ? '（公表期間外は末尾据え置きの延長）' : ''}`],
+    ['輸出', ext(money(s.external.exports)), `公表モデルの輸出反応を反映${longRun ? '（公表期間外は設定した反応解消条件を適用）' : ''}`],
     ['利払い / GDP', percent(step.metrics.interestGdp), '利払い / 税・社会負担収入 ' + percent(step.metrics.interestTax)],
     ['資金調達需要', money(step.metrics.grossFinancingNeeds), 'GDP比 ' + percent(step.metrics.gfnGdp)],
   ];
@@ -90,7 +90,7 @@ export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears
     {note && <p className="mt-1 text-xs text-mirai-text-subtle" data-testid="metric-note">{note}</p>}
   </div>);
   return <Card data-testid="horizon-results"><CardHeader><h2 className="text-xl font-bold">{s.year}年目の結果（試算{longRun && '・公表期間外の延長'}）</h2>
-    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、公表反応の末尾を据え置いた仮定です。`}</p>
+    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、反応解消・長期供給の設定に依存します。`}</p>
     <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>

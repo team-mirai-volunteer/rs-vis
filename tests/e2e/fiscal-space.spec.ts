@@ -8,6 +8,39 @@ const openAdvanced = (page: Page) => page.evaluate(() => {
   if (details && !details.open) details.open = true;
 });
 
+test('insurance incidence and macro tail controls are editable and shared, including legacy mode', async ({ page }) => {
+  const openConditions = async () => {
+    await openAdvanced(page);
+    await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
+  };
+  await page.goto('/fiscal-space');
+  await openConditions();
+  const wage = page.getByLabel('事業主軽減の賃金転嫁率・数値で入力', { exact: true });
+  const tail = page.getByLabel('公表期間後のマクロ反応解消年数・数値で入力', { exact: true });
+  await expect(wage).toHaveValue('50');
+  await expect(tail).toHaveValue('5');
+  await page.getByRole('button', { name: '社保：慎重', exact: true }).click();
+  await expect(wage).toHaveValue('25');
+  await tail.fill('10');
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'この条件のURLをコピー', exact: true }).click();
+  const shared = await page.getByLabel('共有URL', { exact: true }).inputValue();
+  await page.goto(shared);
+  await openConditions();
+  await expect(wage).toHaveValue('25');
+  await expect(tail).toHaveValue('10');
+  const old = new URL(shared);
+  const payload = JSON.parse(decodeURIComponent(old.hash.slice(10)));
+  payload.version = '2026-09-24.4';
+  delete payload.form.calibration.insurance; delete payload.form.calibration.macroTailYears;
+  old.hash = '#scenario=' + encodeURIComponent(JSON.stringify(payload));
+  await page.goto(old.href); await page.reload();
+  await expect(page.getByTestId('restore-notice')).toContainText('据置');
+  await openConditions();
+  await expect(page.getByLabel('賃金転嫁と長期労働反応を計算する', { exact: true })).not.toBeChecked();
+  await expect(tail).toHaveValue('0');
+});
+
 test('OECD education defaults disclose calibrated gains, share targeted settings and retain legacy inputs', async ({ page }) => {
   const openEducation = async () => {
     await openAdvanced(page);

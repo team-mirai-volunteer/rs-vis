@@ -22,11 +22,11 @@ export function PovertyDetails({ result }: {
     <p className="text-xs">2024年の所得分布に、設定した政策の年額を適用した直接効果の比較です。所得・物価・人口を固定しているため、将来の貧困率の予測ではありません。</p>
     <p className="text-xs">計算済みの配分：現金給付は「{CASH_TARGET_LABELS[result.assumptions.cashTarget]}」、子育て予算の{percent(result.assumptions.childcareCashShare, 0)}を子ども1人当たりの現金給付とする仮定です。これらは貧困率の比較条件で、既存のGDP・出生率の反応係数は変わりません。</p>
     {result.assumptions.cashTarget === 'income-tapered' && <CashTaperNote />}
-    <p className="text-xs">所得税・住民税は推定税額に比例した減税、社会保険料は本人負担分の軽減を反映します。モデル上で非課税の人には所得税減税を配分せず、還付は加算しません。子育て予算の現金割合の初期値は100%です。</p>
+    <p className="text-xs">所得税・住民税は推定税額に比例した減税、社会保険料は本人負担分の軽減と、設定した事業主軽減の賃金転嫁を反映します。モデル上で非課税の人には所得税減税を配分せず、還付は加算しません。子育て予算の現金割合の初期値は100%です。</p>
     <div className="overflow-x-auto" role="region" aria-label="貧困率の政策比較" tabIndex={0}>
       <table className="w-full min-w-[860px] text-right text-sm tabular-nums">
         <caption className="text-left text-xs">各年の有効な政策だけを適用。現金給付を貯蓄として累積せず、一時政策の終了後は直接効果がなくなります。</caption>
-        <thead><tr>{['適用年', '全体', '子ども', '貧困線固定：全体', '貧困線固定：子ども', '所得中央値（万円／年）', '反映する給付・軽減額'].map(label => <th scope="col" key={label} className="p-2">{label}</th>)}</tr></thead>
+        <thead><tr>{['適用年', '全体', '子ども', '貧困線固定：全体', '貧困線固定：子ども', '所得中央値（万円／年）', '反映する給付・軽減・賃上げ額'].map(label => <th scope="col" key={label} className="p-2">{label}</th>)}</tr></thead>
         <tbody><tr><th scope="row" className="p-2">追加施策なし</th><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>{percent(observed.all, 1)}</td><td>{percent(observed.child, 1)}</td><td>{(result.baseline.medianDisposableIncome / 1e4).toFixed(1)}</td><td>—</td></tr>
           {result.rows.map(row => <tr key={row.year} className="border-t border-mirai-border" data-poverty-year={row.year}>
             <th scope="row" className="p-2">年{row.year}</th>
@@ -38,7 +38,7 @@ export function PovertyDetails({ result }: {
       </table>
     </div>
     <p className="text-xs">通常の相対的貧困率は、政策後の所得中央値から貧困線も再計算します。「貧困線固定」は政策なしの基準を保った比較です。所得が増えても、中央値の上昇によって相対的貧困率が上がることがあります。</p>
-    <p className="text-xs" data-testid="poverty-coverage">年1の政策総額 {money(first.activeBudget)}のうち、ここで反映した給付・本人負担の軽減は {money(first.allocated)}。消費税減税、事業主負担の軽減、現物サービス、投資や雇用を通じた効果は未推計です。未反映は効果がないという意味ではありません。</p>
+    <p className="text-xs" data-testid="poverty-coverage">年1の政策総額 {money(first.activeBudget)}のうち、ここで反映した給付・本人負担の軽減・手取り賃上げは {money(first.allocated)}。消費税減税、事業主軽減のうち賃金転嫁以外の効果、現物サービス、投資や雇用を通じた所得分布の変化は未推計です。未反映は効果がないという意味ではありません。</p>
     <details><summary className="cursor-pointer text-sm font-bold">所得分布・税負担の仮定と出典</summary>
       <div className="mt-2 space-y-2 text-xs leading-relaxed">
         <p><a href={POVERTY_DATA.sourceUrl} className="underline" target="_blank" rel="noreferrer">厚労省・2025年国民生活基礎調査</a>の2024年所得分布を使用。公表値は全体15.0%、子ども11.0%、貧困線138万円、中央値277万円です。計算では丸められた中央値の半分138.5万円を使い、政策なしの貧困率が公表値に一致するよう所得階級内の人数を調整しています。2024年基準・最新値基準のどちらでも同じ分布を使います。</p>

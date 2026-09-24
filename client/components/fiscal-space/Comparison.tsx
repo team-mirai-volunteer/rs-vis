@@ -22,7 +22,7 @@ function PeriodValues({ row, field }: { row: PolicyComparison; field: Field }) {
 
 export function Comparison({ rows, horizon }: { rows: PolicyComparison[]; horizon: number }) {
   return <Card><CardHeader><h2 className="text-lg font-bold">次の1兆円を何に使うか</h2>
-    <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年{horizon > 5 && '・10・15年'}で比較します。{horizon > 5 && '†付きの年は公表期間を超える延長計算（公表反応の末尾を据え置き）で、公表推計ではありません。'}金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
+    <p className="text-sm leading-relaxed">現在の政策に<strong>1年限り・1兆円</strong>追加した差を、1・3・5年{horizon > 5 && '・10・15年'}で比較します。{horizon > 5 && '†付きの年は公表期間を超える延長計算（設定した反応解消・長期供給の条件を適用）で、公表推計ではありません。'}金額は<strong>兆円／年</strong>で、累計ではありません。GDP・国内代替は初期年価格、輸出入・貿易収支は各年価格。率の差はポイント表記（CPIが2%→3%なら+1ポイント）です。</p>
     <p className="text-xs leading-relaxed">経済財政モデルは5年、短期日本経済モデルは3年までの公表反応を使用。公表期間外や未設定の供給・代替経路は「未推計」です。国内代替は輸入品・燃料を国産品・国内発電で置き換える額で、稼働前はゼロになります。</p>
     <p className="text-xs">追加1兆円が減収対象の収入を超える政策は比較から除いています。金額は0.01兆円単位に丸めています。表示桁は推定精度ではなく、係数や事業条件の不確実性はこれより大きい可能性があります。</p>
     <p className="text-xs leading-relaxed">研究・教育・系統など資本以外の供給経路は公表期間後に立ち上がる設計のため、{horizon <= 5 ? `${horizon}年評価では実質GDPに届く供給便益は0で、潜在GDP列にだけ計上されます。成長投資は短期では物価コストだけが枠に入ります。` : '延長年（†）では実質GDPにも供給便益が入ります。'}</p>

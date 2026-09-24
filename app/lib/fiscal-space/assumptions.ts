@@ -2,6 +2,7 @@ import type { EconomyState, ModelParameters, Policy, Sector, Shock, SourceValue,
 import { japanSources, japanValue, type JapanDataset } from './japan-data';
 import { ELECTRICITY_BASELINE, electricityRecords } from './electricity-baseline';
 import { DEMOGRAPHICS, demographicRecords } from './demographics';
+import { INSURANCE_DEFAULTS } from './insurance-response';
 import { buildDebtPortfolio } from './debt-portfolio';
 
 export const TRILLION = 1e12;
@@ -22,6 +23,7 @@ export const PARAMETERS: ModelParameters = {
   consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
   electricity: { ...ELECTRICITY_BASELINE },
   referenceModel: 'ef2026', multiplierScale: 1,
+  insurance: { ...INSURANCE_DEFAULTS }, macroTailYears: 5,
   hoursElasticity: 0, participationElasticity: 0, netLabourIncomeShare: .4,
   employeeReliefShare: .5, employerDemandElasticity: 0, employerLabourCostShare: .55,
   baselineRealGrowth: .01, baselineInflation: .02, marketRate: .02, newDebtMaturity: 10,
@@ -136,7 +138,7 @@ export function assumptionRecords(data: unknown, prefix = '', dataset: JapanData
       ['annualGwhPerTrillion', 'operatingAnnualGwhPerTrillion'].includes(leaf) ? 'GWh/年0価格1兆円' :
       leaf === 'annualConstructionGwh' ? 'GWh/年' :
       leaf === 'sectorUtilizationPerTrillion' ? '稼働率の増分/年0価格1兆円' :
-      ['lag', 'lifetime', 'years'].includes(leaf) ? '年' :
+      ['lag', 'lifetime', 'years', 'adjustmentYears', 'macroTailYears'].includes(leaf) ? '年' :
       prefix.startsWith('thresholds.') ? '比率（1 = 100%）' : yenFields.includes(leaf) ? '円' :
       years.includes(leaf) ? '年' : gw.includes(leaf) ? 'GW' :
       ['labourForce', 'employment', 'unemployment'].includes(leaf) ? '人' : leaf === 'hoursWorked' ? '時間/年' : '無次元（比率・指数・係数）',

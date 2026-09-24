@@ -3,6 +3,7 @@ import { NO_SHOCK, PARAMETERS, SECTORS } from './assumptions';
 import { allocateDemand } from './demand';
 import { financeDebt, fiscalMetrics, rollover } from './debt';
 import { positive, productionCapacity } from './production';
+import { insuranceLabour, validateInsurance } from './insurance-response';
 import { REFERENCES, taxLabourSupply } from './calibration';
 import { policyReliefLimit } from './policy-limits';
 import { policyLoads } from './policy-load';
@@ -87,6 +88,7 @@ function validate(initial: EconomyState, policies: Policy[], horizon: number, p:
 /** Explicit baseline paths keep temporary demand from becoming permanent growth by accident. */
 export function simulate(initial: EconomyState, policies: Policy[], horizon = 10, p: ModelParameters = PARAMETERS, shock: Shock = NO_SHOCK,
   diagnostic: { gapClosureYears?: number } = {}): Simulation {
+  validateInsurance(p.insurance, p.macroTailYears);
   validate(initial, policies, horizon, p, shock);
   const gapClosureYears = diagnostic.gapClosureYears ?? 0;
   if (!Number.isInteger(gapClosureYears) || gapClosureYears < 0 || gapClosureYears > 100) throw new RangeError('Invalid diagnostic gap closure');
@@ -108,9 +110,10 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     // family spending (share of GDP) and, if credited, net-income gains of insurance relief.
     const calendarYear = initial.baseCalendarYear + t;
     const trendNominal = initial.macro.nominalGdp * fiscalTrend;
+    const insurance = insuranceLabour(initial, policies, t, p, REFERENCES[p.referenceModel].years);
     const driver: BirthDriver = { calendarYear,
       familySpendingGdpShare: active.filter(x => x.id === 'childcare').reduce((s, x) => s + x.annualCost, 0) / trendNominal,
-      netIncomeChange: active.filter(x => x.id === 'social-insurance').reduce((s, x) => s + x.annualCost, 0) * p.employeeReliefShare / (p.netLabourIncomeShare * trendNominal) };
+      netIncomeChange: (insurance.employee + insurance.netWage) / (p.netLabourIncomeShare * trendNominal) };
     drivers.push(driver);
     const demographics = demographicPath(initial.baseCalendarYear, calendarYear, p.demographics, drivers);
     const labourFactor = demographics.labourForceIndex ** p.demographics.labourElasticity;
@@ -156,12 +159,12 @@ export function simulate(initial: EconomyState, policies: Policy[], horizon = 10
     for (const sector of SECTORS) state.labour.sectorUtilization[sector] += sectorDemand[sector];
     const population15 = initial.labour.labourForce / initial.labour.participation * demographics.population15Index;
     state.labour.labourForce = Math.min(population15,
-      initial.labour.labourForce * demographics.labourForceIndex * (1 + demand.labourForceEffect) * supply.participation);
+      initial.labour.labourForce * demographics.labourForceIndex * (1 + demand.labourForceEffect) * supply.participation * insurance.participation);
     state.labour.participation = Math.min(1, state.labour.labourForce / population15);
-    state.labour.hoursWorked = initial.labour.hoursWorked * (1 + demand.hoursEffect) * supply.hours;
+    state.labour.hoursWorked = initial.labour.hoursWorked * (1 + demand.hoursEffect) * supply.hours * insurance.hours;
     // Calibrated headcount response, with extra hours meeting part of labour demand. The
     // demographic index moves employment with the labour force so the baseline unemployment rate holds.
-    state.labour.employment = initial.labour.employment * demographics.labourForceIndex * (1 + demand.employmentEffect) * supply.employerDemand / supply.hours;
+    state.labour.employment = initial.labour.employment * demographics.labourForceIndex * (1 + demand.employmentEffect) * supply.employerDemand * insurance.employment / supply.hours;
     state.labour.unemployment = Math.max(0, state.labour.labourForce - state.labour.employment);
     state.energy.primaryDemand = initial.energy.primaryDemand + energyDemandIncrease;
     state.energy.domesticSupply = initial.energy.domesticSupply * (1 + energyAddition);

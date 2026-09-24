@@ -1,3 +1,4 @@
+import type { InsuranceAssumptions } from '@/app/lib/fiscal-space/insurance-response';
 import type { IndustryTradeCase, PowerCase } from '@/app/lib/fiscal-space/policy-trade';
 
 /** Money is yen; rates are fractions; real values use the selected year-0 prices. */
@@ -99,6 +100,7 @@ export interface ModelParameters {
   consumptionTax: { revenuePerPoint: number; cpiShare: number; baseRate: number; passThrough: number; referenceDirectCpi: number; referenceDirectDeflator: number };
   electricity: import('@/app/lib/fiscal-space/electricity-baseline').ElectricityBaselineCase;
   referenceModel: 'ef2026' | 'esri2022'; multiplierScale: number;
+  insurance?: InsuranceAssumptions; macroTailYears?: number;
   hoursElasticity: number; participationElasticity: number; netLabourIncomeShare: number;
   employeeReliefShare: number; employerDemandElasticity: number; employerLabourCostShare: number;
   baselineRealGrowth: number; baselineInflation: number; marketRate: number; newDebtMaturity: number;

@@ -1,6 +1,7 @@
 import type { EconomyState, Inputs, ModelParameters, Policy } from '@/types/fiscal-space';
 import { investmentPricePath } from './investment-price';
 import { supplyInputs } from './supply';
+import { insuranceLabour } from './insurance-response';
 import { REFERENCES, taxLabourSupply } from './calibration';
 import { positive, productionCapacity, productionIndex } from './production';
 import { projectNetOutput, projectResponses } from './project-response';
@@ -55,6 +56,7 @@ export function policyProduction(initial: EconomyState, policies: Policy[], year
     const labour = taxLabourSupply(initial, policies, year, p);
     factors.labour *= labour.hours * labour.participation;
   }
+  factors.labour *= insuranceLabour(initial, policies, year, p, referenceYears).productiveLabour;
   const initialEffective = { ...initial.production.inputs, labour: initial.production.inputs.labour * initial.production.labourProductivity };
   const degree = p.productionModel === 'cobbDouglas' ? Object.values(p.cobbWeights).reduce((sum, x) => sum + x, 0) : 1;
   positive(degree, 'production homogeneity degree');

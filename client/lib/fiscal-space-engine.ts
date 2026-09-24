@@ -153,7 +153,7 @@ export function createFiscalEngine() {
     return { initial, p, horizon, policies, allocated, totalYen, projection, baseline, inputExternal,
       estimate, riskAudit, constraints, baselineConstraints, sensitivity, comparison, shocks, peaksByYear, taxElasticitySensitivity, powerTimeline,
       modelSensitivity, resourceSensitivity, publicCapitalSensitivity, longRun, medium, durationSensitivity, records,
-      poverty: povertyScenario(allocated, horizon, form.poverty, p.employeeReliefShare) };
+      poverty: povertyScenario(allocated, horizon, form.poverty, p.employeeReliefShare, p.insurance) };
   };
 }
 

@@ -1,3 +1,4 @@
+import { insuranceIncidence, macroTailFactor } from './insurance-response';
 import type { EconomyState, ModelParameters, Policy, SourceValue } from '@/types/fiscal-space';
 
 export type ReferenceModel = 'ef2026' | 'esri2022';
@@ -157,6 +158,8 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
     result.prices += taxPoints / 100 * p.consumptionTax.referenceDirectCpi * taxPriceFactor;
     result.deflator += taxPoints / 100 * p.consumptionTax.referenceDirectDeflator * taxPriceFactor;
   }
+  const tail = macroTailFactor(year, REFERENCES[p.referenceModel].years, p.macroTailYears);
+  for (const key of Object.keys(result) as (keyof ResponseProfile)[]) result[key] *= tail;
   result.gdp *= initial.macro.realGdp;
   result.imports *= initial.external.imports / (initial.macro.nominalGdp / initial.macro.realGdp);
   result.exports *= initial.external.exports / (initial.macro.nominalGdp / initial.macro.realGdp);
@@ -168,18 +171,20 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
 
 /** Extra wage/cost responses are explicit sensitivity assumptions, not estimates.
  * Split employee/employer proportional relief before mapping to wages or costs.
- * No wage shifting; this mapping does not cover lump sums or threshold reforms. */
+ * Optional insurance incidence shifts wages before applying these legacy sensitivities.
+ * This mapping does not cover lump sums or threshold reforms. */
 export function taxLabourSupply(initial: EconomyState, policies: Policy[], year: number, p: ModelParameters) {
   const active = policies.filter(x => x.kind === 'permanent' || year <= x.duration);
   const insurance = active.filter(x => x.id === 'social-insurance').reduce((sum, x) => sum + x.annualCost, 0);
   const employeeCut = active.filter(x => ['income-tax', 'resident-tax'].includes(x.id)).reduce((sum, x) => sum + x.annualCost, 0) + insurance * p.employeeReliefShare;
-  const employerCut = insurance * (1 - p.employeeReliefShare);
+  const incidence = insuranceIncidence(policies, year, p.employeeReliefShare, p.insurance);
+  const employerCut = incidence.employer;
   const netEarnings = initial.macro.nominalGdp * p.netLabourIncomeShare *
     ((1 + p.baselineRealGrowth) * (1 + p.baselineInflation)) ** year;
-  const netWageRatio = 1 + employeeCut / netEarnings;
+  const netWageRatio = 1 + (employeeCut + incidence.netWage) / netEarnings;
   const employerCost = initial.macro.nominalGdp * p.employerLabourCostShare *
     ((1 + p.baselineRealGrowth) * (1 + p.baselineInflation)) ** year;
-  const employerCostRatio = 1 - employerCut / employerCost;
+  const employerCostRatio = 1 - incidence.remainingCostRelief / employerCost;
   if (employerCostRatio <= 0) throw new RangeError('Employer relief exceeds the assumed payroll cost');
   return { netWageRatio, hours: netWageRatio ** p.hoursElasticity,
     employeeCut, employerCut, employerCostRatio, employerDemand: employerCostRatio ** -p.employerDemandElasticity,

@@ -1,3 +1,4 @@
+import { insuranceIncidence, validateInsurance, type InsuranceAssumptions } from './insurance-response';
 import data from './data/poverty-income-2024.json';
 import taxData from '@/scripts/data/tax-burden-params-2025.json';
 import { computeHousehold, type HouseholdInput } from '../tax-burden/household-tax';
@@ -36,6 +37,7 @@ export function validatePoverty(c: PovertyAssumptions) {
 }
 
 interface Cell {
+  working: boolean;
   lower: number; upper: number; people: number; children: number;
   size: number; childCount: number; householdWeight: number;
   /** Annual household liability profile, calibrated to national receipts. Not an observed tax bill. */
@@ -109,7 +111,7 @@ function cellsFor(scenario: number): Cell[] {
         { people: otherPeople * shape.retiredShare, size: shape.otherSize, childCount: 0, retired: true },
       ]) {
         const people = Math.max(0, group.people) / 20;
-        cells.push({ lower, upper, people, size: group.size, childCount: group.childCount,
+        cells.push({ working: !group.retired, lower, upper, people, size: group.size, childCount: group.childCount,
           children: people * group.childCount / group.size, householdWeight: people / group.size,
           taxes: taxProfile((lower + upper) / 2 * Math.sqrt(group.size), group.size, group.childCount, group.retired, shape.twoEarners) });
       }
@@ -134,7 +136,7 @@ export function povertyMeasures(cells: IncomeCell[], anchoredLine = line) {
     anchoredAll: below(anchoredLine, 'people') / n, anchoredChild: kids > 0 ? below(anchoredLine, 'children') / kids : 0 };
 }
 
-function evaluate(cells: Cell[], policies: Policy[], year: number, c: PovertyAssumptions, employeeShare: number) {
+function evaluate(cells: Cell[], policies: Policy[], year: number, c: PovertyAssumptions, employeeShare: number, insurance?: InsuranceAssumptions) {
   const amount = (id: string) => policies.filter(p => p.id === id && (p.kind === 'permanent' || year <= p.duration)).reduce((sum, p) => sum + p.annualCost, 0);
   const cash = amount('cash'), childCash = amount('childcare') * c.childcareCashShare;
   const requested = [amount('income-tax'), amount('resident-tax'), amount('social-insurance') * employeeShare];
@@ -145,29 +147,33 @@ function evaluate(cells: Cell[], policies: Policy[], year: number, c: PovertyAss
     : r.size * (c.cashTarget === 'low-income' ? (r.upper <= line ? 1 : 0)
       : c.cashTarget === 'income-tapered' ? cashTaperWeight((r.lower + r.upper) / 2) : 1);
   const eligible = cells.reduce((sum, r) => sum + units(r) * r.householdWeight, 0);
+  const netWage = insuranceIncidence(policies, year, employeeShare, insurance).netWage;
+  const wageWeight = cells.reduce((sum, r) => sum + (r.working ? r.taxes[2] * r.householdWeight : 0), 0);
   let allocated = 0;
   const after = cells.map(r => {
     const cashUnits = units(r);
     const gain = (eligible > 0 ? cash * cashUnits / eligible : 0) + childCash * r.childCount / children
-      + r.taxes.reduce((sum, tax, j) => sum + tax * fractions[j], 0);
+      + r.taxes.reduce((sum, tax, j) => sum + tax * fractions[j], 0)
+      + (r.working && wageWeight > 0 ? netWage * r.taxes[2] / wageWeight : 0);
     allocated += gain * r.householdWeight;
     const equivalentGain = gain / Math.sqrt(r.size);
     return { ...r, lower: r.lower + equivalentGain, upper: r.upper + equivalentGain };
   });
-  return { ...povertyMeasures(after), allocated, requested: cash + childCash + requested.reduce((s, x) => s + x, 0),
+  return { ...povertyMeasures(after), allocated, netWage, requested: netWage + cash + childCash + requested.reduce((s, x) => s + x, 0),
     activeBudget: policies.filter(p => p.kind === 'permanent' || year <= p.duration).reduce((s, p) => s + p.annualCost, 0) };
 }
 
 /** Static direct-effect comparison using 2024 incomes/prices, not a forecast of future poverty.
  * Changing the distribution settings does not change macro multipliers or fiscal costs. */
-export function povertyScenario(policies: Policy[], years: number, c: PovertyAssumptions, employeeShare: number) {
+export function povertyScenario(policies: Policy[], years: number, c: PovertyAssumptions, employeeShare: number, insurance?: InsuranceAssumptions) {
   validatePoverty(c);
+  validateInsurance(insurance, undefined);
   if (!Number.isInteger(years) || years < 1 || years > 15 || !Number.isFinite(employeeShare) || employeeShare < 0 || employeeShare > 1
     || policies.some(p => !Number.isFinite(p.annualCost) || p.annualCost < 0)) throw new RangeError('Invalid poverty policy');
   const cells = shapes.map((_, i) => cellsFor(i));
   const baseline = povertyMeasures(cells[0]);
   const rows = Array.from({ length: years }, (_, i) => {
-    const results = cells.map(group => evaluate(group, policies, i + 1, c, employeeShare));
+    const results = cells.map(group => evaluate(group, policies, i + 1, c, employeeShare, insurance));
     const range = (key: 'all' | 'child') => ({ min: Math.min(...results.map(r => r[key])), max: Math.max(...results.map(r => r[key])) });
     return { year: i + 1, ...results[0], range: { all: range('all'), child: range('child') } };
   });

@@ -57,7 +57,7 @@ export function createOptimizationEvaluator(form: FiscalForm) {
     throw new Error('出生率の政策反応が未推計です。人口動態の経路を有効にするか、出生率の重みを0にしてください。');
   const { initial, p, horizon, shock, policyConfigs } = prepareFiscalScenario(form);
   const baselinePath = simulate(initial, [], horizon, p, shock);
-  const baselinePoverty = povertyScenario([], horizon, form.poverty, p.employeeReliefShare);
+  const baselinePoverty = povertyScenario([], horizon, form.poverty, p.employeeReliefShare, p.insurance);
   const baseline = projectionObjectiveValues(baselinePath, baselinePoverty, settings);
   const missing = OBJECTIVE_IDS.filter(id => settings.objectives[id].weight > 0 && baseline[id] === null);
   if (missing.length) throw new Error(`${missing.map(id => OBJECTIVES[id].label).join('・')}が未推計です。対応する計算条件を有効にするか、重みを0にしてください。`);
@@ -90,7 +90,7 @@ export function createOptimizationEvaluator(form: FiscalForm) {
     const povertyPolicies = policies.filter(p => ['cash', 'childcare', 'income-tax', 'resident-tax', 'social-insurance'].includes(p.id));
     const povertyKey = JSON.stringify(povertyPolicies.map(p => [p.id, p.annualCost]));
     let poverty = povertyCache.get(povertyKey);
-    if (!poverty) { poverty = povertyScenario(povertyPolicies, horizon, form.poverty, p.employeeReliefShare); povertyCache.set(povertyKey, poverty); }
+    if (!poverty) { poverty = povertyScenario(povertyPolicies, horizon, form.poverty, p.employeeReliefShare, p.insurance); povertyCache.set(povertyKey, poverty); }
     const values = projectionObjectiveValues(path, poverty, settings);
     const scored = projectionObjectiveScore(path, poverty, baselinePath, baselinePoverty, settings);
     if (scored.score === null) add('評価指標が未推計', 100);

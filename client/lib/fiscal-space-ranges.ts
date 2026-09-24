@@ -16,6 +16,8 @@ const calibration: Record<string, Bounds> = {
   taxRevenueElasticity: [0, 2], socialContributionElasticity: [0, 2], taxCollectionLag: [0, 3], multiplierScale: [0, 3],
   gapDemandSensitivity: [0, 10], gapPriceSensitivity: [0, 10], gapInflationSlope: [0, .2], marketRate: [0, .06],
   structuralUnemployment: [.01, .05],
+  macroTailYears: [0, 30], 'insurance.wagePassThrough': [0, 1], 'insurance.netWageRetention': [0, 1],
+  'insurance.adjustmentYears': [1, 20], 'insurance.hoursElasticity': [0, 1], 'insurance.participationElasticity': [0, 1], 'insurance.demandElasticity': [0, 1],
   hoursElasticity: [0, 1], participationElasticity: [0, 1], employeeReliefShare: [0, 1], employerDemandElasticity: [0, 1],
   netLabourIncomeShare: [.2, .7], employerLabourCostShare: [.3, .9],
   energyPricePassThrough: [0, 1], energyDomesticPricePassThrough: [0, 1], expenditurePriceIndexation: [0, 1],

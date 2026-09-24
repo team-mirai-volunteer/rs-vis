@@ -119,7 +119,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
             className={`px-3 py-1 text-xs ${horizon === n ? 'bg-primary text-white' : 'bg-card'}`}>{n}年{n === EXTENDED_HORIZON ? '（延長）' : ''}</button>)}
         </span>
       </fieldset>
-      {horizon === EXTENDED_HORIZON && <p className="-mt-3 text-xs text-mirai-text-subtle">15年は公表乗数（{maxHorizon}年）の末尾を据え置いた延長計算。新設原子力（11年目稼働）などを同じ制約評価で見るための条件で、公表推計ではありません。</p>}
+      {horizon === EXTENDED_HORIZON && <p className="-mt-3 text-xs text-mirai-text-subtle">15年は公表期間（{maxHorizon}年）後の反応解消・長期供給の条件に従う延長計算。新設原子力（11年目稼働）などを同じ制約評価で見るための条件で、公表推計ではありません。</p>}
       <details data-testid="constraint-conditions" className="rounded-xl border border-mirai-border px-3 py-1.5" open={conditionsOpen} onToggle={e => setConditionsOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer text-sm font-bold leading-tight [&::marker]:text-xs">予算を制約する条件<span className="block whitespace-nowrap text-[11px] font-normal leading-tight text-mirai-text-subtle tabular-nums">CPI {(thresholds.inflation * 100).toFixed(1)}% / 失業率 {(floor * 100).toFixed(1)}% / ギャップ {gap.toFixed(1)}%</span></summary>
         <div className="mt-2 space-y-3 pb-1">
@@ -166,7 +166,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
         <RangeField label="建設利用率（年0）" value={construction} min={70} max={100} unit="%" onChange={onConstruction} />
         <RangeField label="確実電力供給（年0）" value={firmCapacity} min={170} max={250} unit="GW" onChange={onFirmCapacity} />
         <label className="block space-y-2 text-sm"><span>制約の評価期間</span><select aria-label="制約の評価期間" className={fieldClass} value={horizon} onChange={e => onHorizon(Number(e.target.value))}>{[1, 3, 5].filter(n => n <= maxHorizon).map(n => <option key={n} value={n}>{n}年間（公表期間内）</option>)}<option value={15}>15年間（公表期間{maxHorizon}年を超える延長）</option></select>
-          <span className="block text-xs text-mirai-text-subtle">15年は公表乗数の末尾を据え置いた延長計算です。新設原子力（11年目稼働）など公表期間後に立ち上がる投資を同じ画面で見るための条件で、公表推計ではありません。</span></label>
+          <span className="block text-xs text-mirai-text-subtle">15年は反応解消・長期供給の条件に従う延長計算です。新設原子力（11年目稼働）など公表期間後に立ち上がる投資を同じ画面で見るための条件で、公表推計ではありません。</span></label>
         <RangeField label="借換金利の外生ショック" value={rateShock / 100} min={0} max={3} unit="%" onChange={n => onRateShock(n * 100)} />
         <p className="text-xs">借換金利は基準金利＋公表モデルの政策反応＋外生ショックです。外生ショックは資金調達条件のみの感度で、追加の金融政策によるGDP・CPI反応は未推計です。</p>
         <RangeField label="輸入エネルギー価格ショック" value={energyShock} min={0} max={100} step={10} unit="%" onChange={onEnergyShock} />

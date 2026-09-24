@@ -1,4 +1,5 @@
 import type { EconomyState, ModelParameters, Policy, Simulation } from '@/types/fiscal-space';
+import { insuranceIncidence } from './insurance-response';
 import { financeDebt, rollover } from './debt';
 import { policyProduction } from './policy-production';
 import { investmentPricePath } from './investment-price';
@@ -55,7 +56,8 @@ export function longRunScenario(initial: EconomyState, policies: Policy[], short
     const basePrice0 = base.state.macro.nominalGdp / base.state.macro.realGdp;
     const familyShare = active.filter(x => x.id === 'childcare').reduce((s, x) => s + x.annualCost, 0)
       / (base.state.macro.nominalGdp * ((1 + c.realGrowth) * (1 + c.inflation)) ** elapsed);
-    const insuranceShare = active.filter(x => x.id === 'social-insurance').reduce((s, x) => s + x.annualCost, 0) * p.employeeReliefShare
+    const incidence = insuranceIncidence(policies, year, p.employeeReliefShare, p.insurance);
+    const insuranceShare = (incidence.employee + incidence.netWage)
       / (p.netLabourIncomeShare * base.state.macro.nominalGdp * ((1 + c.realGrowth) * (1 + c.inflation)) ** elapsed);
     policyDrivers.push({ calendarYear: initial.baseCalendarYear + year, familySpendingGdpShare: familyShare, netIncomeChange: insuranceShare });
     const policyDemo = demo(year, policyDrivers), baseDemo = demo(year, []);

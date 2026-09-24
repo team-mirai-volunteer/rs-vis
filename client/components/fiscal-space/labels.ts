@@ -36,6 +36,8 @@ const LABELS: Record<string, string> = {
   gdp: '実質GDP', prices: '消費者物価水準', deflator: 'GDPデフレーター', hours: '労働時間',
   multiplierScale: 'GDP乗数の感度倍率', hoursElasticity: '手取り賃金に対する労働時間の弾力性',
   participationElasticity: '手取り賃金に対する参加の弾力性', netLabourIncomeShare: '本人の手取り労働所得のGDP比',
+  insurance: '社会保険料減税の長期反応', enabled: '反応を有効にする', macroTailYears: '公表期間後の反応解消年数',
+  wagePassThrough: '事業主軽減の賃金転嫁率', netWageRetention: '賃上げの手取り残存率', adjustmentYears: '賃金・労働調整年数', demandElasticity: '残余コスト軽減への雇用反応',
   employeeReliefShare: '社会保険料軽減の本人配分', employerDemandElasticity: '雇用コストに対する需要の弾力性', employerLabourCostShare: '事業主の総雇用コストのGDP比',
   ...INPUT_LABELS, ...SECTOR_LABELS,
   initial: '初期状態', parameters: 'モデル係数', policies: '政策', thresholds: '許容上限',

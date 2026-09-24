@@ -11,12 +11,13 @@ import type { ConstraintId } from '@/types/fiscal-space';
 import { CAPACITY_DEFAULTS } from '@/app/lib/fiscal-space/capacity-calibration';
 import { POVERTY_DEFAULTS } from '@/app/lib/fiscal-space/poverty';
 import { OBJECTIVES, optimizationDefaults, validateOptimization } from './fiscal-objective';
+import { INSURANCE_LEGACY, validateInsurance } from '@/app/lib/fiscal-space/insurance-response';
 import { validateEducation } from '@/app/lib/fiscal-space/education-response';
 
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-24.4';
+export const FISCAL_MODEL_VERSION = '2026-09-24.5';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
   aggregation: ['average', 'terminal'], direction: ['increase', 'decrease', 'target'],
@@ -74,7 +75,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-24.3', '2026-09-24.2', '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-24.4', '2026-09-24.3', '2026-09-24.2', '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     if (!Object.hasOwn(payload.form, 'capacity')) {
       Object.assign(payload.form, { capacity: { ...CAPACITY_DEFAULTS } });
@@ -105,6 +106,8 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
     if (!Object.hasOwn(payload.form, 'resource')) { Object.assign(payload.form, { resource: { ...RESOURCE_DEFAULTS, mode: 'manual' } }); filled.push('resource（手入力モード）'); }
     const calibration = payload.form.calibration;
     if (calibration && typeof calibration === 'object' && !Array.isArray(calibration)) {
+      if (!Object.hasOwn(calibration, 'insurance')) { Object.assign(calibration, { insurance: { ...INSURANCE_LEGACY } }); filled.push('calibration.insurance（旧リンクは賃金転嫁・長期労働反応の追加なしを維持）'); }
+      if (!Object.hasOwn(calibration, 'macroTailYears')) { Object.assign(calibration, { macroTailYears: 0 }); filled.push('calibration.macroTailYears（旧リンクは公表最終年の据置を維持）'); }
       for (const key of ['energyDomesticPricePassThrough', 'expenditurePriceIndexation', 'capacityPriceSensitivity', 'capacityPressureStart', 'referenceCapacityRatio', 'structuralUnemployment', 'inflationRule'] as const) {
         if (!Object.hasOwn(calibration, key)) { Object.assign(calibration, { [key]: PARAMETERS[key] }); filled.push(`calibration.${key}`); }
       }
@@ -194,6 +197,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   const form = payload.form as FiscalForm;
   validateOptimization(form.optimization);
   validateEducation(form.supply.education);
+  validateInsurance(form.calibration.insurance, form.calibration.macroTailYears);
   if (form.supply.education.educationModel !== 'oecd') filled.push('supply.education（旧就学年数方式を維持：日本の追加支出の推計にはOECD方式への切替を推奨）');
   const range = (v: number, min: number, max: number) => { if (v < min || v > max) throw new Error('Out of range'); };
   if (![1, 3, 5, 15].includes(form.horizon)) throw new Error('Invalid horizon');

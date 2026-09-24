@@ -998,7 +998,8 @@ test('resident tax uses the income-tax proxy, aggregates personal relief and exp
 
 test('social-insurance relief is split once between employee and employer; income tax goes to the employee', () => {
   const initial = initialEconomy(), policies = [preset('social-insurance', { annualCost: 4 * T }), preset('income-tax', { annualCost: 2 * T })];
-  const supply = taxLabourSupply(initial, policies, 1, P);
+  const legacy = { ...P, insurance: undefined };
+  const supply = taxLabourSupply(initial, policies, 1, legacy);
   near(supply.employeeCut, 4 * T); near(supply.employerCut, 2 * T);
   near(supply.employeeCut + supply.employerCut, 6 * T);
   const withRelief = simulate(initial, policies, 1).steps[0];
@@ -1007,7 +1008,7 @@ test('social-insurance relief is split once between employee and employer; incom
   near(withRelief.state.fiscal.socialContributions, initial.fiscal.socialContributions * ratio ** P.socialContributionElasticity - 4 * T);
   near(withRelief.state.fiscal.taxes, initial.fiscal.taxes * ratio ** P.taxRevenueElasticity - 2 * T);
   near(withRelief.state.fiscal.taxRevenue, withRelief.state.fiscal.taxes + withRelief.state.fiscal.socialContributions);
-  const onlyEmployer = { ...P, employeeReliefShare: 0, hoursElasticity: .3, employerDemandElasticity: .3 };
+  const onlyEmployer = { ...P, insurance: undefined, employeeReliefShare: 0, hoursElasticity: .3, employerDemandElasticity: .3 };
   const employer = taxLabourSupply(initial, [policies[0]], 1, onlyEmployer);
   near(employer.hours, 1); assert(employer.employerDemand > 1);
   const onlyEmployee = taxLabourSupply(initial, [policies[0]], 1, { ...onlyEmployer, employeeReliefShare: 1 });
@@ -1040,7 +1041,7 @@ test('reference periods and every numeric calibration input have visible provena
 test('uncalibrated sector investment yields do not create preset-specific free supply', () => {
   const baseline = simulate(initialEconomy(), []);
   for (const policy of POLICIES) {
-    const result = simulate(initialEconomy(), [policy]);
+    const result = simulate(initialEconomy(), [policy], 10, { ...PARAMETERS, insurance: undefined });
     near(result.steps[9].state.macro.potentialGdp, baseline.steps[9].state.macro.potentialGdp);
   }
 });

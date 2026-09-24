@@ -1,3 +1,4 @@
+import { InsuranceConditions } from './InsuranceConditions';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { ModelParameters } from '@/types/fiscal-space';
 import { REFERENCES, type ReferenceModel } from '@/app/lib/fiscal-space/calibration';
@@ -14,6 +15,8 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
       <RangeField label="ギャップに対する物価感度" value={value.gapPriceSensitivity} min={0} max={10} step={.5} unit="" onChange={n => change('gapPriceSensitivity', n)} />
       <RangeField label="基準インフレのギャップ係数" value={value.gapInflationSlope} min={0} max={.2} step={.01} unit="" onChange={n => change('gapInflationSlope', n)} />
       <p className="text-xs md:col-span-2">需要感度・物価感度を0にすると、初期GDPギャップの符号に関係なく公表反応を線形適用します（需要不足と需要超過で同じGDP・物価反応）。基準インフレのギャップ係数は政策なし経路のみに効き、政策が作るギャップには重ねません。</p>
+      <RangeField label="公表期間後のマクロ反応解消年数" value={value.macroTailYears ?? 0} min={0} max={30} step={1} unit="年（0＝据置）" onChange={n => change('macroTailYears', n)} />
+      <p className="text-xs">全政策共通。初期5年で、公表期間後のGDP・物価・雇用・貿易・金利の反応を一緒に解消します。長期実証値ではなく接続仮定です。減税額・直接の手取り効果・消費税の直接価格効果と、別に設定した供給効果は継続します。既発債の利息は契約満期まで残り、基準金利・外生金利ショックは解消しません。</p>
       <RangeField label="基準借換金利" value={value.marketRate * 100} min={0} max={6} step={.1} unit="%" onChange={n => change('marketRate', n / 100)} />
       <RangeField label="構造的失業率（労働需給の基準）" value={value.structuralUnemployment * 100} min={1} max={5} step={.1} unit="%" onChange={n => change('structuralUnemployment', n / 100)} />
       <label className="block space-y-1 text-sm"><span>物価判定の集約方式</span><select aria-label="物価判定の集約方式" className={fieldClass} value={value.inflationRule} onChange={e => change('inflationRule', e.target.value as ModelParameters['inflationRule'])}>
@@ -60,16 +63,17 @@ export function Calibration({ value, onChange, embedded = false }: { value: Sens
     </section>
     <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="乗数と本人・事業主の反応を変える"><h3 className="font-bold">乗数と本人・事業主の反応を変える</h3><div className="mt-4 grid gap-4 md:grid-cols-2">
       <RangeField label="GDP乗数の感度倍率" value={value.multiplierScale} min={0} max={3} step={.1} unit="倍" onChange={n => change('multiplierScale', n)} />
-      <p className="text-xs">感度倍率は実質GDPの公表反応に掛けます。物価・輸出入・雇用の公表反応を同時に再推計する設定ではありません。初期値1倍でも、GDPギャップや供給制約によって実現する効果は変わります。</p>
+      <p className="text-xs">感度倍率はGDP・物価・輸出入・雇用・金利の公表反応を同じ倍率で変えます。公表モデルを再推計する設定ではありません。初期値1倍でも、GDPギャップや供給制約によって実現する効果は変わります。</p>
       <RangeField label="社会保険料軽減の本人配分" value={value.employeeReliefShare * 100} min={0} max={100} step={10} unit="%" onChange={n => change('employeeReliefShare', n / 100)} />
       <RangeField label="手取り賃金に対する労働時間の弾力性" value={value.hoursElasticity} min={0} max={1} step={.1} unit="" onChange={n => change('hoursElasticity', n)} />
       <RangeField label="手取り賃金に対する労働参加の弾力性" value={value.participationElasticity} min={0} max={1} step={.1} unit="" onChange={n => change('participationElasticity', n)} />
       <RangeField label="雇用コスト低下に対する労働需要の弾力性" value={value.employerDemandElasticity} min={0} max={1} step={.1} unit="" onChange={n => change('employerDemandElasticity', n)} />
       <RangeField label="本人の手取り労働所得 / GDP（換算仮定）" value={value.netLabourIncomeShare * 100} min={20} max={70} step={5} unit="%" onChange={n => change('netLabourIncomeShare', n / 100)} />
       <RangeField label="事業主の総雇用コスト / GDP（換算仮定）" value={value.employerLabourCostShare * 100} min={30} max={90} step={5} unit="%" onChange={n => change('employerLabourCostShare', n / 100)} />
-    </div><p className="mt-3 text-xs leading-relaxed">追加の労働時間・参加・事業主需要は初期値0＝未算入です。必要に応じて感度を指定できます。<a className="underline" href="https://www.nber.org/papers/w16729" target="_blank" rel="noreferrer">Chettyほかの研究整理</a>の補償弾力性（時間0.3・参加0.25）を参考に感度を設定できますが、所得効果を含む日本の減税効果として推定した値ではありません。0でも比較できます。本人分は時間・参加と潜在供給、事業主分は必要な雇用量へ反映。供給が増えただけでは短期GDPに加算しません。1年限りの減税の直接効果は終了後に残さず、恒久減税なら軽減中は継続します。</p>
+    </div><p className="mt-3 text-xs leading-relaxed">この共通感度の労働時間・参加・事業主需要は初期0です。社会保険料の新規シナリオは下欄の専用長期反応を使います。必要に応じて感度を指定できます。<a className="underline" href="https://www.nber.org/papers/w16729" target="_blank" rel="noreferrer">Chettyほかの研究整理</a>の補償弾力性（時間0.3・参加0.25）を参考に感度を設定できますが、所得効果を含む日本の減税効果として推定した値ではありません。0でも比較できます。本人分は時間・参加と潜在供給、事業主分は必要な雇用量へ反映。供給が増えただけでは短期GDPに加算しません。1年限りの減税の直接効果は終了後に残さず、恒久減税なら軽減中は継続します。</p>
       <p className="mt-2 text-xs leading-relaxed">日本の税制改正を用いた<a className="text-primary-accent underline" href="https://doi.org/10.1016/j.labeco.2010.11.011" target="_blank" rel="noreferrer">山田（2011）</a>の0.8は既婚女性の労働時間の推定値で、日本全体や労働参加率には流用しません。<a className="text-primary-accent underline" href="https://www.rieti.go.jp/jp/publications/dp/17e093.pdf" target="_blank" rel="noreferrer">児玉・横山の社会保険料改革の研究</a>は雇用人数と一人当たり時間の異なる反応を報告しています。全国一律の料率軽減への外挿には別の検証が必要です。</p>
     </section>
+    <InsuranceConditions value={value} onChange={onChange} />
     <ConnectionConditions value={value} onChange={onChange} />
     <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="輸入価格・国内価格・歳出の連動（感度仮定）"><h3 className="font-bold">輸入価格・国内価格・歳出の連動（感度仮定）</h3>
       <div className="mt-3 grid gap-4 md:grid-cols-3">
