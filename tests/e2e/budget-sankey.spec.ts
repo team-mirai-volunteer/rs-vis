@@ -12,6 +12,19 @@ import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified
 const CANVAS = '[data-testid="unified-canvas"]';
 const RENDER_TIMEOUT = 60_000;
 
+test('入口は2024年度決算で、明示した当初予算も再読込後に保つ', async ({ page }) => {
+  await page.goto('/budget-sankey');
+  await expect(page.getByLabel('年度', { exact: true })).toHaveValue('2024');
+  await expect(page.getByLabel('基準', { exact: true })).toHaveValue('settlement');
+  await expect(page).toHaveURL(/[?&]b=settlement/);
+  await expect(columnHeader(page, '事業_2024').first()).toContainText('執行額');
+  await page.getByLabel('基準', { exact: true }).selectOption('initial');
+  await expect(page).toHaveURL(/[?&]b=initial/);
+  await page.reload();
+  await expect(page.getByLabel('基準', { exact: true })).toHaveValue('initial');
+  await expect(columnHeader(page, '事業_2024').first()).toContainText('当初予算');
+});
+
 test('range track clicks step once and holding accelerates to the pointer', async ({ page }) => {
   const errors = await openPage(page, 'year=2024&cols=mi,pr,ps,re');
   const slider = page.getByRole('slider', { name: '事業の表示開始位置', exact: true });
@@ -70,7 +83,10 @@ for (const basis of ['initial', 'ministry']) {
 async function openPage(page: Page, query = 'year=2024'): Promise<string[]> {
   const pageErrors: string[] = [];
   page.on('pageerror', error => pageErrors.push(error.message));
-  await page.goto(`/budget-sankey?${query}`);
+  // 既存の金額・並び順の検証は当初予算を明示し、入口の既定値と切り離す。
+  const params = new URLSearchParams(query);
+  if (!params.has('b')) params.set('b', 'initial');
+  await page.goto(`/budget-sankey?${params}`);
   await page.waitForSelector(CANVAS, { timeout: RENDER_TIMEOUT });
   await expect(page.getByTestId('unified-node').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
   return pageErrors;
@@ -228,7 +244,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(panel.getByText('再委託', { exact: true })).toHaveCount(0);
     await panel.getByRole('tab', { name: /^ブロック/ }).click();
     const content = panel.getByRole('tabpanel');
-    await expect(content.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/56?year=2025');
+    await expect(content.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/56?fiscalYear=2024');
     const response = await page.request.get('/api/subcontracts/56?year=2025');
     expect(response.ok()).toBe(true);
     const graph = await response.json();
@@ -315,7 +331,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(basisSelect).toHaveValue('initial');
     await expect(basisSelect.locator('option[value="settlement"]')).toBeDisabled();
     await expect(basisSelect.locator('option[value="supplementary"]')).toBeEnabled();
-    await expect(page).not.toHaveURL(/[?&]b=/);
+    await expect(page).toHaveURL(/[?&]b=initial/);
   });
 
   test('basis switch to 決算 changes the header measure text', async ({ page }) => {

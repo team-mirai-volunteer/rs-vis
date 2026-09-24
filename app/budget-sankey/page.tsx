@@ -52,11 +52,11 @@ import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT, parseFlowScale } from '@/client/li
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
 const DEFAULT_YEAR = 2024;
-const DEFAULT_BASIS: UnifiedBasis = 'initial';
+const DEFAULT_BASIS: UnifiedBasis = 'settlement';
 const basesOf = (year: number): readonly UnifiedBasis[] => UNIFIED_BASES_BY_YEAR[year] ?? ['initial'];
-/** その年度で使える基準に丸める（無ければ当初予算） */
+/** 実績を追える決算を優先。決算未収録の年度は当初予算に戻す。 */
 const coerceBasis = (year: number, basis: UnifiedBasis | null | undefined): UnifiedBasis =>
-  basis && basesOf(year).includes(basis) ? basis : DEFAULT_BASIS;
+  basis && basesOf(year).includes(basis) ? basis : basesOf(year).includes(DEFAULT_BASIS) ? DEFAULT_BASIS : 'initial';
 /** 読み込んだグラフのキー。府省庁基準は当初予算ファイルを共有する */
 const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${unifiedFileBasis(basis)}`;
 
@@ -321,7 +321,7 @@ function UnifiedBudgetSankeyContent() {
     if (!graph) return;
     const params = new URLSearchParams();
     params.set('year', String(year));
-    if (effectiveBasis !== DEFAULT_BASIS) params.set('b', effectiveBasis);
+    params.set('b', effectiveBasis);
     // 年度による一時的な非表示を、ユーザーが列を隠した設定として保存しない。
     params.set('cols', serializeColumns(visibleColumns));
     for (const c of UNIFIED_COLUMNS) {
@@ -343,7 +343,9 @@ function UnifiedBudgetSankeyContent() {
     const onPopState = () => {
       const params = new URLSearchParams(window.location.search);
       const y = Number(params.get('year'));
-      if ((AVAILABLE_YEARS as readonly number[]).includes(y)) setYear(y);
+      const restoredYear = (AVAILABLE_YEARS as readonly number[]).includes(y) ? y : DEFAULT_YEAR;
+      setYear(restoredYear);
+      setBasis(coerceBasis(restoredYear, params.get('b') as UnifiedBasis | null));
       setVisibleColumns(parseColumns(params.get('cols')) ?? UNIFIED_PRESET_COLUMNS.full);
       setTopN(parsePerColumn(params, 't'));
       setOffset(parsePerColumn(params, 'o'));

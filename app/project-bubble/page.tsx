@@ -365,14 +365,16 @@ export default function ProjectMapPage() {
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[calc(100dvh-var(--app-header-h)-24px)]',
           'sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-[calc(100%-24px)] sm:w-[360px]',
-          selected ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:grid-rows-[auto_auto] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
+          selected ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
           mobilePanelOpen || selected ? 'flex' : 'hidden'
         )}
       >
 
+      {/* 左の操作群は独立して積み、右の詳細の高さでカード間隔が広がらないようにする。 */}
+      <div className="contents xl:col-start-1 xl:flex xl:min-w-0 xl:flex-col xl:gap-2">
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft xl:col-start-1 xl:row-start-1", selected && !mobilePanelOpen && "max-sm:hidden")}>
+          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft", selected && !mobilePanelOpen && "max-sm:hidden")}>
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"
@@ -422,7 +424,7 @@ export default function ProjectMapPage() {
           </div>
       )}
 
-      <div className="shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft xl:col-start-1 xl:row-start-2">
+      <div className="shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft">
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2 text-xs">
           <span className="text-mirai-text-subtle">色</span>
           <select
@@ -502,6 +504,7 @@ export default function ProjectMapPage() {
         )}
       </div>
 
+      </div>
       {selected && (
         <ProjectDetailPanel
           key={`${year}-${selected.pid}`}

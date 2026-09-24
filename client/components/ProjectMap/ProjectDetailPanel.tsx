@@ -28,7 +28,7 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
 
   return <section ref={ref} tabIndex={-1} aria-label={`${point.name} の詳細`}
     onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}
-    className="min-w-0 shrink-0 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-soft outline-none xl:col-start-2 xl:row-span-2 xl:row-start-1 xl:max-h-[calc(100dvh-var(--app-header-h)-48px)] xl:overflow-y-auto">
+    className="min-w-0 shrink-0 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-soft outline-none xl:col-start-2 xl:row-start-1 xl:max-h-[calc(100dvh-var(--app-header-h)-48px)] xl:overflow-y-auto">
     <div className="flex items-start justify-between gap-2 border-b border-border p-4">
       <div className="min-w-0">
         <div className="text-[11px] text-mirai-text-muted">{point.ministry} · PID {point.pid}</div>
