@@ -20,6 +20,7 @@ import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { useCached, usePolicySummary } from './policy-summary-cache';
+import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
@@ -105,6 +106,10 @@ export function UnifiedProjectSections({
         showBottomBorder={false}
         isLoading={overviewExpanded && detail === undefined}
       />
+
+      <div className="border-t border-border px-4">
+        <ProjectBudgetHistory key={pid} pid={pid} />
+      </div>
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
     </div>

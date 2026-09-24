@@ -101,8 +101,11 @@ npm run test:e2e
 | `npm run generate-subcontracts` / `generate-subcontracts-2025` | `subcontracts-{2024,2025}.json` |
 | `npm run generate-mof-data` | `mof-budget-overview-2023.json` |
 | `npm run generate-project-details` | `rs{2024,2025}-project-details.json` |
+| `npm run generate-project-budget-history` | `rs2025-project-budget-history.json.gz`（事業別の予算・執行推移） |
 | `npm run score-quality` / `score-quality-2025` | `project-quality-scores-{2024,2025}.json`, `project-quality-recipients-{2024,2025}.json` |
 | `npm run compress-data` | 全データを gzip 圧縮（Git管理用） |
+
+サンキー図の事業詳細「予算・執行額の推移」セクションは、2025年版RSシートに記載された2021〜2025年度の値を使用します。過年度の訂正を反映するため、古いシートの値は混在させません。更新は `node scripts/download-rs-csv.mjs 2025 2-1` → `npm run generate-project-budget-history`。取得日時と元ZIPのSHA-256を保存し、2025年度の未確定執行額は欠損値として扱います。サンキー図本体の金額データは別の生成処理で更新します。
 
 ---
 
