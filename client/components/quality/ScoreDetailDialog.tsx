@@ -14,6 +14,7 @@ import type { QualityScoreItem } from '@/app/lib/api/quality-scores-loader';
 import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { useScoreDetailData } from '@/client/hooks/useScoreDetailData';
+import { useDialogFocus } from '@/client/hooks/useDialogFocus';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
@@ -39,7 +40,7 @@ function breakOnSeparators(text: string): string {
     .join('');
 }
 
-export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
+export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, navigation }: {
   item: QualityScoreItem;
   /**
    * 政策評価。母集団のパーセンタイル・分位点から決まるため1事業だけでは算出できない。
@@ -49,6 +50,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
   policy?: PolicyEvaluation;
   onClose: () => void;
   year: string;
+  navigation?: React.ReactNode;
 }) {
   // 取得はフックに閉じる（再利用可能UIから直接APIを叩かない）
   const data = useScoreDetailData(item.pid, year, policyProp != null);
@@ -79,12 +81,8 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
     return () => { window.removeEventListener('mousemove', onMouseMove); window.removeEventListener('mouseup', onMouseUp); };
   }, []);
 
-  // Escape で閉じる（モーダルとしての基本挙動）
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, onClose);
 
   // 事業が切り替わったら表示状態だけ初期化する（データ取得はフック側）
   useEffect(() => {
@@ -158,10 +156,12 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={`${item.name} の詳細`}
-        className="bg-card rounded-3xl border border-mirai-border shadow-soft w-full max-w-8xl mx-4 max-h-[92vh] flex flex-col"
+        className="bg-card rounded-3xl border border-mirai-border shadow-soft w-full min-w-0 max-w-8xl mx-4 max-h-[92dvh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -170,6 +170,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <div className="text-sm font-bold text-mirai-text leading-snug">{item.name}</div>
               <ProjectDetailShare pid={item.pid} year={year} />
+              {navigation}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
               <span className="font-mono bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
@@ -185,14 +186,14 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year }: {
 
         {/* Score summary — single compact row */}
         <div className="px-6 py-2.5 border-b border-mirai-border shrink-0">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <div className="shrink-0 text-center">
               <div className={`text-2xl font-bold font-mono leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
                 {policy?.overallScore ?? '—'}
               </div>
               <div className="text-[9px] text-mirai-text-muted mt-0.5">総合点</div>
             </div>
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-3">
               {AXIS_META.map(a => {
                 const score = policy?.[a.key] ?? null;
                 return (
@@ -628,7 +629,7 @@ ${a.desc}`}>
                   placeholder="支出先名で検索..."
                   value={recipientSearch}
                   onChange={e => setRecipientSearch(e.target.value)}
-                  className="flex-1 px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                  className="min-w-0 flex-1 px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                 />
               )}
             </div>

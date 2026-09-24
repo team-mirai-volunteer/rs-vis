@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
+import { ProjectDetailPopup } from '@/client/components/ProjectMap/ProjectDetailPopup';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
-import { unifiedProjectNameFilterUrl } from '@/app/lib/unified-budget/links';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import {
   COLOR_MODE_LABELS, SIZE_METRIC_LABELS,
@@ -17,9 +16,6 @@ import {
   type ColorMode, type LegendEntry, type SizeMetric,
 } from '@/app/lib/project-map-view';
 import type { ProjectMapCluster, ProjectMapPoint, ProjectMapResponse } from '@/types/project-map';
-import type { ProjectDetail } from '@/types/project-details';
-import { useCached } from '@/client/components/unified-budget/policy-summary-cache';
-import { ProjectComments } from '@/client/components/comments/ProjectComments';
 
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
@@ -367,7 +363,7 @@ export default function ProjectMapPage() {
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[55vh]',
           'sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-none sm:w-[268px] sm:overflow-hidden',
-          mobilePanelOpen || selected ? 'flex' : 'hidden'
+          mobilePanelOpen ? 'flex' : 'hidden'
         )}
       >
 
@@ -503,20 +499,17 @@ export default function ProjectMapPage() {
         )}
       </div>
 
-      {/* 選択中の事業の詳細。サンキー図と同じく左側に出す。
-             列ごとスクロールさせると絞り込みまで動いてしまうので、sm 以上では詳細の中だけがスクロールする */}
-      {data && !loading && (
-        <div className={cn('sm:min-h-0 sm:overflow-y-auto', selected && 'sm:flex-1')}>
-          <SelectedPanel
-            point={selected}
-            cluster={selected ? clusterById.get(selected.c) : undefined}
-            year={year}
-            onClose={() => setSelected(null)}
-          />
-        </div>
-      )}
-
       </div>
+
+      {selected && (
+        <ProjectDetailPopup
+          key={`${year}-${selected.pid}`}
+          pid={selected.pid}
+          name={selected.name}
+          year={year}
+          onClose={() => setSelected(null)}
+        />
+      )}
 
       {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
       <div className="absolute left-3 top-3 z-40 sm:hidden">
@@ -587,7 +580,7 @@ export default function ProjectMapPage() {
           <TableView
             points={filtered}
             clusterById={clusterById}
-            year={year}
+            onSelect={setSelected}
             onClose={() => setShowTable(false)}
           />
         </div>
@@ -770,116 +763,13 @@ function Legend({
   );
 }
 
-const detailCache = new Map<string, ProjectDetail | null>();
-const extractDetail = (d: unknown) => d as ProjectDetail;
-
-function SelectedPanel({
-  point, cluster, year, onClose,
-}: {
-  point: ProjectMapPoint | null;
-  cluster?: ProjectMapCluster;
-  year: string;
-  onClose: () => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const detail = useCached(detailCache, point ? `${year}-${point.pid}` : null, `/api/project-details/${point?.pid}?year=${year}`, extractDetail);
-  useEffect(() => { setExpanded(false); }, [point?.pid]);
-  if (!point) {
-    return (
-      <div className="rounded-xl border border-dashed border-mirai-border p-4 text-center text-xs leading-relaxed text-mirai-text-muted">
-        バブルをクリックすると、<br />その事業の詳細がここに出ます。
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-xs">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="text-[13px] font-bold leading-snug">{point.name}</h2>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={onClose}
-          className="-mr-1 -mt-1 size-6 shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
-          aria-label="閉じる"
-        ><X className="size-3.5" /></Button>
-      </div>
-      <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-mirai-text-muted">
-        <dt>事業ID</dt><dd className="tabular-nums text-mirai-text">{point.pid}</dd>
-        <dt>府省庁</dt><dd className="text-mirai-text">{point.ministry}</dd>
-        <dt>分野</dt><dd className="text-mirai-text">{categoryLabel(point.cat)}</dd>
-        <dt>総合点</dt>
-        <dd className="tabular-nums text-mirai-text">
-          {point.score === null ? '未評価' : point.score}
-        </dd>
-        <dt>費用対内容</dt>
-        <dd className="tabular-nums text-mirai-text">{point.prop ?? '未評価'}</dd>
-        <dt>必要性</dt>
-        <dd className="tabular-nums text-mirai-text">{point.nec ?? '未評価'}</dd>
-        <dt>推奨</dt><dd className="text-mirai-text">{point.rec ?? '未判定'}</dd>
-        <dt>予算額</dt>
-        <dd className="tabular-nums text-mirai-text">{formatYenShort(point.budget)}</dd>
-        <dt>執行額</dt>
-        <dd className="tabular-nums text-mirai-text">{formatYenShort(point.exec)}</dd>
-        <dt>継続年数</dt>
-        <dd className="tabular-nums text-mirai-text">
-          {point.years === null ? '不明' : `${point.years}年`}
-        </dd>
-      </dl>
-      {detail === undefined && <p className="mt-2.5 border-t border-border pt-2 text-[11px] text-mirai-text-muted">事業の説明を読み込んでいます…</p>}
-      {detail && (detail.purpose || detail.overview) && (
-        <div className={cn('mt-2.5 space-y-2 border-t border-border pt-2 text-[11px] leading-relaxed', !expanded && 'line-clamp-[10]')}>
-          {detail.purpose && <p><span className="font-bold text-mirai-text">目的</span><br />{detail.purpose}</p>}
-          {detail.overview && <p><span className="font-bold text-mirai-text">事業概要</span><br />{detail.overview}</p>}
-        </div>
-      )}
-      {detail && (detail.purpose || detail.overview) && (
-        <button type="button" className="mt-1 text-[11px] text-primary-accent underline" onClick={() => setExpanded(v => !v)}>
-          {expanded ? '説明を短く表示' : '説明を全文表示'}
-        </button>
-      )}
-      {cluster && (
-        <p className="mt-2.5 border-t border-border pt-2 text-[11px] leading-relaxed text-mirai-text-muted">
-          近傍{cluster.count}事業の特徴語: {cluster.terms.join('・')}
-        </p>
-      )}
-      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-      <div className="mt-2.5 border-t border-border pt-2 empty:hidden">
-        <ProjectComments
-          bare
-          context={{
-            pid: point.pid,
-            year,
-            projectName: point.name,
-            ministry: point.ministry,
-            budget: point.budget,
-            execution: point.exec,
-            score: point.score,
-          }}
-        />
-      </div>
-      <div className="mt-2.5 flex gap-1.5">
-        <Button asChild variant="outline" size="xs" className="border-mirai-border text-[11px] font-medium text-mirai-text-subtle">
-          <Link href={`/subcontracts/${point.pid}?year=${year}`}>
-            支出先を見る
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="xs" className="border-mirai-border text-[11px] font-medium text-mirai-text-subtle">
-          <Link href={unifiedProjectNameFilterUrl(point.name, year)}>
-            統合ビューで見る
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /** 図と同じ内容を色に依存せず読むための表。上位200件だけ出し、続きは絞り込みで辿る */
 function TableView({
-  points, clusterById, year, onClose,
+  points, clusterById, onSelect, onClose,
 }: {
   points: ProjectMapPoint[];
   clusterById: Map<number, ProjectMapCluster>;
-  year: string;
+  onSelect: (point: ProjectMapPoint) => void;
   onClose: () => void;
 }) {
   const LIMIT = 200;
@@ -924,13 +814,14 @@ function TableView({
             {rows.map(p => (
               <tr key={p.pid} className="border-b border-border last:border-0 hover:bg-mirai-surface-teal/60">
                 <td className="max-w-[22rem] truncate px-2 py-1">
-                  <Link
-                    href={`/subcontracts/${p.pid}?year=${year}`}
+                  <button
+                    type="button"
+                    onClick={() => onSelect(p)}
                     className="underline-offset-4 hover:text-primary-accent hover:underline"
                     title={p.name}
                   >
                     {p.name}
-                  </Link>
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-2 py-1 text-mirai-text-subtle">{p.ministry}</td>
                 <td className="px-2 py-1 text-right tabular-nums">{p.score ?? '—'}</td>
