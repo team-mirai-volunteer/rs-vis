@@ -35,7 +35,12 @@ const AXIS_WIDTH: Record<PolicyAxis, number> = { o: 70, d: 84, e: 96, t: 96, x: 
 type RangeKey = 'rsAmount' | 'programCount' | 'coverage' | PolicyAxis;
 type Ranges = Partial<Record<RangeKey, { min: string; max: string }>>;
 
-export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }: { year: string; filterOpen?: boolean; onToggleFilters: () => void }) {
+/** 一覧に表示する上位2件。表示上0%になる推奨は除く。絞り込みにも同じ条件を使う。 */
+function visibleRecommendations(item: QualitySectionItem) {
+  return item.recommendationShare.slice(0, 2).filter(s => Math.round(s.share * 100) > 0);
+}
+
+export function SectionScoreTable({ year }: { year: string }) {
   const [data, setData] = useState<QualitySectionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -74,7 +79,7 @@ export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }:
     if (ministry) items = items.filter(i => i.ministry === ministry);
     if (q) items = items.filter(i => [i.sectionName, i.ministry, i.organization, i.subAccount, i.sectionCode].some(v => v.includes(q)));
     if (account) items = items.filter(i => i.accountType === account);
-    if (recommendations.length) items = items.filter(i => i.recommendationShare.some(s => s.share > 0 && recommendations.includes(s.label)));
+    if (recommendations.length) items = items.filter(i => visibleRecommendations(i).some(s => recommendations.includes(s.label)));
     for (const [key, range] of Object.entries(ranges)) {
       const min = range.min.trim() === '' ? null : Number(range.min);
       const max = range.max.trim() === '' ? null : Number(range.max);
@@ -171,14 +176,11 @@ export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }:
             <option value="">全所管</option>
             {ministries.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <div className="min-w-0" title="選んだ推奨の金額比率が0%を超える項を表示（複数選択可）">
+          <div className="min-w-0" title="推奨の分布に表示される上位2件に、選んだ推奨を含む項を表示（表示上0%は除外・複数選択可）">
             <MultiSelectDropdown options={RECOMMENDATION_LABELS} selected={recommendations} onChange={setRecommendations}
               allLabel="推奨" placeholder="推奨：すべて" minWidth={0} placeholderTone="strong" />
           </div>
         </div>
-        <Button variant="outline" size="xs" aria-expanded={filterOpen} aria-controls="section-range-filters" onClick={onToggleFilters}>
-          数値条件{rangeCount > 0 ? `（${rangeCount}）` : ''}{filterOpen ? ' ▴' : ' ▾'}
-        </Button>
         <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-mirai-text-subtle">
           <input type="checkbox" checked={onlyEvaluated} onChange={e => setOnlyEvaluated(e.target.checked)} className="size-3.5 accent-primary" />
           評価ありのみ
@@ -191,7 +193,7 @@ export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }:
         </span>
       </div>
 
-      <div id="section-range-filters" className={cn('max-h-[40dvh] shrink-0 space-y-2 overflow-y-auto border-b border-mirai-border bg-card px-3 py-2 text-xs', filterOpen ? 'block' : 'hidden')}>
+      <div className="max-h-[40dvh] shrink-0 space-y-2 overflow-y-auto border-b border-mirai-border bg-card px-3 py-2 text-xs">
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {([
             { key: 'rsAmount', label: `${amountLabel}（億円）`, step: 0.1 },
@@ -279,7 +281,7 @@ export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }:
                 <td className="px-2 py-1.5">
                   {/* 上位 2 つを 1 行に。全部出すと行の高さが揃わない */}
                   <div className="flex gap-1 overflow-hidden" title={r.recommendationShare.map(s => `${s.label} ${Math.round(s.share * 100)}%`).join(' / ')}>
-                    {r.recommendationShare.slice(0, 2).map(s => (
+                    {visibleRecommendations(r).map(s => (
                       <span key={s.label} className="whitespace-nowrap rounded-full bg-mirai-surface-light px-1.5 py-px text-[10px] font-bold text-mirai-text-subtle">
                         {s.label} {Math.round(s.share * 100)}%
                       </span>

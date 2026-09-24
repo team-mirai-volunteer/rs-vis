@@ -435,8 +435,8 @@ export default function QualityPage() {
           ))}
         </div>
         <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
-        {/* sm 未満はヒストグラム・絞り込み列を畳んでいるので、ここから開く */}
-        <Button
+        {/* 事業表示では sm 未満のヒストグラム・絞り込み列をここから開く */}
+        {mode === 'project' && <Button
           variant="outline"
           size="icon"
           aria-label="絞り込みと分布"
@@ -445,7 +445,7 @@ export default function QualityPage() {
           className={cn('shrink-0 border-mirai-border sm:hidden', filterOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
         >
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
-        </Button>
+        </Button>}
       </AppHeader>
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={closeDetail} year={year} />}
       {detailPid && data && !dialogItem && <div role="status" className="border-b border-mirai-border bg-card px-4 py-3 text-sm">
@@ -464,7 +464,7 @@ export default function QualityPage() {
               </p>
             </details>
           </div>
-          <SectionScoreTable year={year} filterOpen={filterOpen} onToggleFilters={() => setFilterOpen(v => !v)} />
+          <SectionScoreTable year={year} />
         </>
       )}
       {mode === 'project' && (<>
