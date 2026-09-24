@@ -138,11 +138,20 @@ test.describe('budget-sankey (統合ビュー)', () => {
       .evaluateAll(nodes =>
         nodes
           .map(n => (n.childElementCount === 0 ? (n.textContent ?? '').trim() : ''))
-          .filter(t => ['みんなの意見', '政策評価', '事業概要', '予算・執行'].includes(t))
+          .filter(t => ['みんなの意見', '政策評価', '事業概要'].includes(t))
       );
-    const expected = ['みんなの意見', '政策評価', '事業概要', '予算・執行'];
+    const expected = ['みんなの意見', '政策評価', '事業概要'];
     const withoutComments = expected.filter(h => h !== 'みんなの意見');
     expect([expected, withoutComments]).toContainEqual([...new Set(headings)]);
+
+    const budgetTab = sidePanel.getByRole('tab', { name: '予算・執行' });
+    await expect(budgetTab).toHaveAttribute('aria-selected', 'true');
+    await expect(sidePanel.getByRole('tabpanel').getByText('会計', { exact: true }).first()).toBeVisible();
+    await sidePanel.getByRole('tab', { name: /^支出先/ }).click();
+    await expect(budgetTab).toHaveAttribute('aria-selected', 'false');
+    await expect(sidePanel.getByRole('tabpanel').getByRole('button').first()).toBeVisible();
+    await budgetTab.click();
+    await expect(sidePanel.getByRole('tabpanel').getByText('会計', { exact: true }).first()).toBeVisible();
 
     // 政策評価は 6 軸（総合点 + 5 軸）で出る
     for (const axis of ['総合点', '成果設計', '検証可能性', '執行透明性', '費用対内容', '必要性']) {

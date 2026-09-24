@@ -31,6 +31,7 @@ import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
+import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
 import { FactRow } from './FactRow';
 import type { WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
@@ -299,7 +300,16 @@ export function UnifiedSankeyChart({
     for (const [column, items] of descendantColumns) merged.set(column, items);
     return UNIFIED_COLUMNS.filter(c => merged.has(c)).map(column => ({ column, items: merged.get(column) ?? [] }));
   }, [ancestorColumns, descendantColumns]);
-  const tabs = useMemo(() => relatedColumnList.map(t => ({ id: t.column as string, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length })), [relatedColumnList]);
+  const isIndividualProject = !!selectedDetails &&
+    (selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
+    (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
+    !selectedDetails.aggregated && selectedDetails.projectId !== undefined;
+  const hasBudgetTab = isIndividualProject &&
+    (!!selectedDetails?.budgetSummary || (selectedDetails?.budgetBreakdown?.length ?? 0) > 0);
+  const tabs = useMemo(() => [
+    ...(hasBudgetTab ? [{ id: 'budget-execution', label: '予算・執行', count: selectedDetails?.budgetBreakdown?.length ?? 0 }] : []),
+    ...relatedColumnList.map(t => ({ id: t.column as string, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length })),
+  ], [hasBudgetTab, selectedDetails?.budgetBreakdown?.length, relatedColumnList]);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (tabs[0]?.id ?? null);
 
@@ -687,17 +697,12 @@ export function UnifiedSankeyChart({
                     <UnifiedAggregateEvaluation programs={downstreamPrograms} rsSheetYear={rsSheetYear} fontPx={fontPx} />
                   </div>
                 )}
-                {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託・予算執行） */}
-                {(selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
-                  (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
-                  !selectedDetails.aggregated &&
-                  selectedDetails.projectId !== undefined && (
+                {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託） */}
+                {isIndividualProject && selectedDetails.projectId !== undefined && (
                     <UnifiedProjectSections
                       pid={selectedDetails.projectId}
                       projectName={selectedPanelNode.name}
                       rsSheetYear={rsSheetYear}
-                      budgetSummary={selectedDetails.budgetSummary}
-                      budgetBreakdown={selectedDetails.budgetBreakdown}
                       fontPx={fontPx}
                     />
                   )}
@@ -743,7 +748,14 @@ export function UnifiedSankeyChart({
                     ))}
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
-                    {relatedColumnList
+                    {activeTab === 'budget-execution' ? (
+                      <BudgetExecutionSection
+                        budgetSummary={selectedDetails.budgetSummary}
+                        budgetBreakdown={selectedDetails.budgetBreakdown ?? []}
+                        scaleFont={px => Math.round((px * fontPx) / 11)}
+                        presentation="tab"
+                      />
+                    ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)
                       .map(item => {

@@ -39,17 +39,20 @@ export function PovertyDetails({ result }: {
     </div>
     <p className="text-xs">通常の相対的貧困率は、政策後の所得中央値から貧困線も再計算します。「貧困線固定」は政策なしの基準を保った比較です。所得が増えても、中央値の上昇によって相対的貧困率が上がることがあります。</p>
     <p className="text-xs" data-testid="poverty-coverage">年1の政策総額 {money(first.activeBudget)}のうち、ここで反映した給付・本人負担の軽減・手取り賃上げは {money(first.allocated)}。消費税減税、事業主軽減のうち賃金転嫁以外の効果、現物サービス、投資や雇用を通じた所得分布の変化は未推計です。未反映は効果がないという意味ではありません。</p>
-    <details><summary className="cursor-pointer text-sm font-bold">所得分布・税負担の仮定と出典</summary>
+    <p className="text-xs">終端年の貧困率：仮定を変えた場合、全体 {percent(result.rows.at(-1)!.range.all.min, 1)}〜{percent(result.rows.at(-1)!.range.all.max, 1)}、子ども {percent(result.rows.at(-1)!.range.child.min, 1)}〜{percent(result.rows.at(-1)!.range.child.max, 1)}。統計的な信頼区間ではありません。</p>
+    </div>
+  </details>;
+}
+
+export function PovertyAssumptionsDetails() {
+  return <details><summary className="cursor-pointer text-sm font-bold">所得分布・税負担の仮定と出典</summary>
       <div className="mt-2 space-y-2 text-xs leading-relaxed">
         <p><a href={POVERTY_DATA.sourceUrl} className="underline" target="_blank" rel="noreferrer">厚労省・2025年国民生活基礎調査</a>の2024年所得分布を使用。公表値は全体15.0%、子ども11.0%、貧困線138万円、中央値277万円です。計算では丸められた中央値の半分138.5万円を使い、政策なしの貧困率が公表値に一致するよう所得階級内の人数を調整しています。2024年基準・最新値基準のどちらでも同じ分布を使います。</p>
         <p>所得階級内は一様分布、最上位階級の上端は仮定です。中心ケースは子どものいる世帯を大人2人・子2人、子どものいない世帯を2人と近似し、後者の40%を年金所得型とします。比較幅は子1人・単身、片働き、年金所得型の割合30〜50%、最上位の上端1,500万〜3,000万円を組み合わせた3ケースです。ひとり親など個別の家族構成や、貧困線近辺の実際の税負担を復元したものではありません。</p>
         <p>既存の2025年度税計算から税額の分布を近似し、税目別の全国収入総額に合わせて補正しています。実際の世帯の税額ではなく、税額比例減税の配分を置くための仮定です。生活保護・給付の所得制限、保険料軽減に伴う所得税の増加、受給漏れ、就業行動は未反映。既存の給付は政策なしの可処分所得に含まれ、追加予算だけを上乗せします。</p>
         <p>入力額を2024年の価格・所得水準へそのまま適用しています。物価・賃金・出生の将来経路との接続は未実装です。給付先を変えた際の消費性向やGDP効果も共通のままです。</p>
       </div>
-    </details>
-    <p className="text-xs">終端年の貧困率：仮定を変えた場合、全体 {percent(result.rows.at(-1)!.range.all.min, 1)}〜{percent(result.rows.at(-1)!.range.all.max, 1)}、子ども {percent(result.rows.at(-1)!.range.child.min, 1)}〜{percent(result.rows.at(-1)!.range.child.max, 1)}。統計的な信頼区間ではありません。</p>
-    </div>
-  </details>;
+    </details>;
 }
 
 export function CashSettings({ value, onChange }: { value: PovertyAssumptions; onChange: (value: PovertyAssumptions) => void }) {

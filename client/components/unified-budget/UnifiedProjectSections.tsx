@@ -4,7 +4,7 @@
  * 統合ビューのサイドパネルに出す「RS事業の詳細」群。
  * /sankey-svg のサイドパネルが事業ノードに対して出している情報を、同じ共有コンポーネントで揃える:
  *   みんなの意見（ProjectComments）→ 政策評価（PolicyEvaluationBlock）→ 事業概要（ProjectOverviewSection）
- *   → 予算・執行（BudgetExecutionSection: 会計区分別の額、開くと当初・補正・執行と内訳）→ 再委託サマリ
+ *   → 再委託サマリ（予算・執行は下部のタブに表示）
  * 各 API（/api/policy-summary, /api/project-details, /api/subcontracts, /api/quality-scores）は
  * RSシート年度で問い合わせる（統合ビューの year は MOF 予算年度で、RS のシート年度 = 予算年度+1）。
  * 取得結果はモジュール内キャッシュに持ち、ノードを行き来しても再取得しない。
@@ -15,12 +15,10 @@ import { createPortal } from 'react-dom';
 import { ExternalLink } from 'lucide-react';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import type { ProjectDetail } from '@/types/project-details';
-import type { BudgetBreakdownItem, BudgetSummary } from '@/types/sankey-svg';
 import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
-import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { TagChip } from '@/client/components/TagChip';
 import { useCached, usePolicySummary } from './policy-summary-cache';
 
@@ -54,29 +52,23 @@ const extractSubcontract = (data: unknown): SubcontractSummary | null => {
 };
 
 const OVERVIEW_PREVIEW_HEIGHT = 72;
-const BUDGET_LIST_HEIGHT = 260;
 
 export function UnifiedProjectSections({
   pid,
   projectName,
   rsSheetYear,
-  budgetSummary,
-  budgetBreakdown,
   fontPx,
 }: {
   pid: number;
   projectName: string;
   /** RS のシート年度（API の year）。統合ビューの予算年度 + 1 */
   rsSheetYear: number;
-  budgetSummary?: BudgetSummary;
-  budgetBreakdown?: BudgetBreakdownItem[];
   /** 図のラベル基準サイズ。共有コンポーネントの scaleFont に使う（11px 基準） */
   fontPx: number;
 }) {
   const year = String(rsSheetYear);
   const scaleFont = useCallback((px: number) => Math.round((px * fontPx) / 11), [fontPx]);
   const [overviewExpanded, setOverviewExpanded] = useState(false);
-  const [budgetExpanded, setBudgetExpanded] = useState(false);
   const [scoreItem, setScoreItem] = useState<QualityScoreItem | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
 
@@ -101,7 +93,7 @@ export function UnifiedProjectSections({
 
   return (
     <div className="-mx-4 mt-3 border-t border-border">
-      {/* 順番: みんなの意見 → 政策評価 → 事業概要 → 予算・執行 → 再委託（意見は見てもらいやすいよう最上段） */}
+      {/* 順番: みんなの意見 → 政策評価 → 事業概要 → 再委託（意見は見てもらいやすいよう最上段） */}
       <ProjectComments context={{ pid: String(pid), year, projectName, detail: detail ?? undefined }} scaleFont={scaleFont} />
       <PolicyEvaluationBlock
         pid={pid}
@@ -141,19 +133,6 @@ export function UnifiedProjectSections({
         previewHeight={OVERVIEW_PREVIEW_HEIGHT}
         isLoading={overviewExpanded && detail === undefined}
       />
-
-      {budgetSummary && (
-        <BudgetExecutionSection
-          budgetSummary={budgetSummary}
-          budgetBreakdown={budgetBreakdown ?? []}
-          scaleFont={scaleFont}
-          expanded={budgetExpanded}
-          onToggleExpanded={() => setBudgetExpanded(v => !v)}
-          listHeight={BUDGET_LIST_HEIGHT}
-        />
-      )}
-
-
 
       {subcontract && subcontract.totalBlockCount > 0 && (
         <div className="shrink-0 border-b border-mirai-surface-light px-4 pb-2.5 pt-2">

@@ -6,7 +6,7 @@ import { REFERENCES } from '@/app/lib/fiscal-space/calibration';
 import { DebtPortfolioNote, FiscalVintageBadge } from './ResultAssumptions';
 import { differenceChartScale, fiscalChartScale } from '@/client/lib/fiscal-chart-scale';
 import type { FiscalCalculation } from '@/client/lib/fiscal-space-engine';
-import { PovertyDetails } from './Poverty';
+import { PovertyAssumptionsDetails, PovertyDetails } from './Poverty';
 
 export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears = 5, latest = false, referenceModel = 'ef2026' }: {
   step: ProjectionStep; baseline: ProjectionStep; medium?: ProjectionStep; publishedYears?: number; latest?: boolean; referenceModel?: 'ef2026' | 'esri2022';
@@ -95,11 +95,12 @@ export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>
     <p className="text-xs text-mirai-text-subtle" data-testid="household-metrics-scope">所得・貧困率は、2024年の所得分布・価格・人口を固定し、{s.year}年目に実施中の給付・所得税・住民税・本人保険料の軽減を適用した比較です。賃金成長・将来の物価・雇用の変化、消費税減税、現物サービスの効果は未反映で、将来の家計所得や貧困率そのものの予測ではありません。</p>
-    <PovertyDetails result={poverty} />
     <details><summary className="cursor-pointer text-sm font-bold">GDPギャップ・輸出入・資金調達などの詳細</summary>
       <p className="my-3 text-xs text-mirai-text-subtle">GDPギャップは負が需要不足、正が需要超過です。最大GDP基準も同じ符号で、負の値が供給余力を示します。{longRun && '公表期間後のGDP・財政は、成長率・物価の基準経路と供給効果の実現を仮定した条件付き計算です。'}</p>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(detailedRows)}</div>
     </details>
+    <PovertyDetails result={poverty} />
+    <PovertyAssumptionsDetails />
   </CardContent></Card>;
 }
 

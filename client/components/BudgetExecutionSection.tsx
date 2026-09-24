@@ -20,25 +20,29 @@ export function BudgetExecutionSection({
   budgetSummary,
   budgetBreakdown,
   scaleFont,
-  expanded,
+  expanded = true,
   onToggleExpanded,
-  listHeight,
+  listHeight = 260,
+  presentation = 'accordion',
   onResizeStart,
   onResizeReset,
 }: {
   budgetSummary: BudgetSummary | null | undefined;
   budgetBreakdown: BudgetBreakdownItem[];
   scaleFont: (px: number) => number;
-  expanded: boolean;
-  onToggleExpanded: () => void;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  /** タブ内では見出しと内部スクロールを省き、パネル側に任せる */
+  presentation?: 'accordion' | 'tab';
   /** 展開時の内訳リスト最大高さ(px) */
-  listHeight: number;
+  listHeight?: number;
   /** ドラッグ開始（メインのみ。未指定なら高さ変更ハンドルは出さない） */
   onResizeStart?: (e: React.MouseEvent) => void;
   onResizeReset?: () => void;
 }) {
   const summary = budgetSummary ?? null;
   const breakdown = budgetBreakdown;
+  const isTab = presentation === 'tab';
   if (!summary && breakdown.length === 0) return null;
 
   const META_PX = scaleFont(11);
@@ -86,8 +90,8 @@ export function BudgetExecutionSection({
   );
 
   return (
-    <div className="shrink-0 border-b border-border">
-      <div className="flex items-center gap-1 px-3.5 pb-px pt-0.5">
+    <div className={isTab ? 'pt-2' : 'shrink-0 border-b border-border'}>
+      {!isTab && <div className="flex items-center gap-1 px-3.5 pb-px pt-0.5">
         <Button
           variant="ghost"
           onClick={onToggleExpanded}
@@ -100,9 +104,9 @@ export function BudgetExecutionSection({
             <span className="font-medium text-mirai-text-muted" style={{ fontSize: META_PX }}>{breakdown.length.toLocaleString()}件</span>
           )}
         </Button>
-      </div>
+      </div>}
       {accountBadges.length > 0 && (
-        <div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 px-3.5 pb-0.5">
+        <div className={`flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 ${isTab ? 'pb-2' : 'px-3.5 pb-0.5'}`}>
           {accountBadges.map(item => (
             <div key={item.label} className="min-w-0" style={{ flex: `1 1 ${scaleFont(112)}px` }}>
               <span className="mb-px flex min-w-0 items-center gap-[5px]">
@@ -114,8 +118,8 @@ export function BudgetExecutionSection({
           ))}
         </div>
       )}
-      {expanded && (
-        <div className="px-3.5 pb-2.5 text-mirai-text-secondary" style={{ fontSize: PANEL_META_PX }}>
+      {(isTab || expanded) && (
+        <div className={`${isTab ? '' : 'px-3.5 '}pb-2.5 text-mirai-text-secondary`} style={{ fontSize: PANEL_META_PX }}>
           {breakdown.length > 0 && summary && totalBreakdownAmount !== summary.totalBudget && (
             <div className="mb-2 rounded-md border border-mirai-border bg-mirai-badge-yellow p-1.5 leading-[1.45] text-mirai-text-secondary">
               2-1合計と2-2内訳合計に差があります: {formatYen((summary?.totalBudget ?? 0) - totalBreakdownAmount)}
@@ -127,7 +131,7 @@ export function BudgetExecutionSection({
             <>
               <div
                 className="grid gap-[7px] pr-0.5"
-                style={breakdown.length > 1 ? { maxHeight: listHeight, overflowY: 'auto' } : { overflowY: 'visible' }}
+                style={!isTab && breakdown.length > 1 ? { maxHeight: listHeight, overflowY: 'auto' } : { overflowY: 'visible' }}
               >
                 {breakdown.map((item, index) => (
                   <div
@@ -156,7 +160,7 @@ export function BudgetExecutionSection({
                   </div>
                 ))}
               </div>
-              {breakdown.length > 1 && onResizeStart && (
+              {!isTab && breakdown.length > 1 && onResizeStart && (
                 <div
                   role="separator"
                   aria-orientation="horizontal"
