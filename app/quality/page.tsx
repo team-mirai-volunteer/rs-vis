@@ -8,6 +8,7 @@ import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
@@ -453,14 +454,17 @@ export default function QualityPage() {
       </div>}
       {mode === 'section' && (
         <>
-          <div className="shrink-0 bg-card border-b border-mirai-border px-3 py-3">
-            <h1 className="text-lg font-bold text-mirai-text">項別 政策評価（配下 RS事業の金額加重平均）</h1>
-            <p className="mt-1 text-sm text-mirai-text-muted">
-              予算書の「項」ごとに、紐づく RS事業の 6 軸を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名から統合ビューでその項を開けます。
-              {isRequestYear && ' 2026 年度は要求ベース（採点はシート 2025）です。'}
-            </p>
+          <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-mirai-border bg-card px-3 py-2">
+            <h1 className="text-sm font-bold text-mirai-text">項別 政策評価</h1>
+            <details className="text-xs text-mirai-text-muted">
+              <summary className="cursor-pointer">集計方法</summary>
+              <p className="mt-1 max-w-3xl leading-relaxed">
+                配下の RS事業の評価を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名からサンキー図を開けます。
+                {isRequestYear && '2026年度は要求ベース（採点はシート2025）です。'}
+              </p>
+            </details>
           </div>
-          <SectionScoreTable year={year} filterOpen={filterOpen} />
+          <SectionScoreTable year={year} filterOpen={filterOpen} onToggleFilters={() => setFilterOpen(v => !v)} />
         </>
       )}
       {mode === 'project' && (<>
@@ -625,6 +629,16 @@ export default function QualityPage() {
                   </select>
                   {/* 政策類型の絞り込み */}
                   {policyByPid && <>
+                        {([
+                          { name: '推奨', labels: RECOMMENDATION_LABELS, selected: selectedRecommendation, setSelected: setSelectedRecommendation, field: 'recommendation' },
+                          { name: '改善', labels: IMPROVEMENT_ACTION_LABELS, selected: selectedAction, setSelected: setSelectedAction, field: 'improvementAction' },
+                        ] as const).map(({ name, labels, selected, setSelected, field }) => (
+                          <div key={name} className="w-[170px] max-w-full">
+                            <MultiSelectDropdown options={labels} selected={selected} onChange={setSelected}
+                              allLabel={name} placeholder={`${name}：すべて`} minWidth={0} placeholderTone="strong"
+                              optionLabel={label => `${label}（${policyRows.filter(p => p[field] === label).length.toLocaleString()}）`} />
+                          </div>
+                        ))}
                         <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={`w-[194px] ${selCls}`}>
                           {/* 政策類型は32分類あるため、7つの上位グループで optgroup にまとめる */}
                           <option value="">類型: すべて</option>
@@ -654,31 +668,6 @@ export default function QualityPage() {
                         </Button>
                   </>}
                 </div>
-                {policyByPid && <div className="space-y-2">
-                  {([
-                    { name: '推奨', labels: RECOMMENDATION_LABELS, selected: selectedRecommendation, setSelected: setSelectedRecommendation, field: 'recommendation' },
-                    { name: '改善', labels: IMPROVEMENT_ACTION_LABELS, selected: selectedAction, setSelected: setSelectedAction, field: 'improvementAction' },
-                  ] as const).map(({ name, labels, selected, setSelected, field }) => (
-                    <fieldset key={name} className="min-w-0">
-                      <legend className="mb-1 text-xs text-mirai-text-muted">{name}（複数選択可・未選択はすべて）</legend>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {labels.map(label => (
-                          <label key={label} className={cn(
-                            'flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs',
-                            selected.includes(label) ? 'border-primary bg-primary/10 text-mirai-text' : 'border-mirai-border bg-card text-mirai-text-secondary',
-                          )}>
-                            <input type="checkbox" checked={selected.includes(label)}
-                              onChange={e => setSelected(prev => e.target.checked ? [...prev, label] : prev.filter(value => value !== label))}
-                              className="size-3.5 accent-primary" />
-                            <span>{label}（{policyRows.filter(p => p[field] === label).length.toLocaleString()}）</span>
-                          </label>
-                        ))}
-                        <Button variant="ghost" size="xs" disabled={!selected.length}
-                          onClick={() => setSelected([])} aria-label={`${name}の絞り込みを解除`}>解除</Button>
-                      </div>
-                    </fieldset>
-                  ))}
-                </div>}
                 {/* 金額の範囲フィルタ */}
                 <div className="flex items-center gap-1 text-xs flex-wrap">
                   {([

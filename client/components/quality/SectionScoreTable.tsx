@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { scoreColor, formatAmount } from '@/client/components/quality/score-format';
@@ -29,10 +30,12 @@ const AXIS_DESC: Record<PolicyAxis, string> = {
   n: '必要性の加重平均',
 };
 
+const AXIS_WIDTH: Record<PolicyAxis, number> = { o: 70, d: 84, e: 96, t: 96, x: 96, n: 72 };
+
 type RangeKey = 'rsAmount' | 'programCount' | 'coverage' | PolicyAxis;
 type Ranges = Partial<Record<RangeKey, { min: string; max: string }>>;
 
-export function SectionScoreTable({ year, filterOpen = false }: { year: string; filterOpen?: boolean }) {
+export function SectionScoreTable({ year, filterOpen = false, onToggleFilters }: { year: string; filterOpen?: boolean; onToggleFilters: () => void }) {
   const [data, setData] = useState<QualitySectionsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -136,11 +139,13 @@ export function SectionScoreTable({ year, filterOpen = false }: { year: string; 
   }
 
   const amountLabel = data.rsAmountKind === 'request' ? '要求額' : '計上額';
+  const rangeCount = Object.values(ranges).filter(r => r.min !== '' || r.max !== '').length;
+  const hasFilters = Boolean(query || ministry || account || recommendations.length || rangeCount || !onlyEvaluated);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-mirai-border bg-card px-3 py-2 text-xs">
-        <div className="relative min-w-[220px]">
+        <div className="relative min-w-[180px] flex-1 sm:max-w-[280px]">
           <Search aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted" />
           <input
             type="text"
@@ -156,37 +161,37 @@ export function SectionScoreTable({ year, filterOpen = false }: { year: string; 
             </Button>
           )}
         </div>
-        <select
-          value={ministry}
-          onChange={e => setMinistry(e.target.value)}
-          aria-label="所管で絞り込み"
-          className="h-8 w-48 max-w-full shrink-0 cursor-pointer truncate rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text-secondary"
-        >
-          <option value="">全所管</option>
-          {ministries.map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-        <label className="flex cursor-pointer items-center gap-1.5 text-mirai-text-subtle">
+        <div className="grid w-full min-w-0 grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 sm:w-[450px] sm:grid-cols-[90px_minmax(0,1fr)_170px]">
+          <select aria-label="会計で絞り込み" value={account} onChange={e => setAccount(e.target.value)}
+            className="h-8 w-full min-w-0 rounded-md border border-mirai-border bg-card px-1 sm:px-2">
+            <option value="">全会計</option><option value="general">一般会計</option><option value="special">特別会計</option>
+          </select>
+          <select value={ministry} onChange={e => setMinistry(e.target.value)} aria-label="所管で絞り込み"
+            className="h-8 w-full min-w-0 cursor-pointer truncate rounded-md border border-mirai-border bg-card px-1 text-xs text-mirai-text-secondary sm:px-2">
+            <option value="">全所管</option>
+            {ministries.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <div className="min-w-0" title="選んだ推奨の金額比率が0%を超える項を表示（複数選択可）">
+            <MultiSelectDropdown options={RECOMMENDATION_LABELS} selected={recommendations} onChange={setRecommendations}
+              allLabel="推奨" placeholder="推奨：すべて" minWidth={0} placeholderTone="strong" />
+          </div>
+        </div>
+        <Button variant="outline" size="xs" aria-expanded={filterOpen} aria-controls="section-range-filters" onClick={onToggleFilters}>
+          数値条件{rangeCount > 0 ? `（${rangeCount}）` : ''}{filterOpen ? ' ▴' : ' ▾'}
+        </Button>
+        <label className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap text-mirai-text-subtle">
           <input type="checkbox" checked={onlyEvaluated} onChange={e => setOnlyEvaluated(e.target.checked)} className="size-3.5 accent-primary" />
-          評価のある項だけ
+          評価ありのみ
         </label>
-        <span className="ml-auto text-mirai-text-muted">
-          {rows.length.toLocaleString()} / {data.summary.sectionCount.toLocaleString()} 項 ・ 紐づく RS事業 {data.summary.programCount.toLocaleString()} 件 ・ 重みは RS 2-2 の{amountLabel}
+        <Button variant="ghost" size="xs" disabled={!hasFilters} onClick={() => {
+          setQuery(''); setMinistry(''); setAccount(''); setRanges({}); setRecommendations([]); setOnlyEvaluated(true);
+        }}>解除</Button>
+        <span className="ml-auto whitespace-nowrap tabular-nums text-mirai-text-muted" title={`全体で紐づく RS事業 ${data.summary.programCount.toLocaleString()} 件・重みは RS 2-2 の${amountLabel}`}>
+          {rows.length.toLocaleString()} / {data.summary.sectionCount.toLocaleString()} 項
         </span>
       </div>
 
-
-      <div className={cn('max-h-[50dvh] shrink-0 space-y-2 overflow-y-auto border-b border-mirai-border bg-card px-3 py-2 text-xs sm:block', filterOpen ? 'block' : 'hidden')}>
-        <div className="flex flex-wrap items-center gap-2">
-          <select aria-label="会計で絞り込み" value={account} onChange={e => setAccount(e.target.value)}
-            className="h-8 rounded-md border border-mirai-border bg-card px-2">
-            <option value="">全会計</option><option value="general">一般会計</option><option value="special">特別会計</option>
-          </select>
-          <Button variant="ghost" size="xs" onClick={() => {
-            setQuery(''); setMinistry(''); setAccount(''); setRanges({}); setRecommendations([]); setOnlyEvaluated(true);
-          }}>絞り込みを初期化</Button>
-        </div>
+      <div id="section-range-filters" className={cn('max-h-[40dvh] shrink-0 space-y-2 overflow-y-auto border-b border-mirai-border bg-card px-3 py-2 text-xs', filterOpen ? 'block' : 'hidden')}>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {([
             { key: 'rsAmount', label: `${amountLabel}（億円）`, step: 0.1 },
@@ -213,36 +218,21 @@ export function SectionScoreTable({ year, filterOpen = false }: { year: string; 
             </fieldset>
           ))}
         </div>
-        <fieldset>
-          <legend className="mb-1 text-mirai-text-muted">推奨（複数選択可・未選択はすべて）</legend>
-          <div className="flex flex-wrap gap-2">
-            {RECOMMENDATION_LABELS.map(label => (
-              <label key={label} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-mirai-border px-2 py-1">
-                <input type="checkbox" checked={recommendations.includes(label)} className="size-3.5 accent-primary"
-                  onChange={e => {
-                    const checked = e.target.checked;
-                    setRecommendations(prev => checked ? [...prev, label] : prev.filter(v => v !== label));
-                  }} />{label}
-              </label>
-            ))}
-            <Button variant="ghost" size="xs" disabled={!recommendations.length} onClick={() => setRecommendations([])}>推奨を解除</Button>
-          </div>
-          <p className="mt-1 text-mirai-text-muted">選んだ推奨の金額比率が0%を超える項を表示します。点数は項の加重平均、事業数は未評価を含む全体が対象です。</p>
-        </fieldset>
+
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 1180 }}>
+        <table className="w-full table-fixed border-collapse text-xs" style={{ minWidth: 1440 }}>
           {/* 列幅を固定し、項名・組織は truncate で収める（可変幅だと所管列だけが伸びて軸の列が画面外へ出る） */}
           <colgroup>
-            <col style={{ width: 130 }} />
-            <col style={{ width: 170 }} />
-            <col />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 200 }} />
             <col style={{ width: 72 }} />
-            <col style={{ width: 84 }} />
-            {POLICY_AXES.map(a => <col key={a.key} style={{ width: 66 }} />)}
-            <col style={{ width: 210 }} />
-            <col style={{ width: 84 }} />
+            <col style={{ width: 90 }} />
+            {POLICY_AXES.map(a => <col key={a.key} style={{ width: AXIS_WIDTH[a.key] }} />)}
+            <col style={{ width: 180 }} />
+            <col style={{ width: 114 }} />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-mirai-surface text-mirai-text-subtle">
             <tr>
@@ -267,7 +257,7 @@ export function SectionScoreTable({ year, filterOpen = false }: { year: string; 
                   <Link
                     href={`/budget-sankey?year=${data.budgetYear}&sel=${encodeURIComponent(r.id)}`}
                     className="inline-flex max-w-full items-center gap-1 font-medium text-primary-accent hover:underline"
-                    title="統合ビューでこの項を開く"
+                    title={`${r.sectionName} — 統合ビューでこの項を開く`}
                   >
                     <span className="truncate">{r.sectionName}</span>
                     <span className="shrink-0 text-[10px] text-mirai-text-muted">{r.sectionCode}</span>

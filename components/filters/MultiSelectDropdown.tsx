@@ -14,6 +14,7 @@ interface MultiSelectDropdownProps {
   minWidth?: number;
   /** 未選択（すべて）表示を本文色で濃く出したい画面は 'strong' を指定する */
   placeholderTone?: 'muted' | 'strong';
+  optionLabel?: (option: string) => string;
 }
 
 export function MultiSelectDropdown({
@@ -24,6 +25,7 @@ export function MultiSelectDropdown({
   placeholder,
   minWidth = 160,
   placeholderTone = 'muted',
+  optionLabel,
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -56,13 +58,15 @@ export function MultiSelectDropdown({
         ref={buttonRef}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-label={`${allLabel}：${label}`}
         onClick={() => {
           if (buttonRef.current) {
             const r = buttonRef.current.getBoundingClientRect();
+            const width = Math.min(Math.max(r.width, 200), window.innerWidth - 16);
             setRect({
               top: r.bottom + 2,
-              left: r.left,
-              width: Math.max(r.width, 200),
+              left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
+              width,
               maxHeight: Math.max(160, window.innerHeight - r.bottom - 24),
             });
           }
@@ -98,6 +102,7 @@ export function MultiSelectDropdown({
         <div
           ref={dropdownRef}
           role="listbox"
+          aria-label={allLabel}
           aria-multiselectable="true"
           className="fixed z-[9999] overflow-y-auto rounded-xl border border-mirai-border bg-card shadow-soft"
           style={{ top: rect.top, left: rect.left, width: rect.width, maxHeight: rect.maxHeight }}
@@ -125,7 +130,7 @@ export function MultiSelectDropdown({
                 }
                 className="size-3 accent-primary"
               />
-              <span>{opt}</span>
+              <span>{optionLabel ? optionLabel(opt) : opt}</span>
             </label>
           ))}
         </div>,
