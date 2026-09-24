@@ -60,17 +60,17 @@ export function ProjectOverviewSection({
 
   return (
     <div className={showBottomBorder ? 'shrink-0 border-b border-border' : 'shrink-0'}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 px-3.5 py-[7px]">
+      <div className="flex items-center gap-2 px-3.5 py-[7px]">
         <Button
           variant="ghost"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="col-span-3 col-start-1 row-start-1 h-auto justify-between gap-[5px] rounded-md p-0 text-left font-bold text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text"
+          className="h-auto min-w-0 flex-1 justify-start gap-[5px] rounded-md p-0 text-left font-bold text-mirai-text-subtle hover:bg-transparent hover:text-mirai-text has-[>svg]:px-0"
         >
           <span style={{ fontSize: PANEL_META_PX }}>事業概要</span>
           <Chevron aria-hidden="true" className="shrink-0 text-mirai-text-muted" style={{ width: META_PX, height: META_PX }} />
         </Button>
-        <div className="relative col-start-2 row-start-1 flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
         <a href={rsUrl} target="_blank" rel="noopener noreferrer"
           title="RSシステムで開く"
           className={ICON_LINK_CLASS}
@@ -80,6 +80,7 @@ export function ProjectOverviewSection({
         {detail?.url && /^https?:\/\//.test(detail.url) && (
           <a href={detail.url} target="_blank" rel="noopener noreferrer"
             title="事業概要URL"
+            aria-label="事業概要URL"
             className={ICON_LINK_CLASS}
           >
             <FileText className="size-3.5" aria-hidden="true" />
@@ -102,7 +103,6 @@ export function ProjectOverviewSection({
           </a>
         )}
         </div>
-        <div aria-hidden="true" className="col-start-3 row-start-1 pointer-events-none" style={{ width: META_PX }} />
       </div>
       {!expanded && previewText && (
         <>

@@ -12,49 +12,61 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/projects/*/comments?*', route => route.fulfill({ json: { comments: [], total: 0, nextCursor: null } }));
 });
 
-for (const width of [1440, 390]) {
-  test(`bubble click opens the shared detail in the center (${width}px)`, async ({ page }) => {
+for (const width of [1440, 900, 390]) {
+  test(`bubble detail floats alongside controls or below the size legend (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/project-bubble');
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
     await canvas.click();
-    const dialog = page.getByRole('dialog', { name: /GIGA.*の詳細/ });
-    await expect(dialog.getByText('PID 1503', { exact: true })).toBeVisible();
+    const panel = page.getByRole('region', { name: /GIGA.*の詳細/ });
+    await expect(panel).toBeVisible();
     await expect(page).toHaveURL(/pid=1503/);
-    await expect(dialog.getByText('目的', { exact: true })).toBeVisible();
-    await expect(dialog.getByText('検証可能性', { exact: true }).first()).toBeVisible();
-    const bounds = await dialog.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
-    expect(Math.abs(bounds!.y + bounds!.height / 2 - 450)).toBeLessThan(3);
-    await dialog.getByPlaceholder('支出先名で検索...').scrollIntoViewIfNeeded();
-    await expect(dialog.getByPlaceholder('支出先名で検索...')).toBeVisible();
-    const last = dialog.locator('button, a[href], input').last();
-    await last.focus();
-    await page.keyboard.press('Tab');
-    await expect(dialog.getByRole('button', { name: '詳細URLをコピー', exact: true })).toBeFocused();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(panel.getByText('検証可能性', { exact: true })).toBeVisible();
+    const bounds = (await panel.boundingBox())!;
+    const search = (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())!;
+    const size = (await page.getByLabel('バブルの大きさ').boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
+    if (width >= 1280) expect(bounds.x).toBeGreaterThan(search.x + search.width);
+    else expect(bounds.y).toBeGreaterThan(size.y + size.height);
+    const toggle = panel.getByRole('button', { name: '事業概要', exact: true });
+    await toggle.scrollIntoViewIfNeeded();
+    const label = (await toggle.locator('span').boundingBox())!;
+    const icon = (await toggle.locator('svg').boundingBox())!;
+    const button = (await toggle.boundingBox())!;
+    expect(Math.abs(label.x - button.x)).toBeLessThan(1);
+    expect(icon.x - label.x - label.width).toBeLessThan(8);
+    await toggle.click();
+    await expect(panel.getByText('目的', { exact: true })).toBeVisible();
+    const detail = await (await page.request.get('/api/project-details/1503?year=2025')).json();
+    if (detail.url && /^https?:\/\//.test(detail.url)) {
+      await expect(panel.getByRole('link', { name: '事業概要URL', exact: true })).toHaveAttribute('href', detail.url);
+    }
+    await expect(panel.getByRole('tab')).toHaveText(['予算', '事業(支出)', 'ブロック', '支出先']);
+    await panel.getByRole('tab', { name: 'ブロック', exact: true }).click();
+    await expect(panel.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/1503?year=2025');
+    await panel.getByRole('tabpanel').getByRole('button').first().click();
+    await expect(panel.getByRole('region', { name: 'ブロックの差額' })).toBeVisible();
     await page.screenshot({ path: `test-results/bubble-detail-${width}.png` });
-    await page.keyboard.press('Escape');
-    await expect(dialog).toHaveCount(0);
+    await panel.getByRole('button', { name: '選択を解除', exact: true }).click();
+    await expect(panel).toHaveCount(0);
     await expect(page).not.toHaveURL(/pid=/);
     await expect(canvas).toBeVisible();
   });
 }
 
-test('table selection, retry and a shared URL open the same popup', async ({ page }) => {
+test('table selection and a shared URL open the same floating panel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  let fail = true;
-  await page.route('**/api/quality-scores/1503?*', route => fail ? route.fulfill({ status: 503, json: {} }) : route.continue());
   await page.goto('/project-bubble?tb=1');
   await page.getByRole('button', { name: 'GIGAスクール構想', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('取得できませんでした');
-  fail = false;
-  await page.getByRole('button', { name: '再試行', exact: true }).click();
-  await expect(page.getByRole('dialog').getByText('PID 1503', { exact: true })).toBeVisible();
+  const panel = page.getByRole('region', { name: /GIGA.*の詳細/ });
+  await expect(panel).toBeVisible();
+  await expect(page).toHaveURL(/pid=1503/);
   await page.reload();
-  await expect(page.getByRole('dialog').getByText('PID 1503', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '閉じる（Esc）', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'GIGAスクール構想', exact: true })).toBeVisible();
+  await expect(panel).toBeVisible();
+  await panel.focus();
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
 });

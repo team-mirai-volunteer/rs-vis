@@ -5,7 +5,7 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
-import { ProjectDetailPopup } from '@/client/components/ProjectMap/ProjectDetailPopup';
+import { ProjectDetailPanel } from '@/client/components/ProjectMap/ProjectDetailPanel';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -362,14 +362,15 @@ export default function ProjectMapPage() {
         className={cn(
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[55vh]',
-          'sm:bottom-3 sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-none sm:w-[268px] sm:overflow-hidden',
-          mobilePanelOpen ? 'flex' : 'hidden'
+          'sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-[calc(100%-24px)] sm:w-[360px]',
+          selected ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:grid-rows-[auto_auto] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
+          mobilePanelOpen || selected ? 'flex' : 'hidden'
         )}
       >
 
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+          <div className="shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft xl:col-start-1 xl:row-start-1">
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"
@@ -419,7 +420,7 @@ export default function ProjectMapPage() {
           </div>
       )}
 
-      <div className="rounded-xl border border-mirai-border bg-card shadow-soft">
+      <div className="shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft xl:col-start-1 xl:row-start-2">
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2 text-xs">
           <span className="text-mirai-text-subtle">色</span>
           <select
@@ -499,17 +500,15 @@ export default function ProjectMapPage() {
         )}
       </div>
 
-      </div>
-
       {selected && (
-        <ProjectDetailPopup
+        <ProjectDetailPanel
           key={`${year}-${selected.pid}`}
-          pid={selected.pid}
-          name={selected.name}
+          point={selected}
           year={year}
           onClose={() => setSelected(null)}
         />
       )}
+      </div>
 
       {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
       <div className="absolute left-3 top-3 z-40 sm:hidden">
@@ -580,7 +579,7 @@ export default function ProjectMapPage() {
           <TableView
             points={filtered}
             clusterById={clusterById}
-            onSelect={setSelected}
+            onSelect={point => { setSelected(point); setShowTable(false); }}
             onClose={() => setShowTable(false)}
           />
         </div>
