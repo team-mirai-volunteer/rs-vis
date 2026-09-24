@@ -306,10 +306,14 @@ export function UnifiedSankeyChart({
     !selectedDetails.aggregated && selectedDetails.projectId !== undefined;
   const hasBudgetTab = isIndividualProject &&
     (!!selectedDetails?.budgetSummary || (selectedDetails?.budgetBreakdown?.length ?? 0) > 0);
-  const tabs = useMemo(() => [
-    ...(hasBudgetTab ? [{ id: 'budget-execution', label: '予算・執行', count: selectedDetails?.budgetBreakdown?.length ?? 0 }] : []),
-    ...relatedColumnList.map(t => ({ id: t.column as string, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length })),
-  ], [hasBudgetTab, selectedDetails?.budgetBreakdown?.length, relatedColumnList]);
+  const tabs = useMemo(() => {
+    const items = relatedColumnList.map(t => ({ id: t.column as string, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length }));
+    if (hasBudgetTab) {
+      const index = relatedColumnList.findIndex(t => UNIFIED_COLUMNS.indexOf(t.column) >= UNIFIED_COLUMNS.indexOf('program-spending'));
+      items.splice(index < 0 ? items.length : index, 0, { id: 'budget-execution', label: '予算', count: selectedDetails?.budgetBreakdown?.length ?? 0 });
+    }
+    return items;
+  }, [hasBudgetTab, selectedDetails?.budgetBreakdown?.length, relatedColumnList]);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (tabs[0]?.id ?? null);
 

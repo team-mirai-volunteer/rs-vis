@@ -45,10 +45,10 @@ export function BudgetExecutionSection({
   const isTab = presentation === 'tab';
   if (!summary && breakdown.length === 0) return null;
 
-  const META_PX = scaleFont(11);
-  const PANEL_META_PX = scaleFont(13);
-  const PANEL_PRIMARY_VALUE_PX = scaleFont(15);
-  const PANEL_LIST_VALUE_PX = scaleFont(12);
+  const META_PX = isTab ? 11 : scaleFont(11);
+  const PANEL_META_PX = isTab ? 12 : scaleFont(13);
+  const PANEL_PRIMARY_VALUE_PX = isTab ? 12 : scaleFont(15);
+  const PANEL_LIST_VALUE_PX = isTab ? 11 : scaleFont(12);
   const Chevron = expanded ? ChevronDown : ChevronRight;
 
   const renderText = (value: string) => value.trim() || '-';
@@ -90,7 +90,7 @@ export function BudgetExecutionSection({
   );
 
   return (
-    <div className={isTab ? 'pt-2' : 'shrink-0 border-b border-border'}>
+    <div className={isTab ? '' : 'shrink-0 border-b border-border'}>
       {!isTab && <div className="flex items-center gap-1 px-3.5 pb-px pt-0.5">
         <Button
           variant="ghost"
@@ -106,12 +106,12 @@ export function BudgetExecutionSection({
         </Button>
       </div>}
       {accountBadges.length > 0 && (
-        <div className={`flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 ${isTab ? 'pb-2' : 'px-3.5 pb-0.5'}`}>
+        <div className={`flex min-w-0 flex-wrap items-start gap-x-3 gap-y-1 ${isTab ? 'border-b border-border px-1 py-1.5' : 'px-3.5 pb-0.5'}`}>
           {accountBadges.map(item => (
             <div key={item.label} className="min-w-0" style={{ flex: `1 1 ${scaleFont(112)}px` }}>
               <span className="mb-px flex min-w-0 items-center gap-[5px]">
                 {renderAccountBadge(item.label)}
-                <span className="block whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_PRIMARY_VALUE_PX }}>{formatYen(item.amount)}</span>
+                <span className={`block whitespace-nowrap tabular-nums ${isTab ? 'font-medium text-mirai-text-secondary' : 'font-bold text-mirai-text'}`} style={{ fontSize: PANEL_PRIMARY_VALUE_PX }}>{formatYen(item.amount)}</span>
               </span>
               <span className="mt-px block whitespace-nowrap text-mirai-text-muted" style={{ fontSize: META_PX }}>{Math.round(item.amount).toLocaleString()}円</span>
             </div>
@@ -130,20 +130,20 @@ export function BudgetExecutionSection({
           ) : (
             <>
               <div
-                className="grid gap-[7px] pr-0.5"
+                className={isTab ? 'grid' : 'grid gap-[7px] pr-0.5'}
                 style={!isTab && breakdown.length > 1 ? { maxHeight: listHeight, overflowY: 'auto' } : { overflowY: 'visible' }}
               >
                 {breakdown.map((item, index) => (
                   <div
                     key={`${item.accountCategory}-${item.account}-${item.subAccount}-${item.budgetType}-${item.item}-${item.subItem}-${index}`}
-                    className="rounded-xl border border-border bg-card px-[9px] py-2"
+                    className={isTab ? 'border-b border-border px-1 py-1.5' : 'rounded-xl border border-border bg-card px-[9px] py-2'}
                   >
                     <div className="mb-1.5 flex items-baseline justify-between gap-2">
                       <div className="flex min-w-0 flex-wrap items-baseline gap-1.5 font-bold text-mirai-text-secondary" style={{ fontSize: PANEL_META_PX }}>
                         {renderAccountBadge(item.accountCategory)}
                         <span className="font-medium text-mirai-text-muted">{renderText(item.budgetType)}</span>
                       </div>
-                      <div className="whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_LIST_VALUE_PX }}>{formatYen(item.amount)}</div>
+                      <div className={`whitespace-nowrap tabular-nums ${isTab ? 'text-mirai-text-muted' : 'font-bold text-mirai-text'}`} style={{ fontSize: PANEL_LIST_VALUE_PX }}>{formatYen(item.amount)}</div>
                     </div>
                     <div className="grid grid-cols-2 gap-x-2.5 gap-y-[5px] leading-[1.45]" style={metaGridStyle}>
                       {renderMeta('会計', item.account)}

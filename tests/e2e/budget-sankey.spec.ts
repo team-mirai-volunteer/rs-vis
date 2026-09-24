@@ -144,7 +144,11 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const withoutComments = expected.filter(h => h !== 'みんなの意見');
     expect([expected, withoutComments]).toContainEqual([...new Set(headings)]);
 
-    const budgetTab = sidePanel.getByRole('tab', { name: '予算・執行' });
+    const budgetTab = sidePanel.getByRole('tab', { name: /^予算\s*\(/ });
+    const tabNames = await sidePanel.getByRole('tab').allTextContents();
+    const budgetIndex = tabNames.findIndex(name => name.startsWith('予算('));
+    expect(tabNames[budgetIndex + 1]).toMatch(/^事業\(支出\)/);
+    await budgetTab.click();
     await expect(budgetTab).toHaveAttribute('aria-selected', 'true');
     await expect(sidePanel.getByRole('tabpanel').getByText('会計', { exact: true }).first()).toBeVisible();
     await sidePanel.getByRole('tab', { name: /^支出先/ }).click();
