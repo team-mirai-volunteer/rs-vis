@@ -405,7 +405,7 @@ function UnifiedBudgetSankeyContent() {
   );
   return (
     <>
-    <AppHeader position="fixed" current="/budget-sankey">
+    <AppHeader fiscalYear={year} position="fixed" current="/budget-sankey">
       <UnifiedBasisSelect value={effectiveBasis} available={basesOf(year)} onChange={setBasis} />
       <UnifiedViewSelect
         visibleColumns={effectiveColumns}

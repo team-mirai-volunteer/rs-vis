@@ -1,5 +1,7 @@
 'use client';
 
+import { fiscalYear } from '@/app/lib/rs-fiscal-year';
+
 /**
  * /quality の「項」表示。予算書の項ごとに、配下 RS事業の政策評価を計上額で加重平均した一覧。
  * データは /api/quality-sections。行の項名から統合ビュー（その項を選択した状態）へ飛べる。
@@ -108,7 +110,7 @@ export function SectionScoreTable({ year }: { year: string }) {
   if (data.unavailable) {
     return (
       <div className="p-6 text-sm leading-relaxed text-mirai-text-subtle">
-        {year}年度は予算書の項と RS事業の紐づけ表がこの採点結果と対応していないため、項ごとの集計を出せません。2025 年度または 2026 年度（要求）を選んでください。
+        {fiscalYear(year)}年度は予算書の項と RS事業の紐づけ表がこの採点結果と対応していないため、項ごとの集計を出せません。2024 年度または 2026 年度（要求）を選んでください。
       </div>
     );
   }

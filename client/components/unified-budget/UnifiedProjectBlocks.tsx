@@ -5,6 +5,8 @@ import { TagChip } from '@/client/components/TagChip';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { useCached } from './policy-summary-cache';
 import { BlockBalance } from '@/client/components/subcontract/BlockBalance';
+import { BlockSources } from '@/client/components/subcontract/BlockSources';
+import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 
 type ProjectBlocks = SubcontractGraph & { budgetSummary?: BudgetSummary; budgetBreakdown?: BudgetBreakdownItem[] };
 const cache = new Map<string, ProjectBlocks | null>();
@@ -31,7 +33,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
       {subcontract > 0 && <TagChip kind="subcontract">再委託 {subcontract}</TagChip>}
       {separate > 0 && <TagChip kind="separate-origin">別財源 {separate}</TagChip>}
       <span>階層 {graph.maxDepth}</span>
-      <a href={`/subcontracts/${graph.projectId}?year=${year}`} className="ml-auto text-primary hover:underline">フローを見る ↗</a>
+      <a href={rsViewUrl(`/subcontracts/${graph.projectId}`, year)} className="ml-auto text-primary hover:underline">フローを見る ↗</a>
     </div>
     {graph.blocks.map(block => <Button key={block.blockId} variant="ghost" onClick={() => onSelect(block)}
       className="flex h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-none border-b border-border px-1 py-1.5 text-left font-normal hover:bg-mirai-surface">
@@ -45,6 +47,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
         </TagChip>
         <span>支出先 {block.recipients.length.toLocaleString()}件</span>
       </span>
+      <BlockSources graph={graph} blockId={block.blockId} />
       {block.role && <span className="text-[11px] leading-relaxed text-mirai-text-muted">{block.role}</span>}
     </Button>)}
   </>;
@@ -56,6 +59,7 @@ export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: Subco
       <span className="text-mirai-text-secondary">ブロック {block.blockId} {block.blockName}</span>
       <Button variant="ghost" size="xs" onClick={onClear} className="shrink-0 text-[11px] text-primary">絞り込みを解除</Button>
     </div>
+    <BlockSources graph={graph} blockId={block.blockId} />
     <BlockBalance graph={graph} block={block} />
     {block.recipients.length === 0 && <p className="py-2 text-xs text-mirai-text-muted">このブロックに支出先の記載はありません。</p>}
     {block.recipients.map((recipient, index) => <div key={`${recipient.name}-${index}`} className="border-b border-border px-1 py-1.5">

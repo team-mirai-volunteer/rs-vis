@@ -1,5 +1,6 @@
 'use client';
 
+import { fiscalNavigationUrl } from '@/app/lib/rs-fiscal-year';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Check, Menu } from 'lucide-react';
@@ -18,8 +19,10 @@ export type { NavPageHref } from './pages';
  */
 export function PageNavMenu({
   current,
+  fiscalYear,
 }: {
   current: NavPageHref | '/';
+  fiscalYear?: number;
   /** 互換用。デザインシステム適用後は常にライト配色のため未使用 */
   theme?: 'auto' | 'light';
 }) {
@@ -59,7 +62,7 @@ export function PageNavMenu({
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={fiscalNavigationUrl(item.href, fiscalYear)}
                   onClick={() => setOpen(false)}
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cn(

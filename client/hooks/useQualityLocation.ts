@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { parseQualityYear, type QualityYear } from '@/app/lib/api/quality-year';
+import { type QualityYear } from '@/app/lib/api/quality-year';
+
+import { fiscalYear, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
 
 type QualityLocation = { year: QualityYear; mode: 'project' | 'section'; detailPid: string | null };
 const INITIAL: QualityLocation = { year: '2025', mode: 'project', detailPid: null };
@@ -9,7 +11,7 @@ const INITIAL: QualityLocation = { year: '2025', mode: 'project', detailPid: nul
 function readLocation(): QualityLocation {
   const params = new URLSearchParams(window.location.search);
   return {
-    year: parseQualityYear(params.get('year') || '2025') ?? '2025',
+    year: sheetYearFromParams(params, 'year', true) as QualityYear,
     mode: params.get('mode') === 'section' ? 'section' : 'project',
     detailPid: params.get('detail') || null,
   };
@@ -30,7 +32,9 @@ export function useQualityLocation() {
   const navigate = useCallback((change: Partial<QualityLocation>) => {
     const next = { ...readLocation(), ...change };
     const url = new URL(window.location.href);
-    url.searchParams.set('year', next.year);
+    // 旧共有URLはそのまま読める。新規リンクは実績年度を明示する。
+    if (url.searchParams.has('year') && !url.searchParams.has('fiscalYear')) url.searchParams.set('year', next.year);
+    else { url.searchParams.delete('year'); url.searchParams.set('fiscalYear', String(fiscalYear(next.year))); }
     if (next.mode === 'section') url.searchParams.set('mode', next.mode);
     else url.searchParams.delete('mode');
     if (next.detailPid) url.searchParams.set('detail', next.detailPid);

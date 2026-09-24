@@ -311,7 +311,7 @@ class ProjectStats:
         'cn_verified_count',
         'cn_filled', 'cn_empty',
         'spend_total', 'spend_net_total',
-        'block_names', 'has_redelegation', 'redelegation_depth',
+        'block_ids', 'has_redelegation', 'redelegation_depth',
         'block_amounts', 'block_roles', 'recipient_amounts_by_block',
         'orphan_block_count',
         'opaque_count', 'opaque_amount', 'total_recipient_amount',
@@ -337,7 +337,7 @@ class ProjectStats:
         self.cn_empty = 0
         self.spend_total = 0
         self.spend_net_total = 0  # ルートブロックのみの実質支出額
-        self.block_names = set()
+        self.block_ids = set()
         self.has_redelegation = False
         self.redelegation_depth = 0
         self.block_amounts = {}          # block_no -> block_amount
@@ -369,8 +369,8 @@ with open(SPEND_CSV, encoding='utf-8') as f:
         ps = projects[pid]
 
         # ブロックヘッダー行（支出先名が空でブロック名がある）
-        if block_name and block_no:
-            ps.block_names.add(block_name)
+        if block_no:
+            ps.block_ids.add(block_no)
             block_amt = to_int(r.get('ブロックの合計支出額', ''))
             if block_amt:
                 ps.block_amounts[block_no] = block_amt
@@ -569,7 +569,7 @@ def calc_scores(ps):
         axis4 -= min(30, block_inconsistent * 10)
 
     scores['axis4'] = clamp(axis4)
-    scores['block_count'] = len(ps.block_names)
+    scores['block_count'] = len(ps.block_ids | blocks_in_5_2_by_pid.get(pid, set()))
     scores['has_redelegation'] = ps.has_redelegation
     scores['redelegation_depth'] = ps.redelegation_depth
 

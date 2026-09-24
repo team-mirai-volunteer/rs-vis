@@ -7,6 +7,7 @@
  * キャッシュする（同一事業への同時リクエストは1本にまとめる）。
  */
 
+import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -159,6 +160,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <div className="text-sm font-bold text-mirai-text leading-snug">{item.name}</div>
               <ProjectDetailShare pid={item.pid} year={year} />
+              <p className="mt-1 text-xs text-mirai-text-muted">{fiscalYearLabel(year)}</p>
               {navigation}
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">

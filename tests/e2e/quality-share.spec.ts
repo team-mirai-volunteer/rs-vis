@@ -19,7 +19,7 @@ test('opening, copying, reloading and navigating history preserve the selected d
   await detail.getByRole('button', { name: '詳細URLをコピー', exact: true }).click();
   await expect(detail.getByRole('status')).toHaveText('詳細URLをコピーしました');
   const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
-  expect(new URL(shareUrl).pathname + new URL(shareUrl).search).toBe('/quality?year=2025&detail=1503');
+  expect(new URL(shareUrl).pathname + new URL(shareUrl).search).toBe('/quality?fiscalYear=2024&detail=1503');
   await page.goBack();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(search).toHaveValue('1503');
@@ -61,7 +61,7 @@ test('clipboard failure leaves a selectable share URL and unknown detail can ret
   const detail = page.getByRole('dialog');
   await detail.getByRole('button', { name: '詳細URLをコピー', exact: true }).click();
   const fallback = detail.getByLabel('事業詳細の共有URL');
-  await expect(fallback).toHaveValue(/\/quality\?year=2026&detail=1503$/);
+  await expect(fallback).toHaveValue(/\/quality\?fiscalYear=2026&detail=1503$/);
   await fallback.focus();
   expect(await fallback.evaluate((input: HTMLInputElement) => input.selectionEnd! - input.selectionStart!)).toBe((await fallback.inputValue()).length);
   await page.goto('/quality?year=2026&detail=999999999');

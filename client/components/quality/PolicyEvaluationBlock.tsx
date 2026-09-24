@@ -11,6 +11,7 @@
  * フォントサイズだけは呼び出し側のフォントスケール（labelPx / metaPx）に従うため inline のまま。
  */
 
+import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { scoreColor } from '@/client/components/quality/score-format';
@@ -113,7 +114,7 @@ export function PolicyEvaluationBlock({
           >{detailLoading ? '読込中…' : '詳細'}</Button>
         )}
         <a
-          href={`/quality?pid=${pid}&year=${year}`}
+          href={rsViewUrl(`/quality?pid=${pid}`, year)}
           target="_blank"
           rel="noopener noreferrer"
           className={cn('shrink-0 text-primary underline-offset-4 hover:underline hover:text-primary-accent', onOpenDetail ? 'ml-2' : 'ml-auto')}

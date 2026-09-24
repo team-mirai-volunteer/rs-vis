@@ -16,7 +16,7 @@
  *
  * 対象外: AiChatPanel（右・既に同等機能を自前実装済み。閉状態の見た目が異なるため統合しない）。
  */
-import type { CSSProperties, ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsNarrow } from '@/client/hooks/useMediaQuery';
 
@@ -62,6 +62,7 @@ export function SidePanelChrome({
 }: SidePanelChromeProps) {
   const isLeft = side === 'left';
   const narrow = useIsNarrow();
+  const [expanded, setExpanded] = useState(false);
 
   // 浮島型: ヘッダー（下余白込み）の下から画面下端 INSET まで、画面端から INSET 離して浮かせる。
   // 折りたたみ機能は無い（閉じる＝選択解除はページ側の × ボタンが担う）
@@ -71,8 +72,9 @@ export function SidePanelChrome({
         left: SIDE_PANEL_INSET,
         right: SIDE_PANEL_INSET,
         bottom: SIDE_PANEL_INSET,
-        height: '52vh',
-        zIndex,
+        height: expanded ? 'calc(100dvh - var(--app-header-h, 118px) - 24px)' : '72dvh',
+        maxHeight: 'calc(100dvh - var(--app-header-h, 118px) - 24px)',
+        zIndex: Math.max(zIndex, 35),
         overflow: 'visible',
         cursor: 'default',
       }
@@ -126,7 +128,11 @@ export function SidePanelChrome({
 
       {/* パネル本体 */}
       <div className="flex h-full flex-col overflow-hidden rounded-2xl">
-        {children}
+        {narrow && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
+          className="min-h-9 shrink-0 border-b border-border px-3 text-xs font-bold text-primary-accent">
+          {expanded ? '詳細を小さく表示' : '詳細を大きく表示'}
+        </button>}
+        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
   );

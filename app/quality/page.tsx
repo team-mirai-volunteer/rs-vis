@@ -1,5 +1,7 @@
 'use client';
 
+import { fiscalYear, fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
+
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
@@ -426,7 +428,7 @@ export default function QualityPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <AppHeader current="/quality">
+      <AppHeader fiscalYear={fiscalYear(year)} current="/quality">
         {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
         <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
           {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (
@@ -442,7 +444,7 @@ export default function QualityPage() {
             </Button>
           ))}
         </div>
-        <YearSelect value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
+        <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
         {/* sm 未満はヒストグラム・絞り込み列を畳んでいるので、ここから開く */}
         <Button
           variant="outline"
@@ -457,7 +459,7 @@ export default function QualityPage() {
       </AppHeader>
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={closeDetail} year={year} />}
       {detailPid && data && !dialogItem && <div role="status" className="border-b border-mirai-border bg-card px-4 py-3 text-sm">
-        {year}年度に指定された事業（PID {detailPid}）は見つかりませんでした。
+        {fiscalYear(year)}年度に指定された事業（PID {detailPid}）は見つかりませんでした。
         <Button variant="link" size="sm" onClick={closeDetail}>一覧に戻る</Button>
       </div>}
       {mode === 'section' && (

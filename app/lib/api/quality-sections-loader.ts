@@ -12,6 +12,7 @@
 
 import { tryReadDataJson } from './data-file';
 import { loadPolicyEvaluations } from './policy-evaluations-loader';
+import { fiscalYear } from '@/app/lib/rs-fiscal-year';
 import { qualitySourceYear, type QualityYear } from './quality-year';
 import { aggregatePolicy, type WeightedProgram } from '@/app/lib/unified-budget/policy-aggregate';
 import type { PolicySummaryEntry } from '@/app/api/policy-summary/route';
@@ -28,7 +29,7 @@ export function loadQualitySections(year: QualityYear): QualitySectionsResponse 
   const cached = cache.get(year);
   if (cached) return cached;
 
-  const budgetYear = Number(year);
+  const budgetYear = fiscalYear(year);
   const sourceYear = Number(qualitySourceYear(year));
   const linkage = tryReadDataJson<MofRsKouMokuLinkageData>(`mof-rs-kou-moku-linkage-${budgetYear}.json`);
   // 紐づけ表が無い、または採点結果と別のシート年度から作られている年度は集計しない

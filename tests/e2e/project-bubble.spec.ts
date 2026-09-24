@@ -23,13 +23,14 @@ for (const width of [1440, 900, 390]) {
     await expect(panel).toBeVisible();
     await expect(page).toHaveURL(/pid=1503/);
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    if (width < 640) await panel.getByRole('button', { name: '事業概要・評価 を見る' }).click();
     await expect(panel.getByText('検証可能性', { exact: true })).toBeVisible();
     const bounds = (await panel.boundingBox())!;
-    const search = (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())!;
+    const search = width >= 1280 ? (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())! : null;
     const size = (await page.getByLabel('バブルの大きさ').boundingBox())!;
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-    if (width >= 1280) expect(bounds.x).toBeGreaterThan(search.x + search.width);
+    if (width >= 1280) expect(bounds.x).toBeGreaterThan(search!.x + search!.width);
     else expect(bounds.y).toBeGreaterThan(size.y + size.height);
     const toggle = panel.getByRole('button', { name: '事業概要', exact: true });
     await toggle.scrollIntoViewIfNeeded();
@@ -46,7 +47,7 @@ for (const width of [1440, 900, 390]) {
     }
     await expect(panel.getByRole('tab')).toHaveText(['予算', '事業(支出)', 'ブロック', '支出先']);
     await panel.getByRole('tab', { name: 'ブロック', exact: true }).click();
-    await expect(panel.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/1503?year=2025');
+    await expect(panel.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/1503?fiscalYear=2024');
     await panel.getByRole('tabpanel').getByRole('button').first().click();
     await expect(panel.getByRole('region', { name: 'ブロックの差額' })).toBeVisible();
     await page.screenshot({ path: `test-results/bubble-detail-${width}.png` });

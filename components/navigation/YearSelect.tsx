@@ -16,6 +16,7 @@ export function YearSelect({
   years,
   fontPx,
   testId,
+  labelForYear,
 }: {
   value: string;
   onChange: (year: string) => void;
@@ -25,6 +26,7 @@ export function YearSelect({
   /** フォントスケール対応ページ用。未指定なら text-xs 相当 */
   fontPx?: number;
   testId?: string;
+  labelForYear?: (year: string | number) => string;
 }) {
   return (
     <div className="relative shrink-0">
@@ -37,7 +39,7 @@ export function YearSelect({
         className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >
         {years.map(y => (
-          <option key={y} value={String(y)}>{y}年度</option>
+          <option key={y} value={String(y)}>{labelForYear ? labelForYear(y) : `${y}年度`}</option>
         ))}
       </select>
       <ChevronDown

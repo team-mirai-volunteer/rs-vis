@@ -16,6 +16,7 @@ const tabs = ['予算', '事業(支出)', 'ブロック', '支出先'] as const;
 /** 図を操作したまま比較できる、サンキー図と共通の詳細パネル。 */
 export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMapPoint; year: string; onClose: () => void }) {
   const graph = useProjectBlocks(Number(point.pid), Number(year));
+  const [overviewOpen, setOverviewOpen] = useState(false);
   const [tab, setTab] = useState<typeof tabs[number]>('予算');
   const [blockId, setBlockId] = useState<string | null>(null);
   const block = graph?.blocks.find(item => item.blockId === blockId);
@@ -38,12 +39,13 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
       </div>
       <Button variant="ghost" size="icon-sm" aria-label="選択を解除" onClick={onClose}><X /></Button>
     </div>
-    <div className="px-4">
+    <button type="button" aria-expanded={overviewOpen} onClick={() => setOverviewOpen(value => !value)} className="min-h-10 w-full border-b border-border px-4 text-left text-xs font-bold text-primary-accent sm:hidden">事業概要・評価 {overviewOpen ? 'を閉じる' : 'を見る'}</button>
+    <div className={`px-4 ${overviewOpen ? '' : 'max-sm:hidden'}`}>
       <UnifiedProjectSections pid={Number(point.pid)} projectName={point.name} rsSheetYear={Number(year)} fontPx={11} />
     </div>
     <div role="tablist" aria-label="事業の内訳" className="flex overflow-x-auto border-y border-border px-2">
       {tabs.map(label => <Button key={label} role="tab" variant="ghost" aria-selected={tab === label} onClick={() => setTab(label)}
-        className={`h-auto flex-1 whitespace-nowrap rounded-none border-b-2 px-1 py-1.5 text-[11px] font-bold ${tab === label ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted'}`}>{label}</Button>)}
+        className={`h-auto min-h-10 flex-1 whitespace-nowrap rounded-none border-b-2 px-1 py-1.5 text-[11px] font-bold ${tab === label ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted'}`}>{label}</Button>)}
     </div>
     <div role="tabpanel" className="max-h-80 overflow-y-auto p-4 pt-1">
       {tab === '事業(支出)' ? <div className="flex justify-between gap-3 border-b border-border py-2 text-xs">

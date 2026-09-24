@@ -52,7 +52,17 @@ test('PID 1503 budget survives repeated recomputation and the 1-billion-yen filt
   const layout = computeMOFSankeyLayout(tiny, { width: 1000, height: 500, margin: { top: 10, right: 10, bottom: 10, left: 10 }, nodeWidth: 20, nodePadding: 10 });
   assert.equal(layout.nodes[0].value, program.value);
   assert(layout.nodes[0].height >= layout.links[0].width, 'spending fits within drawing capacity');
-  assert.equal(recomputeValues({ nodes: [program], links: [] }).nodes.length, 0, 'filtering all flows still prunes disconnected budgets');
+  // 接続のないRS事業も表示する仕様。値の再計算と、条件による除外は区別する。
+  const isolated = recomputeValues({ nodes: [program, {
+    id: 'orphan-recipient', name: 'orphan-recipient', type: 'recipient', value: 100,
+    details: { column: 'recipient' },
+  }], links: [] });
+  assert.deepEqual(isolated.nodes.map(n => n.id), [program.id], 'retain the RS project but prune disconnected recipients');
+  assert.equal(isolated.nodes[0].value, program.value, 'an isolated project retains its actual budget');
+  assert.equal(isolated.nodes[0].layoutValue, program.value, 'a removed spending flow must not inflate the layout');
+  assert.deepEqual(isolated.links, [], 'do not invent flows for an isolated project');
+  const excluded = applyFilter(isolated, { ...UNIFIED_FILTER_DEFAULT, budgetMax: '1億', includeCollapsedAccounts: true });
+  assert.equal(excluded.nodes.length, 0, 'an isolated project is still removed when it fails the budget filter');
 });
 
 test('corporate incidence changes estimated burden but not fixed-salary cash disposable income', () => {

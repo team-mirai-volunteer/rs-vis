@@ -1,5 +1,9 @@
 'use client';
 
+import { BlockSources } from '@/client/components/subcontract/BlockSources';
+import { subcontractSources } from '@/app/lib/subcontracts/block-sources';
+import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+
 /**
  * /subcontracts/[projectId]（詳細） URL=状態パラメータ一覧。
  * 既定値のときは省略する（クリーンなURL維持）。
@@ -553,7 +557,7 @@ function SidePane({
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      <div className="shrink-0 bg-card">
+      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
       <div className="border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex items-start gap-1.5">
@@ -668,6 +672,7 @@ function SidePane({
           タブ内容（支出先＝ブロック内訳）とフロー図のハイライトに反映される。復活時は
           BlockInspector と selectedBlockFlows を戻す。 */}
 
+      </div>
       {/* タブヘッダー */}
       <div className="flex border-b border-border bg-card" role="tablist">
         {tabs.map((tab) => {
@@ -697,7 +702,6 @@ function SidePane({
             </Button>
           );
         })}
-      </div>
       </div>
 
       {/* タブ本体 — ここだけがスクロールする（ヘッダ・タブは固定） */}
@@ -809,6 +813,7 @@ function SidePane({
               <BlockListRow
                 key={b.blockId}
                 block={b}
+                graph={graph}
                 onClick={() => onSelectBlock(b)}
                 selected={block?.blockId === b.blockId}
                 scaleFont={scaleFont}
@@ -902,6 +907,7 @@ function SidePane({
                     {formatYen(block.totalAmount)} ／ 支出先 {block.recipientCount.toLocaleString()}件
                     ／ 構成比 {percentOf(block.totalAmount, Math.max(graph.execution, graph.budget, block.totalAmount))}
                   </div>
+                  <BlockSources graph={graph} blockId={block.blockId} />
                   <BlockBalance graph={graph} block={block} />
                   {block.role && (
                     <div className="mt-1 rounded-md border border-border bg-card px-1.5 py-[3px] text-[11px] text-mirai-text-secondary">
@@ -995,7 +1001,7 @@ function SidePane({
   );
 }
 
-function BlockListRow({ block, selected, onClick, scaleFont }: { block: BlockNode; selected: boolean; onClick: () => void; scaleFont: (px: number) => number }) {
+function BlockListRow({ block, graph, selected, onClick, scaleFont }: { graph: SubcontractGraph; block: BlockNode; selected: boolean; onClick: () => void; scaleFont: (px: number) => number }) {
   const badge = originKindBadgeColor(block.originKind);
   const badgeText = originKindLabel(block.originKind);
   const PANEL_LIST_NAME_FONT_PX = scaleFont(PANEL_LIST_NAME_FONT_PX_DEFAULT);
@@ -1027,6 +1033,7 @@ function BlockListRow({ block, selected, onClick, scaleFont }: { block: BlockNod
           </span>
         )}
       </div>
+      <BlockSources graph={graph} blockId={block.blockId} />
     </Button>
   );
 }
@@ -1204,7 +1211,7 @@ function SubcontractDetailPageInner() {
   const router = useRouter();
 
   const projectId = params.projectId;
-  const parsedYear = Number.parseInt(searchParams.get('year') ?? '2025', 10);
+  const parsedYear = Number(sheetYearFromParams(searchParams));
   const year = parsedYear === 2024 || parsedYear === 2025 ? parsedYear : 2025;
   // マウント時のURL(sel/tab/z/tx/ty)を一度だけ捕捉。データ読み込み後の初回復元にのみ使う
   // （sel/tab の復元先はグラフ読み込み完了時、z/tx/ty の復元先は初回フィット時と別タイミングのため、
@@ -1769,10 +1776,10 @@ function SubcontractDetailPageInner() {
   const ribbonShiftOf = (blockId: string | null): number => (blockId === null ? 0 : ribbonBarShift.get(blockId) ?? 0);
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <AppHeader current="/subcontracts">
-        <YearSelect
+      <AppHeader fiscalYear={fiscalYear(year)} current="/subcontracts">
+        <YearSelect labelForYear={fiscalYearLabel}
           value={String(year)}
-          onChange={(y) => router.push(`/subcontracts/${projectId}?year=${y}`)}
+          onChange={(y) => router.push(rsViewUrl(`/subcontracts/${projectId}`, y))}
           years={[2025, 2024]}
         />
       </AppHeader>
@@ -1785,7 +1792,7 @@ function SubcontractDetailPageInner() {
         {/* 一覧へ戻る — 左上（サイドパネルが左表示のときは退避） */}
         <div style={{ position: 'absolute', top: 12, left: leftFloatOffset, zIndex: 15, transition: sidePanel.isResizing ? 'none' : 'left 0.2s ease' }}>
           <Button asChild variant="outline" size="sm" className="border-mirai-border text-[13px] font-medium">
-            <Link href={`/subcontracts?year=${year}`}>
+            <Link href={rsViewUrl('/subcontracts', year)}>
               ← 一覧
             </Link>
           </Button>
@@ -2112,7 +2119,7 @@ function SubcontractDetailPageInner() {
                         </span>
                       </div>
                       <div style={{ fontSize: scaleFont(9), fontWeight: 600, color: 'rgba(255,255,255,0.78)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        ブロック {lb.blockId}
+                        ブロック {lb.blockId}{subcontractSources(graph, lb.blockId).length > 0 && ` ／ 委託元：${subcontractSources(graph, lb.blockId).join(" ／ ")}`}
                       </div>
                     </div>
                   </foreignObject>

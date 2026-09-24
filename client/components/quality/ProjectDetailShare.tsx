@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fiscalYear } from '@/app/lib/rs-fiscal-year';
 import { Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -11,7 +12,7 @@ export function ProjectDetailShare({ pid, year }: { pid: string; year: string })
 
   async function copy() {
     const url = new URL('/quality', window.location.origin);
-    url.searchParams.set('year', year);
+    url.searchParams.set('fiscalYear', String(fiscalYear(year)));
     url.searchParams.set('detail', pid);
     try {
       await navigator.clipboard.writeText(url.href);

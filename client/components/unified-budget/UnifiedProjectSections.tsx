@@ -10,6 +10,7 @@
  * 取得結果はモジュール内キャッシュに持ち、ノードを行き来しても再取得しない。
  */
 
+import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -59,7 +60,7 @@ export function UnifiedProjectSections({
   }, [pid, year]);
 
   const entry = policy?.items[String(pid)];
-  const subcontractHref = `/subcontracts/${pid}?year=${year}`;
+  const subcontractHref = rsViewUrl(`/subcontracts/${pid}`, year);
 
   return (
     <div className="-mx-4 mt-3 border-t border-border">

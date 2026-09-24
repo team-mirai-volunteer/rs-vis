@@ -327,8 +327,9 @@ export function UnifiedSankeyChart({
     }
     return items;
   }, [hasBudgetTab, budgetBreakdown.length, hasBlocksTab, projectBlocks?.blocks.length, selectedBlock, relatedColumnList]);
+  const [mobileOverviewOpen, setMobileOverviewOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<string | null>(null);
-  const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (tabs[0]?.id ?? null);
+  const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (viewport.width < 640 && tabs.some(t => t.id === 'recipient') ? 'recipient' : tabs[0]?.id ?? null);
 
   const zoomRef = useRef(1);
   useLayoutEffect(() => {
@@ -639,10 +640,10 @@ export function UnifiedSankeyChart({
         >
           {selectedPanelNode && selectedDetails && (
             <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-shrink-0 border-b border-border p-4 pb-3">
+              <div className="flex-shrink-0 border-b border-border p-3 sm:p-4 sm:pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="break-all text-sm font-semibold text-mirai-text">{selectedPanelNode.name}</div>
+                    <div className="line-clamp-2 break-all text-sm font-semibold text-mirai-text sm:line-clamp-none">{selectedPanelNode.name}</div>
                     {selectedDetails.column === 'recipient' && selectedDetails.representativeCorporateNumber && (
                       <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mirai-text-subtle">
                         <span className="inline-flex items-center gap-1 font-mono" title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
@@ -675,7 +676,7 @@ export function UnifiedSankeyChart({
                       </div>
                     )}
                     <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value)}</div>
-                    <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
+                    <div className="hidden text-[11px] text-mirai-text-muted sm:block">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
                     {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
                   </div>
                   <Button variant="ghost" size="icon-sm" title="選択を解除" aria-label="選択を解除" onClick={() => onSelect(null)} className="shrink-0 text-mirai-text-muted hover:text-mirai-text">
@@ -707,7 +708,8 @@ export function UnifiedSankeyChart({
                 </div>
               </div>
 
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: '60%' }}>
+              <button type="button" className="min-h-10 shrink-0 border-b border-border px-3 text-left text-xs font-bold text-primary-accent sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</button>
+              <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '60%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
@@ -747,7 +749,7 @@ export function UnifiedSankeyChart({
 
               {tabs.length > 0 && (
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
-                  <div role="tablist" className="flex flex-shrink-0 overflow-x-auto border-b border-border px-2">
+                  <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-2 sm:flex sm:overflow-x-auto">
                     {tabs.map(({ id, label, count }) => (
                       <Button
                         key={id}
@@ -756,7 +758,7 @@ export function UnifiedSankeyChart({
                         aria-selected={activeTab === id}
                         onClick={() => setPanelTab(id)}
                         className={cn(
-                          'h-auto flex-1 whitespace-nowrap rounded-none border-b-2 px-1 py-1.5 text-[11px] font-bold hover:bg-transparent',
+                          'h-auto min-h-10 flex-1 whitespace-nowrap rounded-none border-b-2 px-1 py-1.5 text-[11px] font-bold hover:bg-transparent',
                           activeTab === id ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'
                         )}
                       >

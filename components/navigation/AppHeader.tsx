@@ -1,5 +1,6 @@
 'use client';
 
+import { fiscalNavigationUrl } from '@/app/lib/rs-fiscal-year';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createContext, useContext, useId, useLayoutEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
@@ -9,7 +10,7 @@ import { cn } from '@/lib/utils';
 import { PageNavMenu } from './PageNavMenu';
 import { PAGES, PRIMARY_PAGES, PRODUCT_NAME, type NavPageHref } from './pages';
 
-type HeaderConfig = { owner: string; position: 'static' | 'fixed'; hasControls: boolean; className?: string };
+type HeaderConfig = { fiscalYear?: number; owner: string; position: 'static' | 'fixed'; hasControls: boolean; className?: string };
 const DEFAULT_CONFIG: HeaderConfig = { owner: '', position: 'static', hasControls: false };
 const HeaderContext = createContext<{
   slot: HTMLDivElement | null;
@@ -44,9 +45,11 @@ export function AppHeaderProvider({ children }: { children: ReactNode }) {
 export function AppHeader({
   children,
   position = 'static',
+  fiscalYear,
   className,
 }: {
   current: NavPageHref | '/';
+  fiscalYear?: number;
   /** 右側スロット。YearSelect・ViewSelect・「データについて」など、ページ固有のコントロール */
   children?: ReactNode;
   position?: 'static' | 'fixed';
@@ -58,9 +61,9 @@ export function AppHeader({
   const configure = context?.configure;
   useLayoutEffect(() => {
     if (!configure) return;
-    configure({ owner, position, hasControls, className });
+    configure({ owner, position, hasControls, className, fiscalYear });
     return () => configure(previous => previous.owner === owner ? DEFAULT_CONFIG : previous);
-  }, [configure, owner, position, hasControls, className]);
+  }, [configure, owner, position, hasControls, className, fiscalYear]);
 
   return <>
     {position === 'static' && <div aria-hidden="true" className={cn('h-[72px] shrink-0', hasControls && 'max-sm:h-[118px]')} />}
@@ -94,7 +97,7 @@ function HeaderFrame({ current, config, slotRef }: {
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={fiscalNavigationUrl(item.href, config.fiscalYear)}
                 aria-current={isCurrent ? 'page' : undefined}
                 className={cn(
                   'whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition-colors',
@@ -114,7 +117,7 @@ function HeaderFrame({ current, config, slotRef }: {
         {/* 右スロットがあれば sm 以上ではそちらが ml-auto を持つ（両方に持たせると余白が二分され中央に寄る）。
             右スロットが無いページ（トップなど）は自身で右端へ寄せる */}
         <div className={cn('ml-auto flex h-12 shrink-0 items-center', config.hasControls && 'sm:ml-0')}>
-          <PageNavMenu current={current} />
+          <PageNavMenu current={current} fiscalYear={config.fiscalYear} />
         </div>
       </div>
     </header>

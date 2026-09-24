@@ -1,5 +1,7 @@
 'use client';
 
+import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+
 /**
  * /subcontracts（一覧） URL=状態パラメータ一覧。
  * 既定値のときは省略する（クリーンなURL維持）。すべて history.replaceState で同期（debounce後）。
@@ -161,7 +163,7 @@ function loadColumnWidths(): number[] {
 function SubcontractsPageInner() {
   const searchParams = useSearchParams();
   const [year, setYear] = useState(() => {
-    const y = parseInt(searchParams.get('year') ?? '2025', 10);
+    const y = Number(sheetYearFromParams(searchParams));
     return [2024, 2025].includes(y) ? y : 2025;
   });
   const [graphs, setGraphs] = useState<SubcontractGraph[]>([]);
@@ -293,7 +295,7 @@ function SubcontractsPageInner() {
     if (!listUrlMountedRef.current) { listUrlMountedRef.current = true; return; }
     const timer = window.setTimeout(() => {
       const p = new URLSearchParams();
-      if (year !== 2025) p.set('year', String(year));
+      p.set('fiscalYear', String(fiscalYear(year)));
       if (query) p.set('q', query);
       if (sortKey !== 'projectId') p.set('sort', sortKey);
       if (sortDir !== defaultSortDir(sortKey)) p.set('dir', sortDir);
@@ -567,8 +569,8 @@ function SubcontractsPageInner() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
-      <AppHeader current="/subcontracts">
-        <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} />
+      <AppHeader fiscalYear={fiscalYear(year)} current="/subcontracts">
+        <YearSelect labelForYear={fiscalYearLabel} value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} />
       </AppHeader>
       {/* ── 上部: フィルタ群 ── */}
       <div className="w-full shrink-0 p-3">
@@ -741,7 +743,7 @@ function SubcontractsPageInner() {
                     <td style={tdTextStyle} className={TD_CLASS}>
                       <div className="flex min-w-0 items-center gap-1">
                         <Link
-                          href={`/subcontracts/${g.projectId}?year=${year}`}
+                          href={rsViewUrl(`/subcontracts/${g.projectId}`, year)}
                           title={g.projectName}
                           className="block min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:text-primary-accent hover:underline"
                         >

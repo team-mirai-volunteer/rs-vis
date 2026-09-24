@@ -1,5 +1,7 @@
 'use client';
 
+import { fiscalYear, fiscalYearLabel, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,7 +75,7 @@ export default function ProjectMapPage() {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    const yr = p.get('yr'); if (yr === '2024' || yr === '2025') setYear(yr);
+    setYear(sheetYearFromParams(p, 'yr') as Year);
     const c = p.get('c'); if (c === 'ministry' || c === 'policyGroup' || c === 'recommendation') setColorMode(c);
     const s = p.get('s');
     if (s === 'inverseScore' || s === 'inverseProp' || s === 'inverseNec'
@@ -103,7 +105,7 @@ export default function ProjectMapPage() {
   useEffect(() => {
     if (!urlHydrated) return;
     const p = new URLSearchParams();
-    if (year !== '2025') p.set('yr', year);
+    p.set('fiscalYear', String(fiscalYear(year)));
     if (colorMode !== 'ministry') p.set('c', colorMode);
     if (sizeMetric !== 'inverseScore') p.set('s', sizeMetric);
     if (!showRegions) p.set('rg', '0');
@@ -280,7 +282,7 @@ export default function ProjectMapPage() {
   return (
     // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる（ヘッダー分だけ上を空ける）
     <div className="flex h-dvh flex-col bg-background text-mirai-text">
-    <AppHeader position="static" current="/project-bubble">
+    <AppHeader fiscalYear={fiscalYear(year)} position="static" current="/project-bubble">
       <Button
         variant="outline"
         size="sm"
@@ -289,7 +291,7 @@ export default function ProjectMapPage() {
         aria-controls="bubble-help"
         className="h-9 shrink-0 border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
       >説明</Button>
-      <YearSelect value={year} onChange={y => setYear(y as Year)} years={YEARS} />
+      <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as Year)} years={YEARS} />
     </AppHeader>
     <div className="relative min-h-0 w-full flex-1 overflow-hidden">
       {/* 視覚上のタイトルは廃止した（フロートUIの面積を図に譲る）。ページ名はメニューと文書タイトルが担う */}
@@ -338,10 +340,10 @@ export default function ProjectMapPage() {
 
         {notGenerated && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-mirai-text-subtle">
-            <p className="font-medium">{year}年度の事業バブルチャートはまだ生成されていません</p>
+            <p className="font-medium">{fiscalYear(year)}年度の事業バブルチャートはまだ生成されていません</p>
             <p className="max-w-md text-xs leading-relaxed text-mirai-text-muted">
               このビューは事業説明文の埋め込みを使うため、年度ごとに座標を生成する必要があります。
-              現在は2025年度のみ生成済みです。
+              現在は2024年度実績（2025年度レビューシート）のみ生成済みです。
             </p>
             <code className="mt-1 rounded-md bg-mirai-surface px-2.5 py-1.5 text-[11px]">
               python3 scripts/generate-project-map.py --year {year}
@@ -361,7 +363,7 @@ export default function ProjectMapPage() {
       <div
         className={cn(
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
-          'inset-x-3 bottom-3 max-h-[55vh]',
+          'inset-x-3 bottom-3 max-h-[calc(100dvh-var(--app-header-h)-24px)]',
           'sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-[calc(100%-24px)] sm:w-[360px]',
           selected ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:grid-rows-[auto_auto] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
           mobilePanelOpen || selected ? 'flex' : 'hidden'
@@ -370,7 +372,7 @@ export default function ProjectMapPage() {
 
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className="shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft xl:col-start-1 xl:row-start-1">
+          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft xl:col-start-1 xl:row-start-1", selected && !mobilePanelOpen && "max-sm:hidden")}>
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"

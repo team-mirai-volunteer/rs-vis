@@ -14,7 +14,7 @@ for (const width of [1440, 390]) {
     expect(await menu!.evaluate(el => el.isConnected)).toBe(true);
     await expect(page.getByRole('button', { name: 'ページ切替メニュー' })).toHaveAttribute('aria-expanded', 'false');
     await page.getByLabel('年度', { exact: true }).selectOption('2024');
-    await expect(page).toHaveURL(/year=2024/);
+    await expect(page).toHaveURL(/fiscalYear=2023/);
     if (width >= 1280) {
       await page.getByRole('navigation', { name: '主要ビュー' }).getByRole('link', { name: '委託構造', exact: true }).click();
     } else {
