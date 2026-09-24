@@ -60,6 +60,8 @@ next-env.d.ts
 .vscode/
 .idea/
 .claude/settings.local.json
+# Private Team Mirai design system skill (including local copies)
+/.claude/skills/
 *.suo
 *.ntvs*
 *.njsproj
