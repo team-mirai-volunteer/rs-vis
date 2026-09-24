@@ -49,7 +49,7 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
             {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
         </div>
         {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、ストレス耐性の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
-        <p className="text-sm">評価期間：<strong>{horizon}年間</strong>{horizon > 5 && <span className="ml-2 text-xs text-mirai-text-subtle">公表期間（5年）を超える延長計算。公表反応の末尾を据え置き、稼働時期の遅い投資を含めて評価します。</span>}</p>
+        <p className="text-sm">評価期間：<strong>{horizon}年間</strong>{horizon > 5 && <span className="ml-2 text-xs text-mirai-text-subtle">公表期間（5年）を超える延長計算。公表期間後は設定した期間（初期設定は5年）で公表反応を段階的に解消し、別途設定した長期供給効果を反映します。解消年数を0に設定した場合は公表反応の末尾を据え置きます。</span>}</p>
         <p className="text-xs">減税・社会保険料の軽減と追加支出の年額合計です。既存予算に対する追加措置を表します。</p>
         <details><summary className="cursor-pointer text-sm font-bold">追加予算の内訳・計算の前提</summary>
           <div className="mt-2 flex flex-wrap gap-1">{policies.map(p => <span key={p.id} className="rounded bg-mirai-surface-warm px-2 py-1 text-sm">{p.name} {money(p.annualCost, 1)}・{p.kind === 'permanent' ? '恒久' : `${p.duration}年`}</span>)}</div>
