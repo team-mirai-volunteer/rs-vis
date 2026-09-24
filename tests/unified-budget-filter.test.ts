@@ -58,6 +58,23 @@ test('既定の絞り込みではグラフを変えない', () => {
   assert.deepEqual(ids(out), ids(sample()));
 });
 
+test('名前で絞り込み: 共通の所管や支出先を経由して無関係な事業を残さない', () => {
+  const out = applyFilter(sample(), f({ nameQuery: '海洋研究' }));
+  assert.deepEqual(ids(out), ['ministry-A', 'section-A', 'koumoku-A', 'project-budget-1', 'project-spending-1', 'r-X', 'r-Y'].sort());
+  assert.equal(valueOf(out, 'r-Y'), 30);
+});
+
+test('名前で絞り込み: 支出先からその上流だけを残す', () => {
+  const out = applyFilter(sample(), f({ nameQuery: '株式会社X' }));
+  assert.deepEqual(ids(out), ['ministry-A', 'section-A', 'koumoku-A', 'project-budget-1', 'project-spending-1', 'r-X'].sort());
+});
+
+test('名前で絞り込み: 複数の一致・条件の併用・一致なし', () => {
+  const out = applyFilter(sample(), f({ nameQuery: '海', budgetMin: '80' }));
+  assert.deepEqual(out.nodes.filter(n => n.details.column === 'program').map(n => n.id), ['project-budget-1']);
+  assert.deepEqual(ids(applyFilter(sample(), f({ nameQuery: '該当なし' }))), []);
+});
+
 test('予算額の下限: 事業と事業(支出)の双子を落とし、支出先・上流の値を作り直す', () => {
   const out = applyFilter(sample(), f({ budgetMin: '200' }));
   assert.ok(!out.nodes.some(n => n.id === 'project-budget-1'));

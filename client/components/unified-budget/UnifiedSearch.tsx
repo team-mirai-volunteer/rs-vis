@@ -21,6 +21,7 @@ export function UnifiedSearch({
   filterFields,
   filterOpen,
   onToggleFilter,
+  onApplyQuery,
   trailing,
   filterActive = false,
   onClearFilter,
@@ -30,6 +31,7 @@ export function UnifiedSearch({
   filterFields: ReactNode;
   filterOpen: boolean;
   onToggleFilter: () => void;
+  onApplyQuery: (query: string) => void;
   /** 「絞込」の右、解除 × の左に並べる同体裁のボタン（AI絞り込みなど）。並びは 絞込 → AI → × */
   trailing?: ReactNode;
   /** 絞り込み条件が有効か。有効なら「絞込」を強調し、隣に解除 × を出す（独立アイコンをピルの外に置かない） */
@@ -109,14 +111,25 @@ export function UnifiedSearch({
           title={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-label={filterOpen ? '絞り込みを閉じる' : '絞り込みを開く'}
           aria-expanded={filterOpen}
-          onClick={onToggleFilter}
+          onClick={() => {
+            const value = query.trim();
+            setOpen(false);
+            setCursor(-1);
+            if (value) onApplyQuery(value);
+            onToggleFilter();
+          }}
           className={cn('h-6 px-1.5 text-[11px]', filterOpen || filterActive ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}
         >
           絞込{filterActive && <span aria-hidden="true" className="ml-0.5 inline-block size-1.5 rounded-full bg-primary-accent align-middle" />}
         </Button>
         {trailing}
         {filterActive && onClearFilter && (
-          <button type="button" title="絞り込みを解除" aria-label="絞り込みを解除" onClick={onClearFilter}
+          <button type="button" title="絞り込みを解除" aria-label="絞り込みを解除" onClick={() => {
+            setQuery('');
+            setOpen(false);
+            setCursor(-1);
+            onClearFilter();
+          }}
             className="flex size-5 items-center justify-center rounded-full text-mirai-text-muted hover:bg-mirai-surface-teal hover:text-mirai-text">
             <X className="size-3" aria-hidden="true" />
           </button>

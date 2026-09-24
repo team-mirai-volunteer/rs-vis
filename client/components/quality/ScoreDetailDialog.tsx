@@ -18,27 +18,16 @@ import { useDialogFocus } from '@/client/hooks/useDialogFocus';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
+import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
   RecommendationBadge, ActionBadge, fmtRaw,
 } from '@/client/components/quality/score-meta';
 
-/**
- * 事業概要の「/」区切りを改行にする。
- * 元データは「目的/現状課題/概要」のように / で節を区切るが、本文には URL・日付(2024/4/1)・
- * 分数(1/2) も混ざる。URL はまるごと保護し、数字に挟まれた / は区切りとみなさない。
- */
 /** ヘッダ下の「▼ 事業内容」等の開閉リンク。Button の link variant を 11px の細字に寄せる */
 const TOGGLE_LINK_CLS = 'text-[11px] font-normal no-underline hover:underline hover:text-primary-accent';
 
 const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, undefined, undefined];
-
-function breakOnSeparators(text: string): string {
-  return text
-    .split(/(https?:\/\/\S+)/g)
-    .map((part, i) => (i % 2 === 1 ? part : part.replace(/(?<![0-9])\/(?![0-9])/g, '\n')))
-    .join('');
-}
 
 export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, navigation }: {
   item: QualityScoreItem;
@@ -283,27 +272,7 @@ ${a.desc}`}>
               </div>
             )}
             {projectInfo === null && <div className="text-xs text-mirai-text-muted">事業内容データなし</div>}
-            {projectInfo && (
-              <div className="space-y-2 text-xs">
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-mirai-text-muted">
-                  {projectInfo.category && <span>区分: {projectInfo.category}</span>}
-                  {projectInfo.startYear && <span>開始: {projectInfo.startYear}年度</span>}
-                  <span>終了: {projectInfo.noEndDate ? '予定なし' : (projectInfo.endYear ? `${projectInfo.endYear}年度` : '-')}</span>
-                  {projectInfo.implementationMethods?.length > 0 && <span>実施方法: {projectInfo.implementationMethods.join('・')}</span>}
-                  {projectInfo.url && <a href={projectInfo.url} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline hover:text-primary-accent">事業概要URL ↗</a>}
-                </div>
-                {([
-                  { label: '目的', text: projectInfo.purpose },
-                  { label: '現状・課題', text: projectInfo.currentIssues },
-                  { label: '概要', text: projectInfo.overview },
-                ] as const).map(({ label, text }) => text ? (
-                  <div key={label}>
-                    <div className="font-bold text-mirai-text-secondary">{label}</div>
-                    <div className="text-mirai-text-subtle whitespace-pre-wrap leading-relaxed">{breakOnSeparators(text)}</div>
-                  </div>
-                ) : null)}
-              </div>
-            )}
+            {projectInfo && <ProjectDescription detail={projectInfo} />}
           </div>
         )}
 

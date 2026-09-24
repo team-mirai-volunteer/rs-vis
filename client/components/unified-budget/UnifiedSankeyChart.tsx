@@ -31,6 +31,7 @@ import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
+import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from './UnifiedProjectBlocks';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
 import { FactRow } from './FactRow';
@@ -304,16 +305,28 @@ export function UnifiedSankeyChart({
     (selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
     (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
     !selectedDetails.aggregated && selectedDetails.projectId !== undefined;
-  const hasBudgetTab = isIndividualProject &&
-    (!!selectedDetails?.budgetSummary || (selectedDetails?.budgetBreakdown?.length ?? 0) > 0);
+  const projectBlocks = useProjectBlocks(isIndividualProject && hasSpending ? selectedDetails?.projectId : undefined, rsSheetYear);
+  const budgetSummary = selectedDetails?.budgetSummary ?? projectBlocks?.budgetSummary;
+  const budgetBreakdown = selectedDetails?.budgetBreakdown ?? projectBlocks?.budgetBreakdown ?? [];
+  const hasBudgetTab = isIndividualProject && (!!budgetSummary || budgetBreakdown.length > 0);
+  const hasBlocksTab = isIndividualProject && hasSpending;
+  const [blockSelection, setBlockSelection] = useState<{ projectId: number; year: number; blockId: string } | null>(null);
+  const selectedBlock = blockSelection?.projectId === selectedDetails?.projectId && blockSelection?.year === rsSheetYear
+    ? projectBlocks?.blocks.find(block => block.blockId === blockSelection.blockId) : undefined;
   const tabs = useMemo(() => {
-    const items = relatedColumnList.map(t => ({ id: t.column as string, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length }));
+    const items: { id: string; label: string; count?: number }[] = relatedColumnList.map(t => ({ id: t.column, label: UNIFIED_COLUMN_LABELS[t.column], count: t.items.length }));
     if (hasBudgetTab) {
       const index = relatedColumnList.findIndex(t => UNIFIED_COLUMNS.indexOf(t.column) >= UNIFIED_COLUMNS.indexOf('program-spending'));
-      items.splice(index < 0 ? items.length : index, 0, { id: 'budget-execution', label: '予算', count: selectedDetails?.budgetBreakdown?.length ?? 0 });
+      items.splice(index < 0 ? items.length : index, 0, { id: 'budget-execution', label: '予算', count: budgetBreakdown.length });
+    }
+    if (hasBlocksTab) {
+      const index = items.findIndex(tab => tab.id === 'recipient');
+      items.splice(index < 0 ? items.length : index, 0, { id: 'blocks', label: 'ブロック', count: projectBlocks?.blocks.length });
+      if (index < 0) items.push({ id: 'recipient', label: '支出先', count: selectedBlock?.recipients.length ?? 0 });
+      else if (selectedBlock) items.find(tab => tab.id === 'recipient')!.count = selectedBlock.recipients.length;
     }
     return items;
-  }, [hasBudgetTab, selectedDetails?.budgetBreakdown?.length, relatedColumnList]);
+  }, [hasBudgetTab, budgetBreakdown.length, hasBlocksTab, projectBlocks?.blocks.length, selectedBlock, relatedColumnList]);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (tabs[0]?.id ?? null);
 
@@ -599,6 +612,7 @@ export function UnifiedSankeyChart({
           onSelect={onSelect}
           filterOpen={filterOpen}
           onToggleFilter={onToggleFilterOpen}
+          onApplyQuery={nameQuery => onFilterChange({ ...filter, nameQuery })}
           filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} hasSpending={hasSpending} scoreStatus={scoreStatus} />}
           trailing={searchAddon}
           filterActive={hasActiveUnifiedFilter(filter)}
@@ -747,18 +761,27 @@ export function UnifiedSankeyChart({
                         )}
                       >
                         {label}
-                        <span className="ml-0.5 font-normal">({count.toLocaleString()})</span>
+                        {count !== undefined && <span className="ml-0.5 font-normal">({count.toLocaleString()})</span>}
                       </Button>
                     ))}
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
                     {activeTab === 'budget-execution' ? (
                       <BudgetExecutionSection
-                        budgetSummary={selectedDetails.budgetSummary}
-                        budgetBreakdown={selectedDetails.budgetBreakdown ?? []}
+                        budgetSummary={budgetSummary}
+                        budgetBreakdown={budgetBreakdown}
                         scaleFont={px => Math.round((px * fontPx) / 11)}
                         presentation="tab"
                       />
+                    ) : activeTab === 'blocks' ? (
+                      <UnifiedProjectBlocks graph={projectBlocks} year={rsSheetYear} onSelect={block => {
+                        setBlockSelection({ projectId: selectedDetails.projectId!, year: rsSheetYear, blockId: block.blockId });
+                        setPanelTab('recipient');
+                      }} />
+                    ) : activeTab === 'recipient' && selectedBlock ? (
+                      <UnifiedBlockRecipients block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                    ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
+                      <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)

@@ -1,7 +1,7 @@
-import type { CSSProperties } from 'react';
 import { ChevronDown, ChevronRight, FileText, Waypoints } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ProjectDetail } from '@/types/project-details';
+import { ProjectDescription, formatProjectText } from '@/client/components/ProjectDescription';
 
 /**
  * 事業概要アコーディオンの共有コンポーネント。メインSankey（/sankey-svg）と
@@ -49,7 +49,7 @@ export function ProjectOverviewSection({
   isLoading?: boolean;
 }) {
   const META_PX = scaleFont(11);
-  const PANEL_META_PX = scaleFont(13);
+  const PANEL_META_PX = scaleFont(11);
   const rsUrl = `https://rssystem.go.jp/project?q=${encodeURIComponent(projectName.replace(/\//g, ''))}&fiscalYear=${year}&isSearchTargetProjectName=true`;
   const Chevron = expanded ? ChevronDown : ChevronRight;
 
@@ -99,10 +99,10 @@ export function ProjectOverviewSection({
       {!expanded && detail?.overview && (
         <>
           <div
-            className="overflow-y-auto break-all px-3.5 leading-normal text-mirai-text-muted"
-            style={{ fontSize: PANEL_META_PX, height: previewHeight }}
+            className="overflow-hidden whitespace-pre-wrap break-words px-3.5 pb-2 text-xs leading-relaxed text-mirai-text-subtle"
+            style={{ maxHeight: previewHeight }}
           >
-            {detail.overview}
+            {formatProjectText(detail.overview)}
           </div>
           {onResizeStart && (
             <div
@@ -121,53 +121,10 @@ export function ProjectOverviewSection({
         </>
       )}
       {expanded && (
-        <div className="max-h-80 overflow-y-auto px-3.5 pb-2.5 text-mirai-text-secondary" style={{ fontSize: PANEL_META_PX }}>
+        <div className="px-3.5 pb-3 text-xs text-mirai-text-secondary">
           {isLoading && <span className="text-mirai-text-placeholder">読み込み中...</span>}
           {!isLoading && detail === null && <span className="text-mirai-text-placeholder">詳細情報が見つかりませんでした</span>}
-          {!isLoading && detail && (() => {
-            const d = detail;
-            const labelStyle: CSSProperties = { fontSize: META_PX };
-            return (<>
-              {d.category && (
-                <div className="mb-2">
-                  <span className="mb-0.5 block text-mirai-text-placeholder" style={labelStyle}>事業区分</span>
-                  <span>{d.category}</span>
-                  {(d.startYear || d.endYear || d.noEndDate) && (
-                    <span className="ml-2 text-mirai-text-muted">
-                      {d.startYear ?? (d.startYearUnknown ? '不明' : '?')}年度〜{d.noEndDate ? '終了予定なし' : (d.endYear ? `${d.endYear}年度` : '?')}
-                    </span>
-                  )}
-                </div>
-              )}
-              {d.implementationMethods.length > 0 && (
-                <div className="mb-2">
-                  <span className="mb-0.5 block text-mirai-text-placeholder" style={labelStyle}>実施方法</span>
-                  <span>{d.implementationMethods.join('・')}</span>
-                </div>
-              )}
-              {d.overview && (
-                <div className="mb-2">
-                  <span className="mb-0.5 block text-mirai-text-placeholder" style={labelStyle}>概要</span>
-                  <span className="whitespace-pre-wrap break-all leading-[1.55]">{d.overview}</span>
-                </div>
-              )}
-              {d.purpose && (
-                <div className="mb-2">
-                  <span className="mb-0.5 block text-mirai-text-placeholder" style={labelStyle}>目的</span>
-                  <span className="whitespace-pre-wrap break-all leading-[1.55]">{d.purpose}</span>
-                </div>
-              )}
-              {d.url && (
-                <div className="mb-2">
-                  <a href={d.url} target="_blank" rel="noopener noreferrer"
-                    className="break-all text-primary underline-offset-4 hover:text-primary-accent hover:underline"
-                    style={labelStyle}>
-                    事業概要URL ↗
-                  </a>
-                </div>
-              )}
-            </>);
-          })()}
+          {!isLoading && detail && <ProjectDescription detail={detail} showSourceLink={false} />}
         </div>
       )}
     </div>

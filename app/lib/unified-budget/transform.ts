@@ -428,18 +428,18 @@ export function relatedSet(links: SankeyLink[], seeds: Set<string>): Set<string>
     childrenOf.set(l.source, [...(childrenOf.get(l.source) ?? []), l.target]);
   }
   const set = new Set(seeds);
-  const stack = [...seeds];
-  while (stack.length > 0) {
-    const id = stack.pop() as string;
-    for (const p of parentsOf.get(id) ?? []) {
-      if (set.has(p)) continue;
-      set.add(p);
-      stack.push(p);
-    }
-    for (const c of childrenOf.get(id) ?? []) {
-      if (set.has(c)) continue;
-      set.add(c);
-      stack.push(c);
+  // 上流から別の事業へ折り返したり、共有支出先から別事業へ逆流したりしない。
+  for (const adjacency of [parentsOf, childrenOf]) {
+    const visited = new Set(seeds);
+    const stack = [...seeds];
+    while (stack.length > 0) {
+      const id = stack.pop() as string;
+      for (const next of adjacency.get(id) ?? []) {
+        if (visited.has(next)) continue;
+        visited.add(next);
+        set.add(next);
+        stack.push(next);
+      }
     }
   }
   return set;

@@ -4,52 +4,24 @@
  * 統合ビューのサイドパネルに出す「RS事業の詳細」群。
  * /sankey-svg のサイドパネルが事業ノードに対して出している情報を、同じ共有コンポーネントで揃える:
  *   みんなの意見（ProjectComments）→ 政策評価（PolicyEvaluationBlock）→ 事業概要（ProjectOverviewSection）
- *   → 再委託サマリ（予算・執行は下部のタブに表示）
- * 各 API（/api/policy-summary, /api/project-details, /api/subcontracts, /api/quality-scores）は
+ *   予算・ブロック・支出先は下部のタブに表示
+ * 各 API（/api/policy-summary, /api/project-details, /api/quality-scores）は
  * RSシート年度で問い合わせる（統合ビューの year は MOF 予算年度で、RS のシート年度 = 予算年度+1）。
  * 取得結果はモジュール内キャッシュに持ち、ノードを行き来しても再取得しない。
  */
 
-import { useCallback, useState, type CSSProperties } from 'react';
+import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ExternalLink } from 'lucide-react';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import type { ProjectDetail } from '@/types/project-details';
 import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
-import { TagChip } from '@/client/components/TagChip';
 import { useCached, usePolicySummary } from './policy-summary-cache';
 
-/** 再委託サマリ（/api/subcontracts の全グラフから件数だけ抜く。/sankey-svg と同じ形） */
-interface SubcontractSummary {
-  maxDepth: number;
-  totalBlockCount: number;
-  totalRecipientCount: number;
-  directBlockCount: number;
-  separateOriginCount: number;
-  subcontractBlockCount: number;
-}
-
 const detailCache = new Map<string, ProjectDetail | null>();
-const subcontractCache = new Map<string, SubcontractSummary | null>();
-
 const extractDetail = (d: unknown) => d as ProjectDetail;
-const extractSubcontract = (data: unknown): SubcontractSummary | null => {
-  const g = data as { maxDepth?: number; totalBlockCount?: number; totalRecipientCount?: number; directBlockCount?: number; separateOriginCount?: number };
-  if (g?.totalBlockCount == null) return null;
-  const directBlockCount = g.directBlockCount ?? 0;
-  const separateOriginCount = g.separateOriginCount ?? 0;
-  return {
-    maxDepth: g.maxDepth ?? 0,
-    totalBlockCount: g.totalBlockCount,
-    totalRecipientCount: g.totalRecipientCount ?? 0,
-    directBlockCount,
-    separateOriginCount,
-    subcontractBlockCount: Math.max(0, g.totalBlockCount - directBlockCount - separateOriginCount),
-  };
-};
 
 const OVERVIEW_PREVIEW_HEIGHT = 72;
 
@@ -74,7 +46,6 @@ export function UnifiedProjectSections({
 
   const policy = usePolicySummary(year);
   const detail = useCached(detailCache, `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
-  const subcontract = useCached(subcontractCache, `${year}-${pid}`, `/api/subcontracts/${pid}?year=${year}`, extractSubcontract);
 
   const openScoreDialog = useCallback(() => {
     setScoreLoading(true);
@@ -89,11 +60,10 @@ export function UnifiedProjectSections({
 
   const entry = policy?.items[String(pid)];
   const subcontractHref = `/subcontracts/${pid}?year=${year}`;
-  const chip: CSSProperties = { fontSize: scaleFont(10) };
 
   return (
     <div className="-mx-4 mt-3 border-t border-border">
-      {/* 順番: みんなの意見 → 政策評価 → 事業概要 → 再委託（意見は見てもらいやすいよう最上段） */}
+      {/* 順番: みんなの意見 → 政策評価 → 事業概要（意見は見てもらいやすいよう最上段） */}
       <ProjectComments context={{ pid: String(pid), year, projectName, detail: detail ?? undefined }} scaleFont={scaleFont} />
       <PolicyEvaluationBlock
         pid={pid}
@@ -133,35 +103,6 @@ export function UnifiedProjectSections({
         previewHeight={OVERVIEW_PREVIEW_HEIGHT}
         isLoading={overviewExpanded && detail === undefined}
       />
-
-      {subcontract && subcontract.totalBlockCount > 0 && (
-        <div className="shrink-0 border-b border-mirai-surface-light px-4 pb-2.5 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(11) }}>再委託</span>
-            <a
-              href={subcontractHref}
-              title="再委託フローを見る"
-              className="ml-auto inline-flex shrink-0 items-center gap-0.5 text-primary hover:text-primary-accent"
-              style={chip}
-            >
-              フロー <ExternalLink className="size-3" aria-hidden="true" />
-            </a>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {[`ブロック ${subcontract.totalBlockCount}`, `支出先 ${subcontract.totalRecipientCount.toLocaleString()}`, `階層 ${subcontract.maxDepth}`].map(t => (
-              <span key={t} className="whitespace-nowrap rounded-md border border-mirai-border px-1.5 text-mirai-text-subtle" style={chip}>
-                {t}
-              </span>
-            ))}
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            <TagChip kind="direct" fontSize={scaleFont(10)}>直接 {subcontract.directBlockCount}</TagChip>
-            {subcontract.subcontractBlockCount > 0 && <TagChip kind="subcontract" fontSize={scaleFont(10)}>再委託 {subcontract.subcontractBlockCount}</TagChip>}
-            {subcontract.separateOriginCount > 0 && <TagChip kind="separate-origin" fontSize={scaleFont(10)}>別財源 {subcontract.separateOriginCount}</TagChip>}
-          </div>
-        </div>
-      )}
-
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
     </div>

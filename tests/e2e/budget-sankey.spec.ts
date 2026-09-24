@@ -184,6 +184,31 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(sidePanel.getByText('基礎年金給付に必要な経費')).toHaveCount(0);
   });
 
+  test('project blocks are integrated between spending and recipients', async ({ page }) => {
+    await openPage(page, 'year=2024&sel=project-budget-56');
+    const panel = page.getByTestId('unified-side-panel');
+    const names = await panel.getByRole('tab').allTextContents();
+    const budgetIndex = names.findIndex(name => name.startsWith('予算'));
+    expect(budgetIndex).toBeGreaterThanOrEqual(0);
+    expect(names.slice(budgetIndex, budgetIndex + 4).map(name => name.replace(/\(\d+\)$/, '')))
+      .toEqual(['予算', '事業(支出)', 'ブロック', '支出先']);
+    await expect(panel.getByText('再委託', { exact: true })).toHaveCount(0);
+    await panel.getByRole('tab', { name: /^ブロック/ }).click();
+    const content = panel.getByRole('tabpanel');
+    await expect(content.getByRole('link', { name: /フローを見る/ })).toHaveAttribute('href', '/subcontracts/56?year=2025');
+    const response = await page.request.get('/api/subcontracts/56?year=2025');
+    expect(response.ok()).toBe(true);
+    const graph = await response.json();
+    expect(graph.blocks.length).toBeGreaterThan(0);
+    const block = graph.blocks[0];
+    await content.getByRole('button').first().click();
+    await expect(panel.getByRole('tab', { name: /^支出先/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(content.getByText(`ブロック ${block.blockId} ${block.blockName}`, { exact: true })).toBeVisible();
+    if (block.recipients.length) await expect(content.getByText(block.recipients[0].name, { exact: true }).first()).toBeVisible();
+    await content.getByRole('button', { name: '絞り込みを解除', exact: true }).click();
+    await expect(content.getByText(`ブロック ${block.blockId} ${block.blockName}`, { exact: true })).toHaveCount(0);
+  });
+
   test('項 side panel shows the weighted-average policy evaluation block', async ({ page }) => {
     await openPage(page);
 
@@ -359,6 +384,29 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await page.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + 8);
     await expect(dialog).toHaveCount(0);
     await expect(page.getByLabel('表示設定を開く')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('filter button applies the current node search and clear resets it', async ({ page }) => {
+    await openPage(page, 'year=2024');
+    const search = page.getByLabel('ノードを検索');
+    await search.fill('  マイキー  ');
+    await page.getByLabel('絞り込みを開く').click();
+    await expect(page.getByLabel('名前で絞り込み')).toHaveValue('マイキー');
+    await expect.poll(() => urlParams(page).get('fq')).toBe('マイキー');
+    await expect(page.getByTestId('unified-label').filter({ hasText: 'マイキー' }).first()).toBeAttached();
+    // 条件に一致しない場合は、検索候補の有無にかかわらず空の結果に絞る。
+    await search.fill('存在しない事業xyz987654321');
+    await page.getByLabel('絞り込みを閉じる').click();
+    await expect(page.getByTestId('unified-node')).toHaveCount(0);
+    await page.getByLabel('絞り込みを解除').click();
+    await expect(search).toHaveValue('');
+    await expect.poll(() => urlParams(page).get('fq')).toBeNull();
+    await expect(page.getByTestId('unified-node').first()).toBeAttached();
+    // 空白だけの入力では、条件を追加せず従来どおりパネルを開く。
+    await search.fill('   ');
+    await page.getByLabel('絞り込みを開く').click();
+    await expect(page.getByLabel('名前で絞り込み')).toHaveValue('');
+    await expect(page.getByTestId('unified-node').first()).toBeAttached();
   });
 
   test('deep link restores year, preset, TopN/offset and selection', async ({ page }) => {
