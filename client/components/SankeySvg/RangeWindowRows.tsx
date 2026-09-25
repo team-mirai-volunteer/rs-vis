@@ -155,7 +155,8 @@ export function RangeWindowRow({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-      <span className="text-mirai-text-subtle" style={{ fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
+      {/* 列ごとに別カードなので行間で揃える固定幅は持たない（「項」の後ろに空白を作らない） */}
+      <span className="text-mirai-text-subtle" style={{ fontSize: metaFontPx, whiteSpace: 'nowrap', flexShrink: 0 }}>{label}</span>
       {/* つまみを一番左（1件目から表示）へ戻す。既に先頭なら押せない */}
       <Button variant="ghost" size="icon-sm" onClick={() => { stopHold(); onOffsetChange(0); }} disabled={offset === 0}
         title="先頭から表示" aria-label={`${label}を先頭から表示`}
