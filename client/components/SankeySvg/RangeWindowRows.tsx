@@ -193,7 +193,8 @@ export function RangeWindowRow({
         />
         {/* 範囲テキストはバー内・右揃え。テキスト長が変わってもバー長が固定で保たれる */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-end whitespace-nowrap pr-2 tabular-nums text-mirai-text-subtle" style={{ fontSize: metaFontPx }}>
-          {rangeStart}〜{rangeEnd}<span className="text-mirai-text-muted">/{total}件</span>
+          {/* 「件」は付けない（支出先は万件単位で、バーの中に収まらない）。読み上げは aria-valuetext が件数を補う */}
+          {rangeStart}〜{rangeEnd}<span className="text-mirai-text-muted">/{total}</span>
         </div>
       </div>
       {isEditing ? (
