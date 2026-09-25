@@ -520,6 +520,14 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const card = page.getByRole('tooltip');
     await expect(card).toContainText('在クロアチア日本国大使公邸の不動産購入');
     await expect(page).toHaveURL(/sel=project-budget-1335/);
+    // 画面下端近くの行でもカードは画面内に収まる（下に入り切らなければポインタの上側に出る）
+    const rows = panel.getByRole('tabpanel').getByRole('button');
+    const bottoms = await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().bottom));
+    const viewportHeight = page.viewportSize()!.height;
+    const lowest = bottoms.findLastIndex(y => y < viewportHeight - 4);
+    await rows.nth(lowest).hover();
+    await expect(card).toBeVisible();
+    await expect.poll(async () => { const b = await card.boundingBox(); return b ? b.y + b.height <= viewportHeight : false; }).toBe(true);
     await page.mouse.move(2, 2);
     await expect(card).toHaveCount(0);
   });
