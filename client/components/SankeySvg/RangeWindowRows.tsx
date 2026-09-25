@@ -37,6 +37,8 @@ export interface RangeWindowRowProps {
   onOffsetChange: (v: number) => void;
   markReplace: () => void;
   metaFontPx: number;
+  /** スライダーの幅（px）。指定すると行ごとのラベル長に関係なくバーの長さが揃う。省略時は残り幅いっぱい */
+  trackWidth?: number;
 }
 
 /**
@@ -45,7 +47,7 @@ export interface RangeWindowRowProps {
  * ネイティブ input[type=range] はつまみ長を変えられないため自前で描画する。
  */
 export function RangeWindowRow({
-  label, total, topN, setTopN, offset, maxOffset, onOffsetChange, markReplace, metaFontPx,
+  label, total, topN, setTopN, offset, maxOffset, onOffsetChange, markReplace, metaFontPx, trackWidth,
 }: RangeWindowRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -180,7 +182,8 @@ export function RangeWindowRow({
         onPointerUp={onThumbPointerEnd}
         onPointerCancel={onThumbPointerEnd}
         onLostPointerCapture={onThumbPointerEnd}
-        className="relative h-4 min-w-0 flex-1 cursor-pointer touch-none rounded-full bg-mirai-progress-track ring-1 ring-inset ring-black/5"
+        className={`relative h-4 min-w-0 cursor-pointer touch-none rounded-full bg-mirai-progress-track ring-1 ring-inset ring-black/5 ${trackWidth === undefined ? 'flex-1' : 'shrink-0'}`}
+        style={trackWidth === undefined ? undefined : { width: trackWidth }}
       >
         <div
           onPointerDown={onThumbPointerDown}

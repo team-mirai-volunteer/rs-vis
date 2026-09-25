@@ -53,7 +53,7 @@ export function UnifiedControls({
           });
         };
         return (
-          <div key={column} className="pointer-events-auto w-[290px] min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
+          <div key={column} className="pointer-events-auto min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
           <RangeWindowRow
             label={UNIFIED_COLUMN_LABELS[column]}
             total={total}
@@ -64,6 +64,8 @@ export function UnifiedControls({
             onOffsetChange={v => onOffsetChange({ ...offset, [column]: v })}
             markReplace={() => {}}
             metaFontPx={12}
+            // バーの長さは列によらず揃える（カード幅はラベルの長さぶんだけ変わる）
+            trackWidth={170}
           />
           </div>
         );
