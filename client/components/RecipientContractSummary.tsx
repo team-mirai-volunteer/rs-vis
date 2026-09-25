@@ -10,15 +10,20 @@ import { useRecipientContracts } from '@/client/hooks/useRecipientContracts';
 /** 出す契約の行数。残りは「ほか○件」にまとめる */
 const MAX_LINES = 3;
 
-export function RecipientContractSummary({ year, name, pids, className }: {
+export function RecipientContractSummary({ year, name, pids, contracts, className }: {
   /** RS シート年度。null なら出さない（暫定データなど再委託構造が無いとき） */
   year: number | string | null;
   name: string;
   /** 支出元の事業（金額の大きい順） */
   pids: readonly (string | number)[];
+  /** 手元に契約の概要があるとき（1事業の再委託構造を読み込み済みなど）。渡すと API を呼ばない */
+  contracts?: readonly string[];
   className?: string;
 }) {
-  const data = useRecipientContracts(year, name, pids);
+  const fetched = useRecipientContracts(contracts ? null : year, name, pids);
+  const data = contracts
+    ? { name, entries: contracts.length > 0 ? [{ pid: Number(pids[0] ?? 0), projectName: '', amount: 0, contracts: [...contracts] }] : [] }
+    : fetched;
   if (data === undefined) return <p className={`text-[11px] text-mirai-text-muted ${className ?? ''}`}>契約の内容を読み込み中…</p>;
   if (!data) return null;
   const multiProject = data.entries.length > 1;
@@ -26,7 +31,7 @@ export function RecipientContractSummary({ year, name, pids, className }: {
   if (lines.length === 0) return null;
   const shown = lines.slice(0, MAX_LINES);
   const restLines = lines.length - shown.length;
-  const restProjects = Math.max(0, pids.length - data.entries.length);
+  const restProjects = contracts ? 0 : Math.max(0, pids.length - data.entries.length);
   return (
     <div className={`text-[11px] leading-relaxed ${className ?? ''}`}>
       <p className="font-bold text-mirai-text-muted">主な契約</p>

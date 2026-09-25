@@ -34,6 +34,8 @@ import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
 import { rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
+import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
+import { recipientContractsInProject } from '@/app/lib/recipient-contracts';
 import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
@@ -340,6 +342,21 @@ export function UnifiedSankeyChart({
     }
     return pids;
   }, [browseLinks, browseNodeById]);
+  const selectionProjectIds = useMemo(() => new Set(relatedColumnList
+    .filter(t => t.column === 'program' || t.column === 'program-spending')
+    .flatMap(t => t.items.map(n => n.details.projectId).filter((pid): pid is number => pid !== undefined))), [relatedColumnList]);
+  /** 詳細パネルの「支出先」タブの行ホバー。クリックは選択の移動なので、契約の概要はホバーで出す */
+  const [panelRecipientHover, setPanelRecipientHover] = useState<RecipientHover | null>(null);
+  const recipientHoverFor = useCallback((item: UnifiedViewNode, x: number, y: number): RecipientHover => {
+    // 個別事業を選んでいるときは、その事業の中の契約だけ。読み込み済みの再委託構造（暫定は RS 公開 API 由来）から手元で引く
+    if (isIndividualProject && selectedDetails?.projectId !== undefined && projectBlocks) {
+      const own = recipientContractsInProject(projectBlocks, item.name);
+      return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], year: contractSheetYear, pids: [selectedDetails.projectId] };
+    }
+    // 所管・項などを選んでいるときは、その選択に連なる事業（パネルの事業タブに出るもの）からの契約だけにする
+    const inSelection = selectionProjectIds.size > 0 ? contractPidsOf(item.id).filter(pid => selectionProjectIds.has(pid)) : contractPidsOf(item.id);
+    return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: inSelection };
+  }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, contractSheetYear, contractPidsOf, selectionProjectIds]);
   /**
    * 暫定（RS 公開 API）の前年度シート。RS シート年度 N は年度 N−1 の執行を評価したものなので、暫定の予算年度 N から見た前年度にあたる
    * （rsSheetYear は要求年度用の仮の 2026 になりうるため使わない）。事業が前年度にあるかは政策評価サマリの事業IDで判定する
@@ -880,8 +897,13 @@ export function UnifiedSankeyChart({
                       ?.items.slice(0, 300)
                       .map(item => {
                         return (
-                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
-                            <Button variant="ghost" onClick={() => onSelect(item.id)} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
+                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
+                            {...(activeTab === 'recipient' ? {
+                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
+                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+                              onMouseLeave: () => setPanelRecipientHover(null),
+                            } : {})}>
+                            <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
                               <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
                               <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
                             </Button>
@@ -896,6 +918,8 @@ export function UnifiedSankeyChart({
         </SidePanelChrome>
       )}
 
+
+      <RecipientHoverCard hover={activeTab === 'recipient' ? panelRecipientHover : null} />
 
       {/* 左下: ミニマップ */}
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />

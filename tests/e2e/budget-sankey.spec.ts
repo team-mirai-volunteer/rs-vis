@@ -512,6 +512,18 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(page.getByText('在クロアチア日本国大使公邸の不動産購入', { exact: false }).first()).toBeVisible();
   });
 
+  test('hovering a recipient row in the side panel shows its contract without changing the selection', async ({ page }) => {
+    await openPage(page, 'year=2024&sel=project-budget-1335');
+    const panel = page.getByTestId('unified-side-panel');
+    await panel.getByRole('tab', { name: /^支出先/ }).click();
+    await panel.getByRole('tabpanel').getByRole('button', { name: /^個人A/ }).first().hover();
+    const card = page.getByRole('tooltip');
+    await expect(card).toContainText('在クロアチア日本国大使公邸の不動産購入');
+    await expect(page).toHaveURL(/sel=project-budget-1335/);
+    await page.mouse.move(2, 2);
+    await expect(card).toHaveCount(0);
+  });
+
   test('link tooltip appears when hovering a ribbon', async ({ page }) => {
     await openPage(page);
     const links = page.getByTestId('unified-link');

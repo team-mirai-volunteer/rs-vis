@@ -10,6 +10,7 @@ import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSecti
 import { UnifiedProjectSections } from '@/client/components/unified-budget/UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from '@/client/components/unified-budget/UnifiedProjectBlocks';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 
 const tabs = ['予算', '事業(支出)', 'ブロック', '支出先'] as const;
 
@@ -20,6 +21,8 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
   const [tab, setTab] = useState<typeof tabs[number]>('予算');
   const [blockId, setBlockId] = useState<string | null>(null);
   const block = graph?.blocks.find(item => item.blockId === blockId);
+  /** 支出先の行ホバーで契約の概要（何に支払ったか）を出す。行が持つ再委託構造の記載をそのまま使う */
+  const [recipientHover, setRecipientHover] = useState<RecipientHover | null>(null);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     ref.current?.scrollIntoView({ block: 'nearest' });
@@ -59,11 +62,15 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
           {graph.blocks.every(item => item.recipients.length === 0) && <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>}
           {graph.blocks.filter(item => item.recipients.length > 0).map(item => <div key={item.blockId}>
             <Button variant="ghost" className="h-auto w-full justify-start px-1 py-2 text-[11px] font-bold" onClick={() => setBlockId(item.blockId)}>ブロック {item.blockId} {item.blockName}</Button>
-            {item.recipients.map((recipient, index) => <div key={index} className="flex justify-between gap-3 border-b border-border px-1 py-1.5 text-xs">
+            {item.recipients.map((recipient, index) => <div key={index} className="flex justify-between gap-3 border-b border-border px-1 py-1.5 text-xs"
+              onMouseEnter={e => setRecipientHover({ x: e.clientX, y: e.clientY, name: recipient.name, amount: recipient.amount, contracts: recipient.contractSummaries, year, pids: [point.pid] })}
+              onMouseMove={e => setRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+              onMouseLeave={() => setRecipientHover(null)}>
               <span>{recipient.name}</span><span className="shrink-0 text-[11px] tabular-nums">{formatBudgetFromYen(recipient.amount)}</span>
             </div>)}
           </div>)}
         </>}
     </div>
+    <RecipientHoverCard hover={tab === '支出先' && !block ? recipientHover : null} />
   </section>;
 }

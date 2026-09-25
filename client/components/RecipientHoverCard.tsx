@@ -1,0 +1,38 @@
+'use client';
+
+/**
+ * 詳細パネルの支出先の行にホバーしたときのカード（支出先名・金額・主な契約）。
+ * 行のクリックは選択の移動に使うので、表示はホバーだけ。ポインタの右下に出し、画面端では内側へ寄せる。
+ */
+import { createPortal } from 'react-dom';
+import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { RecipientContractSummary } from './RecipientContractSummary';
+
+export interface RecipientHover {
+  x: number;
+  y: number;
+  name: string;
+  amount: number;
+  /** 手元の契約の概要（1事業の再委託構造から）。無ければ year / pids で取得する */
+  contracts?: readonly string[];
+  year: number | string | null;
+  pids: readonly (string | number)[];
+}
+
+const CARD_W = 288;
+
+export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) {
+  if (!hover || typeof document === 'undefined') return null;
+  return createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[100] rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
+      style={{ width: CARD_W, left: `clamp(8px, ${hover.x + 14}px, calc(100vw - ${CARD_W + 8}px))`, top: hover.y + 14 }}
+    >
+      <p className="font-bold leading-snug text-mirai-text">{hover.name}</p>
+      {Number.isFinite(hover.amount) && <p className="tabular-nums text-mirai-text-secondary">{formatBudgetFromYen(hover.amount)}</p>}
+      <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={hover.year} name={hover.name} pids={hover.pids} contracts={hover.contracts} />
+    </div>,
+    document.body,
+  );
+}
