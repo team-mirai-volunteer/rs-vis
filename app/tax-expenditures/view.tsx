@@ -2,14 +2,14 @@
 
 import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BarChart3, ClipboardCheck, Info, ListFilter, RotateCcw, Search, X } from 'lucide-react';
+import { BarChart3, ChevronRight, ClipboardCheck, Info, ListFilter, RotateCcw, Search, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import data from '@/app/lib/tax-expenditures/data.json';
-import companyPanel from '@/app/lib/tax-expenditures/company-panel.json';
-import { creditSeries } from '@/app/lib/tax-expenditures/credits';
+import { assessments } from '@/app/lib/tax-expenditures/assessments';
+import { creditAmount, creditSeries } from '@/app/lib/tax-expenditures/credits';
 import { CreditChart } from './credit-chart';
 import { AssessmentTable } from './assessment-table';
 
@@ -20,6 +20,10 @@ const normalize = (s: string) => s.normalize('NFKC').toLocaleLowerCase().replace
 const panel = 'p-5 sm:p-6';
 const focus = 'outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background';
 const field = `mt-2 block w-full rounded-lg border border-mirai-border bg-card px-3 py-2.5 text-mirai-text placeholder:text-mirai-text-placeholder ${focus}`;
+const cases = (m: (typeof data.measures)[number], year: Year) => {
+  const values = m.rows.filter(r => r.entity === '単体法人').map(r => r.years[year][0]);
+  return values.every(v => v === null) ? null : values.reduce<number>((sum, v) => sum + (v ?? 0), 0);
+};
 const link = `text-primary-accent underline underline-offset-4 rounded-sm ${focus}`;
 
 export default function TaxExpenditures() {
@@ -32,6 +36,9 @@ export default function TaxExpenditures() {
     (!linkedOnly || m.rsProjectId !== null) && normalize(`${m.name}${m.article}${m.overview}${m.aliases}`).includes(normalize(query))
   ), [query, linkedOnly]);
   const ids = new Set(measures.map(m => m.id));
+  const credits = creditSeries(year, ids);
+  const creditTotal = credits.reduce((sum, c) => sum + (c.total ?? 0), 0);
+  const scored = credits.reduce((n, c) => n + (assessments[c.id]?.scores.filter(x => x.score !== null).length ?? 0), 0);
 
   return <div className="min-h-screen bg-background text-foreground">
     <AppHeader current="/tax-expenditures"><Button variant="outline" size="sm" onClick={() => dialog.current?.showModal()}><Info aria-hidden="true" />データについて</Button></AppHeader>
@@ -61,15 +68,14 @@ export default function TaxExpenditures() {
         </Card>
         </aside>
         <div className="min-w-0 space-y-5">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
-              { label: '表示する実績', value: `${year}年度`, note: '財務省の法人税関係・適用実態' },
-              { label: '評価・グラフの対象', value: `税額控除${creditSeries(year, ids).length}区分`, note: '検索条件に一致する対象区分' },
-              { label: '企業の公開データ', value: `${new Set(companyPanel.rows.map(r => r.company_key)).size}社・${companyPanel.rows.length}観測`, note: '賃上げ税制の評価根拠から確認' },
-            ].map(item => <Card key={item.label} className="p-5"><p className="text-xs text-mirai-text-secondary">{item.label}</p><p className="mt-2 font-lexend text-xl font-medium tabular-nums text-primary-accent">{item.value}</p><p className="mt-2 text-xs text-mirai-text-secondary">{item.note}</p></Card>)}
+              { label: `税額控除の記載額（${year}年度）`, value: credits.some(c => c.total !== null) ? creditAmount(creditTotal) : '—', note: `税額控除だけの${credits.length}区分の合計`, wide: true },
+              { label: 'AIによる試行評価', value: `${scored} / ${credits.length * 5}項目`, note: '採点済み · 人手レビュー前' },
+              { label: 'RS事業との関連', value: `${data.measures.filter(m => m.rsProjectId).length}制度で確認`, note: `全${data.measures.length}表区分のうち` },
+            ].map(item => <Card key={item.label} className={`p-4 sm:p-5 ${item.wide ? 'col-span-2 sm:col-span-1' : ''}`}><p className="text-xs text-mirai-text-secondary">{item.label}</p><p className="mt-1.5 text-xl font-bold tabular-nums text-primary-accent sm:text-2xl">{item.value}</p><p className="mt-1 text-xs text-mirai-text-secondary">{item.note}</p></Card>)}
           </div>
-          <p className="text-xs leading-5 text-mirai-text-secondary">対象は法人税関係の適用実態です。租特全体の減収額や、廃止による増収額を示すものではありません。</p>
-        {year !== '2024' && <p className="text-sm text-mirai-text-secondary">{year}年度は今回の総括表に載る比較値です。その年度の全制度を網羅する一覧ではありません。</p>}
+          <p className="flex gap-2 text-xs leading-5 text-mirai-text-secondary"><Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /><span>対象は法人税関係の適用実態です。租特全体の減収額や、廃止による増収額を示すものではありません。{year !== '2024' && `${year}年度は今回の総括表に載る比較値で、その年度の全制度を網羅する一覧ではありません。`}</span></p>
         <div hidden={view !== 'assessment'}><AssessmentTable year={year} ids={ids} /></div>
         <div hidden={view !== 'amount'}><CreditChart year={year} ids={ids} onSelect={id => {
           setView('measures');
@@ -83,15 +89,19 @@ export default function TaxExpenditures() {
           });
         }} /></div>
         <div hidden={view !== 'measures'} className="space-y-3">
-        <h2 className="text-lg font-bold">制度一覧</h2>
-        {measures.length === 0 && <Card className={panel}>該当する制度がありません。キーワードや絞り込みを変更してください。</Card>}
-        {measures.map(m => <Card key={m.id} className={panel}><details id={m.id} className="group scroll-mt-24">
-          <summary className={`cursor-pointer rounded-sm marker:text-primary-accent ${focus}`}>
-            <span className="ml-1 text-xs text-mirai-text-subtle">租税特別措置法 {m.article}条</span>
-            <span className="mt-2 block text-base font-semibold">{m.name}</span>
-            <Badge variant={m.rsProjectId ? 'default' : 'secondary'} className="mt-2">{m.rsProjectId ? 'RS関連を確認済み · 制度の普及' : 'RS関連：未確認'}</Badge>
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="text-lg font-bold">制度一覧</h2><p className="text-xs text-mirai-text-secondary">右端は{year}年度の適用件数（単体法人）</p></div>
+        {measures.length === 0 ? <Card className={panel}>該当する制度がありません。キーワードや絞り込みを変更してください。</Card> : <Card className="divide-y divide-mirai-border overflow-hidden">
+        {measures.map(m => { const count = cases(m, year); return <details key={m.id} id={m.id} className="group scroll-mt-24 open:bg-mirai-surface/40">
+          <summary className={`flex cursor-pointer list-none items-center gap-3 px-5 py-4 hover:bg-mirai-surface sm:px-6 [&::-webkit-details-marker]:hidden ${focus} focus-visible:ring-inset focus-visible:ring-offset-0`}>
+            <ChevronRight className="size-4 shrink-0 text-primary-accent transition-transform group-open:rotate-90" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-xs text-mirai-text-subtle">租税特別措置法 {m.article}条</span>
+              <span className="mt-0.5 block font-semibold leading-6">{m.name}</span>
+              {m.rsProjectId && <Badge className="mt-1.5">RS関連を確認済み · 制度の普及</Badge>}
+            </span>
+            <span className="shrink-0 text-right text-sm tabular-nums">{count === null ? <span className="text-mirai-text-subtle">—</span> : <>{count.toLocaleString('ja-JP')}<span className="ml-0.5 text-xs text-mirai-text-secondary">件</span></>}</span>
           </summary>
-          <div className="mt-5 space-y-4 border-t border-mirai-border pt-5 text-sm">
+          <div className="space-y-4 px-5 pb-6 pt-1 text-sm sm:px-6">
             <p className="whitespace-pre-line leading-7 text-mirai-text-secondary">{m.overview}</p>
             <p className="text-mirai-text-subtle">原資料の適用期限：{m.deadline || '記載なし'}（2025年4月1日時点。現行制度の期限とは限りません）</p>
             {m.rsProjectId && <div className="rounded-lg bg-mirai-surface-teal p-4 leading-7">
@@ -109,7 +119,8 @@ export default function TaxExpenditures() {
             <p className="text-xs leading-6 text-mirai-text-subtle">「うち通算法人」は単体法人の内数です。足し合わせません。「—」は原表の空欄・横棒で、ゼロとは区別しています。区分記号は上の制度概要に対応します。金額の単位は原表どおり千円です。</p>
             <a className={link} href={data.sourceUrl} target="_blank" rel="noreferrer">総括表Excelで確認（「総括表」シート {m.sourceRow}行から）↗</a>
           </div>
-        </details></Card>)}
+        </details>; })}
+        </Card>}
         </div>
         </div>
       </section>
