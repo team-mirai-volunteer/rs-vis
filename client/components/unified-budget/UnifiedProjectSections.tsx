@@ -16,6 +16,8 @@ import { createPortal } from 'react-dom';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import type { ProjectDetail } from '@/types/project-details';
 import { cn } from '@/lib/utils';
+import type { RsApiDetail } from '@/types/rs-api';
+import { rsApiToProjectDetail } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
@@ -34,6 +36,7 @@ export function UnifiedProjectSections({
   rsSheetYear,
   fontPx,
   flush = false,
+  provisionalDetail,
 }: {
   pid: number;
   projectName: string;
@@ -43,15 +46,22 @@ export function UnifiedProjectSections({
   fontPx: number;
   /** 上に事実表などが無く、親（p-4）の先頭に来るとき true。上余白と区切り線を打ち消して空白を作らない */
   flush?: boolean;
+  /**
+   * RS 公開 API から取った新規事業（前年度シートに無い）。渡すと事業概要をこれから作り、
+   * 政策評価は点数の代わりに未実施の旨を出す（評価・再委託構造ページを引かない）
+   */
+  provisionalDetail?: RsApiDetail;
 }) {
   const year = String(rsSheetYear);
+  const isProvisional = provisionalDetail !== undefined;
   const scaleFont = useCallback((px: number) => Math.round((px * fontPx) / 11), [fontPx]);
   const [overviewExpanded, setOverviewExpanded] = useState(false);
   const [scoreItem, setScoreItem] = useState<QualityScoreItem | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
 
-  const policy = usePolicySummary(year);
-  const detail = useCached(detailCache, `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
+  const policy = usePolicySummary(isProvisional ? null : year);
+  const sheetDetail = useCached(detailCache, isProvisional ? null : `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
+  const detail = provisionalDetail ? rsApiToProjectDetail(provisionalDetail) : sheetDetail;
 
   const openScoreDialog = useCallback(() => {
     setScoreLoading(true);
@@ -64,7 +74,7 @@ export function UnifiedProjectSections({
       .finally(() => setScoreLoading(false));
   }, [pid, year]);
 
-  const subcontractHref = rsViewUrl(`/subcontracts/${pid}`, year);
+  const subcontractHref = isProvisional ? undefined : rsViewUrl(`/subcontracts/${pid}`, year);
 
   return (
     <div className={cn('-mx-4', flush ? '-mt-4' : 'mt-3 border-t border-border')}>
@@ -73,11 +83,12 @@ export function UnifiedProjectSections({
       <PolicyEvaluationBlock
         pid={pid}
         year={year}
-        error={policy === null ? '政策評価を取得できませんでした' : null}
-        view={policyViewFor(policy, pid)}
+        error={!isProvisional && policy === null ? '政策評価を取得できませんでした' : null}
+        view={isProvisional ? null : policyViewFor(policy, pid)}
+        unavailable={isProvisional ? 'この事業はまだ政策評価を実施していません（RS公開APIから暫定取得した新規事業）。' : undefined}
         labelPx={scaleFont(11)}
         metaPx={scaleFont(10)}
-        onOpenDetail={openScoreDialog}
+        onOpenDetail={isProvisional ? undefined : openScoreDialog}
         detailLoading={scoreLoading}
       />
 

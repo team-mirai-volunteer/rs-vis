@@ -31,8 +31,8 @@ import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
-import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from './UnifiedProjectBlocks';
-import { RsApiProjectDetail } from './RsApiProjectDetail';
+import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
+import { rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
@@ -309,9 +309,16 @@ export function UnifiedSankeyChart({
     (selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
     (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
     !selectedDetails.aggregated && selectedDetails.projectId !== undefined;
-  const projectBlocks = useProjectBlocks(isIndividualProject && hasSpending && !provisional ? selectedDetails?.projectId : undefined, rsSheetYear);
-  const budgetSummary = selectedDetails?.budgetSummary ?? projectBlocks?.budgetSummary;
-  const budgetBreakdown = selectedDetails?.budgetBreakdown ?? projectBlocks?.budgetBreakdown ?? [];
+  const sheetBlocks = useProjectBlocks(isIndividualProject && hasSpending && !provisional ? selectedDetails?.projectId : undefined, rsSheetYear);
+  /** 暫定（RS 公開 API）の当年度データ。ブロック・支出先タブと、前年度に無い新規事業の事業概要に使う */
+  const provisionalProject = useProvisionalProject(provisional && isIndividualProject ? selectedDetails?.projectId : undefined);
+  const provisionalBlocks = useMemo(
+    () => (provisionalProject === undefined ? undefined : provisionalProject ? rsApiToSubcontractGraph(provisionalProject) : null),
+    [provisionalProject]
+  );
+  const projectBlocks = provisional ? provisionalBlocks : sheetBlocks;
+  const budgetSummary = selectedDetails?.budgetSummary ?? sheetBlocks?.budgetSummary;
+  const budgetBreakdown = selectedDetails?.budgetBreakdown ?? sheetBlocks?.budgetBreakdown ?? [];
   const hasBudgetTab = isIndividualProject && !provisional;
   /**
    * 暫定（RS 公開 API）の前年度シート。RS シート年度 N は年度 N−1 の執行を評価したものなので、暫定の予算年度 N から見た前年度にあたる
@@ -331,7 +338,7 @@ export function UnifiedSankeyChart({
     || !!selectedDetails.aggregatedTop?.length
     || focusRelated
   );
-  const hasBlocksTab = isIndividualProject && hasSpending && !provisional;
+  const hasBlocksTab = isIndividualProject && hasSpending;
   const [blockSelection, setBlockSelection] = useState<{ projectId: number; year: number; blockId: string } | null>(null);
   const selectedBlock = blockSelection?.projectId === selectedDetails?.projectId && blockSelection?.year === rsSheetYear
     ? projectBlocks?.blocks.find(block => block.blockId === blockSelection.blockId) : undefined;
@@ -750,10 +757,10 @@ export function UnifiedSankeyChart({
                 )}
                 {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託） */}
                 {isIndividualProject && selectedDetails.projectId !== undefined && (provisional ? (
-                    // 暫定（RS 公開 API）: 前年度シートに同じ事業IDがあれば通常の事業パネルを前年度データで出す。
-                    // 前年度に無い新規事業だけ暫定パネル（当年度の執行額・支出先ブロック）を出す
-                    priorSheetPolicy === undefined ? (
-                      <p role="status" className="py-2 text-xs text-mirai-text-muted">前年度の事業情報を確認中…</p>
+                    // 暫定（RS 公開 API）: 前年度シートに同じ事業IDがあれば事業概要・評価は前年度データで出す。
+                    // 前年度に無い新規事業は API の概要で同じセクションを組み、評価は未実施と書く（ブロック・支出先はどちらも下段のタブ）
+                    priorSheetPolicy === undefined || (!priorSheetPolicy?.items[String(selectedDetails.projectId)] && provisionalProject === undefined) ? (
+                      <p role="status" className="py-2 text-xs text-mirai-text-muted">事業情報を読み込み中…</p>
                     ) : priorSheetPolicy?.items[String(selectedDetails.projectId)] ? (
                       <UnifiedProjectSections
                         pid={selectedDetails.projectId}
@@ -762,8 +769,17 @@ export function UnifiedSankeyChart({
                         fontPx={fontPx}
                         flush={nodeFactsEmpty(selectedDetails)}
                       />
+                    ) : provisionalProject ? (
+                      <UnifiedProjectSections
+                        pid={selectedDetails.projectId}
+                        projectName={selectedPanelNode.name}
+                        rsSheetYear={priorSheetYear}
+                        fontPx={fontPx}
+                        flush={nodeFactsEmpty(selectedDetails)}
+                        provisionalDetail={provisionalProject}
+                      />
                     ) : (
-                      <RsApiProjectDetail key={selectedDetails.projectId} projectId={selectedDetails.projectId} />
+                      <p className="py-2 text-xs text-mirai-text-muted">暫定データを取得できませんでした。</p>
                     )
                   ) : (
                     <UnifiedProjectSections
@@ -829,7 +845,7 @@ export function UnifiedSankeyChart({
                         />
                       </>
                     ) : activeTab === 'blocks' ? (
-                      <UnifiedProjectBlocks graph={projectBlocks} year={rsSheetYear} onSelect={block => {
+                      <UnifiedProjectBlocks graph={projectBlocks} year={rsSheetYear} provisional={provisional} onSelect={block => {
                         setBlockSelection({ projectId: selectedDetails.projectId!, year: rsSheetYear, blockId: block.blockId });
                         setPanelTab('recipient');
                       }} />

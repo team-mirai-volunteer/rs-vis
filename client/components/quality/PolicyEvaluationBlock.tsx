@@ -54,6 +54,7 @@ export function PolicyEvaluationBlock({
   metaPx,
   onOpenDetail,
   detailLoading = false,
+  unavailable,
 }: {
   /** null = スコアなし（何も描かない）。undefined = 取得中 */
   view: PolicyEvaluationView | null | undefined;
@@ -67,7 +68,17 @@ export function PolicyEvaluationBlock({
   /** スコア詳細ダイアログを開く。省略時は「詳細」を出さない */
   onOpenDetail?: () => void;
   detailLoading?: boolean;
+  /** 評価がまだ無い事業に、点数の代わりに出す文言（例: RS 公開 API の新規事業）。view が null のときだけ使う */
+  unavailable?: string;
 }) {
+  if (!view && unavailable) {
+    return (
+      <div className="shrink-0 border-b border-border px-3.5 py-2">
+        <span className="font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}>政策評価</span>
+        <p className="mt-1 text-mirai-text-muted" style={{ fontSize: metaPx }}>{unavailable}</p>
+      </div>
+    );
+  }
   if (error) {
     return (
       <div className="shrink-0 border-b border-border px-3.5 py-[7px]">

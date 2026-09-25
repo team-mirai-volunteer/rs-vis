@@ -9,6 +9,7 @@ import { BlockBalance } from '@/client/components/subcontract/BlockBalance';
 import { blockBalance } from '@/app/lib/subcontracts/block-balance';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
+import type { RsApiDetail } from '@/types/rs-api';
 
 type ProjectBlocks = SubcontractGraph & { budgetSummary?: BudgetSummary; budgetBreakdown?: BudgetBreakdownItem[] };
 const cache = new Map<string, ProjectBlocks | null>();
@@ -18,13 +19,26 @@ export function useProjectBlocks(pid: number | undefined, year: number) {
   return useCached(cache, pid === undefined ? null : `${year}-${pid}`, `/api/subcontracts/${pid}?year=${year}`, extract);
 }
 
-export function UnifiedProjectBlocks({ graph, year, onSelect }: {
+const provisionalCache = new Map<string, RsApiDetail | null>();
+const extractProvisional = (data: unknown) => data as RsApiDetail;
+
+/** RS 公開 API の暫定データ（当年度の執行額・概要・支出先ブロック）。pid 未指定なら取得しない */
+export function useProvisionalProject(pid: number | undefined) {
+  return useCached(provisionalCache, pid === undefined ? null : String(pid), `/api/rs-provisional/${pid}`, extractProvisional);
+}
+
+/** 金額表示。RS 公開 API 由来の未確認額（NaN）は 0円と誤読されないよう「未確認」と出す */
+const yen = (amount: number) => (Number.isFinite(amount) ? formatBudgetFromYen(amount) : '未確認');
+
+export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = false }: {
   graph: ProjectBlocks | null | undefined;
   year: number;
   onSelect: (block: BlockNode) => void;
+  /** RS 公開 API の暫定データ。再委託構造ページ（/subcontracts）には無いので「フローを見る」を出さない */
+  provisional?: boolean;
 }) {
   if (graph === undefined) return <p role="status" className="py-2 text-xs text-mirai-text-muted">ブロックを読み込み中…</p>;
-  if (graph === null) return <p className="py-2 text-xs text-mirai-text-muted">ブロック情報を取得できませんでした。</p>;
+  if (graph === null) return <p className="py-2 text-xs text-mirai-text-muted">{provisional ? '支出先データは未取得です。0円を意味しません。' : 'ブロック情報を取得できませんでした。'}</p>;
   if (graph.blocks.length === 0) return <p className="py-2 text-xs text-mirai-text-muted">ブロックの記載はありません。</p>;
   const direct = graph.blocks.filter(block => block.originKind === 'direct').length;
   const subcontract = graph.blocks.filter(block => block.originKind === 'subcontract').length;
@@ -50,7 +64,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
       className="flex h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-none border-b border-border px-1 py-1.5 text-left font-normal hover:bg-mirai-surface">
       <span className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-xs text-mirai-text-secondary">{block.blockId} {block.blockName}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(block.totalAmount)}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{yen(block.totalAmount)}</span>
       </span>
       <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-mirai-text-muted">
         <TagChip kind={block.originKind === 'direct' ? 'direct' : block.originKind === 'subcontract' ? 'subcontract' : 'separate-origin'}>
@@ -76,7 +90,9 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
       {subcontract > 0 && <TagChip kind="subcontract">再委託 {subcontract}</TagChip>}
       {separate > 0 && <TagChip kind="separate-origin">別財源 {separate}</TagChip>}
       <span>階層 {graph.maxDepth}</span>
-      <a href={rsViewUrl(`/subcontracts/${graph.projectId}`, year)} className="ml-auto text-primary hover:underline">フローを見る ↗</a>
+      {provisional
+        ? <span className="ml-auto">RS公開APIからの暫定取得</span>
+        : <a href={rsViewUrl(`/subcontracts/${graph.projectId}`, year)} className="ml-auto text-primary hover:underline">フローを見る ↗</a>}
     </div>
     {buildBlockTree(graph).map(renderNode)}
   </>;
@@ -94,7 +110,7 @@ export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: Subco
     {block.recipients.map((recipient, index) => <div key={`${recipient.name}-${index}`} className="border-b border-border px-1 py-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <span className="min-w-0 text-xs text-mirai-text-secondary">{recipient.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(recipient.amount)}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{yen(recipient.amount)}</span>
       </div>
       {recipient.corporateNumber && <div className="mt-1 text-[11px] text-mirai-text-muted">法人番号 {recipient.corporateNumber}</div>}
       {recipient.contractSummaries.map((summary, i) => <p key={i} className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">{summary}</p>)}
