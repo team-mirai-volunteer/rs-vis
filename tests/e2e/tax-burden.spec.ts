@@ -1,8 +1,16 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** 世帯年収は値の表示をクリックするとその場で入力欄になる */
+async function setIncome(page: Page, manYen: string) {
+  await page.getByRole('button', { name: '世帯年収を万円で入力', exact: true }).click();
+  const input = page.getByRole('spinbutton', { name: '世帯年収を万円で入力', exact: true });
+  await input.fill(manYen);
+  await input.press('Enter');
+}
 
 test('individual tax resets preserve other reforms and household conditions, including after reload', async ({ page }) => {
   await page.goto('/tax-burden');
-  await page.getByLabel('世帯年収を万円で入力', { exact: true }).fill('800');
+  await setIncome(page, '800');
   await page.getByRole('button', { name: /^税・給付/ }).click();
   const input = (name: string) => page.getByLabel(`${name}・数値で入力`, { exact: true });
   await input('給付付き控除（年額）').fill('30');
@@ -35,7 +43,7 @@ test('individual tax resets preserve other reforms and household conditions, inc
   await expect(input('逓減率')).toHaveValue('10');
   await expect.poll(() => new URL(page.url()).searchParams.get('creditAnnual')).toBe('0');
   await page.reload();
-  await expect(page.getByLabel('世帯年収を万円で入力', { exact: true })).toHaveValue('800');
+  await expect(page.getByRole('button', { name: '世帯年収を万円で入力', exact: true })).toHaveText('800万円');
   await page.getByRole('button', { name: /^税・給付/ }).click();
   await expect(input('住民税（所得割）')).toHaveValue('7');
   await expect(input('給付付き控除（年額）')).toHaveValue('0');
@@ -44,7 +52,7 @@ test('individual tax resets preserve other reforms and household conditions, inc
 
 test('corporate incidence leaves cash disposable income unchanged at fixed salary', async ({ page }) => {
   await page.goto('/tax-burden');
-  await page.getByLabel('世帯年収を万円で入力').fill('500');
+  await setIncome(page, '500');
   const share = page.getByRole('slider', { name: '賃金へ転嫁される割合', exact: true });
   await share.press('Home');
   await expect(share).toHaveValue('0');
@@ -94,7 +102,7 @@ test('mobile: no horizontal overflow and zero income is not a numeric rate', asy
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tax-burden');
   await expect(page.getByRole('table').first()).toBeVisible();
-  await page.getByLabel('世帯年収を万円で入力').fill('0');
+  await setIncome(page, '0');
   await expect(page.getByText('未定義', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

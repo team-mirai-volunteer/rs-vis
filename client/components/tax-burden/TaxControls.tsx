@@ -17,17 +17,46 @@ const pct = (fraction: number) => Number((fraction * 100).toFixed(2));
 
 const inputClass = 'w-full rounded-xl border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
-export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false, editable = false, note, onReset, resetDisabled, resetLabel = `${label}をリセット` }: {
+export function RangeField({ label, value, min, max, step = 1, suffix = '', onChange, disabled = false, editable = false, clickToEdit = false, note, onReset, resetDisabled, resetLabel = `${label}をリセット` }: {
   label: string; value: number; min: number; max: number; step?: number; suffix?: string;
-  onChange: (value: number) => void; disabled?: boolean; editable?: boolean; note?: string;
+  onChange: (value: number) => void; disabled?: boolean; editable?: boolean;
+  /** 値の表示をクリックするとその場で入力欄になる（Enter・フォーカスを外すと確定、Esc で取り消し） */
+  clickToEdit?: boolean;
+  note?: string;
   onReset?: () => void; resetDisabled?: boolean; resetLabel?: string;
 }) {
   const clamp = (n: number) => Math.max(min, Math.min(max, n));
   const id = useId();
+  const [draft, setDraft] = useState<string | null>(null);
+  const commitDraft = () => {
+    if (draft === null) return;
+    const n = Number(draft);
+    if (draft.trim() !== '' && Number.isFinite(n)) onChange(clamp(n));
+    setDraft(null);
+  };
+  const inputLabel = `${label}を${suffix || '数値'}で入力`;
+  const shown = Number(value.toFixed(2));
   return <div className="space-y-1 text-sm">
     <div className="flex items-center justify-between gap-2"><label htmlFor={id}>{label}</label>
       <div className="flex shrink-0 items-center gap-1">
-      {editable
+      {clickToEdit
+        ? draft !== null
+          ? <span className="flex shrink-0 items-center gap-1 font-bold tabular-nums">
+              <input aria-label={inputLabel} type="number" min={min} max={max} step={step} value={draft} autoFocus
+                onChange={e => setDraft(e.target.value)}
+                onBlur={commitDraft}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); commitDraft(); }
+                  else if (e.key === 'Escape') { e.preventDefault(); setDraft(null); }
+                }}
+                className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />
+              {suffix}</span>
+          : <Button type="button" variant="ghost" aria-label={inputLabel} title="クリックして数値を入力" disabled={disabled}
+              onClick={() => setDraft(String(shown))}
+              className="h-auto rounded-md px-1.5 py-0.5 text-sm font-bold tabular-nums text-mirai-text underline decoration-dotted decoration-mirai-text-muted underline-offset-4 hover:bg-card">
+              {shown.toLocaleString('ja-JP')}{suffix}
+            </Button>
+        : editable
         ? <span className="flex shrink-0 items-center gap-1 font-bold tabular-nums">
             <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={Number(value.toFixed(2))} disabled={disabled}
               onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
@@ -94,10 +123,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           {HOUSEHOLDS.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
         </select></label>
         {state.view !== 'heatmap' && <div className="space-y-2 rounded-xl bg-mirai-surface p-3">
-          <RangeField label={state.view === 'age' ? '現役期の世帯年収' : '世帯年収'} value={state.income / 10000} min={0} max={2000} suffix="万円" onChange={v => set('income', Math.round(v * 10000))} />
-          <label className="flex items-center justify-end gap-2 text-xs">年収を入力<input aria-label="世帯年収を万円で入力" type="number" min={0} max={2000} step={1} value={state.income / 10000}
-            onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) set('income', Math.round(Math.max(0, Math.min(2000, n)) * 10000)); }}
-            className="w-24 rounded-xl border border-mirai-border bg-card px-3 py-2 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />万円</label>
+          <RangeField label={state.view === 'age' ? '現役期の世帯年収' : '世帯年収'} value={state.income / 10000} min={0} max={2000} suffix="万円" clickToEdit onChange={v => set('income', Math.round(v * 10000))} />
         </div>}
         {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" onChange={v => set('age', v)} />}
         {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
