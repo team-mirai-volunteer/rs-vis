@@ -19,7 +19,10 @@ resource "terraform_data" "comment_privacy" {
   ]
 
   provisioner "local-exec" {
-    command = "node \"${path.module}/../../scripts/apply-comment-privacy.mjs\""
+    # Run node directly instead of through cmd /C: on Windows the quoted path is mangled
+    # into "infra\scripts\...mjs\"" and the runner is never found.
+    interpreter = ["node"]
+    command     = "${path.module}/../../scripts/apply-comment-privacy.mjs"
     environment = {
       COMMENT_PRIVACY_PROJECT_REF         = self.input.project_ref
       COMMENT_PRIVACY_MIGRATION_SHA256    = self.input.migration_sha256
