@@ -358,6 +358,19 @@ export function UnifiedSankeyChart({
     return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: inSelection };
   }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, contractSheetYear, contractPidsOf, selectionProjectIds]);
   /**
+   * 支出先を選んでいるときの「事業」「事業(支出)」タブの行ホバー。その事業がこの支出先に払った額と契約を出す。
+   * 金額は事業全体ではなく、この支出先へのつながり（絞り込み前の browseLinks）の合計
+   */
+  const selectedRecipient = selectedDetails?.column === 'recipient' && !selectedDetails.aggregated && selectedPanelNode ? selectedPanelNode : null;
+  const projectHoverFor = useCallback((item: UnifiedViewNode, x: number, y: number): RecipientHover | null => {
+    const pid = item.details.projectId;
+    if (!selectedRecipient || pid === undefined || item.details.aggregated) return null;
+    const paid = browseLinks
+      .filter(l => l.target === selectedRecipient.id && browseNodeById.get(l.source)?.details.projectId === pid)
+      .reduce((sum, l) => sum + l.value, 0);
+    return { x, y, name: selectedRecipient.name, title: item.name, subtitle: `→ ${selectedRecipient.name}`, amount: paid > 0 ? paid : Number.NaN, year: contractSheetYear, pids: [pid] };
+  }, [selectedRecipient, browseLinks, browseNodeById, contractSheetYear]);
+  /**
    * 暫定（RS 公開 API）の前年度シート。RS シート年度 N は年度 N−1 の執行を評価したものなので、暫定の予算年度 N から見た前年度にあたる
    * （rsSheetYear は要求年度用の仮の 2026 になりうるため使わない）。事業が前年度にあるかは政策評価サマリの事業IDで判定する
    */
@@ -902,6 +915,10 @@ export function UnifiedSankeyChart({
                               onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
                               onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
                               onMouseLeave: () => setPanelRecipientHover(null),
+                            } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
+                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(projectHoverFor(item, e.clientX, e.clientY)),
+                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+                              onMouseLeave: () => setPanelRecipientHover(null),
                             } : {})}>
                             <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
                               <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
@@ -919,7 +936,7 @@ export function UnifiedSankeyChart({
       )}
 
 
-      <RecipientHoverCard hover={activeTab === 'recipient' ? panelRecipientHover : null} />
+      <RecipientHoverCard hover={activeTab === 'recipient' || (selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending')) ? panelRecipientHover : null} />
 
       {/* 左下: ミニマップ */}
       <MinimapOverlay show={showMinimap} onShow={() => setShowMinimap(true)} onHide={() => setShowMinimap(false)} left={panelOpenWidth + 12} minimapW={MINIMAP_W} minimapH={minimapH} canvasRef={minimapRef} navigate={minimapNavigate} dragging={minimapDragging} />

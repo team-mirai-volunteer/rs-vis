@@ -524,6 +524,19 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(card).toHaveCount(0);
   });
 
+  test('with a recipient selected, hovering a project row shows what that project paid it for', async ({ page }) => {
+    await openPage(page);
+    await page.getByLabel('ノードを検索').fill('個人A');
+    await searchResults(page).filter({ hasText: /^支出先個人A[0-9]/ }).first().click();
+    const panel = page.getByTestId('unified-side-panel');
+    await panel.getByRole('tab', { name: /^事業\(支出\)/ }).click();
+    await panel.getByRole('tabpanel').getByRole('button', { name: /^在外公館施設/ }).first().hover();
+    const card = page.getByRole('tooltip');
+    await expect(card).toContainText('→ 個人A');
+    await expect(card).toContainText('8.19億円');
+    await expect(card).toContainText('在クロアチア日本国大使公邸の不動産購入');
+  });
+
   test('link tooltip appears when hovering a ribbon', async ({ page }) => {
     await openPage(page);
     const links = page.getByTestId('unified-link');

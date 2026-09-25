@@ -11,7 +11,12 @@ import { RecipientContractSummary } from './RecipientContractSummary';
 export interface RecipientHover {
   x: number;
   y: number;
+  /** 支出先名（契約を引くキー） */
   name: string;
+  /** 見出し。省略時は支出先名。支出先を選んで事業の行にホバーしたときは事業名を出す */
+  title?: string;
+  /** 見出しの下の補足（例: 「→ 個人A」） */
+  subtitle?: string;
   amount: number;
   /** 手元の契約の概要（1事業の再委託構造から）。無ければ year / pids で取得する */
   contracts?: readonly string[];
@@ -29,7 +34,8 @@ export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) 
       className="pointer-events-none fixed z-[100] rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{ width: CARD_W, left: `clamp(8px, ${hover.x + 14}px, calc(100vw - ${CARD_W + 8}px))`, top: hover.y + 14 }}
     >
-      <p className="font-bold leading-snug text-mirai-text">{hover.name}</p>
+      <p className="font-bold leading-snug text-mirai-text">{hover.title ?? hover.name}</p>
+      {hover.subtitle && <p className="text-[11px] text-mirai-text-muted">{hover.subtitle}</p>}
       {Number.isFinite(hover.amount) && <p className="tabular-nums text-mirai-text-secondary">{formatBudgetFromYen(hover.amount)}</p>}
       <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={hover.year} name={hover.name} pids={hover.pids} contracts={hover.contracts} />
     </div>,
