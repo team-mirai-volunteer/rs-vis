@@ -321,8 +321,8 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const basisSelect = page.getByLabel('基準');
     await expect(basisSelect).toHaveValue('settlement');
 
-    await page.getByLabel('年度').selectOption('2026');
-    await expect(page.getByLabel('年度')).toHaveValue('2026');
+    await page.getByLabel('年度', { exact: true }).selectOption('2026');
+    await expect(page.getByLabel('年度', { exact: true })).toHaveValue('2026');
     await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     await expect(columnHeader(page, '事業_2024')).toHaveCount(0);
     await expect(page).toHaveURL(/[?&]year=2026/);
@@ -351,30 +351,30 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect.poll(() => urlParams(page).get('cols')).toBe('mi,pr,ps,re');
     await page.reload();
     await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
-    await page.getByLabel('年度').selectOption('2024');
+    await page.getByLabel('年度', { exact: true }).selectOption('2024');
     await expect(columnHeader(page, '支出先_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     expect(await headerOrder(page)).toEqual(['所管_2024', '事業_2024', '事業(支出)_2024', '支出先_2024']);
   });
 
   test('editing available columns in 2026 preserves hidden spending preferences', async ({ page }) => {
     await openPage(page, 'year=2024&cols=mi,pr,ps,re');
-    await page.getByLabel('年度').selectOption('2026');
+    await page.getByLabel('年度', { exact: true }).selectOption('2026');
     await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
     await page.getByRole('button', { name: '項', exact: true }).click();
     await expect.poll(() => urlParams(page).get('cols')).toBe('mi,se,pr,ps,re');
-    await page.getByLabel('年度').selectOption('2024');
+    await page.getByLabel('年度', { exact: true }).selectOption('2024');
     await expect(columnHeader(page, '支出先_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     await expect(columnHeader(page, '事業(支出)_2024').first()).toBeAttached();
   });
 
   test('explicitly hidden spending columns stay hidden across years', async ({ page }) => {
     await openPage(page, 'year=2024&cols=mi,pr');
-    await page.getByLabel('年度').selectOption('2026');
+    await page.getByLabel('年度', { exact: true }).selectOption('2026');
     await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     await page.reload();
     await expect(columnHeader(page, '事業_2026').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
-    await page.getByLabel('年度').selectOption('2024');
+    await page.getByLabel('年度', { exact: true }).selectOption('2024');
     await expect(columnHeader(page, '事業_2024').first()).toBeAttached({ timeout: RENDER_TIMEOUT });
     await expect(columnHeader(page, '事業(支出)_2024')).toHaveCount(0);
     await expect(columnHeader(page, '支出先_2024')).toHaveCount(0);
@@ -466,7 +466,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     // 支出先の列があるのは 2024 年度（執行年度）のみ
     const pageErrors = await openPage(page, 'year=2024&cols=mi,pr,ps,re&tpr=25&tre=30&ore=5&sel=project-budget-2826');
 
-    await expect(page.getByLabel('年度')).toHaveValue('2024');
+    await expect(page.getByLabel('年度', { exact: true })).toHaveValue('2024');
     await expect(page.getByLabel('表示プリセット')).toHaveValue('rs');
     await expect(page.getByLabel('事業の表示件数')).toHaveText('25');
     await expect(page.getByLabel('支出先の表示件数')).toHaveText('30');
