@@ -34,7 +34,7 @@ test('recorded-year comments distinguish a failed fetch from zero comments and c
   const detail = await openQualityDetail(page, '2025');
   await expect(detail.getByText('件数を取得できません', { exact: true })).toBeVisible();
   await expect(detail.getByText('0件', { exact: true })).toHaveCount(0);
-  await detail.getByRole('button', { name: '再読み込み', exact: true }).click();
+  await detail.getByRole('button', { name: '再読み込みする', exact: true }).click();
   await expect(detail.getByText('まだ意見はありません。最初の意見を伝えてみませんか。')).toBeVisible();
   await expect(detail.getByText('0件', { exact: true })).toBeVisible();
   await expect(detail.getByText('件数を取得できません', { exact: true })).toHaveCount(0);

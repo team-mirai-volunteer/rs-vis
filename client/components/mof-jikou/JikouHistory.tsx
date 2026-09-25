@@ -110,7 +110,7 @@ export function JikouHistory({
                           : exec < 0.5
                             ? 'text-destructive '
                             : exec < 0.9
-                              ? 'text-amber-700 '
+                              ? 'text-status-warn '
                               : ''
                       }`}
                     >

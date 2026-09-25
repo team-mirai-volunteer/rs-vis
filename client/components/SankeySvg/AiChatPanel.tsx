@@ -586,12 +586,12 @@ export function AiChatPanel({
           <div key={i} className={cn('flex flex-col', m.role === 'user' ? 'items-end' : 'items-start')}>
             <div
               className={cn(
-                'max-w-[88%] px-[11px] py-[7px] text-[13px] leading-relaxed',
+                'max-w-[88%] px-3 py-2 text-[13px] leading-relaxed',
                 m.role === 'user'
-                  ? 'rounded-[12px_12px_3px_12px] bg-mirai-surface-teal text-mirai-text'
+                  ? 'rounded-xl rounded-br-sm bg-mirai-surface-teal text-mirai-text'
                   : m.isError
-                    ? 'rounded-[12px_12px_12px_3px] bg-stance-against-bg text-stance-against'
-                    : 'rounded-[12px_12px_12px_3px] bg-mirai-surface text-mirai-text',
+                    ? 'rounded-xl rounded-bl-sm bg-stance-against-bg text-stance-against'
+                    : 'rounded-xl rounded-bl-sm bg-mirai-surface text-mirai-text',
               )}
               style={{
                 // assistant の通常応答は Markdown が段落を扱うため pre-wrap にしない（二重改行を防ぐ）

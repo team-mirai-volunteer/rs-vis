@@ -848,7 +848,7 @@ export function HierarchyChart({
                     {Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円
                   </div>
                   {!selectedNode && (
-                    <div className="mt-1 text-[11px] text-amber-600">
+                    <div className="mt-1 text-[11px] text-status-warn">
                       表示数の上限から溢れているため図には出ていません
                     </div>
                   )}

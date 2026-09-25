@@ -761,7 +761,7 @@ export function SankeyChart({
                     <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value ?? 0)}</div>
                     <div className="text-[11px] text-mirai-text-muted">{Math.round(selectedPanelNode.value ?? 0).toLocaleString()}円</div>
                     {!selectedNode && (
-                      <div className="mt-1 text-[11px] text-amber-600">表示数の上限から溢れているため図には出ていません</div>
+                      <div className="mt-1 text-[11px] text-status-warn">表示数の上限から溢れているため図には出ていません</div>
                     )}
                   </div>
                   <Button

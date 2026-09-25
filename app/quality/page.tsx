@@ -498,12 +498,12 @@ export default function QualityPage() {
               const abolition = policyRows.filter(p => p.recommendation === '終了・廃止候補').length;
               return (
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="font-mono">{summary.total.toLocaleString()}事業</span>
+                  <span className="tabular-nums">{summary.total.toLocaleString()}事業</span>
                   {metrics.map(({ label, s }) => s && (
                     <span key={label} className="whitespace-nowrap" title={`${label}
 平均 ${s.avg.toFixed(1)} / 中央 ${s.med} / 最小 ${s.lo} / 最大 ${s.hi}`}>
                       <span className="text-mirai-text-subtle font-medium">{label}</span>
-                      <span className="ml-1 font-mono text-xs">
+                      <span className="ml-1 tabular-nums text-xs">
                         <span className="text-mirai-text-muted">平均</span>{s.avg.toFixed(0)}
                         <span className="text-mirai-text-muted ml-1">中央</span>{s.med}
                       </span>
@@ -511,7 +511,7 @@ export default function QualityPage() {
                   ))}
                   <span className="whitespace-nowrap">
                     <span className="text-mirai-text-subtle font-medium">終了・廃止候補</span>
-                    <span className="ml-1 font-mono text-xs">{abolition.toLocaleString()}件</span>
+                    <span className="ml-1 tabular-nums text-xs">{abolition.toLocaleString()}件</span>
                   </span>
                 </span>
               );
@@ -542,10 +542,10 @@ export default function QualityPage() {
           );
           const maxCount = Math.max(...counts, 1);
           const binColor = (lo: number) => {
-            if (lo >= 90) return { bg: 'bg-green-100 text-green-800', bar: 'bg-green-400' };
+            if (lo >= 90) return { bg: 'bg-status-good-bg text-status-good-fg', bar: 'bg-status-good-bar' };
             if (lo >= 70) return { bg: 'bg-primary/10 text-primary-accent', bar: 'bg-primary/60' };
-            if (lo >= 50) return { bg: 'bg-yellow-100 text-yellow-800', bar: 'bg-yellow-400' };
-            return { bg: 'bg-red-100 text-red-800', bar: 'bg-red-400' };
+            if (lo >= 50) return { bg: 'bg-status-warn-bg text-status-warn-fg', bar: 'bg-status-warn-bar' };
+            return { bg: 'bg-status-bad-bg text-status-bad-fg', bar: 'bg-status-bad-bar' };
           };
           return (
             <div className="flex items-end gap-4 flex-wrap">
@@ -566,9 +566,9 @@ export default function QualityPage() {
                       )}
                       title={`${label}点: ${count}件`}
                     >
-                      <span className="text-[10px] font-mono text-mirai-text-muted mb-0.5">{count || ''}</span>
+                      <span className="text-[10px] tabular-nums text-mirai-text-muted mb-0.5">{count || ''}</span>
                       <div className={`w-7 rounded-sm ${bar}`} style={{ height: `${h}px` }} />
-                      <span className="text-[9px] font-mono text-mirai-text-muted mt-1">{label}</span>
+                      <span className="text-[9px] tabular-nums text-mirai-text-muted mt-1">{label}</span>
                     </Button>
                   );
                 })}
@@ -600,7 +600,7 @@ export default function QualityPage() {
                   )}
                 >
                   <div className="text-[10px] font-medium text-mirai-text-muted">表示 / 全件</div>
-                  <div className="text-sm font-bold font-mono whitespace-nowrap">
+                  <div className="text-sm font-bold tabular-nums whitespace-nowrap">
                     <span className={filtered.length !== summary.total ? 'text-primary-accent' : ''}>
                       {filtered.length.toLocaleString()}
                     </span>
@@ -887,7 +887,7 @@ ${a.desc}`}
                     className="hover:bg-mirai-surface-teal/60 cursor-pointer transition-colors"
                     onClick={() => setExpandedRow(expandedRow === item.pid ? null : item.pid)}
                   >
-                    <td className="px-2 py-1.5 font-mono text-mirai-text-muted">{item.pid}</td>
+                    <td className="px-2 py-1.5 tabular-nums text-mirai-text-muted">{item.pid}</td>
                     <td className="px-2 py-1.5 text-mirai-text truncate" title={item.name}>
                       {item.name}
                     </td>
@@ -906,7 +906,7 @@ ${a.desc}`}
                     </td>
                     <td className="px-2 py-1.5 text-right bg-mirai-surface-teal/40">
                       {policy?.overallScore != null
-                        ? <span className={`font-bold font-mono ${scoreColor(policy.overallScore)}`}>{policy.overallScore}</span>
+                        ? <span className={`font-bold tabular-nums ${scoreColor(policy.overallScore)}`}>{policy.overallScore}</span>
                         : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
                     {AXIS_META.map(a => {
@@ -914,7 +914,7 @@ ${a.desc}`}
                       return (
                         <td key={a.key} className="px-2 py-1.5 text-right whitespace-nowrap bg-mirai-surface-teal/40">
                           {v != null
-                            ? <span className={`font-mono ${scoreColor(v)}`}>{v}</span>
+                            ? <span className={`tabular-nums ${scoreColor(v)}`}>{v}</span>
                             : <span className="text-mirai-text-placeholder" title="未評価（総合点では重みごと除外）">—</span>}
                         </td>
                       );
@@ -930,30 +930,30 @@ ${a.desc}`}
                         : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
                     <td
-                      className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap"
+                      className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap"
                       title={item.startYear ? `${item.startYear}年度開始 / ${item.noEndDate ? '終了予定なし' : (item.endYear ? `${item.endYear}年度終了予定` : '終了年度未設定')}` : '開始年度の登録なし'}
                     >
                       {item.yearsRunning != null
-                        ? <><span className={item.yearsRunning >= 20 ? 'text-orange-600 font-bold' : ''}>{item.yearsRunning}</span>
+                        ? <><span className={item.yearsRunning >= 20 ? 'text-status-caution font-bold' : ''}>{item.yearsRunning}</span>
                             {item.noEndDate && <span className="text-mirai-text-muted ml-0.5">★</span>}</>
                         : <span className="text-mirai-text-placeholder">—</span>}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap">
                       {item.budgetAmount ? formatAmount(item.budgetAmount) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap">
                       {item.execAmount ? formatAmount(item.execAmount ?? 0) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap">
                       {item.spendTotal ? formatAmount(item.spendTotal) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap">
                       {item.spendNetTotal ? formatAmount(item.spendNetTotal) : '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-subtle whitespace-nowrap">
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle whitespace-nowrap">
                       {item.redelegationDepth || '-'}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono text-mirai-text-muted">{item.recipientCount ?? item.rowCount}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-mirai-text-muted">{item.recipientCount ?? item.rowCount}</td>
                   </tr>
                   {expandedRow === item.pid && (
                     <tr className="bg-mirai-surface-gray">
@@ -968,7 +968,7 @@ ${a.desc}`}
                               )}
                             </h4>
                             <div className="space-y-0.5 text-mirai-text-subtle">
-                              <div className="font-mono">総合点 {policy?.overallScore ?? '—'}点</div>
+                              <div className="tabular-nums">総合点 {policy?.overallScore ?? '—'}点</div>
                               {AXIS_META.filter(a => a.key !== 'executionTransparency').map(a => (
                                 <div key={a.key}>{a.label}: {policy?.[a.key] ?? '未評価'}</div>
                               ))}
@@ -980,7 +980,7 @@ ${a.desc}`}
                           <div>
                             <h4 className="font-bold text-mirai-text-secondary mb-1">執行透明性</h4>
                             <div className="space-y-0.5 text-mirai-text-subtle">
-                              <div className="font-mono">{policy?.executionTransparency ?? '—'}点</div>
+                              <div className="tabular-nums">{policy?.executionTransparency ?? '—'}点</div>
                               <div>支出先の明確さ: {item.axisIdentify != null ? item.axisIdentify.toFixed(0) : '—'}</div>
                               <div>使途の説明: {item.axisPurpose != null ? item.axisPurpose.toFixed(0) : '—'}</div>
                               <div className="text-mirai-text-muted">収支の一致: {item.axisBudget != null ? item.axisBudget.toFixed(0) : '—'}（不算入・不一致フラグ）</div>
@@ -1033,7 +1033,7 @@ ${a.desc}`}
                             <h4 className="font-bold text-mirai-text-secondary mb-1">組織・支出構造</h4>
                             <div className="space-y-0.5 text-mirai-text-subtle">
                               <div>{[item.ministry, item.bureau, item.division, item.section, item.office].filter(Boolean).join(' › ')}</div>
-                              <div>支出先数: {item.recipientCount ?? item.rowCount}／ブロック: {item.blockCount}{item.orphanBlockCount > 0 && <span className="text-orange-500">（孤立 {item.orphanBlockCount}）</span>}</div>
+                              <div>支出先数: {item.recipientCount ?? item.rowCount}／ブロック: {item.blockCount}{item.orphanBlockCount > 0 && <span className="text-status-caution">（孤立 {item.orphanBlockCount}）</span>}</div>
                               <div>再委託: {item.hasRedelegation ? `あり（階層${item.redelegationDepth}）` : 'なし'}</div>
                               <div>不透明支出比: {pct(item.opaqueRatio)}</div>
                             </div>
@@ -1084,7 +1084,7 @@ ${a.desc}`}
             >
               前へ
             </Button>
-            <span className="text-xs text-mirai-text-muted font-mono">
+            <span className="text-xs text-mirai-text-muted tabular-nums">
               {page} / {totalPages}
               <span className="ml-2 text-mirai-text-muted">
                 {((page - 1) * PAGE_SIZE + 1).toLocaleString()}–

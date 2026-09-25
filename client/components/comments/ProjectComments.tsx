@@ -60,7 +60,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
         </Button>
       </div>
 
-      {state.error && <div role="alert" className="text-destructive" style={{ fontSize: META_PX }}>{state.error} <button type="button" className="underline" onClick={() => void state.refresh()}>再読み込み</button></div>}
+      {state.error && <div role="alert" className="text-destructive" style={{ fontSize: META_PX }}>{state.error} <Button variant="link" className="text-[length:inherit] font-medium text-current" onClick={() => void state.refresh()}>再読み込みする</Button></div>}
 
       {state.comments !== undefined && list.length === 0 && !state.error && (
         <div className="text-mirai-text-placeholder" style={{ fontSize: META_PX }}>まだ意見はありません。最初の意見を伝えてみませんか。</div>

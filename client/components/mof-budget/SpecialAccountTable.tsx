@@ -13,9 +13,9 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 
 /** 自前財源比率の帯。低いほど「通しているだけ」の性格が強い */
 function rateColor(rate: number): string {
-  if (rate >= 0.9) return 'bg-emerald-500';
-  if (rate >= 0.6) return 'bg-amber-500';
-  return 'bg-red-500';
+  if (rate >= 0.9) return 'bg-status-good-bar';
+  if (rate >= 0.6) return 'bg-status-warn-bar';
+  return 'bg-status-bad-bar';
 }
 
 export function SpecialAccountTable({

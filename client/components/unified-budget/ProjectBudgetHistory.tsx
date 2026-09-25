@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import type { ProjectBudgetHistoryResponse } from '@/types/project-budget-history';
+import { Button } from '@/components/ui/button';
 
 const series = [
   { key: 'initialBudget', label: '当初予算', color: '#2563eb', dash: '5 3' },
@@ -43,7 +44,7 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
     return () => controller.abort();
   }, [pid, attempt]);
 
-  if (error) return <div className="py-3 text-xs" role="alert">予算の推移を取得できませんでした。<button className="ml-2 text-primary underline" onClick={() => setAttempt(value => value + 1)}>再試行</button></div>;
+  if (error) return <div className="py-3 text-xs" role="alert">予算の推移を取得できませんでした。<Button variant="link" className="ml-2 text-xs font-medium text-primary-accent" onClick={() => setAttempt(value => value + 1)}>再試行する</Button></div>;
   if (!data) return <p role="status" className="py-3 text-xs text-mirai-text-muted">予算の推移を読み込み中…</p>;
   if (data.points.length === 0) return <p className="py-3 text-xs text-mirai-text-muted">2025年版にこの事業の予算推移の記載はありません。</p>;
 

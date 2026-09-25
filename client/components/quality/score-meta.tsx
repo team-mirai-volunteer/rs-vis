@@ -138,14 +138,14 @@ export type SortDir = 'asc' | 'desc';
 
 /**
  * 推奨判断バッジの配色。判断の強さを示す意味色（データのエンコーディング）なので
- * green / amber / red は Tailwind 標準色のまま。blue トーンだけはデザインシステムの
+ * globals.css の status-* トークン（good / warn / bad）を使う。blue トーンだけはデザインシステムの
  * プライマリ（ティール）に寄せ、UI chrome の青と競合しないようにしている。
  */
 export const TONE_CLS: Record<PolicyRecommendationTone, string> = {
-  green: 'bg-green-100 text-green-800',
+  green: 'bg-status-good-bg text-status-good-fg',
   blue:  'bg-primary/10 text-primary-accent',
-  amber: 'bg-amber-100 text-amber-800',
-  red:   'bg-red-100 text-red-800',
+  amber: 'bg-status-warn-bg text-status-warn-fg',
+  red:   'bg-status-bad-bg text-status-bad-fg',
 };
 
 /** 改善アクションは1系統しかないため色で区別せず、薄ティールの情報バッジで出す */
@@ -153,8 +153,8 @@ export const ACTION_CLS = 'bg-mirai-surface-teal text-primary-accent';
 
 /** 不用の傾向の表示文言。前年度と突き合わせた結果を明示する */
 export const UNUSED_TREND_META: Record<PolicyEvaluation['unusedTrend'], { label: string; cls: string }> = {
-  persistent: { label: '2年連続で不用率が上位帯（構造的な計上過大）', cls: 'text-orange-600' },
-  single:     { label: '当年度のみ不用が大きい（前年度は正常水準）',   cls: 'text-amber-600' },
+  persistent: { label: '2年連続で不用率が上位帯（構造的な計上過大）', cls: 'text-status-caution' },
+  single:     { label: '当年度のみ不用が大きい（前年度は正常水準）',   cls: 'text-status-warn' },
   unknown:    { label: '繰越または前年度の実績が未確認のため傾向は判定不能', cls: 'text-mirai-text-muted' },
   normal:     { label: '不用率は上位帯に達していない',               cls: 'text-mirai-text-muted' },
 };
@@ -222,7 +222,7 @@ export function PersistentUnusedMark({ policy }: { policy: PolicyEvaluation }) {
   const current = policy.unusedRatio != null ? Math.round(policy.unusedRatio * 100) : '—';
   return (
     <span
-      className="inline-block mt-0.5 px-1 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap bg-orange-100 text-orange-800"
+      className="inline-block mt-0.5 px-1 py-0.5 rounded-md text-[9px] font-bold whitespace-nowrap bg-status-caution-bg text-status-caution-fg"
       title={`前年度の不用率 ${prior}% → 当年度 ${current}%。2年連続で母集団の上位帯にあります`}
     >
       2年連続の不用
@@ -239,11 +239,11 @@ export function ActionBadge({ action }: { action: string }) {
 }
 
 export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string }> = {
-  valid:   { label: 'OK',      cls: 'bg-green-100 text-green-800' },
-  gov:     { label: '行政機関', cls: 'bg-emerald-100 text-emerald-800' },
+  valid:   { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
+  gov:     { label: '行政機関', cls: 'bg-status-good-bg text-status-good-fg' },
   supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent' },
   // 番号一致(houjin.db裏取り)も表示上は valid と同格の OK に統合（内部 s='cn' と cnVerifiedCount は集計用に保持）
-  cn:      { label: 'OK',      cls: 'bg-green-100 text-green-800' },
-  invalid: { label: '不一致',  cls: 'bg-red-100 text-red-800' },
+  cn:      { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
+  invalid: { label: '不一致',  cls: 'bg-status-bad-bg text-status-bad-fg' },
   unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle' },
 };

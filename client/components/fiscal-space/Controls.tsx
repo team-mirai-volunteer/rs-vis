@@ -45,9 +45,9 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   const max = policy.id === 'consumption-tax' ? consumptionTaxMax : policy.id === 'social-insurance' ? socialInsuranceMax : revenue ? Math.floor(revenue.amount / 1e11) / 10 : 100;
   return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
     <RangeField label={policy.name} value={Math.min(amount, max)} min={0} max={max} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
-    {policy.id === 'cash' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onCashSettings}>給付対象を設定</button>}
-    {policy.id === 'childcare' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onChildcareSettings}>現金給付の割合を設定</button>}
-    {policy.id === 'generation' && <button type="button" aria-haspopup="dialog" className="text-sm text-primary-accent underline" onClick={onPowerSettings}>電源構成・稼働時期を設定</button>}
+    {policy.id === 'cash' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onCashSettings}>給付対象を設定</Button>}
+    {policy.id === 'childcare' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onChildcareSettings}>現金給付の割合を設定</Button>}
+    {policy.id === 'generation' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onPowerSettings}>電源構成・稼働時期を設定</Button>}
     <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
       {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
     </select></label>
@@ -114,9 +114,9 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
       <fieldset className="flex items-center justify-between gap-2 text-sm" data-testid="horizon-toggle">
         <legend className="sr-only">制約の評価期間</legend>
         <span className="font-medium">評価期間</span>
-        <span className="flex overflow-hidden rounded-lg border border-mirai-border">
+        <span className="flex overflow-hidden rounded-full border border-mirai-border">
           {[maxHorizon, EXTENDED_HORIZON].map(n => <button key={n} type="button" aria-pressed={horizon === n} onClick={() => onHorizon(n)}
-            className={`px-3 py-1 text-xs ${horizon === n ? 'bg-primary text-white' : 'bg-card'}`}>{n}年{n === EXTENDED_HORIZON ? '（延長）' : ''}</button>)}
+            className={`px-3 py-1 text-xs transition-colors ${horizon === n ? 'bg-mirai-surface-teal font-bold text-primary-accent' : 'bg-card text-mirai-text-subtle'}`}>{n}年{n === EXTENDED_HORIZON ? '（延長）' : ''}</button>)}
         </span>
       </fieldset>
       {horizon === EXTENDED_HORIZON && <p className="-mt-3 text-xs text-mirai-text-subtle">15年は公表期間（{maxHorizon}年）後の反応解消・長期供給の条件に従う延長計算。新設原子力（11年目稼働）などを同じ制約評価で見るための条件で、公表推計ではありません。</p>}

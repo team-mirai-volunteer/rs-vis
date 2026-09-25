@@ -1,9 +1,32 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import {
+  ArrowRight,
+  ChartScatter,
+  ClipboardCheck,
+  Landmark,
+  Network,
+  ReceiptJapaneseYen,
+  Scale,
+  Waypoints,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { PAGES } from '@/components/navigation/pages';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+
+/** 各ビューの内容を表すアイコン。未登録のページは Waypoints にフォールバックする */
+const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
+  '/budget-sankey': Workflow,
+  '/project-bubble': ChartScatter,
+  '/quality': ClipboardCheck,
+  '/subcontracts': Network,
+  '/tax-expenditures': ReceiptJapaneseYen,
+  '/tax-burden': Scale,
+  '/fiscal-space': Landmark,
+};
 
 /**
  * トップページ。各ビューへの入口（gikai-home パターン: Hero + カード一覧）。
@@ -27,29 +50,47 @@ export default function Home() {
               そして歳入と国民負担を、ひとつながりのデータとして見られるようにしています。
             </p>
           </div>
-          <Button asChild size="lg" className="shrink-0">
-            <Link href="/budget-sankey">
-              統合ビューを見る <ArrowRight />
-            </Link>
-          </Button>
+          <div className="flex shrink-0 flex-col gap-2 sm:w-56">
+            <Button asChild size="lg">
+              <Link href="/budget-sankey">
+                サンキー図を見る <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link href="/quality">事業の評価を見る</Link>
+            </Button>
+          </div>
         </section>
 
         <section aria-labelledby="views-heading" className="space-y-3">
           <h2 id="views-heading" className="text-lg font-bold tracking-normal">主なビュー</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {primary.map(p => (
-              <Card key={p.href} className="flex flex-col transition-shadow hover:shadow-soft">
-                <CardContent className="flex flex-1 flex-col gap-2 p-5">
-                  <h3 className="text-base font-bold">{p.label}</h3>
-                  <p className="flex-1 text-sm leading-relaxed text-mirai-text-subtle">{p.description}</p>
-                  <Button asChild variant="link" className="self-start text-sm">
-                    <Link href={p.href}>
-                      開く <ArrowRight />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {primary.map((p, index) => {
+              const Icon = PAGE_ICONS[p.href] ?? Waypoints;
+              const featured = index === 0;
+              return (
+                <Link
+                  key={p.href}
+                  href={p.href}
+                  className={cn(
+                    'group flex flex-col gap-3 rounded-2xl border border-mirai-border bg-card p-5 shadow-xs transition-colors hover:border-primary',
+                    featured && 'sm:col-span-2'
+                  )}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 text-base font-bold">{p.navLabel}</span>
+                    {p.prototype && <Badge variant="muted">試作</Badge>}
+                  </span>
+                  <span className="flex-1 text-sm leading-relaxed text-mirai-text-subtle">{p.description}</span>
+                  <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent">
+                    開く <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </section>
 
@@ -66,7 +107,7 @@ export default function Home() {
                 className="group flex items-start justify-between gap-3 rounded-xl border border-mirai-border bg-card px-4 py-3 transition-colors hover:border-primary hover:bg-mirai-surface-teal/60"
               >
                 <span>
-                  <span className="block text-sm font-bold">{p.label}</span>
+                  <span className="block text-sm font-bold">{p.navLabel}</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-mirai-text-subtle">{p.description}</span>
                 </span>
                 <ArrowRight className="mt-0.5 size-4 shrink-0 text-mirai-text-muted transition-colors group-hover:text-primary-accent" aria-hidden="true" />

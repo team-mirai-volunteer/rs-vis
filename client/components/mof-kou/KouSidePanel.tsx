@@ -76,7 +76,7 @@ const TABS: { key: Tab; label: string }[] = [
 function rateClass(rate: number | null | 'new'): string {
   if (rate === null) return 'text-mirai-text-muted';
   if (rate === 'new') return 'text-primary';
-  if (rate > 0) return 'text-emerald-700 ';
+  if (rate > 0) return 'text-status-good ';
   if (rate < 0) return 'text-destructive ';
   return 'text-mirai-text-muted';
 }
@@ -570,7 +570,7 @@ function KouMokuTab({
         const count = new Set(links.map(l => l.projectId)).size;
         return (
           <span
-            className={count > 0 ? 'font-medium text-emerald-700 ' : 'text-mirai-text-placeholder '}
+            className={count > 0 ? 'font-medium text-status-good ' : 'text-mirai-text-placeholder '}
             title={links.map(l => l.projectName).join('\n') || undefined}
           >
             {count || '—'}

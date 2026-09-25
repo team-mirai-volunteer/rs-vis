@@ -1,6 +1,7 @@
 import { AGE_BURDEN, AGE_BURDEN_SOURCE, EMPLOYER_SOURCE, NATIONAL_BURDEN, NATIONAL_BURDEN_SOURCE, OECD_WORKING_BURDEN, BURDEN_INCIDENCE, CORPORATE_SOURCE, extendedHouseholdBurden, workingHouseholdBurden } from '@/app/lib/fiscal-space/burden-data';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { percent } from './format';
+import { Button } from '@/components/ui/button';
 
 export function BurdenIndicators({ latest, corporateShare, onOpenSettings }: { latest: boolean; corporateShare: number; onOpenSettings: () => void }) {
   const working = workingHouseholdBurden(corporateShare);
@@ -20,7 +21,7 @@ export function BurdenIndicators({ latest, corporateShare, onOpenSettings }: { l
         <p>2024年・世帯主65歳未満の二人以上勤労者世帯。平均は調査の世帯数分布（抽出率調整済み）で負担額と所得を集計し、負担総額÷所得総額で算出。1世帯あたり負担 {amount(working.burden)}・分母の所得 {amount(working.income)}／年。</p>
         <p>幅は年齢階級別の最小〜最大で、誤差幅ではありません。単身・自営業を含む15〜64歳個人の全国平均は、この資料からは算出できません。</p></div>
     </div>
-    <button type="button" className="text-sm text-primary-accent underline" onClick={onOpenSettings}>家計負担の推計条件を設定</button>
+    <Button variant="link" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onOpenSettings}>家計負担の推計条件を設定</Button>
     <p>法人課税も賃金抑制を通じた負担に含めます。国・地方の法人課税{(BURDEN_INCIDENCE.corporateTaxTotal / 1e12).toFixed(2)}兆円の{percent(corporateShare, 0)}を、全国の賃金・俸給{(BURDEN_INCIDENCE.wagesAndSalaries / 1e12).toFixed(2)}兆円に比例配賦。25%は日本の実証値ではなく比較用の初期仮定です。株主や消費者に帰着する分はこの試算に未配賦で、法人税全体を現役世代だけに割り振ってはいません。<a href={CORPORATE_SOURCE} className="underline" target="_blank" rel="noreferrer">課税総額の出典</a></p>
     <p>家計負担率＝（本人直接税＋本人保険料＋事業主負担＋消費税＋法人税の賃金帰着）÷（家計実収入＋事業主負担＋法人税の賃金帰着）。失われた賃金に相当する配賦額を分母にも戻します。分母は年金・給付も含む家計所得で、NIやGDPそのものではありません。国全体のGDP比・NI比との差を、そのまま世代間の負担差とは解釈できません。</p>
     <p className="rounded-lg bg-mirai-surface-warm p-3">国全体の税・社会保険料と同じ範囲での「生産年齢人口の負担率」は未推計です。企業課税の世代別帰着や、GDP・NIの年齢別配分が必要です。</p>

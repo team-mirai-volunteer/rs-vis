@@ -62,7 +62,7 @@ const TABS: { key: Tab; label: string }[] = [
 function rateClass(rate: number | null | 'new'): string {
   if (rate === null) return 'text-mirai-text-muted';
   if (rate === 'new') return 'text-primary';
-  if (rate > 0) return 'text-emerald-700 ';
+  if (rate > 0) return 'text-status-good ';
   if (rate < 0) return 'text-destructive ';
   return 'text-mirai-text-muted';
 }
@@ -288,7 +288,7 @@ function HistoryTab({
                 : exec < 0.5
                   ? 'text-destructive '
                   : exec < 0.9
-                    ? 'text-amber-700 '
+                    ? 'text-status-warn '
                     : 'text-mirai-text-subtle '
             }
           >

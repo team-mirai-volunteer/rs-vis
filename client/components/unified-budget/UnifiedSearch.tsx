@@ -124,15 +124,15 @@ export function UnifiedSearch({
         </Button>
         {trailing}
         {filterActive && onClearFilter && (
-          <button type="button" title="絞り込みを解除" aria-label="絞り込みを解除" onClick={() => {
+          <Button variant="ghost" size="icon-sm" title="絞り込みを解除" aria-label="絞り込みを解除" onClick={() => {
             setQuery('');
             setOpen(false);
             setCursor(-1);
             onClearFilter();
           }}
-            className="flex size-5 items-center justify-center rounded-full text-mirai-text-muted hover:bg-mirai-surface-teal hover:text-mirai-text">
+            className="size-5 text-mirai-text-muted hover:bg-mirai-surface-teal hover:text-mirai-text">
             <X className="size-3" aria-hidden="true" />
-          </button>
+          </Button>
         )}
       </div>
       {open && results.length > 0 && (

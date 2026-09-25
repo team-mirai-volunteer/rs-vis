@@ -49,7 +49,7 @@ export function RegexTextFilter({ label, note, value, onChange, useRegex, onTogg
             className={cn(
               'absolute right-1 top-1/2 h-auto -translate-y-1/2 rounded-md px-1 py-0.5 font-mono text-[10px] font-bold leading-none',
               useRegex
-                ? 'bg-primary text-white hover:bg-primary hover:text-white'
+                ? 'bg-primary-accent text-white hover:bg-primary-accent hover:text-white'
                 : 'text-mirai-text-muted hover:bg-transparent hover:text-mirai-text-subtle'
             )}
           >

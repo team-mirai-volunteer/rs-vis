@@ -13,6 +13,7 @@ function Numeric({ label, value, onChange, min = 0, max = 100, step = .1, unit =
 }
 export { configuredPower, type TradeForm } from '@/client/lib/fiscal-space-trade';
 import { configuredPower, type TradeForm } from '@/client/lib/fiscal-space-trade';
+import { Button } from '@/components/ui/button';
 export function PolicyTrade({ policies, value, onChange, settings = false, onPowerSettings }: { policies: Policy[]; value: TradeForm; onChange?: (v: TradeForm) => void; settings?: boolean; onPowerSettings?: () => void }) {
   const selected = policies.find(p => p.id === value.selected)!;
   const channel = POLICY_TRADE_CHANNELS[selected.id];
@@ -43,7 +44,7 @@ export function PolicyTrade({ policies, value, onChange, settings = false, onPow
       <p>潜在GDPには、事業が生む輸出＋輸入代替−輸入原価の正の部分を、海外との取引から見込む追加供給能力として反映します。実質GDPへの反映は国内の供給制約で制限します。既存事業の利益ではなく、政策による純増分の販売・置換条件を入力してください。</p>
       <p>{channel.timing}。補助率による民間投資の上乗せは仮定せず、入力した政策費用と同額の投資を想定します。金額は物価・為替を固定した比較です。</p>
       {isPower ? <>
-        {settings && <button type="button" className="text-sm text-primary-accent underline" onClick={onPowerSettings}>電源構成・稼働時期を設定</button>}
+        {settings && <Button variant="link" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onPowerSettings}>電源構成・稼働時期を設定</Button>}
         <p>{POWER_FIRM_NOTE}</p>
         <p>建設費・設備利用率・寿命は2025年公表の2023年モデルプラントを参考に設定。太陽光17.6万円/kW・18.3%、原子力60.025万円/kW・70%、中水力66.5万円/kW・54.7%。現在の見積価格ではありません。<a className="underline" href={POWER_SOURCE} target="_blank" rel="noreferrer">諸元</a> / <a className="underline" href={POWER_DETAIL_SOURCE} target="_blank" rel="noreferrer">内訳</a></p>
         <p>稼働遅れ1・10・5年、火力置換80%、燃料単価9円/kWhは比較用仮定。太陽光・水力の燃料輸入は0、設備補修等の輸入は未算入。原子力は公表核燃料サイクル費1.9円/kWhの50%を海外支払と仮定し、輸入費0.95円/kWhで初期化します。輸入割合の実証値ではなく、空欄に戻すと稼働後効果は未推計になります。新設原子力の初回稼働は年11です。</p>

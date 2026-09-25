@@ -32,7 +32,7 @@ interface Props {
 function rateClass(rate: number | null | 'new'): string {
   if (rate === null) return 'text-mirai-text-muted';
   if (rate === 'new') return 'text-primary';
-  if (rate > 0) return 'text-emerald-700 ';
+  if (rate > 0) return 'text-status-good ';
   if (rate < 0) return 'text-destructive ';
   return 'text-mirai-text-muted';
 }
@@ -166,7 +166,7 @@ export function KouMokuTable({
             >
               <td
                 className={`truncate px-2 py-1.5 text-right tabular-nums ${
-                  rsCount > 0 ? 'font-medium text-emerald-700 ' : 'text-mirai-text-placeholder '
+                  rsCount > 0 ? 'font-medium text-status-good ' : 'text-mirai-text-placeholder '
                 }`}
               >
                 {rsCount || '—'}
@@ -247,7 +247,7 @@ export function KouMokuTable({
                     : exec < 0.5
                       ? 'text-destructive '
                       : exec < 0.9
-                        ? 'text-amber-700 '
+                        ? 'text-status-warn '
                         : 'text-mirai-text-subtle '
                 }`}
               >

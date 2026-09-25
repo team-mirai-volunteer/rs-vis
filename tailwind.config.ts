@@ -72,6 +72,13 @@ export default {
           "gradient-start": "var(--mirai-gradient-start)",
           "gradient-end": "var(--mirai-gradient-end)",
         },
+        /** 状態の意味色（データのエンコーディング専用）。text-status-warn / bg-status-bad-bg など */
+        status: {
+          good: { DEFAULT: "var(--status-good)", bg: "var(--status-good-bg)", fg: "var(--status-good-fg)", bar: "var(--status-good-bar)" },
+          warn: { DEFAULT: "var(--status-warn)", bg: "var(--status-warn-bg)", fg: "var(--status-warn-fg)", bar: "var(--status-warn-bar)" },
+          caution: { DEFAULT: "var(--status-caution)", bg: "var(--status-caution-bg)", fg: "var(--status-caution-fg)", bar: "var(--status-caution-bar)" },
+          bad: { DEFAULT: "var(--status-bad)", bg: "var(--status-bad-bg)", fg: "var(--status-bad-fg)", bar: "var(--status-bad-bar)" },
+        },
         stance: {
           "for-bg": "var(--stance-for-bg)",
           against: { DEFAULT: "var(--stance-against)", bg: "var(--stance-against-bg)" },

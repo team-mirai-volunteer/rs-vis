@@ -19,6 +19,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useIsNarrow } from '@/client/hooks/useMediaQuery';
+import { Button } from '@/components/ui/button';
 
 /** 浮島パネルの画面端・下端からの余白(px)。ページ側が隣接要素をずらすときは幅 + INSET*2 を使う */
 export const SIDE_PANEL_INSET = 12;
@@ -128,10 +129,10 @@ export function SidePanelChrome({
 
       {/* パネル本体 */}
       <div className="flex h-full flex-col overflow-hidden rounded-2xl">
-        {narrow && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
-          className="min-h-9 shrink-0 border-b border-border px-3 text-xs font-bold text-primary-accent">
+        {narrow && <Button variant="ghost" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
+          className="h-auto min-h-9 w-full shrink-0 rounded-none border-b border-border px-3 text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal">
           {expanded ? '詳細を小さく表示' : '詳細を大きく表示'}
-        </button>}
+        </Button>}
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </div>
     </div>

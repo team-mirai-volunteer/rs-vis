@@ -44,7 +44,7 @@ export function SectionDetailDialog({ item, year, budgetYear, amountLabel, onClo
         </div>)}
         <h3 className="mb-2 mt-5 font-bold">配下の事業</h3>
         {item.programs?.map(p => <div key={p.pid} className="border-b border-mirai-border py-2">
-          <button type="button" onClick={() => onOpenProject(String(p.pid))} className="text-left text-primary-accent hover:underline">{p.name}</button>
+          <Button variant="link" onClick={() => onOpenProject(String(p.pid))} className="whitespace-normal text-left font-medium text-primary-accent no-underline hover:underline">{p.name}</Button>
           <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-mirai-text-muted"><span>PID {p.pid}</span><span>{amountLabel} {formatAmount(p.amount)}</span><span>総合点 {p.score ?? '未評価'}</span><span>{p.recommendation}</span></div>
         </div>)}
         {!item.programs?.length && <p className="text-xs text-mirai-text-muted">事業の内訳はありません。</p>}

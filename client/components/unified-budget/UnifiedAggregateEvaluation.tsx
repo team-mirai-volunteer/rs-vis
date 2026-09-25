@@ -45,7 +45,7 @@ export function UnifiedAggregateEvaluation({
           const rounded = v === null ? null : Math.round(v);
           return (
             <div key={axis.key} className="text-center">
-              <div className={cn('font-mono font-bold leading-none', scoreColor(rounded))} style={{ fontSize: scale(15) }} title={v === null ? undefined : `${v}`}>
+              <div className={cn('tabular-nums font-bold leading-none', scoreColor(rounded))} style={{ fontSize: scale(15) }} title={v === null ? undefined : `${v}`}>
                 {rounded ?? '—'}
               </div>
               <div className="mt-[3px] text-mirai-text-muted" style={{ fontSize: scale(10) }}>{axis.label}</div>

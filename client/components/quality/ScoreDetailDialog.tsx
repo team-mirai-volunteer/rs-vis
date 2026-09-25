@@ -175,7 +175,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
               <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗</Link>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
-              <span className="font-mono bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
+              <span className="tabular-nums bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
               {[item.ministry, item.bureau, item.division, item.section, item.office, item.team, item.unit].filter(Boolean).map((org, i) => (
                 <span key={i}>{i > 0 ? '' : ''}<span className={i === 0 ? 'font-medium' : ''}>{org}</span>{i < [item.ministry, item.bureau, item.division, item.section, item.office, item.team, item.unit].filter(Boolean).length - 1 ? <span className="text-mirai-text-placeholder mx-0.5">›</span> : null}</span>
               ))}
@@ -190,7 +190,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
         <div className="px-6 py-2.5 border-b border-mirai-border shrink-0">
           <div className="flex flex-wrap items-center gap-4">
             <div className="shrink-0 text-center">
-              <div className={`text-2xl font-bold font-mono leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
+              <div className={`text-2xl font-bold tabular-nums leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
                 {policy?.overallScore ?? '—'}
               </div>
               <div className="text-[9px] text-mirai-text-muted mt-0.5">総合点</div>
@@ -202,7 +202,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
                   <div key={a.key} className="text-center cursor-help" title={`${a.label}（総合点への重み ${a.weight}）
 
 ${a.desc}`}>
-                    <div className={`text-sm font-bold font-mono leading-none ${scoreColor(score)}`}>
+                    <div className={`text-sm font-bold tabular-nums leading-none ${scoreColor(score)}`}>
                       {score ?? '—'}
                     </div>
                     <div className="text-[9px] text-mirai-text-muted mt-0.5 whitespace-nowrap">{a.label}</div>
@@ -215,22 +215,22 @@ ${a.desc}`}>
             {/* Key metrics — 3 lines inline */}
             <div className="flex-1 min-w-0 text-[10px] text-mirai-text-secondary space-y-0.5">
               <div className="flex flex-wrap gap-x-3">
-                <span><span className="text-mirai-text-muted">予算:</span><span className="font-mono">{formatAmount(item.budgetAmount)}</span></span>
-                <span><span className="text-mirai-text-muted">執行:</span><span className="font-mono">{recipientsAvailable ? formatAmount(item.execAmount ?? 0) : '未収録'}</span></span>
-                <span><span className="text-mirai-text-muted">実質支出:</span><span className="font-mono">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
-                <span><span className="text-mirai-text-muted">乖離率:</span><span className="font-mono">{pct(item.gapRatio)}</span></span>
+                <span><span className="text-mirai-text-muted">予算:</span><span className="tabular-nums">{formatAmount(item.budgetAmount)}</span></span>
+                <span><span className="text-mirai-text-muted">執行:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.execAmount ?? 0) : '未収録'}</span></span>
+                <span><span className="text-mirai-text-muted">実質支出:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
+                <span><span className="text-mirai-text-muted">乖離率:</span><span className="tabular-nums">{pct(item.gapRatio)}</span></span>
               </div>
               <div className="flex flex-wrap gap-x-3">
-                <span><span className="text-mirai-text-muted">支出先数:</span><span className="font-mono">{!recipientsAvailable ? '未収録' : recipientsError ? '取得できません' : recipients?.length ?? '...'}</span></span>
+                <span><span className="text-mirai-text-muted">支出先数:</span><span className="tabular-nums">{!recipientsAvailable ? '未収録' : recipientsError ? '取得できません' : recipients?.length ?? '...'}</span></span>
                 <span><span className="text-mirai-text-muted">ブロック:</span>{item.blockCount}件</span>
-                {item.hasRedelegation && <span><span className="text-mirai-text-muted">深度:</span><span className="text-orange-500">{item.redelegationDepth}</span></span>}
-                {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">不透明:</span><span className="text-amber-500">{pct(item.opaqueRatio)}</span></span>}
+                {item.hasRedelegation && <span><span className="text-mirai-text-muted">深度:</span><span className="text-status-caution">{item.redelegationDepth}</span></span>}
+                {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">不透明:</span><span className="text-status-warn">{pct(item.opaqueRatio)}</span></span>}
               </div>
               <div className="flex flex-wrap gap-x-3 items-center">
-                {item.identifyLevelAvg != null && <span><span className="text-mirai-text-muted">特定Lv</span> <span className="font-mono">{item.identifyLevelAvg.toFixed(1)}/3</span></span>}
-                {item.purposeLevelAvg != null && <span><span className="text-mirai-text-muted">使途Lv</span> <span className="font-mono">{item.purposeLevelAvg.toFixed(1)}/3</span></span>}
-                <span><span className="text-mirai-text-muted">valid</span> <span className="font-mono">{axis1Num}/{axis1Total}</span></span>
-                <span><span className="text-mirai-text-muted">法人番号</span> <span className="font-mono">{item.cnFilled}/{item.cnFilled + item.cnEmpty}</span></span>
+                {item.identifyLevelAvg != null && <span><span className="text-mirai-text-muted">特定Lv</span> <span className="tabular-nums">{item.identifyLevelAvg.toFixed(1)}/3</span></span>}
+                {item.purposeLevelAvg != null && <span><span className="text-mirai-text-muted">使途Lv</span> <span className="tabular-nums">{item.purposeLevelAvg.toFixed(1)}/3</span></span>}
+                <span><span className="text-mirai-text-muted">valid</span> <span className="tabular-nums">{axis1Num}/{axis1Total}</span></span>
+                <span><span className="text-mirai-text-muted">法人番号</span> <span className="tabular-nums">{item.cnFilled}/{item.cnFilled + item.cnEmpty}</span></span>
                 {item.aiSource && (
                   <span className={`inline-block px-1.5 py-0.5 rounded-md text-[9px] font-bold ${isAi ? 'bg-mirai-surface-teal text-primary-accent' : 'bg-mirai-surface-light text-mirai-text-muted'}`} title={item.aiSource}>
                     {isAi ? 'AI評価' : 'ヒューリスティック'}
@@ -348,7 +348,7 @@ ${a.desc}`}>
             <div className="mt-2 grid gap-3 sm:grid-cols-3 text-xs">
               <div>
                 <div className="font-bold text-mirai-text-secondary">AI評価の生値（0-10）</div>
-                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle font-mono text-[11px]">
+                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle tabular-nums text-[11px]">
                   <div>成果設計: {fmtRaw(policy.designClarity)}/10</div>
                   <div>検証可能性: {policy.evidenceReadiness != null ? `${fmtRaw(policy.evidenceReadiness)}/10` : '未評価'}</div>
                   <div>費用対内容: {policy.budgetProportionality != null ? `${fmtRaw(policy.budgetProportionality)}/10` : '未評価'}</div>
@@ -357,7 +357,7 @@ ${a.desc}`}>
               </div>
               <div>
                 <div className="font-bold text-mirai-text-secondary">執行透明性の内訳</div>
-                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle font-mono text-[11px]">
+                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle tabular-nums text-[11px]">
                   <div>支出先の明確さ: {policy.identifiability ?? '—'}</div>
                   <div>使途の説明: {policy.purposeExplainability ?? '—'}</div>
                   <div className="text-mirai-text-muted">
@@ -370,7 +370,7 @@ ${a.desc}`}>
                   予算と執行
                   <span className="ml-1 font-normal text-mirai-text-muted">（総合点には不算入）</span>
                 </div>
-                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle font-mono text-[11px]">
+                <div className="mt-0.5 space-y-0.5 text-mirai-text-subtle tabular-nums text-[11px]">
                   {policy.executionRate != null ? (
                     <>
                       <div>執行率: {Math.round(policy.executionRate * 100)}%</div>
@@ -395,7 +395,7 @@ ${a.desc}`}>
                     {UNUSED_TREND_META[policy.unusedTrend].label}
                   </div>
                   {policy.spendDownRisk && (
-                    <div className="text-amber-600 font-sans">
+                    <div className="text-status-warn font-sans">
                       ほぼ消化済だが支出先が不透明
                     </div>
                   )}
@@ -422,7 +422,7 @@ ${a.desc}`}>
                   <span className="text-mirai-text-subtle leading-relaxed">{policy.recommendationReason}</span>
                 </div>
               )}
-              <div className="text-[10px] leading-4 text-amber-700">{policy.provisionalReason}</div>
+              <div className="text-[10px] leading-4 text-status-warn">{policy.provisionalReason}</div>
             </div>
           </div>
         )}
@@ -438,14 +438,14 @@ ${a.desc}`}>
             <div className="px-5 py-2.5">
               <div className="text-xs font-bold text-mirai-text-secondary mb-1">
                 AI が判定する4軸（0-10 → 10倍して0-100点）
-                {isAi ? "" : <span className="ml-2 font-normal text-amber-600">この事業はヒューリスティック判定です</span>}
+                {isAi ? "" : <span className="ml-2 font-normal text-status-warn">この事業はヒューリスティック判定です</span>}
               </div>
               <div className="text-xs text-mirai-text-muted space-y-1">
                 <div>
                   <span className="font-medium text-mirai-text-subtle">成果設計</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.designClarityScore}</span>:
                   誰のどんな課題をどの活動でどう改善するかが、概要文と登録されたロジックモデルの両方から特定できるか（実測成果ではない）
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     {fmtRaw(policy?.designClarity)}/10 → {policy?.designClarityScore ?? "—"}点
                   </div>
                   {policy?.findings.design && <div className="leading-relaxed">{policy.findings.design}</div>}
@@ -454,7 +454,7 @@ ${a.desc}`}>
                   <span className="font-medium text-mirai-text-subtle">検証可能性</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.evidenceScore}</span>:
                   成果を第三者が後から検証できるか。登録された成果指標（目標値・実績値・出典）と概要文の数値記述の両方を見る
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     {policy?.evidenceReadiness != null
                       ? `${fmtRaw(policy.evidenceReadiness)}/10 → ${policy.evidenceScore}点`
                       : "未評価（重みごと除外して再正規化。0点扱いにはしない）"}
@@ -466,7 +466,7 @@ ${a.desc}`}>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.proportionalityScore}</span>:
                   金額が活動の規模に見合い、金が受益者に届いているか。支出先・再委託の実データを判定材料にするため、
                   所管庁の作文では動かしにくい軸として最も重く置いている
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     {policy?.budgetProportionality != null
                       ? `${fmtRaw(policy.budgetProportionality)}/10 → ${policy.proportionalityScore}点`
                       : "未評価（予算額が0の事業などは判定対象外）"}
@@ -477,7 +477,7 @@ ${a.desc}`}>
                   <span className="font-medium text-mirai-text-subtle">必要性</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.necessityScore}</span>:
                   廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に「そもそも要るのか」を問う
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     {policy?.necessity != null ? `${fmtRaw(policy.necessity)}/10 → ${policy.necessityScore}点` : "未評価"}
                   </div>
                   {policy?.findings.necessity && <div className="leading-relaxed">{policy.findings.necessity}</div>}
@@ -490,9 +490,9 @@ ${a.desc}`}>
               <div className="text-xs font-bold text-mirai-text-secondary mb-1">
                 執行透明性 = 支出先の明確さ×55 + 使途の説明×45
                 <span className="ml-1 font-normal text-mirai-text-muted">（総合点への重み{WEIGHT_BY_KEY.executionTransparency}）</span>
-                <span className="ml-2 font-mono font-normal text-mirai-text-muted">= {policy?.executionTransparency ?? "—"}点</span>
+                <span className="ml-2 tabular-nums font-normal text-mirai-text-muted">= {policy?.executionTransparency ?? "—"}点</span>
                 {policy && policy.executionTransparency === null && (
-                  <span className="ml-2 font-normal text-amber-600">
+                  <span className="ml-2 font-normal text-status-warn">
                     支出先データが1行も無いため未評価（0点扱いにはしません）
                   </span>
                 )}
@@ -501,34 +501,34 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">支出先の明確さ</span>
                   {isAi ? "（AI判定）" : "（ヒューリスティック）"}: 支出先が具体的に誰で、第三者が実在を確認できるか
-                  <div className="flex gap-3 flex-wrap font-mono text-mirai-text-muted">
+                  <div className="flex gap-3 flex-wrap tabular-nums text-mirai-text-muted">
                     {item.identifyLevelAvg != null && <span>平均Lv {item.identifyLevelAvg.toFixed(2)}/3</span>}
-                    <span className="text-green-600">valid {item.validCount}</span>
-                    {item.govAgencyCount > 0 && <span className="text-emerald-500">行政機関 {item.govAgencyCount}</span>}
+                    <span className="text-status-good">valid {item.validCount}</span>
+                    {item.govAgencyCount > 0 && <span className="text-status-good">行政機関 {item.govAgencyCount}</span>}
                     {item.suppValidCount > 0 && <span className="text-primary">補助 {item.suppValidCount}</span>}
-                    <span className="text-red-500">invalid {item.invalidCount}</span>
-                    {item.opaqueRatio != null && item.opaqueRatio > 0 && <span className="text-amber-500">不透明 {pct(item.opaqueRatio)}</span>}
+                    <span className="text-status-bad">invalid {item.invalidCount}</span>
+                    {item.opaqueRatio != null && item.opaqueRatio > 0 && <span className="text-status-warn">不透明 {pct(item.opaqueRatio)}</span>}
                     <span>= {item.axisIdentify != null ? item.axisIdentify.toFixed(0) : "—"}点</span>
                   </div>
                 </div>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">使途の説明</span>: 役割・契約概要から「何にいくら使ったか」が理解・検証できるか
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     {item.purposeLevelAvg != null && <span className="mr-3">平均Lv {item.purposeLevelAvg.toFixed(2)}/3</span>}
                     <span>= {item.axisPurpose != null ? item.axisPurpose.toFixed(0) : "—"}点</span>
                   </div>
                 </div>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">収支の一致</span>（機械計算・
-                  <span className="text-amber-600">執行透明性には不算入</span>）:
+                  <span className="text-status-warn">執行透明性には不算入</span>）:
                   執行額と実質支出が一致しているか。実測で9割の事業が満点になりほぼ定数だったため、
                   加重平均から外して「不一致フラグ」（60点未満）として判定ルールが直接見る形に降格した。
-                  <div className="font-mono text-mirai-text-muted">
+                  <div className="tabular-nums text-mirai-text-muted">
                     執行 {formatAmount(item.execAmount ?? 0)} vs 実質支出 {formatAmount(item.spendNetTotal)}
                     ／乖離 {pct(item.gapRatio)}（10%まで満点）
                     = {item.axisBudget != null ? item.axisBudget.toFixed(0) : "—"}点
                     {item.axisBudget != null && item.axisBudget < 60 && (
-                      <span className="ml-2 text-red-500 font-sans">収支不一致</span>
+                      <span className="ml-2 text-status-bad font-sans">収支不一致</span>
                     )}
                   </div>
                 </div>
@@ -540,11 +540,11 @@ ${a.desc}`}>
               <div className="text-xs font-bold text-mirai-text-secondary mb-1">
                 総合点 = {AXIS_META.map(a => `${a.label}×${a.weight}`).join(" + ")}
               </div>
-              <div className="text-xs font-mono text-mirai-text-muted">
+              <div className="text-xs tabular-nums text-mirai-text-muted">
                 {AXIS_META.map(a => {
                   const v = policy?.[a.key];
                   return (
-                    <span key={a.key} className={v == null ? "text-amber-600" : undefined}>
+                    <span key={a.key} className={v == null ? "text-status-warn" : undefined}>
                       {v == null ? `（${a.label}は未評価のため除外）` : `${v}×${a.weight}`}
                       {a.key === "necessityScore" ? "" : " + "}
                     </span>
@@ -567,13 +567,13 @@ ${a.desc}`}>
                 予算と執行（総合点に不算入・縮小判定にのみ使用）
               </div>
               <div className="text-xs text-mirai-text-muted space-y-0.5">
-                <div className="font-mono text-mirai-text-muted">
+                <div className="tabular-nums text-mirai-text-muted">
                   予算 {formatAmount(item.budgetAmount)} → 執行 {formatAmount(item.execAmount ?? 0)}
                   {policy?.executionRate != null
                     ? `／執行率 ${Math.round(policy.executionRate * 100)}%・不用額 ${policy.unusedAmount == null ? '判定不能' : formatAmount(policy.unusedAmount)}`
                     : "／執行実績なし（予備的経費・未着手のため評価対象外）"}
                 </div>
-                <div className="font-mono text-mirai-text-muted">
+                <div className="tabular-nums text-mirai-text-muted">
                   前年度: {policy?.priorExecutionRate != null
                     ? `執行率 ${Math.round(policy.priorExecutionRate * 100)}%・不用率 ${policy.priorUnusedRatio == null ? '判定不能' : `${Math.round(policy.priorUnusedRatio * 100)}%`}`
                     : "実績なし（判定不能）"}
@@ -594,9 +594,9 @@ ${a.desc}`}>
             {/* 参考: ブロック構造 */}
             <div className="px-5 py-2.5">
               <div className="text-xs font-bold text-mirai-text-secondary mb-1">ブロック構造（参考・スコアに不算入）</div>
-              <div className="flex gap-3 flex-wrap text-xs font-mono text-mirai-text-muted">
+              <div className="flex gap-3 flex-wrap text-xs tabular-nums text-mirai-text-muted">
                 <span>ブロック数 {item.blockCount}</span>
-                {item.orphanBlockCount > 0 && <span className="text-orange-500">孤立 {item.orphanBlockCount}</span>}
+                {item.orphanBlockCount > 0 && <span className="text-status-caution">孤立 {item.orphanBlockCount}</span>}
                 {item.hasRedelegation && <span>再委託深度 {item.redelegationDepth}</span>}
                 <span>整合スコア {item.axisStructure != null ? item.axisStructure.toFixed(0) : "—"}</span>
               </div>
@@ -611,7 +611,7 @@ ${a.desc}`}>
               <div className="text-xs font-bold text-mirai-text-secondary shrink-0">
                 支出先一覧
                 {recipients && (
-                  <span className="ml-1.5 text-mirai-text-muted font-normal font-mono">
+                  <span className="ml-1.5 text-mirai-text-muted font-normal tabular-nums">
                     {recipientSearch.trim() && displayedRecipients.length !== recipients.length
                       ? `${displayedRecipients.length} / ${recipients.length}件`
                       : `${recipients.length}件`}
@@ -686,10 +686,10 @@ ${a.desc}`}>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className="truncate flex-1">{row.n}</span>
                             {!row.o && <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
-                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800" title="不透明キーワードにマッチ">不透明</span>}
+                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="不透明キーワードにマッチ">不透明</span>}
                           </div>
                         </td>
-                        <td className="px-3 py-1.5 font-mono text-mirai-text-muted truncate" title={row.chain}>
+                        <td className="px-3 py-1.5 tabular-nums text-mirai-text-muted truncate" title={row.chain}>
                           {row.chain
                             ? (row.chain.startsWith('組織→') ? row.chain.slice('組織→'.length) : row.chain)
                             : (row.b || '-')}
@@ -703,7 +703,7 @@ ${a.desc}`}>
                             const links = externalCorporateLinks(cn);
                             if (links) {
                               return (
-                                <span className="inline-flex items-center gap-1 font-mono text-[10px] leading-none text-mirai-text-subtle" title={cn}>
+                                <span className="inline-flex items-center gap-1 tabular-nums text-[10px] leading-none text-mirai-text-subtle" title={cn}>
                                   <span className="select-text leading-none">{cn}</span>
                                   <a
                                     href={links.gbizinfo}
@@ -720,7 +720,7 @@ ${a.desc}`}>
                             }
                             return (
                               <span
-                                className="font-mono text-[10px] text-amber-700 font-bold"
+                                className="tabular-nums text-[10px] text-status-warn font-bold"
                                 title={`法人番号の形式が不正（誤記載の疑い）: ${cn}`}
                               >
                                 {cn}<span className="ml-0.5">⚠</span>
@@ -728,10 +728,10 @@ ${a.desc}`}>
                             );
                           })()}
                         </td>
-                        <td className="px-3 py-1.5 text-right font-mono text-mirai-text-secondary whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-right tabular-nums text-mirai-text-secondary whitespace-nowrap">
                           {row.a2 === null ? <span className="text-mirai-text-placeholder">—</span> : formatAmount(row.a2)}
                         </td>
-                        <td className="px-3 py-1.5 text-right font-mono text-mirai-text-muted whitespace-nowrap">
+                        <td className="px-3 py-1.5 text-right tabular-nums text-mirai-text-muted whitespace-nowrap">
                           {row.a2 !== null && row.a2 > 0 && item.spendNetTotal > 0
                             ? (() => { const p = row.a2 / item.spendNetTotal * 100; return p >= 1 ? `${p.toFixed(0)}%` : '<1%'; })()
                             : <span className="text-mirai-text-placeholder">—</span>}

@@ -56,7 +56,7 @@ export function KouMokuTab({ onCount, ...params }: Props) {
               </div>
             )}
             {r.rsProjectNames && r.rsProjectNames.length > 0 && (
-              <div className="truncate text-[10px] text-emerald-600">→ {r.rsProjectNames.join('、')}</div>
+              <div className="truncate text-[10px] text-status-good">→ {r.rsProjectNames.join('、')}</div>
             )}
           </div>
           <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(r.amount)}</span>

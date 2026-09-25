@@ -125,7 +125,7 @@ export function PolicyEvaluationBlock({
         {cells.map(([label, value]) => (
           <div key={label} className="text-center">
             <div
-              className={cn('font-mono font-bold leading-none', scoreColor(value))}
+              className={cn('tabular-nums font-bold leading-none', scoreColor(value))}
               style={{ fontSize: labelPx + 4 }}
             >
               {value ?? '—'}

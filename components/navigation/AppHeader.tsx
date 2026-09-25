@@ -3,7 +3,7 @@
 import { fiscalNavigationUrl } from '@/app/lib/rs-fiscal-year';
 import Image from 'next/image';
 import Link from 'next/link';
-import { createContext, useContext, useId, useLayoutEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -76,6 +76,24 @@ function HeaderFrame({ current, config, slotRef }: {
   config: HeaderConfig;
   slotRef: (element: HTMLDivElement | null) => void;
 }) {
+  // 主要ナビは右スロットの幅しだいで入り切らなくなる。文字の途中で切れないよう、
+  // 収まらない項目は丸ごと隠す（全件は右端のメニューから辿れる）
+  const navRef = useRef<HTMLElement>(null);
+  const [fitCount, setFitCount] = useState<number>(PRIMARY_PAGES.length);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const links = Array.from(nav.children) as HTMLElement[];
+      const overflow = links.findIndex(link => link.offsetLeft + link.offsetWidth > nav.clientWidth + 0.5);
+      setFitCount(overflow === -1 ? links.length : overflow);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <header
       data-pan-disabled="true"
@@ -91,22 +109,26 @@ function HeaderFrame({ current, config, slotRef }: {
           <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text sm:inline">{PRODUCT_NAME}</span>
         </Link>
 
-        <nav aria-label="主要ビュー" className="ml-4 hidden min-w-0 items-center gap-1 overflow-hidden xl:flex">
-          {PRIMARY_PAGES.map(item => {
+        <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden xl:flex">
+          {PRIMARY_PAGES.map((item, index) => {
             const isCurrent = item.href === current;
+            const fits = index < fitCount;
             return (
               <Link
                 key={item.href}
                 href={fiscalNavigationUrl(item.href, config.fiscalYear)}
                 aria-current={isCurrent ? 'page' : undefined}
+                aria-hidden={fits ? undefined : true}
+                tabIndex={fits ? undefined : -1}
                 className={cn(
-                  'whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition-colors',
+                  'shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition-colors',
+                  !fits && 'invisible',
                   isCurrent
-                    ? 'bg-mirai-surface-teal font-bold text-mirai-text'
+                    ? 'bg-mirai-surface-teal font-bold text-primary-accent'
                     : 'font-medium text-mirai-text-subtle hover:bg-mirai-surface hover:text-mirai-text'
                 )}
               >
-                {item.label}
+                {item.navLabel}
               </Link>
             );
           })}

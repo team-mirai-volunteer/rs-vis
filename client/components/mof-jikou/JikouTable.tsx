@@ -36,7 +36,7 @@ interface Props {
 function rateClass(rate: number | null | 'new'): string {
   if (rate === null) return 'text-mirai-text-muted';
   if (rate === 'new') return 'text-primary';
-  if (rate > 0) return 'text-emerald-700 ';
+  if (rate > 0) return 'text-status-good ';
   if (rate < 0) return 'text-destructive ';
   return 'text-mirai-text-muted';
 }
@@ -221,7 +221,7 @@ export function JikouTable({
                       : exec < 0.5
                         ? 'text-destructive '
                         : exec < 0.9
-                          ? 'text-amber-700 '
+                          ? 'text-status-warn '
                           : 'text-mirai-text-subtle '
                   }`}
                 >
@@ -259,13 +259,13 @@ export function JikouTable({
                       </div>
                       <dl className="grid shrink-0 grid-cols-[6.5rem_auto] gap-x-3 gap-y-1 text-[11px] text-mirai-text-muted">
                         <dt className="text-mirai-text-muted">合成キー</dt>
-                        <dd className="max-w-[34rem] break-all font-mono">{item.key}</dd>
+                        <dd className="max-w-[34rem] break-all tabular-nums">{item.key}</dd>
                         <dt className="text-mirai-text-muted">行ID</dt>
-                        <dd className="font-mono">{item.id}</dd>
+                        <dd className="tabular-nums">{item.id}</dd>
                         <dt className="text-mirai-text-muted">項コード</dt>
-                        <dd className="font-mono">{item.sectionCode}</dd>
+                        <dd className="tabular-nums">{item.sectionCode}</dd>
                         <dt className="text-mirai-text-muted">主要経費コード</dt>
-                        <dd className="font-mono">{item.majorExpenseCode || '—'}</dd>
+                        <dd className="tabular-nums">{item.majorExpenseCode || '—'}</dd>
                         {item.carriedOver !== null && (
                           <>
                             <dt className="text-mirai-text-muted">翌年度繰越額</dt>

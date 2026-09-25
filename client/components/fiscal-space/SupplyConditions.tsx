@@ -2,6 +2,7 @@ import { SUPPLY_CASES, supplyReference, type SupplyCase } from '@/app/lib/fiscal
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { fieldClass } from './format';
 import { calibratedEducationGain, EDUCATION_SPENDING_SOURCE } from '@/app/lib/fiscal-space/education-response';
+import { Button } from '@/components/ui/button';
 
 export function SupplyConditions({ value, onChange, embedded = false }: { value: Record<string, SupplyCase>; onChange: (v: Record<string, SupplyCase>) => void; embedded?: boolean }) {
   return <Card><CardHeader>{!embedded && <h2 className="text-lg font-bold">政策別の供給力・長期条件</h2>}
@@ -17,7 +18,7 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
         <p><a href={EDUCATION_SPENDING_SOURCE} className="underline" target="_blank" rel="noreferrer">学校追加支出の因果研究（米国・2024）</a>を出発点に、年1兆円÷約930万人÷約115円（2024年円／2018年購買力ドル）×0.0316標準偏差÷1,000×9年÷4年×PISA尺度100点×移転率50%＝{calibratedEducationGain(.5)}点。4年から9年への比例延長と、学力尺度の対応は比較仮定です。</p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="教育の感度条件">
           {([[0, '効果ゼロ'], [.25, '慎重（移転25%）'], [.5, '中心（移転50%）'], [1, '米国並み（移転100%）']] as const).map(([transfer, label]) =>
-            <button key={transfer} type="button" className="rounded border border-mirai-border px-3 py-2" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings, educationPisaGain: calibratedEducationGain(transfer) } })}>{label}</button>)}
+            <Button key={transfer} variant="outline" size="sm" className="border-mirai-border font-medium" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings, educationPisaGain: calibratedEducationGain(transfer) } })}>{label}</Button>)}
         </div>
         <p>感度条件を選ぶと、この教育欄の予算・対象学年・就労時期なども初期条件に戻します。幅は日本の信頼区間ではありません。最適化は選んだ条件で計算するため、条件を変えたら再探索してください。</p>
         <div className="grid gap-3 sm:grid-cols-2">{([
@@ -36,7 +37,7 @@ export function SupplyConditions({ value, onChange, embedded = false }: { value:
         <p>初期設定は小中学校の継続的な教育サービスへの年1兆円の追加支出を想定。対象9学年・最初の世代の就労まで5年・就労期間40年・就労後の減耗年2%です。学力改善は9年間受けた世代の値で、単年支出はその1/9。5年目までの学力経由の生産性効果は0で、需要効果は別途残ります。</p>
         <p>基準年額を超える純追加支出には、校正範囲を超えた効果を計上しません。これは実証された飽和点ではなく、過大な予算へ線形外挿しない計算上の制限です。全国平均の改善幅・基準年額は編集できます。予算だけを変更しても改善幅は自動で再校正されません。</p>
         <p>この経路は初等・中等教育の学力改善を対象にした参考換算です。大学・成人訓練への直接転用や、日本の教員確保・実施能力の実証評価ではありません。</p>
-      </> : <button type="button" className="text-primary-accent underline" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings } })}>教育をOECDの追加支出方式に切り替える</button>}
+      </> : <Button variant="link" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={() => onChange({ ...value, [id]: { ...SUPPLY_CASES.education.settings } })}>教育をOECDの追加支出方式に切り替える</Button>}
     </div>}
     <div className="mt-3 grid gap-3 sm:grid-cols-3">{([
       ['additionality', '純追加性', 100, 0, 100, 5], ['lag', '効果までの年数', 1, 0, 30, 1],

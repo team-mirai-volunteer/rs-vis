@@ -72,6 +72,25 @@
   --mirai-progress-track: #d9d9d9;
   --mirai-progress-fill: #a9e89d;
 
+  /* 状態の意味色（スコア帯・判定・増減などデータのエンコーディング用）。
+     UI chrome には使わない。文字色（DEFAULT）は白地で 4.5:1 以上を保つ濃さにしている */
+  --status-good: #0f8472;         /* = primary-accent。増加・適合など */
+  --status-good-bg: #dcfce7;
+  --status-good-fg: #166534;
+  --status-good-bar: #4ade80;
+  --status-warn: #b45309;
+  --status-warn-bg: #fef3c7;
+  --status-warn-fg: #92400e;
+  --status-warn-bar: #facc15;
+  --status-caution: #c2410c;
+  --status-caution-bg: #ffedd5;
+  --status-caution-fg: #9a3412;
+  --status-caution-bar: #fb923c;
+  --status-bad: #c9272a;          /* = stance-against */
+  --status-bad-bg: #fee2e2;
+  --status-bad-fg: #991b1b;
+  --status-bad-bar: #f87171;
+
   --mirai-gradient-start: #64d8c6;
   --mirai-gradient-end: #bcecd3;
 

@@ -386,7 +386,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-mirai-text-muted">
                   {input.length}/{INTERVIEW_INPUT_MAX_CHARS}字 ・ 発言 {userTurnCount}/{INTERVIEW_MAX_USER_TURNS}
-                  {' ・ '}<button type="button" onClick={handleOpenSettings} className="underline underline-offset-2 hover:text-mirai-text">設定</button>
+                  {' ・ '}<Button variant="link" onClick={handleOpenSettings} className="text-[length:inherit] font-normal text-current underline-offset-2 hover:text-mirai-text">設定</Button>
                 </span>
                 <span className="flex-1" />
                 <Button variant="outline" size="sm" onClick={handleSummarize}

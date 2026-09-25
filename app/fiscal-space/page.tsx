@@ -148,9 +148,9 @@ export default function FiscalSpacePage() {
       <ShareScenario form={form} onPreset={change.preset} onOptimizationSettings={openOptimizationSettings} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
-        {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-lg lg:bottom-3 lg:top-auto">
+        {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-soft lg:bottom-3 lg:top-auto">
           <p role="status">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>
-          <button type="button" className="mt-1 min-h-6 text-primary-accent underline" onClick={retry}>計算をやり直す</button>
+          <Button variant="link" className="mt-1 h-auto text-sm font-medium text-primary-accent" onClick={retry}>計算をやり直す</Button>
         </div>}
       </div>
       {error && <div role="alert" className="rounded-xl border border-mirai-border bg-card p-4 text-sm">

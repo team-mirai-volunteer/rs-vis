@@ -649,7 +649,7 @@ export function UnifiedSankeyChart({
                     <div className="line-clamp-2 break-all text-sm font-semibold text-mirai-text sm:line-clamp-none">{selectedPanelNode.name}</div>
                     {selectedDetails.column === 'recipient' && selectedDetails.representativeCorporateNumber && (
                       <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mirai-text-subtle">
-                        <span className="inline-flex items-center gap-1 font-mono" title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
+                        <span className="inline-flex items-center gap-1 tabular-nums" title="法人番号（代表：内包する有効法人番号のうち最大金額のもの）">
                           法人番号 {selectedDetails.representativeCorporateNumber}
                           {(() => {
                             const links = externalCorporateLinks(selectedDetails.representativeCorporateNumber);
@@ -711,7 +711,7 @@ export function UnifiedSankeyChart({
                 </div>
               </div>
 
-              <button type="button" className="min-h-10 shrink-0 border-b border-border px-3 text-left text-xs font-bold text-primary-accent sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</button>
+              <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
               <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '60%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}

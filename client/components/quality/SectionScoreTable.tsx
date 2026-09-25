@@ -260,14 +260,14 @@ export function SectionScoreTable({ year, onOpenProject }: { year: string; onOpe
                   {r.subAccount ? `${r.organization}／${r.subAccount}` : r.organization}
                 </td>
                 <td className="px-2 py-1.5">
-                  <button type="button"
+                  <Button variant="link"
                     onClick={() => setSelectedId(r.id)}
-                    className="inline-flex max-w-full items-center gap-1 font-medium text-primary-accent hover:underline"
+                    className="max-w-full justify-start gap-1 text-xs font-medium text-primary-accent no-underline hover:underline"
                     title={`${r.sectionName} — 項の詳細を開く`}
                   >
                     <span className="truncate">{r.sectionName}</span>
                     <span className="shrink-0 text-[10px] text-mirai-text-muted">{r.sectionCode}</span>
-                  </button>
+                  </Button>
                 </td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-secondary">
                   {r.evaluatedCount.toLocaleString()}<span className="text-mirai-text-muted"> / {r.programCount.toLocaleString()}</span>
@@ -276,7 +276,7 @@ export function SectionScoreTable({ year, onOpenProject }: { year: string; onOpe
                 {POLICY_AXES.map(a => {
                   const v = r.scores[a.key];
                   return (
-                    <td key={a.key} className={cn('px-2 py-1.5 text-right font-mono font-bold tabular-nums', scoreColor(v === null ? null : Math.round(v)))} title={v === null ? undefined : `${v}`}>
+                    <td key={a.key} className={cn('px-2 py-1.5 text-right font-bold tabular-nums', scoreColor(v === null ? null : Math.round(v)))} title={v === null ? undefined : `${v}`}>
                       {v === null ? '—' : Math.round(v)}
                     </td>
                   );

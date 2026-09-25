@@ -39,7 +39,7 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
       </div>
       <Button variant="ghost" size="icon-sm" aria-label="選択を解除" onClick={onClose}><X /></Button>
     </div>
-    <button type="button" aria-expanded={overviewOpen} onClick={() => setOverviewOpen(value => !value)} className="min-h-10 w-full border-b border-border px-4 text-left text-xs font-bold text-primary-accent sm:hidden">事業概要・評価 {overviewOpen ? 'を閉じる' : 'を見る'}</button>
+    <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-4 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={overviewOpen} onClick={() => setOverviewOpen(value => !value)}>事業概要・評価 {overviewOpen ? 'を閉じる' : 'を見る'}</Button>
     <div className={`px-4 ${overviewOpen ? '' : 'max-sm:hidden'}`}>
       <UnifiedProjectSections pid={Number(point.pid)} projectName={point.name} rsSheetYear={Number(year)} fontPx={11} />
     </div>

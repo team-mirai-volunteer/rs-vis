@@ -501,7 +501,7 @@ export default function MOFJikouPage() {
             >
               前へ
             </Button>
-            <span className="font-mono text-xs text-mirai-text-muted">
+            <span className="tabular-nums text-xs text-mirai-text-muted">
               {page} / {totalPages}
               <span className="ml-2 text-mirai-text-muted">
                 {filtered.length === 0

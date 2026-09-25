@@ -1,6 +1,7 @@
 import type { ModelParameters } from '@/types/fiscal-space';
 import { INSURANCE_DEFAULTS, INSURANCE_LEGACY } from '@/app/lib/fiscal-space/insurance-response';
 import { RangeField } from './Controls';
+import { Button } from '@/components/ui/button';
 
 export function InsuranceConditions({ value, onChange }: { value: ModelParameters; onChange: (v: ModelParameters) => void }) {
   const c = value.insurance ?? INSURANCE_LEGACY;
@@ -13,7 +14,7 @@ export function InsuranceConditions({ value, onChange }: { value: ModelParameter
       ['慎重', { ...INSURANCE_DEFAULTS, wagePassThrough: .25, hoursElasticity: .05, participationElasticity: .025, demandElasticity: .1 }],
       ['中心', { ...INSURANCE_DEFAULTS }],
       ['強め', { ...INSURANCE_DEFAULTS, wagePassThrough: .75, hoursElasticity: .2, participationElasticity: .1, demandElasticity: .3 }],
-    ] as const).map(([label, settings]) => <button key={label} type="button" className="rounded border border-mirai-border px-3 py-2 text-xs" onClick={() => onChange({ ...value, insurance: { ...settings } })}>社保：{label}</button>)}</div>
+    ] as const).map(([label, settings]) => <Button key={label} variant="outline" size="sm" className="border-mirai-border font-medium" onClick={() => onChange({ ...value, insurance: { ...settings } })}>社保：{label}</Button>)}</div>
     <div className="grid gap-4 md:grid-cols-2">{([
       ['wagePassThrough', '事業主軽減の賃金転嫁率', 100, 0, 100, 5, '%'],
       ['netWageRetention', '賃上げの手取り残存率', 100, 0, 100, 5, '%'],

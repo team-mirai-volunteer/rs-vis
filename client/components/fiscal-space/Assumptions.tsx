@@ -7,6 +7,7 @@ import { inputLabel } from './labels';
 import { initialEconomy } from '@/app/lib/fiscal-space/assumptions';
 import { CONTEXT_CHECKED, japanContext, OECD_DEBT_RECORDS, OECD_DEBT_SOURCE, FERTILIZER_SOURCE } from '@/app/lib/fiscal-space/japan-context';
 import { JAPAN_DATA_CHECKED, JAPAN_DATASET_LABELS, japanSources, SOURCE_STATUS_LABELS, type JapanDataset } from '@/app/lib/fiscal-space/japan-data';
+import { Button } from '@/components/ui/button';
 
 export function JapanBaseline({ dataset, onOpenSettings }: { dataset: JapanDataset; onOpenSettings: () => void }) {
   const s = initialEconomy(dataset), sources = japanSources(dataset), latest = dataset === 'latest';
@@ -71,7 +72,7 @@ export function JapanBaseline({ dataset, onOpenSettings }: { dataset: JapanDatas
   return <Card><CardHeader><h2 className="text-lg font-bold">日本の基準データ</h2>
     <p className="text-xs text-mirai-text-subtle">最大GDPギャップは投入条件・生産関数の仮定に基づく推計値のため、この一覧ではなく結果欄に表示しています。</p>
     <p className="text-sm">基準データ：{JAPAN_DATASET_LABELS[dataset]}</p>
-    <button type="button" className="text-sm text-primary-accent underline" onClick={onOpenSettings}>基準データ・初期条件を設定</button>
+    <Button variant="link" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onOpenSettings}>基準データ・初期条件を設定</Button>
     <p className="text-sm leading-relaxed">{latest
       ? '2026年9月17日までに確認した公表値を採用。GDP・GDPギャップ・CPI・雇用・対外純資産を更新し、食料自給率は2025年度概算。一般政府の財政額はIMFの2026年推計比率を最新の名目GDPに掛けた橋渡し推計で、2024年実績と最新GDPを一つの比率に混ぜていません。国民経済計算の対外収支は2024年の一式を継続採用しています。'
       : 'GDP・財政・CPI・雇用・対外収支は2024暦年、エネルギー・食料自給率は2024年度で揃えます。GDPギャップはIMFの2024年推計です。'}</p>
