@@ -66,6 +66,18 @@ terraform plan   # 差分が「変更なし or 意図した差分のみ」であ
 環境変数を既にダッシュボードで設定済みの場合は `vercel_project_environment_variables.app[0]` も
 import するか、いったんダッシュボード側を空にしてから Terraform で入れ直す。
 
+## 公開URL（OGP・canonical・sitemap）
+
+`app/lib/site-url.ts` は `NEXT_PUBLIC_SITE_URL` → Vercel のシステム環境変数（`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`）→
+`http://localhost:3000` の順で公開URLを決める。どれもビルド時に見えないと localhost に落ち、SNS のカード画像が表示されない
+（2026-09-25 に本番の `og:image` が `http://localhost:3000/og/*.png` になっていたのを確認）。
+
+- 本番: `vercel.tf` が `NEXT_PUBLIC_SITE_URL = https://<custom_domains の先頭>` を production にだけ配る
+- プレビュー: `automatically_expose_system_environment_variables = true` で `VERCEL_URL` を使う
+
+環境変数は次のビルドから効くため、`terraform apply` のあとに本番を再デプロイする（Vercel の Deployments から Redeploy、または `main` への push）。
+確認: `curl -s https://rs-vis.team-mir.ai/ | grep og:image` が `https://rs-vis.team-mir.ai/og/home.png` を指すこと。
+
 ## Supabase の有効化（DB導入時）
 
 ```bash
