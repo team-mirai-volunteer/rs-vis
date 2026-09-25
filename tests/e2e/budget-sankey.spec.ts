@@ -153,6 +153,21 @@ test.describe('budget-sankey (統合ビュー)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('range row button moves the window back to the first item', async ({ page }) => {
+    await openPage(page);
+    const slider = page.getByRole('slider', { name: '歳入の表示開始位置' });
+    const reset = page.getByRole('button', { name: '歳入を先頭から表示' });
+    await expect(slider).toHaveAttribute('aria-valuenow', '0');
+    await expect(reset).toBeDisabled();
+    await slider.focus();
+    await page.keyboard.press('End');
+    await expect(slider).not.toHaveAttribute('aria-valuenow', '0');
+    await expect(reset).toBeEnabled();
+    await reset.click();
+    await expect(slider).toHaveAttribute('aria-valuenow', '0');
+    await expect(reset).toBeDisabled();
+  });
+
   test('renders nodes and column headers without page errors', async ({ page }) => {
     const pageErrors = await openPage(page);
 

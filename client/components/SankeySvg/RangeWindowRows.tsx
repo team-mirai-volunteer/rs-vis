@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronFirst, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRepeatPress } from '@/client/components/SankeySvg/useRepeatPress';
 
@@ -40,7 +40,7 @@ export interface RangeWindowRowProps {
 }
 
 /**
- * 「表示範囲」1行 = スクロールバー型スライダー + 範囲表示 + 件数（上下矢印つき）。
+ * 「表示範囲」1行 = 先頭へ戻すボタン + スクロールバー型スライダー + 範囲表示 + 件数（上下矢印つき）。
  * つまみの長さが表示件数（topN/total）、位置が表示開始オフセットに対応する。
  * ネイティブ input[type=range] はつまみ長を変えられないため自前で描画する。
  */
@@ -156,6 +156,13 @@ export function RangeWindowRow({
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
       <span className="text-mirai-text-subtle" style={{ fontSize: metaFontPx, whiteSpace: 'nowrap', width: '3.5em', flexShrink: 0 }}>{label}</span>
+      {/* つまみを一番左（1件目から表示）へ戻す。既に先頭なら押せない */}
+      <Button variant="ghost" size="icon-sm" onClick={() => { stopHold(); onOffsetChange(0); }} disabled={offset === 0}
+        title="先頭から表示" aria-label={`${label}を先頭から表示`}
+        className="size-5 shrink-0 text-mirai-text-subtle hover:bg-mirai-surface hover:text-mirai-text"
+      >
+        <ChevronFirst className="size-3.5" aria-hidden="true" />
+      </Button>
       {/* スクロールバー型スライダー。範囲テキストはバー上に重ねて余白を作らない */}
       <div
         ref={trackRef}
