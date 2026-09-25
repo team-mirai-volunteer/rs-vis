@@ -1,3 +1,22 @@
+# テキストはリポジトリ・作業ツリーとも LF に統一する（Windows で編集しても CRLF を入れない）。
+# 画像・圧縮データなどのバイナリは Git が自動判別するが、明示しておく。
+* text=auto eol=lf
+
 # シェルスクリプトは Vercel（Linux）で bash が実行するため LF 固定（Windows での編集で CRLF になるとビルドが落ちる）
 *.sh text eol=lf
 *.mjs text eol=lf
+
+# 外部から取得した元データはバイト単位で保存する（テストが SHA-256 で元データとの一致を確かめる）
+tests/fixtures/** -text
+
+*.gz binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.db binary
+*.xlsx binary
+*.zip binary
