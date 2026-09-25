@@ -312,6 +312,18 @@ export function UnifiedSankeyChart({
   const budgetSummary = selectedDetails?.budgetSummary ?? projectBlocks?.budgetSummary;
   const budgetBreakdown = selectedDetails?.budgetBreakdown ?? projectBlocks?.budgetBreakdown ?? [];
   const hasBudgetTab = isIndividualProject && !provisional;
+  /**
+   * パネル上段（事実表・評価・事業の詳細群・集約の内訳）に出すものがあるか。支出先などは何も無いので、
+   * 空の枠（余白と罫線だけの帯）を描かない
+   */
+  const hasOverview = !!selectedDetails && (
+    !nodeFactsEmpty(selectedDetails)
+    || (!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0)
+    || (isIndividualProject && selectedDetails.projectId !== undefined)
+    || !!selectedDetails.aggregated
+    || !!selectedDetails.aggregatedTop?.length
+    || focusRelated
+  );
   const hasBlocksTab = isIndividualProject && hasSpending && !provisional;
   const [blockSelection, setBlockSelection] = useState<{ projectId: number; year: number; blockId: string } | null>(null);
   const selectedBlock = blockSelection?.projectId === selectedDetails?.projectId && blockSelection?.year === rsSheetYear
@@ -718,6 +730,7 @@ export function UnifiedSankeyChart({
                 </div>
               </div>
 
+              {hasOverview && <>
               <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
               {/* 上段（事業概要・評価・推移）は PC で 48% まで。フル HD のブラウザ（表示領域 900px 前後）で、意見を閉じた状態ならスクロールなしで収まる高さ。残りを下段の予算・ブロック・支出先タブに確保する */}
               <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '48%' }}>
@@ -762,9 +775,10 @@ export function UnifiedSankeyChart({
                 {!(isIndividualProject && selectedDetails.projectId !== undefined && !provisional && !focusRelated
                   && !selectedDetails.aggregated && !selectedDetails.aggregatedTop?.length) && <div className="h-3" />}
               </div>
+              </>}
 
               {tabs.length > 0 && (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border">
+                <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', hasOverview && 'border-t border-border')}>
                   <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-2 sm:flex sm:overflow-x-auto">
                     {tabs.map(({ id, label, count }) => (
                       <Button
