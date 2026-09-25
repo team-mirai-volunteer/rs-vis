@@ -17,6 +17,7 @@ import type { ByokSettings } from '@/client/lib/ai/api-key-store';
 import { createOpenRouterCaller } from '@/client/lib/ai/openrouter-caller';
 import {
   buildInterviewMessages,
+  buildOpeningQuestion,
   buildSummarizeMessages,
   parseSummarizedOpinion,
   type InterviewProjectContext,
@@ -53,12 +54,13 @@ async function callServer<T>(body: unknown, signal?: AbortSignal): Promise<T> {
   return data as T;
 }
 
-/** 次のインタビュアー発話を得る（turns が空なら冒頭の問いかけ） */
+/** 次のインタビュアー発話を得る。turns が空なら冒頭の問いかけを定型文で返し、LLM は呼ばない */
 export async function nextInterviewerTurn(
   ctx: InterviewProjectContext,
   turns: InterviewTurn[],
   opts: RunOptions,
 ): Promise<string> {
+  if (turns.length === 0) return buildOpeningQuestion(ctx);
   if (!opts.settings) {
     const r = await callServer<{ text: string }>({ kind: 'interview', context: ctx, turns }, opts.signal);
     return r.text;

@@ -31,6 +31,14 @@ export interface InterviewProjectContext {
 /** インタビュー開始のための隠しユーザー発話（画面には表示しない） */
 export const INTERVIEW_KICKOFF_TEXT = '（インタビューを開始してください）';
 
+/**
+ * 冒頭の問いかけ（ルールベース）。「意見を伝える」を押すたびに LLM を呼ばないよう定型文にする。
+ * 内容はシステムプロンプトの進め方（意見を聞かせてほしい旨＋率直な印象か気になる点を1つ尋ねる）と揃える。
+ */
+export function buildOpeningQuestion(ctx: Pick<InterviewProjectContext, 'projectName'>): string {
+  return `「${ctx.projectName}」について、ご意見を聞かせてください。まずは率直な印象や、目的・金額・支出先・成果などで気になる点を1つ教えてください。`;
+}
+
 function yen(n: number): string {
   if (n >= 1e12) return `${(n / 1e12).toFixed(2)}兆円`;
   if (n >= 1e8) return `${(n / 1e8).toFixed(1)}億円`;
@@ -75,7 +83,7 @@ export function buildInterviewSystemPrompt(ctx: InterviewProjectContext): string
     describeProject(ctx),
     '',
     '## 進め方',
-    '- 最初の発話では、この事業について意見を聞かせてほしい旨を1〜2文で伝え、まず率直な印象や気になる点を1つ尋ねてください。事業の説明を長々と繰り返さないこと。',
+    '- 冒頭の問いかけ（意見を聞かせてほしい旨と、率直な印象や気になる点を1つ尋ねる質問）は定型文で送信済みです。相手の最初の返答を受け止めるところから始め、同じ問いかけを繰り返さないこと。事業の説明を長々と繰り返さないこと。',
     '- 相手の発言を受けて、「なぜそう思うか」「どの部分（目的・金額・支出先・成果など）が気になるか」「どうなればよいと考えるか」を1回に1つずつ、合計2〜3回深掘りしてください。',
     '- 質問は短く（2〜3文以内）。相手の言葉を1文で受け止めてから次の質問をしてください。',
     '- 事業データに基づく事実の補足は1〜2文まで。評価や誘導はせず、賛成・反対どちらの意見も同じ態度で聞くこと。',
@@ -105,11 +113,14 @@ export function buildSummarizeSystemPrompt(ctx: InterviewProjectContext): string
   ].join('\n');
 }
 
-/** インタビュー用の LLM メッセージ列を組み立てる（先頭に system、続けて履歴） */
+/**
+ * インタビュー用の LLM メッセージ列を組み立てる（先頭に system、続けて履歴）。
+ * 履歴が定型の問いかけ（assistant）から始まる場合も、system の直後を user にするため
+ * 隠しの開始発話を補う（system → assistant の並びを受け付けないモデルがある）。
+ */
 export function buildInterviewMessages(ctx: InterviewProjectContext, turns: InterviewTurn[]): LlmMessage[] {
-  const history: LlmMessage[] = turns.length === 0
-    ? [{ role: 'user', content: INTERVIEW_KICKOFF_TEXT }]
-    : turns.map(t => ({ role: t.role, content: t.content }));
+  const history: LlmMessage[] = turns.map(t => ({ role: t.role, content: t.content }));
+  if (history.length === 0 || history[0].role !== 'user') history.unshift({ role: 'user', content: INTERVIEW_KICKOFF_TEXT });
   return [{ role: 'system', content: buildInterviewSystemPrompt(ctx) }, ...history];
 }
 
