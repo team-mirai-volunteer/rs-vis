@@ -17,8 +17,9 @@ import {
   formatYenShort, legendKeyOf as resolveLegendKey,
   type ColorMode, type LegendEntry, type SizeMetric,
 } from '@/app/lib/project-map-view';
+import { PLACEHOLDER_KIND_LABELS } from '@/app/lib/project-map-spending';
 import type {
-  ProjectMapCluster, ProjectMapPoint, ProjectMapResponse,
+  PlaceholderKind, ProjectMapCluster, ProjectMapPoint, ProjectMapResponse,
   ProjectMapSpendingRecipient, ProjectMapSpendingResponse,
 } from '@/types/project-map';
 
@@ -37,6 +38,24 @@ const DEFAULT_SPEND_LIMIT: SpendLimit = 1000;
 const SPEND_MIN_DEGREES = [1, 2, 3, 5, 10] as const;
 type SpendMinDegree = typeof SPEND_MIN_DEGREES[number];
 const DEFAULT_SPEND_MIN_DEGREE: SpendMinDegree = 1;
+/**
+ * 描く支出先の種類。named = 実名の支出先（既定） / placeholder = 匿名・集約表記すべて /
+ * PlaceholderKind = その種類だけ。匿名・集約表記は「支出先を具体的に書いていない事業」の洗い出し用
+ */
+type SpendKind = 'named' | 'placeholder' | PlaceholderKind;
+const SPEND_KINDS: SpendKind[] = ['named', 'placeholder', 'aggregate', 'person', 'masked', 'undisclosed'];
+const SPEND_KIND_LABELS: Record<SpendKind, string> = {
+  named: '実名の支出先',
+  placeholder: '匿名・集約表記（すべて）',
+  aggregate: `匿名・集約：${PLACEHOLDER_KIND_LABELS.aggregate}`,
+  person: `匿名・集約：${PLACEHOLDER_KIND_LABELS.person}`,
+  masked: `匿名・集約：${PLACEHOLDER_KIND_LABELS.masked}`,
+  undisclosed: `匿名・集約：${PLACEHOLDER_KIND_LABELS.undisclosed}`,
+};
+/** URL の sk の値。named は既定なので載せない */
+const SPEND_KIND_URL: Record<SpendKind, string> = {
+  named: '', placeholder: 'ph', aggregate: 'ag', person: 'pe', masked: 'ms', undisclosed: 'un',
+};
 
 /** 大きさの上限（画面px）。衝突回避で重なりを解くぶん、以前より大きくできる */
 const MAX_RADIUS = 12;
@@ -62,6 +81,7 @@ export default function ProjectMapPage() {
   const [spendLimit, setSpendLimit] = useState<SpendLimit>(DEFAULT_SPEND_LIMIT);
   const [spendMinDegree, setSpendMinDegree] = useState<SpendMinDegree>(DEFAULT_SPEND_MIN_DEGREE);
   const [spendQuery, setSpendQuery] = useState('');
+  const [spendKind, setSpendKind] = useState<SpendKind>('named');
   const [hoverRecipient, setHoverRecipient] = useState<
     { r: ProjectMapSpendingRecipient; x: number; y: number } | null
   >(null);
@@ -111,6 +131,8 @@ export default function ProjectMapPage() {
     const sd = Number(p.get('sd'));
     if ((SPEND_MIN_DEGREES as readonly number[]).includes(sd)) setSpendMinDegree(sd as SpendMinDegree);
     const sq = p.get('sq'); if (sq !== null) setSpendQuery(sq);
+    const sk = SPEND_KINDS.find(k => k !== 'named' && SPEND_KIND_URL[k] === p.get('sk'));
+    if (sk) setSpendKind(sk);
     const c = p.get('c'); if (c === 'ministry' || c === 'policyGroup' || c === 'recommendation') setColorMode(c);
     const s = p.get('s');
     if (s === 'inverseScore' || s === 'inverseProp' || s === 'inverseNec'
@@ -147,6 +169,7 @@ export default function ProjectMapPage() {
       if (spendLimit !== DEFAULT_SPEND_LIMIT) p.set('sn', String(spendLimit));
       if (spendMinDegree !== DEFAULT_SPEND_MIN_DEGREE) p.set('sd', String(spendMinDegree));
       if (spendQuery) p.set('sq', spendQuery);
+      if (spendKind !== 'named') p.set('sk', SPEND_KIND_URL[spendKind]);
       if (lockedRecipientId) p.set('rc', lockedRecipientId);
     }
     if (colorMode !== 'ministry') p.set('c', colorMode);
@@ -167,7 +190,7 @@ export default function ProjectMapPage() {
     if (selected) p.set('pid', selected.pid);
     const qs = p.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [urlHydrated, year, view, spendLimit, spendMinDegree, spendQuery, lockedRecipientId, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
+  }, [urlHydrated, year, view, spendLimit, spendMinDegree, spendQuery, spendKind, lockedRecipientId, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
       ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query, legendLock, selected]);
 
   // URLの pid / hl はデータが来てから解決する（pid は点オブジェクトが要り、
@@ -221,7 +244,7 @@ export default function ProjectMapPage() {
         // URL の rc は、支出先データが来てから（存在するものだけ）適用する
         const rc = pendingRcRef.current;
         pendingRcRef.current = null;
-        if (rc && json.recipients.some(r => r.id === rc)) setLockedRecipientId(rc);
+        if (rc && [...json.recipients, ...json.placeholders].some(r => r.id === rc)) setLockedRecipientId(rc);
       })
       .catch(e => { if (!cancelled) setSpendError(String(e)); });
     return () => { cancelled = true; };
@@ -338,6 +361,15 @@ export default function ProjectMapPage() {
 
   const pointByPid = useMemo(() => new Map(allPoints.map(p => [p.pid, p])), [allPoints]);
 
+  /** 種類で選んだ支出先の母集団（金額の大きい順） */
+  const spendSource = useMemo(() => {
+    if (!spendData) return [];
+    if (spendKind === 'named') return spendData.recipients;
+    if (spendKind === 'placeholder') return spendData.placeholders;
+    return spendData.placeholders.filter(r => r.kind === spendKind);
+  }, [spendData, spendKind]);
+  const isPlaceholderKind = spendKind !== 'named';
+
   /**
    * 描く支出先。絞り込み後の事業に下限件数以上繋がり、名前が検索語を含むものから、
    * 金額の大きい順に上限件数まで。上限を全体の順位で先に切ると、
@@ -350,7 +382,7 @@ export default function ProjectMapPage() {
     const q = normalize(spendQuery.trim());
     const out: ProjectMapSpendingRecipient[] = [];
     let matched = 0;
-    for (const r of spendData.recipients) {
+    for (const r of spendSource) {
       let n = 0;
       for (const pid of r.pids) if (visible.has(pid) && ++n >= spendMinDegree) break;
       if (n < spendMinDegree) continue;
@@ -361,22 +393,22 @@ export default function ProjectMapPage() {
     }
     // 固定中の支出先は上限の外でも描く（URL から来た場合・上限を下げた場合）
     if (lockedRecipientId && !out.some(r => r.id === lockedRecipientId)) {
-      const locked = spendData.recipients.find(r => r.id === lockedRecipientId);
+      const locked = spendSource.find(r => r.id === lockedRecipientId);
       if (locked) out.push(locked);
     }
     return { visibleRecipients: out, matchedRecipients: matched };
-  }, [spendData, filteredPids, spendLimit, spendMinDegree, spendQuery, lockedRecipientId]);
+  }, [spendData, spendSource, filteredPids, spendLimit, spendMinDegree, spendQuery, lockedRecipientId]);
 
   const recipientById = useMemo(
-    () => new Map((spendData?.recipients ?? []).map(r => [r.id, r])),
+    () => new Map([...(spendData?.recipients ?? []), ...(spendData?.placeholders ?? [])].map(r => [r.id, r])),
     [spendData],
   );
   const lockedRecipient = lockedRecipientId ? recipientById.get(lockedRecipientId) ?? null : null;
 
-  /** pid → その事業が支払っている共有支出先（金額の大きい順）。選択事業のパネル用 */
+  /** pid → その事業が支払っている支出先（選んだ種類のみ・金額の大きい順）。選択事業のパネル用 */
   const recipientsByPid = useMemo(() => {
     const m = new Map<string, Array<{ r: ProjectMapSpendingRecipient; amount: number }>>();
-    for (const r of spendData?.recipients ?? []) {
+    for (const r of spendSource) {
       r.pids.forEach((pid, k) => {
         const list = m.get(pid);
         const item = { r, amount: r.amounts[k] };
@@ -385,23 +417,52 @@ export default function ProjectMapPage() {
     }
     for (const list of m.values()) list.sort((a, b) => b.amount - a.amount);
     return m;
-  }, [spendData]);
+  }, [spendSource]);
+
+  /**
+   * 匿名・集約表記への支出が多い事業（絞り込み後の事業のみ）。
+   * 割合の分母はその事業の支出先への支出の合計（実名＋匿名・集約）
+   */
+  const placeholderRanking = useMemo(() => {
+    if (!spendData || !isPlaceholderKind) return [];
+    const byPid = new Map<string, number>();
+    for (const r of spendSource) {
+      r.pids.forEach((pid, k) => {
+        if (filteredPids.has(pid)) byPid.set(pid, (byPid.get(pid) ?? 0) + r.amounts[k]);
+      });
+    }
+    const out: PlaceholderRankRow[] = [];
+    for (const [pid, amount] of byPid) {
+      const p = pointByPid.get(pid);
+      if (!p) continue;
+      const total = spendData.projectSpending[pid] ?? amount;
+      out.push({ point: p, amount, share: total > 0 ? amount / total : 0 });
+    }
+    return out;
+  }, [spendData, isPlaceholderKind, spendSource, filteredPids, pointByPid]);
 
   const spendingOverlay = useMemo(() => (isSpending && spendData ? {
     recipients: visibleRecipients,
     focusRecipientId: hoverRecipient?.r.id ?? lockedRecipientId,
     emphasizeAll: spendQuery.trim() !== '',
+    selectedOnly: isPlaceholderKind,
     onHoverRecipient: (r: ProjectMapSpendingRecipient | null, sc: { x: number; y: number } | null) =>
       setHoverRecipient(r && sc ? { r, x: sc.x, y: sc.y } : null),
     onSelectRecipient: (r: ProjectMapSpendingRecipient) =>
       setLockedRecipientId(id => (id === r.id ? null : r.id)),
-  } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId, spendQuery]);
+  } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId, spendQuery, isPlaceholderKind]);
 
   /** 事業の選択。支出つながりでは事業を選び直したら支出先の固定を外す（注目の主語を事業に戻す） */
   const selectPoint = useCallback((p: ProjectMapPoint | null) => {
     setSelected(p);
     setLockedRecipientId(null);
   }, []);
+
+  const changeSpendKind = (k: SpendKind) => {
+    setSpendKind(k);
+    setHoverRecipient(null);
+    setLockedRecipientId(null);
+  };
 
   const changeView = (v: View) => {
     setView(v);
@@ -716,7 +777,7 @@ export default function ProjectMapPage() {
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">支出つながり</dt>
-                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます（1事業だけの支出先はその事業の丸のすぐ外に置きます）。右上で支出先名の検索・支出元の事業数・件数を絞り込めます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
+                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます（1事業だけの支出先はその事業の丸のすぐ外に置きます）。右上で支出先名の検索・支出元の事業数・件数を絞り込めます。「種類」を匿名・集約表記にすると、「その他」「個人A」「A社」「支出先なし」のように支出先を具体的に書いていない支出だけを表示し、それが多い事業を金額順・割合順で並べます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">操作</dt>
@@ -745,6 +806,9 @@ export default function ProjectMapPage() {
             onMinDegree={setSpendMinDegree}
             limit={spendLimit}
             onLimit={setSpendLimit}
+            kind={spendKind}
+            onKind={changeSpendKind}
+            poolSize={spendSource.length}
           />
           {lockedRecipient ? (
             <RecipientPanel
@@ -758,9 +822,13 @@ export default function ProjectMapPage() {
             <ProjectRecipientsPanel
               point={selected}
               items={recipientsByPid.get(selected.pid) ?? []}
+              placeholderMode={isPlaceholderKind}
+              projectSpending={spendData.projectSpending[selected.pid] ?? 0}
               onHover={r => setHoverRecipient(r ? { r, x: -1, y: -1 } : null)}
               onLock={r => setLockedRecipientId(r.id)}
             />
+          ) : isPlaceholderKind && spendData ? (
+            <PlaceholderRankingPanel rows={placeholderRanking} onSelect={selectPoint} />
           ) : null}
         </aside>
       )}
@@ -1101,6 +1169,12 @@ function RecipientTooltip({
         <span className="font-bold leading-snug">{recipient.name}</span>
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-mirai-text-muted">
+        {recipient.kind && (
+          <>
+            <dt>表記</dt>
+            <dd className="text-mirai-text">{PLACEHOLDER_KIND_LABELS[recipient.kind]}</dd>
+          </>
+        )}
         <dt>受取額</dt>
         <dd className="tabular-nums text-mirai-text">{formatYenShort(recipient.amount)}</dd>
         <dt>支出元</dt>
@@ -1118,7 +1192,7 @@ function RecipientTooltip({
 
 /** 支出つながりの絞り込みと凡例（右上）。濃さ＝受取額の段 */
 function SpendingControls({
-  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit,
+  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit, kind, onKind, poolSize,
 }: {
   data: ProjectMapSpendingResponse | null;
   shown: number;
@@ -1130,6 +1204,10 @@ function SpendingControls({
   onMinDegree: (d: SpendMinDegree) => void;
   limit: SpendLimit;
   onLimit: (n: SpendLimit) => void;
+  kind: SpendKind;
+  onKind: (k: SpendKind) => void;
+  /** 選んだ種類の支出先の総数 */
+  poolSize: number;
 }) {
   const selectCls = 'h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
   return (
@@ -1144,6 +1222,17 @@ function SpendingControls({
           className="h-7 w-full rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
         />
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5">
+          <span className="text-mirai-text-subtle">種類</span>
+          <select
+            value={kind}
+            onChange={e => onKind(e.target.value as SpendKind)}
+            className={selectCls}
+            aria-label="支出先の種類"
+          >
+            {SPEND_KINDS.map(k => (
+              <option key={k} value={k}>{SPEND_KIND_LABELS[k]}</option>
+            ))}
+          </select>
           <span className="text-mirai-text-subtle">支出元</span>
           <select
             value={minDegree}
@@ -1184,8 +1273,10 @@ function SpendingControls({
         {data ? (
           <>
             <strong className="font-bold text-mirai-text-secondary">{shown.toLocaleString('ja-JP')}</strong>
-            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${data.summary.recipients.toLocaleString('ja-JP')}件）。`}
-            「その他」「個人A」「A社」のような匿名・集約表記は除いています。
+            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${poolSize.toLocaleString('ja-JP')}件）。`}
+            {kind === 'named'
+              ? '「その他」「個人A」「A社」のような匿名・集約表記は除いています（「種類」で切り替え）。'
+              : '支出先を具体的に書いていない表記です。名前が同じでも事業ごとに別の相手なので、線は「同じ書き方をしている事業」を結びます。'}
             菱形をクリックすると、つながる事業だけを前面に出します。
           </>
         ) : '読み込み中…'}
@@ -1249,19 +1340,36 @@ function RecipientPanel({
 
 /** 選択中の事業が払っている共有支出先。行から支出先を固定できる */
 function ProjectRecipientsPanel({
-  point, items, onHover, onLock,
+  point, items, placeholderMode, projectSpending, onHover, onLock,
 }: {
   point: ProjectMapPoint;
   items: Array<{ r: ProjectMapSpendingRecipient; amount: number }>;
+  /** 匿名・集約表記を見ているとき。見出しと割合の表示が変わる */
+  placeholderMode: boolean;
+  /** この事業の支出先への支出の合計（割合の分母） */
+  projectSpending: number;
   onHover: (r: ProjectMapSpendingRecipient | null) => void;
   onLock: (r: ProjectMapSpendingRecipient) => void;
 }) {
   return (
     <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
-      <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">この事業の共有支出先</h2>
+      <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">
+        {placeholderMode ? 'この事業の匿名・集約表記の支出先' : 'この事業の支出先'}
+      </h2>
       <p className="mt-1 truncate font-bold" title={point.name}>{point.name}</p>
+      {placeholderMode && items.length > 0 && projectSpending > 0 && (() => {
+        const sum = items.reduce((t, it) => t + it.amount, 0);
+        return (
+          <p className="mt-1 tabular-nums text-mirai-text-muted">
+            計 <strong className="font-bold text-mirai-text">{formatYenShort(sum)}</strong>
+            {`（支出の ${formatShare(sum / projectSpending)}）`}
+          </p>
+        );
+      })()}
       {items.length === 0 ? (
-        <p className="mt-2 text-mirai-text-muted">他の事業と共有している支出先はありません。</p>
+        <p className="mt-2 text-mirai-text-muted">
+          {placeholderMode ? 'この種類の匿名・集約表記への支出はありません。' : '支出先の記載がありません。'}
+        </p>
       ) : (
         <ul className="mt-2 max-h-[40dvh] space-y-px overflow-y-auto border-t border-border pt-1.5" onMouseLeave={() => onHover(null)}>
           {items.map(({ r, amount }) => (
@@ -1285,6 +1393,96 @@ function ProjectRecipientsPanel({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** 割合の表示。1%未満は小数1桁まで出す（0%と区別するため） */
+function formatShare(v: number): string {
+  const pct = v * 100;
+  if (pct >= 99.95) return '100%';
+  return pct >= 1 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+}
+
+interface PlaceholderRankRow {
+  point: ProjectMapPoint;
+  /** 匿名・集約表記（選んだ種類）への支出額 */
+  amount: number;
+  /** その事業の支出先への支出に占める割合 0-1 */
+  share: number;
+}
+
+/**
+ * 匿名・集約表記への支出が多い事業のランキング。
+ * 金額順は大口の「その他」を、割合順は支出先のほとんどを具体的に書いていない事業を拾う。
+ * 割合順は少額の事業が100%で並びやすいので、下限額で足切りできるようにする
+ */
+function PlaceholderRankingPanel({
+  rows, onSelect,
+}: {
+  rows: PlaceholderRankRow[];
+  onSelect: (p: ProjectMapPoint) => void;
+}) {
+  const LIMIT = 100;
+  const [sort, setSort] = useState<'amount' | 'share'>('amount');
+  const [minAmount, setMinAmount] = useState(0);
+  const sorted = useMemo(() => {
+    const list = rows.filter(r => r.amount >= minAmount);
+    list.sort(sort === 'amount'
+      ? (a, b) => b.amount - a.amount || b.share - a.share
+      : (a, b) => b.share - a.share || b.amount - a.amount);
+    return { total: list.length, top: list.slice(0, LIMIT) };
+  }, [rows, sort, minAmount]);
+
+  const tabCls = (active: boolean) => cn(
+    'rounded-md px-1.5 py-0.5 text-[11px] transition-colors',
+    active ? 'bg-primary/10 font-bold text-primary-accent' : 'text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text',
+  );
+  return (
+    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">匿名・集約表記への支出が多い事業</h2>
+      <div className="mt-1.5 flex items-center gap-1">
+        <button type="button" className={tabCls(sort === 'amount')} aria-pressed={sort === 'amount'} onClick={() => setSort('amount')}>金額順</button>
+        <button type="button" className={tabCls(sort === 'share')} aria-pressed={sort === 'share'} onClick={() => setSort('share')}>割合順</button>
+        <select
+          value={minAmount}
+          onChange={e => setMinAmount(Number(e.target.value))}
+          className="ml-auto h-6 cursor-pointer rounded-md border border-mirai-border bg-card px-1 text-[11px] text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
+          aria-label="匿名・集約表記への支出額の下限"
+        >
+          <option value={0}>下限なし</option>
+          <option value={1e7}>1千万円以上</option>
+          <option value={1e8}>1億円以上</option>
+          <option value={1e9}>10億円以上</option>
+        </select>
+      </div>
+      {sorted.top.length === 0 ? (
+        <p className="mt-2 text-mirai-text-muted">該当する事業はありません。</p>
+      ) : (
+        <ol className="mt-2 max-h-[45dvh] space-y-px overflow-y-auto border-t border-border pt-1.5">
+          {sorted.top.map(({ point, amount, share }, i) => (
+            <li key={point.pid}>
+              <button
+                type="button"
+                onClick={() => onSelect(point)}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-mirai-surface"
+                title={`${point.name}（${point.ministry}）`}
+              >
+                <span className="w-5 shrink-0 text-right tabular-nums text-[10px] text-mirai-text-muted">{i + 1}</span>
+                <span className="flex-1 truncate text-mirai-text-secondary">{point.name}</span>
+                <span className="shrink-0 text-right tabular-nums text-[11px] text-mirai-text-muted">
+                  {formatYenShort(amount)}
+                  <span className="ml-1 inline-block w-9 text-mirai-text">{formatShare(share)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-mirai-text-muted">
+        {`${sorted.total.toLocaleString('ja-JP')}事業中 上位${Math.min(LIMIT, sorted.total)}件。`}
+        割合は、その事業の支出先への支出に占める匿名・集約表記の比率です。クリックで事業を選択します。
+      </p>
     </div>
   );
 }

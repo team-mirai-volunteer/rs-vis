@@ -38,6 +38,11 @@ export interface SpendingOverlay {
   focusRecipientId: string | null;
   /** 渡した支出先すべてを前面に出す（支出先名で検索中）。focusRecipientId・選択事業が優先 */
   emphasizeAll?: boolean;
+  /**
+   * 事業を選んだとき、その事業だけを前面に出す（支出先の先にある他事業は出さない）。
+   * 匿名・集約表記では「その他」が1,000事業超に繋がり、2段先まで出すと全体が前面になるため
+   */
+  selectedOnly?: boolean;
   onHoverRecipient: (r: ProjectMapSpendingRecipient | null, screen: { x: number; y: number } | null) => void;
   onSelectRecipient: (r: ProjectMapSpendingRecipient) => void;
 }
@@ -422,25 +427,30 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
 
   const focusRecipientId = spending?.focusRecipientId ?? null;
   const emphasizeAll = spending?.emphasizeAll ?? false;
+  const selectedOnly = spending?.selectedOnly ?? false;
 
   /** 前面に出す支出先と事業。支出先の指定が優先、無ければ選択事業の支出先すべて */
   const spendFocus = useMemo(() => {
     if (!spendGraph) return null;
     const rset = new Set<number>();
+    let only: number | null = null;
     if (focusRecipientId) {
       const ni = spendGraph.nodes.findIndex(n => n.r.id === focusRecipientId);
       if (ni >= 0) rset.add(ni);
     } else if (selectedPid) {
       const i = points.findIndex(p => p.pid === selectedPid);
       for (const ni of (i >= 0 ? spendGraph.byProject.get(i) : undefined) ?? []) rset.add(ni);
+      if (selectedOnly && i >= 0) only = i;
     } else if (emphasizeAll) {
       for (let ni = 0; ni < spendGraph.nodes.length; ni++) rset.add(ni);
     }
     if (rset.size === 0) return null;
     const pset = new Set<number>();
-    for (const ni of rset) for (const i of spendGraph.nodes[ni].idx) pset.add(i);
-    return { rset, pset };
-  }, [spendGraph, focusRecipientId, selectedPid, points, emphasizeAll]);
+    if (only !== null) pset.add(only);
+    else for (const ni of rset) for (const i of spendGraph.nodes[ni].idx) pset.add(i);
+    /** 前面の線を pset の事業に繋がるものだけにするか */
+    return { rset, pset, linksToPsetOnly: only !== null };
+  }, [spendGraph, focusRecipientId, selectedPid, points, emphasizeAll, selectedOnly]);
 
   // ── 描画 ──
   useEffect(() => {
@@ -539,22 +549,26 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       }
       const focused = spendFocus?.rset;
       // 線は支出先ごとに1パスにまとめて stroke する（数万本を1本ずつ描くと重い）
-      const strokeLinks = (ni: number, alpha: number, width: number) => {
+      // pick: true = pset の事業への線だけ / false = pset 以外への線だけ / undefined = 全部
+      const strokeLinks = (ni: number, alpha: number, width: number, pick?: boolean) => {
         ctx.globalAlpha = alpha;
         ctx.lineWidth = width;
         ctx.strokeStyle = nodes[ni].color;
         ctx.beginPath();
         for (const i of nodes[ni].idx) {
+          if (pick !== undefined && spendFocus!.pset.has(i) !== pick) continue;
           ctx.moveTo(rsx[ni], rsy[ni]);
           ctx.lineTo(sx[i], sy[i]);
         }
         ctx.stroke();
       };
       for (let ni = 0; ni < nr; ni++) {
-        if (focused?.has(ni)) continue;
-        strokeLinks(ni, focused ? 0.035 : 0.13, 0.7);
+        if (focused?.has(ni) && !spendFocus!.linksToPsetOnly) continue;
+        strokeLinks(ni, focused ? 0.035 : 0.13, 0.7, focused?.has(ni) ? false : undefined);
       }
-      if (focused) for (const ni of focused) strokeLinks(ni, 0.6, 1.3);
+      if (focused) {
+        for (const ni of focused) strokeLinks(ni, 0.6, 1.3, spendFocus!.linksToPsetOnly ? true : undefined);
+      }
 
       ctx.lineWidth = 1;
       ctx.strokeStyle = surface;

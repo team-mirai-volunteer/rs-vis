@@ -92,8 +92,15 @@ export interface ProjectMapResponse {
 }
 
 /**
+ * 匿名・集約表記の種類。
+ * aggregate = 「その他」などの集約 / person = 「個人A」などの個人伏せ字 /
+ * masked = 「A社」「株式会社A」などの法人等伏せ字 / undisclosed = 「支出先なし」「非公表」
+ */
+export type PlaceholderKind = 'aggregate' | 'person' | 'masked' | 'undisclosed';
+
+/**
  * 支出つながりビュー（/project-bubble の「支出」重畳）の支出先1件。
- * 事業マップ上の事業から支出を受けている支出先（匿名・集約表記は除く）。
+ * 事業マップ上の事業から支出を受けている支出先。
  * 2事業以上に繋がるものが事業同士を結ぶ。1事業だけのものも大口を見せるために持つ。
  */
 export interface ProjectMapSpendingRecipient {
@@ -106,16 +113,26 @@ export interface ProjectMapSpendingRecipient {
   pids: string[];
   /** 各事業からの支出額（円） */
   amounts: number[];
+  /** 匿名・集約表記のときだけ付く種類 */
+  kind?: PlaceholderKind;
 }
 
 export interface ProjectMapSpendingResponse {
   year: number;
-  /** 金額の大きい順 */
+  /** 実名の支出先。金額の大きい順 */
   recipients: ProjectMapSpendingRecipient[];
+  /**
+   * 匿名・集約表記の支出先（「その他」「個人A」「A社」「支出先なし」など）。金額の大きい順。
+   * 名前が同じでも事業ごとに別の相手なので、実名のつながりには混ぜず別に持つ。
+   * 「支出先を具体的に書いていない事業」を洗い出すのに使う
+   */
+  placeholders: ProjectMapSpendingRecipient[];
+  /** pid → その事業の支出先への支出の合計（実名＋匿名・集約）。匿名・集約の割合の分母 */
+  projectSpending: Record<string, number>;
   summary: {
     recipients: number;
     links: number;
-    /** 名前が匿名・集約表記のため除外した支出先の数（「その他」「個人A」など） */
+    /** 匿名・集約表記の支出先の数 */
     excludedPlaceholders: number;
   };
 }

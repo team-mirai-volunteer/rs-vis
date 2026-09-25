@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProjectMapSpending, isPlaceholderRecipient } from '../app/lib/project-map-spending';
+import { buildProjectMapSpending, isPlaceholderRecipient, placeholderKindOf } from '../app/lib/project-map-spending';
 import { SPENDING_COLORS, spendingRadius, spendingStep, spendingStepLabel } from '../app/lib/project-map-view';
 import type { GraphData } from '../types/sankey-svg';
 
@@ -21,6 +21,10 @@ test('placeholder recipient names are excluded, real names are kept', () => {
   ]) {
     assert.equal(isPlaceholderRecipient(n), false, n);
   }
+  assert.deepEqual(
+    ['その他', '個人A', 'A社', '株式会社A', '支出先なし', '非公表', '東京都'].map(placeholderKindOf),
+    ['aggregate', 'person', 'masked', 'masked', 'undisclosed', 'undisclosed', null],
+  );
 });
 
 test('recipients of map projects are kept (single-project ones too), amounts summed per project and sorted', () => {
@@ -60,6 +64,10 @@ test('recipients of map projects are kept (single-project ones too), amounts sum
   assert.deepEqual(res.recipients[1].pids, ['3']);
   assert.equal(res.recipients[1].amount, 10);
   assert.deepEqual(res.summary, { recipients: 3, links: 4, excludedPlaceholders: 1 });
+  // 匿名・集約表記は実名に混ぜず、種類付きで別に持つ
+  assert.deepEqual(res.placeholders.map(p => [p.name, p.kind, p.pids]), [['その他', 'aggregate', ['1', '2']]]);
+  // 事業ごとの支出合計は実名＋匿名・集約（割合の分母）
+  assert.deepEqual(res.projectSpending, { '1': 151, '2': 301, '3': 20 });
 });
 
 test('spending steps are monotonic by amount and cut at round yen values', () => {
