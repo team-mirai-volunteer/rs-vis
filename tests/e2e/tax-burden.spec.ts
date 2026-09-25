@@ -106,3 +106,18 @@ test('mobile: no horizontal overflow and zero income is not a numeric rate', asy
   await expect(page.getByText('未定義', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('ages can be typed by clicking their value, rounded to the slider step and clamped', async ({ page }) => {
+  await page.goto('/tax-burden');
+  const value = page.getByRole('button', { name: '大人の年齢を歳で入力', exact: true });
+  const input = page.getByRole('spinbutton', { name: '大人の年齢を歳で入力', exact: true });
+  await value.click();
+  await input.fill('55.4');
+  await input.press('Enter');
+  await expect(value).toHaveText('55歳');
+  await expect(page.getByRole('slider', { name: '大人の年齢', exact: true })).toHaveValue('55');
+  await value.click();
+  await input.fill('99');
+  await input.press('Enter');
+  await expect(value).toHaveText('64歳');
+});

@@ -31,7 +31,8 @@ export function RangeField({ label, value, min, max, step = 1, suffix = '', onCh
   const commitDraft = () => {
     if (draft === null) return;
     const n = Number(draft);
-    if (draft.trim() !== '' && Number.isFinite(n)) onChange(clamp(n));
+    // スライダーの刻みに揃える（年齢は 1 歳刻みなど）
+    if (draft.trim() !== '' && Number.isFinite(n)) onChange(clamp(Math.round(n / step) * step));
     setDraft(null);
   };
   const inputLabel = `${label}を${suffix || '数値'}で入力`;
@@ -123,7 +124,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
           {HOUSEHOLDS.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
         </select></label>
         {state.view !== 'heatmap' && <RangeField label={state.view === 'age' ? '現役期の世帯年収' : '世帯年収'} value={state.income / 10000} min={0} max={2000} suffix="万円" clickToEdit onChange={v => set('income', Math.round(v * 10000))} />}
-        {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" onChange={v => set('age', v)} />}
+        {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" clickToEdit onChange={v => set('age', v)} />}
         {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
         <Toggle label="賞与2か月分を含める" note="月給12回＋1か月分を年2回" checked={state.bonus} onChange={v => set('bonus', v)} />
         {state.view === 'curve' && <>
@@ -132,9 +133,9 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         </>}
         {(state.view === 'age' || state.view === 'heatmap') && household.children > 0 && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="子どもの前提">
           <h3 className="font-bold text-primary-accent">子どもの前提</h3>
-          <RangeField label="第1子が生まれる親の年齢" value={state.firstBirthAge} min={BIRTH_AGE_RANGE[0]} max={BIRTH_AGE_RANGE[1]} suffix="歳"
+          <RangeField label="第1子が生まれる親の年齢" value={state.firstBirthAge} min={BIRTH_AGE_RANGE[0]} max={BIRTH_AGE_RANGE[1]} suffix="歳" clickToEdit
             onChange={v => setState(st => ({ ...st, firstBirthAge: v, secondBirthAge: Math.max(v, st.secondBirthAge) }))} />
-          {household.children > 1 && <RangeField label="第2子が生まれる親の年齢" value={state.secondBirthAge} min={state.firstBirthAge} max={BIRTH_AGE_RANGE[1]} suffix="歳"
+          {household.children > 1 && <RangeField label="第2子が生まれる親の年齢" value={state.secondBirthAge} min={state.firstBirthAge} max={BIRTH_AGE_RANGE[1]} suffix="歳" clickToEdit
             onChange={v => set('secondBirthAge', v)} />}
           <p className="text-xs leading-relaxed text-mirai-text-subtle">児童手当も扶養控除も子の年齢で決まるので、年齢軸のどこで給付・控除が切れるかは出産年齢の置き方で決まります。児童手当は末子が18歳以下の間（親{lastBenefitAge}歳まで）、扶養控除は末子が独立する{lifecycle?.childLeavesAt ?? 23}歳まで（親{lastDependantAge}歳まで）です。</p>
         </section>}
@@ -151,7 +152,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         {(state.view === 'age' || state.view === 'heatmap') && <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="年齢軸の条件">
           <h3 className="font-bold text-primary-accent">働き方の前提</h3>
           <RangeField label="60歳以降の賃金（現役比）" value={Math.round(state.continuation * 100)} min={0} max={100} step={5} suffix="%" onChange={v => set('continuation', v / 100)} />
-          <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={WORK_UNTIL_MAX} step={1} suffix="歳" onChange={v => set('workUntil', v)} />
+          <RangeField label="何歳まで働くか" value={state.workUntil} min={65} max={WORK_UNTIL_MAX} step={1} suffix="歳" clickToEdit onChange={v => set('workUntil', v)} />
           <p className="text-xs leading-relaxed text-mirai-text-subtle">{state.workUntil <= 65 ? '65歳で退職し、以後は年金のみ。' : `65〜${state.workUntil - 1}歳は年金を受けながら同じ賃金で働く（在職老齢年金の支給停止。厚生年金保険料は70歳まで、健康保険は75歳までで、75歳以降は給与も含めた所得で後期高齢者医療の保険料がかかる。雇用保険は年齢の上限なし）。`}家計調査では65〜69歳の勤労者世帯でも勤め先収入が月33万円あり、就労継続は珍しくありません。</p>
         </section>}
         <div className="rounded-xl bg-mirai-surface p-3 text-xs leading-relaxed text-mirai-text-secondary">給与所得のみ・正規被用者。{household.children > 0 && `子どもは大人${birthAges.join('歳・')}歳時に生まれ${lifecycle?.childLeavesAt ?? 23}歳で独立、`}大人は同年齢です。本人負担を計算します。</div>
