@@ -30,12 +30,14 @@ test('みんなの意見 is collapsed by default and opens as an accordion', asy
   await expect(panel.getByText('意見その1', { exact: true })).toHaveCount(0);
 });
 
-test('zero comments show the invitation without an accordion toggle', async ({ page }) => {
+test('zero comments add no extra line and no accordion toggle', async ({ page }) => {
   await page.route('**/api/projects/*/comments?*', route => route.fulfill({
     json: { comments: [], total: 0, nextCursor: null },
   }));
   await page.goto('/budget-sankey?year=2024&sel=project-budget-2826');
   const panel = page.getByTestId('unified-side-panel');
-  await expect(panel.getByText('まだ意見はありません。最初の意見を伝えてみませんか。')).toBeVisible();
+  await expect(panel.getByText('0件', { exact: true })).toBeVisible();
+  await expect(panel.getByText(/まだ意見はありません/)).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: '意見を伝える', exact: true })).toHaveAttribute('title', /まだ意見はありません/);
   await expect(panel.getByRole('button', { name: /みんなの意見/ })).toHaveCount(0);
 });

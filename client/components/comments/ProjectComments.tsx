@@ -95,7 +95,9 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
           variant="default"
           size="xs"
           onClick={() => setOpen(true)}
-          title="AIインタビューでこの事業への意見を伝える（匿名）"
+          title={list.length === 0 && state.comments !== undefined && !state.error
+            ? 'まだ意見はありません。AIインタビューで最初の意見を伝える（匿名）'
+            : 'AIインタビューでこの事業への意見を伝える（匿名）'}
           style={{ fontSize: META_PX }}
         >
           意見を伝える
@@ -104,10 +106,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
 
       {state.error && <div role="alert" className="mt-1.5 text-destructive" style={{ fontSize: META_PX }}>{state.error} <Button variant="link" className="text-[length:inherit] font-medium text-current" onClick={() => void state.refresh()}>再読み込みする</Button></div>}
 
-      {state.comments !== undefined && list.length === 0 && !state.error && (
-        <div className="mt-1 text-mirai-text-placeholder" style={{ fontSize: META_PX }}>まだ意見はありません。最初の意見を伝えてみませんか。</div>
-      )}
-
+      {/* 0件のときに案内文の行は出さない（パネル上段が1行伸び、フル HD でもスクロールが出るため）。案内はボタンの title に寄せる */}
       {listOpen && <div id={listId}>
       {shown.length > 0 && (
         <ul className="m-0 mt-1.5 flex list-none flex-col gap-1.5 p-0">
