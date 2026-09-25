@@ -44,7 +44,8 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
     </div>
     <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-4 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={overviewOpen} onClick={() => setOverviewOpen(value => !value)}>事業概要・評価 {overviewOpen ? 'を閉じる' : 'を見る'}</Button>
     <div className={`px-4 ${overviewOpen ? '' : 'max-sm:hidden'}`}>
-      <UnifiedProjectSections pid={Number(point.pid)} projectName={point.name} rsSheetYear={Number(year)} fontPx={11} />
+      {/* ヘッダーの下に区切り線があるので、セクション側の上の区切り線・余白は付けない（二重線を作らない） */}
+      <UnifiedProjectSections pid={Number(point.pid)} projectName={point.name} rsSheetYear={Number(year)} fontPx={11} seamless />
     </div>
     <div role="tablist" aria-label="事業の内訳" className="flex overflow-x-auto border-y border-border px-2">
       {tabs.map(label => <Button key={label} role="tab" variant="ghost" aria-selected={tab === label} onClick={() => setTab(label)}

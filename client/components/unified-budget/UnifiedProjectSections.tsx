@@ -36,6 +36,7 @@ export function UnifiedProjectSections({
   rsSheetYear,
   fontPx,
   flush = false,
+  seamless = false,
   provisionalDetail,
 }: {
   pid: number;
@@ -46,6 +47,8 @@ export function UnifiedProjectSections({
   fontPx: number;
   /** 上に事実表などが無く、親（p-4）の先頭に来るとき true。上余白と区切り線を打ち消して空白を作らない */
   flush?: boolean;
+  /** 親の直前に既に区切り線があるとき（バブルチャートの詳細パネルのヘッダー直下など）。上の余白と区切り線を付けない */
+  seamless?: boolean;
   /**
    * RS 公開 API から取った新規事業（前年度シートに無い）。渡すと事業概要をこれから作り、
    * 政策評価は点数の代わりに未実施の旨を出す（評価・再委託構造ページを引かない）
@@ -77,7 +80,7 @@ export function UnifiedProjectSections({
   const subcontractHref = isProvisional ? undefined : rsViewUrl(`/subcontracts/${pid}`, year);
 
   return (
-    <div className={cn('-mx-4', flush ? '-mt-4' : 'mt-3 border-t border-border')}>
+    <div className={cn('-mx-4', flush ? '-mt-4' : seamless ? '' : 'mt-3 border-t border-border')}>
       {/* 順番: みんなの意見 → 政策評価 → 事業概要（意見は見てもらいやすいよう最上段） */}
       <ProjectComments context={{ pid: String(pid), year, projectName, detail: detail ?? undefined }} scaleFont={scaleFont} />
       <PolicyEvaluationBlock
