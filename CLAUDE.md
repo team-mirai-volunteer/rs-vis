@@ -59,7 +59,7 @@ GitHub 連携済み（2026-09-12 に `infra/terraform/` の Terraform で作成�
 `prebuild` フックが `.gz` → `.json` を自動展開する。
 プロジェクト・環境変数の変更は Terraform で行う（手順は infra/terraform/README.md）。
 Supabase はプロジェクト `marumie-rssystem`（ref `igtulishrosqdukrrixx`、東京）を作成済みで、
-接続情報は Terraform が Vercel 環境変数へ自動配布する。基礎スキーマは `supabase/schema.sql`。列権限の追加修正は `supabase/migrations/20260915_comments_column_privileges.sql` を別途適用する（この作業では本番未適用）。意見一覧を事業ID単位（年度をまたぐ）にした索引の置き換えは `supabase/migrations/20260925_comments_list_by_pid.sql`（2026-09-25 本番適用済み）。
+接続情報は Terraform が Vercel 環境変数へ自動配布する。基礎スキーマは `supabase/schema.sql`。列権限の追加修正 `supabase/migrations/20260915_comments_column_privileges.sql` は本番反映済み（2026-09-25 に公開ロールが6列のみ SELECT 可能なことを確認。マイグレーション履歴には記録なし）。意見一覧を事業ID単位（年度をまたぐ）にした索引の置き換えは `supabase/migrations/20260925_comments_list_by_pid.sql`（2026-09-25 本番適用済み）。
 
 ### 事業コメント機能（AIインタビュー）
 
