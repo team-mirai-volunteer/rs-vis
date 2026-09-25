@@ -56,7 +56,8 @@ export function UnifiedSettings({
   const panelRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (open) panelRef.current?.focus();
+    // 図コンテナは overflow-hidden。スクロールさせると閉じた後もコントロールがずれたまま戻らない
+    if (open) panelRef.current?.focus({ preventScroll: true });
   }, [open]);
   // 外（図のノードや他のコントロール）を押したら閉じる。開いたまま残ると図を塞ぎ続けるため
   useEffect(() => {
@@ -99,7 +100,7 @@ export function UnifiedSettings({
             }
           }}
           className={`absolute ${popoverPos} z-20 flex w-80 flex-col gap-2.5 rounded-xl border border-mirai-border bg-card px-4 py-3 text-xs text-mirai-text shadow-soft outline-none`}
-          style={{ colorScheme: 'light', maxWidth: 'calc(100vw - 24px)' }}
+          style={{ colorScheme: 'light', maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100dvh - var(--app-header-h, 64px) - 72px)', overflowY: 'auto' }}
         >
           <div>
             <div className="mb-1 font-semibold">文字サイズ</div>

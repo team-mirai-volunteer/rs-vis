@@ -388,8 +388,9 @@ function UnifiedBudgetSankeyContent() {
   if (!graph || !display || !collapsed) return <CenterMessage text="データを取得できませんでした" error />;
 
   const { metadata } = graph;
+  // 暫定（API）ビューの取得状況は設定パネルに出さない（長い注記で図の操作を妨げるため）
   const summary = metadata.apiCoverage
-    ? `${metadata.budgetYear}年度 統合（暫定） / 左側は${UNIFIED_BASIS_LABELS[effectiveBasis]}、右側はRSの2025年度支出先。公開${metadata.apiCoverage.listed.toLocaleString()}事業中、執行額確認${metadata.apiCoverage.executionKnown.toLocaleString()}件・支出先取得${metadata.apiCoverage.paymentsFetched.toLocaleString()}件。${metadata.notes.join(' ')}`
+    ? undefined
     : rsMinistryMode
     ? `${metadata.budgetYear}年度 府省庁基準（RSシステムの府省庁 → 事業。予算書の会計〜目は使わない）。事業の値は${
         metadata.rsAmountKind === 'request' ? '翌年度要求額' : UNIFIED_RS_MINISTRY_MEASURE
