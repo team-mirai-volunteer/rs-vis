@@ -498,6 +498,20 @@ test.describe('budget-sankey (統合ビュー)', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  test('recipient hover shows what was paid for (contract summary), including masked names', async ({ page, request }) => {
+    const api = await (await request.get('/api/recipient-contracts?year=2025&name=' + encodeURIComponent('個人A') + '&pids=1335')).json();
+    expect(api.entries[0].contracts).toContain('在クロアチア日本国大使公邸の不動産購入');
+    await openPage(page);
+    await page.getByLabel('ノードを検索').fill('個人A');
+    await searchResults(page).filter({ hasText: /^支出先個人A[0-9]/ }).first().click();
+    const node = page.locator('[data-column="recipient"]').filter({ hasText: /^個人A \(/ }).first();
+    const box = (await node.locator('rect').first().boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 5));
+    await expect(page.getByText('主な契約', { exact: true })).toBeVisible();
+    await expect(page.getByText('在外公館施設：', { exact: true })).toBeVisible();
+    await expect(page.getByText('在クロアチア日本国大使公邸の不動産購入', { exact: false }).first()).toBeVisible();
+  });
+
   test('link tooltip appears when hovering a ribbon', async ({ page }) => {
     await openPage(page);
     const links = page.getByTestId('unified-link');

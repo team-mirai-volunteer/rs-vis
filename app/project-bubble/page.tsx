@@ -22,6 +22,7 @@ import type {
   PlaceholderKind, ProjectMapCluster, ProjectMapPoint, ProjectMapResponse,
   ProjectMapSpendingRecipient, ProjectMapSpendingResponse,
 } from '@/types/project-map';
+import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
@@ -533,6 +534,7 @@ export default function ProjectMapPage() {
                 x={hoverRecipient.x}
                 y={hoverRecipient.y}
                 visibleCount={hoverRecipient.r.pids.filter(pid => filteredPids.has(pid)).length}
+                year={year}
               />
             )}
             {isSpending && !spendData && !spendError && (
@@ -1145,12 +1147,14 @@ function DiamondSwatch({ color, size = 10 }: { color: string; size?: number }) {
 
 /** 支出先ホバーの読み取り */
 function RecipientTooltip({
-  recipient, x, y, visibleCount,
+  recipient, x, y, visibleCount, year,
 }: {
   recipient: ProjectMapSpendingRecipient;
   x: number;
   y: number;
   visibleCount: number;
+  /** RS シート年度。契約の概要（何に支払ったか）を引く */
+  year: string;
 }) {
   // パネルの行ホバー（座標なし）ではツールチップを出さない。図上の強調だけで足りる
   if (x < 0) return null;
@@ -1185,6 +1189,7 @@ function RecipientTooltip({
           )}
         </dd>
       </dl>
+      <RecipientContractSummary className="mt-2 border-t border-border pt-1.5" year={year} name={recipient.name} pids={recipient.pids} />
       <p className="mt-1 text-[10px] text-mirai-text-muted">クリックで固定・支出元の一覧</p>
     </div>
   );

@@ -33,6 +33,7 @@ import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
 import { rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
+import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
@@ -320,6 +321,25 @@ export function UnifiedSankeyChart({
   const budgetSummary = selectedDetails?.budgetSummary ?? sheetBlocks?.budgetSummary;
   const budgetBreakdown = selectedDetails?.budgetBreakdown ?? sheetBlocks?.budgetBreakdown ?? [];
   const hasBudgetTab = isIndividualProject && !provisional;
+  /**
+   * 支出先ツールチップの「何に支払ったか」を引く RS シート年度。要求年度（仮の 2026）の支出先は 2025 年版シートのもの。
+   * 暫定（RS 公開 API）は再委託構造データが無いので出さない
+   */
+  const contractSheetYear = provisional ? null : rsSheetYear === 2026 ? 2025 : rsSheetYear;
+  /**
+   * 支出先ノードへ流れ込む個別 RS 事業の事業ID（金額の大きい順・重複なし）。図の帯は TopN 外の事業を「その他」に
+   * まとめるため、絞り込み前のつながり（browseLinks）から集める
+   */
+  const browseNodeById = useMemo(() => new Map(browseNodes.map(n => [n.id, n])), [browseNodes]);
+  const contractPidsOf = useCallback((recipientId: string): number[] => {
+    const pids: number[] = [];
+    for (const link of browseLinks.filter(l => l.target === recipientId).sort((a, b) => b.value - a.value)) {
+      const d = browseNodeById.get(link.source)?.details;
+      if (!d || d.aggregated || d.projectId === undefined || (d.kind && d.kind !== 'rs')) continue;
+      if (!pids.includes(d.projectId)) pids.push(d.projectId);
+    }
+    return pids;
+  }, [browseLinks, browseNodeById]);
   /**
    * 暫定（RS 公開 API）の前年度シート。RS シート年度 N は年度 N−1 の執行を評価したものなので、暫定の予算年度 N から見た前年度にあたる
    * （rsSheetYear は要求年度用の仮の 2026 になりうるため使わない）。事業が前年度にあるかは政策評価サマリの事業IDで判定する
@@ -632,8 +652,10 @@ export function UnifiedSankeyChart({
         </g>
       </svg>
 
-      {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel} />}
-      {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} />}
+      {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel}
+        contract={hovered.details?.column === 'recipient' && !hovered.details.aggregated && contractSheetYear !== null
+          ? { year: contractSheetYear, pids: contractPidsOf(hovered.id) } : undefined} />}
+      {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} contractSheetYear={contractSheetYear} />}
 
       {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
       <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-[2px] sm:left-auto sm:right-3">
@@ -1004,7 +1026,14 @@ function ZoomButton({ icon: Icon, title, onClick }: { icon: LucideIcon; title: s
 
 const ACCOUNT_TYPE_LABELS = { general: '一般会計', special: '特別会計' };
 
-function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<UnifiedViewDetails>; x: number; y: number; amountLabel: string }) {
+function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
+  node: MOFLayoutNode<UnifiedViewDetails>;
+  x: number;
+  y: number;
+  amountLabel: string;
+  /** 支出先ノードのとき、契約の概要（何に支払ったか）を引く年度と支出元の事業 */
+  contract?: { year: number; pids: number[] };
+}) {
   const d = node.details;
   return (
     <div className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
@@ -1024,11 +1053,16 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
       {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}
       {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-mirai-text-subtle">項: {d.sectionName}</div>}
+      {contract && contract.pids.length > 0 && <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={contract.year} name={node.name} pids={contract.pids} />}
     </div>
   );
 }
 
-function UnifiedLinkTooltip({ link, x, y }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number }) {
+function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number; contractSheetYear: number | null }) {
+  // 事業 → 支出先の帯は「この事業がこの支出先に何を払ったか」と 1 対 1 なので、契約の概要を添える
+  const src = link.source.details;
+  const contractPid = link.target.details?.column === 'recipient' && !link.target.details.aggregated
+    && src && !src.aggregated && src.projectId !== undefined && (!src.kind || src.kind === 'rs') ? src.projectId : undefined;
   const accountTypes = [...new Set([link.source.details?.accountType, link.target.details?.accountType].filter((type): type is 'general' | 'special' => !!type))];
   return (
     <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
@@ -1037,6 +1071,9 @@ function UnifiedLinkTooltip({ link, x, y }: { link: MOFLayoutLink<UnifiedViewDet
       </div>
       {accountTypes.length > 0 && <div className="text-xs text-mirai-text-subtle">会計区分：{accountTypes.map(type => ACCOUNT_TYPE_LABELS[type]).join(' → ')}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
+      {contractPid !== undefined && contractSheetYear !== null && (
+        <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={contractSheetYear} name={link.target.name} pids={[contractPid]} />
+      )}
     </div>
   );
 }
