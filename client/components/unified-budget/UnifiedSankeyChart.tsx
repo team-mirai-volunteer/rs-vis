@@ -758,7 +758,9 @@ export function UnifiedSankeyChart({
                   </div>
                 )}
                 {focusRelated && <div className="mt-2 text-[11px] text-mirai-text-muted">この筋に連なるノードだけを表示しています</div>}
-                <div className="h-3" />
+                {/* 下端の余白（pb-0 の代わり）。事業のセクション群で終わるときは、最後の推移セクションが自前で余白を持つので付けない */}
+                {!(isIndividualProject && selectedDetails.projectId !== undefined && !provisional && !focusRelated
+                  && !selectedDetails.aggregated && !selectedDetails.aggregatedTop?.length) && <div className="h-3" />}
               </div>
 
               {tabs.length > 0 && (
