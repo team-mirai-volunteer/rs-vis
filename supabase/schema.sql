@@ -20,8 +20,9 @@ create table if not exists public.project_comments (
   created_at  timestamptz not null default now()
 );
 
-create index if not exists project_comments_list_idx
-  on public.project_comments (pid, year, status, created_at desc);
+-- 一覧は事業ID単位（年度をまたぐ）。year は投稿時に見ていた年度として保持する
+create index if not exists project_comments_list_by_pid_idx
+  on public.project_comments (pid, status, created_at desc);
 
 -- ── レート制限（サーバレスでも効く DB ベースの簡易カウンタ） ──
 create table if not exists public.rate_limits (

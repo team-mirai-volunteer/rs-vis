@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import type { InterviewProjectContext } from '@/client/lib/comments/interview-runner';
 import { useProjectComments } from '@/client/hooks/useProjectComments';
 import { relativeTime } from '@/client/lib/relative-time';
+import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 import { FEATURE_PROJECT_COMMENTS } from '@/app/lib/feature-flags';
 import { InterviewDialog } from './InterviewDialog';
 
@@ -32,7 +33,7 @@ export interface ProjectCommentsProps {
 
 export function ProjectComments({ context, scaleFont = px => px, previewCount = 3, bare = false }: ProjectCommentsProps) {
   const enabled = FEATURE_PROJECT_COMMENTS;
-  const state = useProjectComments(enabled ? context.pid : null, context.year);
+  const state = useProjectComments(enabled ? context.pid : null);
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   /** 一覧を開いている事業。事業を切り替えたら自動で閉じる（pid が一致するときだけ開いている扱い） */
@@ -113,7 +114,10 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
           {shown.map(c => (
             <li key={c.id} className="rounded-xl border border-border bg-mirai-surface px-2.5 py-1.5">
               <div className="whitespace-pre-wrap break-words leading-[1.55] text-mirai-text-secondary" style={{ fontSize: BODY_PX }}>{c.body}</div>
-              <div className="mt-[3px] text-mirai-text-placeholder" style={{ fontSize: scaleFont(10) }}>匿名 ・ {relativeTime(Date.parse(c.createdAt))}</div>
+              <div className="mt-[3px] text-mirai-text-placeholder" style={{ fontSize: scaleFont(10) }}>
+                匿名 ・ {c.year && <span title={`${fiscalYearLabel(c.year)}のデータを見て投稿された意見です（意見は年度をまたいで事業ごとにまとめています）`}>{fiscalYearLabel(c.year)} ・ </span>}
+                {relativeTime(Date.parse(c.createdAt))}
+              </div>
             </li>
           ))}
         </ul>

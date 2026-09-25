@@ -3,6 +3,7 @@
 /**
  * 事業コメント一覧の取得フック。再利用可能UI（client/components）から直接 API を叩かないための境界。
  * 機能無効（404）は「非表示」として扱い、エラーにしない。
+ * 意見は事業ID単位（年度をまたいで同じ事業の意見をまとめて出す）。投稿時の年度は各意見の year に残る。
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { ProjectComment, ProjectCommentsResponse } from '@/types/project-comments';
@@ -19,8 +20,10 @@ export interface ProjectCommentsState {
   refresh: () => Promise<void>;
 }
 
-async function fetchPage(pid: string, year: string, cursor: string | null): Promise<ProjectCommentsResponse | null> {
-  const qs = new URLSearchParams({ year });
+const PAGE_SIZE = 20;
+
+async function fetchPage(pid: string, cursor: string | null): Promise<ProjectCommentsResponse | null> {
+  const qs = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (cursor) qs.set('cursor', cursor);
   const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/comments?${qs}`, { cache: 'no-store' });
   if (res.status === 404) return null;
@@ -28,7 +31,7 @@ async function fetchPage(pid: string, year: string, cursor: string | null): Prom
   return res.json() as Promise<ProjectCommentsResponse>;
 }
 
-export function useProjectComments(pid: string | null, year: string): ProjectCommentsState {
+export function useProjectComments(pid: string | null): ProjectCommentsState {
   const [comments, setComments] = useState<ProjectComment[] | null | undefined>(undefined);
   const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -39,7 +42,7 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
     if (!pid) return;
     setError(null);
     try {
-      const page = await fetchPage(pid, year, null);
+      const page = await fetchPage(pid, null);
       if (page === null) {
         setComments(null);
         setTotal(0);
@@ -53,7 +56,7 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
       setComments([]);
       setError(e instanceof Error ? e.message : '意見の取得に失敗しました');
     }
-  }, [pid, year]);
+  }, [pid]);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,7 +65,7 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
     setNextCursor(null);
     setError(null);
     if (!pid) return;
-    fetchPage(pid, year, null)
+    fetchPage(pid, null)
       .then(page => {
         if (cancelled) return;
         if (page === null) { setComments(null); setTotal(0); setNextCursor(null); return; }
@@ -77,13 +80,13 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
         setError(e instanceof Error ? e.message : '意見の取得に失敗しました');
       });
     return () => { cancelled = true; };
-  }, [pid, year]);
+  }, [pid]);
 
   const loadMore = useCallback(async () => {
     if (!pid || !nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const page = await fetchPage(pid, year, nextCursor);
+      const page = await fetchPage(pid, nextCursor);
       if (page) {
         setComments(prev => [...(prev ?? []), ...page.comments]);
         setTotal(page.total);
@@ -94,7 +97,7 @@ export function useProjectComments(pid: string | null, year: string): ProjectCom
     } finally {
       setLoadingMore(false);
     }
-  }, [pid, year, nextCursor, loadingMore]);
+  }, [pid, nextCursor, loadingMore]);
 
   return { comments, total, nextCursor, error, loadingMore, loadMore, refresh };
 }

@@ -14,6 +14,8 @@ export interface ProjectComment {
   id: string;
   body: string;
   createdAt: string;
+  /** 投稿したときに見ていた RS シート年度。一覧は事業ID単位で年度をまたいでまとめるため、出典として添える */
+  year?: number;
 }
 
 /** GET /api/projects/[pid]/comments の応答 */

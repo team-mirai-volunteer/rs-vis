@@ -1,6 +1,6 @@
 /**
  * 事業コメント API
- *   GET  /api/projects/[pid]/comments?year=2024&limit=20&cursor=<createdAt>  公開済み意見の一覧
+ *   GET  /api/projects/[pid]/comments?limit=20&cursor=<createdAt>  公開済み意見の一覧（事業ID単位・年度をまたぐ）
  *   POST /api/projects/[pid]/comments  { year, body, transcript }              同意確定時の保存
  *
  * 機能は Supabase の env（NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）が揃っている
@@ -42,13 +42,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ pid:
   try {
     const { pid } = await params;
     if (!isValidPid(pid)) return NextResponse.json({ error: 'pid が不正です' }, { status: 400 });
-    const year = parseYear(req.nextUrl.searchParams.get('year'));
-    if (!year) return NextResponse.json({ error: 'year が不正です' }, { status: 400 });
+    // 旧クライアントが付ける ?year= は無視する（一覧は事業ID単位）
     const limitRaw = Number(req.nextUrl.searchParams.get('limit'));
     const cursor = req.nextUrl.searchParams.get('cursor');
 
     const db = getSupabaseAdmin()!;
-    const result = await listPublishedComments(db, pid, Number(year), {
+    const result = await listPublishedComments(db, pid, {
       limit: Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : undefined,
       cursor: cursor && !Number.isNaN(Date.parse(cursor)) ? cursor : null,
     });

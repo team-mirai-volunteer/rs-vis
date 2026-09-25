@@ -11,22 +11,24 @@ interface CommentRow {
   id: string;
   body: string;
   created_at: string;
+  year: number;
 }
 
-/** 公開済み意見を新しい順に返す（cursor = この created_at より前） */
+/**
+ * 公開済み意見を新しい順に返す（cursor = この created_at より前）。
+ * 事業IDは年度をまたいで同じ事業を指すため、年度では絞らず事業ID単位でまとめる（各行の year は出典として返す）。
+ */
 export async function listPublishedComments(
   db: SupabaseClient,
   pid: string,
-  year: number,
   opts: { limit?: number; cursor?: string | null } = {},
 ): Promise<ProjectCommentsResponse> {
   const limit = Math.min(Math.max(opts.limit ?? PAGE_SIZE_DEFAULT, 1), PAGE_SIZE_MAX);
 
   let query = db
     .from('project_comments')
-    .select('id, body, created_at', { count: 'exact' })
+    .select('id, body, created_at, year', { count: 'exact' })
     .eq('pid', pid)
-    .eq('year', year)
     .eq('status', 'published')
     .order('created_at', { ascending: false })
     .limit(limit + 1); // 次ページ有無の判定用に1件多く取る
@@ -38,7 +40,7 @@ export async function listPublishedComments(
   const rows = (data ?? []) as CommentRow[];
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
-  const comments: ProjectComment[] = page.map(r => ({ id: r.id, body: r.body, createdAt: r.created_at }));
+  const comments: ProjectComment[] = page.map(r => ({ id: r.id, body: r.body, createdAt: r.created_at, year: r.year }));
   return {
     comments,
     total: count ?? comments.length,
