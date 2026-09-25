@@ -371,11 +371,13 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
   /**
    * 支出先ノードの配置（ズーム1の画面座標系）。
    *
-   * 支出先には固有の意味座標が無いので、支出元の事業の表示座標の重心に置く。
+   * 支出先には固有の意味座標が無いので、支出元の事業の重心に置く。
    * 重みは金額の平方根。金額そのままだと最大の支出元の真上に重なって菱形が隠れ、
    * 均等だと大口の支出元との関係が位置に出ない、の中間を取る。
+   * 重心は絞り込みに関係なく「全支出元の元の配置（重なり回避前の座標）」から取る。
+   * 表示中の事業だけで取ると、絞り込むたびに菱形が残った事業の側へ引っ張られて動くため。
    *
-   * 支出元が1事業だけの支出先は重心＝その事業の真上になり丸を隠すので、
+   * 支出元が1事業だけの支出先（全体で1事業。表示中の数ではない）は重心＝その事業の真上になり丸を隠すので、
    * 事業の縁のすぐ外に画面px固定のずらし（ox, oy）で置く。同じ事業に複数あれば
    * 黄金角で周りに散らす。ずらしをズーム前の座標に入れないのは、拡大で事業から離れていかないようにするため。
    * 表示中（絞り込み後）の事業に1件も繋がらない支出先は置かない。
@@ -385,25 +387,37 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     if (!spendRecipients) return null;
     const indexByPid = new Map<string, number>();
     for (let i = 0; i < points.length; i++) indexByPid.set(points[i].pid, i);
+    // 絞り込み前の全事業（regionPoints は背景の地図用に全件が渡される）。重心を絞り込みに左右されない位置にする
+    const allByPid = new Map<string, ProjectMapPoint>();
+    for (const p of regionPoints) allByPid.set(p.pid, p);
     const nodes: Array<{
       r: ProjectMapSpendingRecipient; x: number; y: number; ox: number; oy: number;
       idx: number[]; color: string; radius: number;
     }> = [];
     const singlesAt = new Map<number, number>();
     for (const r of spendRecipients) {
+      // 表示中の支出元（強調・線の対象）
       const idx: number[] = [];
-      let wx = 0, wy = 0, wt = 0;
-      for (let k = 0; k < r.pids.length; k++) {
-        const i = indexByPid.get(r.pids[k]);
-        if (i === undefined) continue;
-        idx.push(i);
-        const w = Math.sqrt(r.amounts[k]);
-        wx += relaxed.px[i] * w; wy += relaxed.py[i] * w; wt += w;
+      for (const pid of r.pids) {
+        const i = indexByPid.get(pid);
+        if (i !== undefined) idx.push(i);
       }
-      if (idx.length === 0 || wt === 0) continue;
+      if (idx.length === 0) continue;
       const radius = spendingRadius(r.amount);
+      let x: number, y: number;
       let ox = 0, oy = 0;
-      if (idx.length === 1) {
+      if (r.pids.length > 1) {
+        let wx = 0, wy = 0, wt = 0;
+        for (let k = 0; k < r.pids.length; k++) {
+          const p = allByPid.get(r.pids[k]);
+          if (!p) continue;
+          const w = Math.sqrt(r.amounts[k]);
+          wx += (p.x * base.k + base.ox) * w; wy += (p.y * base.k + base.oy) * w; wt += w;
+        }
+        if (wt === 0) continue;
+        x = wx / wt; y = wy / wt;
+      } else {
+        x = relaxed.px[idx[0]]; y = relaxed.py[idx[0]];
         const i = idx[0];
         const nth = singlesAt.get(i) ?? 0;
         singlesAt.set(i, nth + 1);
@@ -411,7 +425,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
         const d = relaxed.pr[i] + radius * 1.25 + 1.5;
         ox = Math.cos(a) * d; oy = Math.sin(a) * d;
       }
-      nodes.push({ r, x: wx / wt, y: wy / wt, ox, oy, idx, color: spendingColor(r.amount), radius });
+      nodes.push({ r, x, y, ox, oy, idx, color: spendingColor(r.amount), radius });
     }
     // 小さい順に描く＝濃い大口が上に来る
     nodes.reverse();
@@ -423,7 +437,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       }
     });
     return { nodes, byProject };
-  }, [spendRecipients, points, relaxed]);
+  }, [spendRecipients, points, relaxed, regionPoints, base]);
 
   const focusRecipientId = spending?.focusRecipientId ?? null;
   const emphasizeAll = spending?.emphasizeAll ?? false;
