@@ -53,7 +53,7 @@ export function RangeField({ label, value, min, max, step = 1, suffix = '', onCh
               {suffix}</span>
           : <Button type="button" variant="ghost" aria-label={inputLabel} title="クリックして数値を入力" disabled={disabled}
               onClick={() => setDraft(String(shown))}
-              className="h-auto rounded-md px-1.5 py-0.5 text-sm font-bold tabular-nums text-mirai-text underline decoration-dotted decoration-mirai-text-muted underline-offset-4 hover:bg-card">
+              className="h-auto rounded-md px-1.5 py-0.5 text-sm font-bold tabular-nums text-mirai-text hover:bg-card">
               {shown.toLocaleString('ja-JP')}{suffix}
             </Button>
         : editable
