@@ -918,11 +918,12 @@ function Tooltip({
   cluster?: ProjectMapCluster;
   color: string;
 }) {
-  // 端で見切れないように、カーソルの左右どちらに出すかを切り替える
+  // 端で見切れないように、カーソルの左右どちらに出すかを切り替える。
+  // 重なり順は左右のフロート列（z-30〜40）より上にし、パネルの下にもぐらないようにする
   const flip = x > 380;
   return (
     <div
-      className="pointer-events-none absolute z-20 w-72 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
+      className="pointer-events-none absolute z-50 w-72 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{
         left: flip ? undefined : x + 14,
         right: flip ? `calc(100% - ${x - 14}px)` : undefined,
@@ -1161,7 +1162,7 @@ function RecipientTooltip({
   const flip = x > 380;
   return (
     <div
-      className="pointer-events-none absolute z-20 w-64 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
+      className="pointer-events-none absolute z-50 w-64 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{
         left: flip ? undefined : x + 14,
         right: flip ? `calc(100% - ${x - 14}px)` : undefined,
