@@ -32,6 +32,7 @@ import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-rea
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from './UnifiedProjectBlocks';
+import { RsApiProjectDetail } from './RsApiProjectDetail';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
 import { FactRow } from './FactRow';
@@ -80,6 +81,7 @@ export function UnifiedSankeyChart({
   searchPopover,
   searchTrailing,
   sidePanelTopOffset,
+  provisional = false,
 }: {
   nodes: UnifiedViewNode[];
   links: SankeyLink[];
@@ -118,6 +120,7 @@ export function UnifiedSankeyChart({
   hasSpending?: boolean;
   /** 政策評価スコアの取得状況（絞り込み欄の補足表示用） */
   scoreStatus?: UnifiedScoreStatus;
+  provisional?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState({ width: 1900, height: 900 });
@@ -305,11 +308,11 @@ export function UnifiedSankeyChart({
     (selectedDetails.column === 'program' || selectedDetails.column === 'program-spending') &&
     (!selectedDetails.kind || selectedDetails.kind === 'rs') &&
     !selectedDetails.aggregated && selectedDetails.projectId !== undefined;
-  const projectBlocks = useProjectBlocks(isIndividualProject && hasSpending ? selectedDetails?.projectId : undefined, rsSheetYear);
+  const projectBlocks = useProjectBlocks(isIndividualProject && hasSpending && !provisional ? selectedDetails?.projectId : undefined, rsSheetYear);
   const budgetSummary = selectedDetails?.budgetSummary ?? projectBlocks?.budgetSummary;
   const budgetBreakdown = selectedDetails?.budgetBreakdown ?? projectBlocks?.budgetBreakdown ?? [];
-  const hasBudgetTab = isIndividualProject && (!!budgetSummary || budgetBreakdown.length > 0);
-  const hasBlocksTab = isIndividualProject && hasSpending;
+  const hasBudgetTab = isIndividualProject && !provisional;
+  const hasBlocksTab = isIndividualProject && hasSpending && !provisional;
   const [blockSelection, setBlockSelection] = useState<{ projectId: number; year: number; blockId: string } | null>(null);
   const selectedBlock = blockSelection?.projectId === selectedDetails?.projectId && blockSelection?.year === rsSheetYear
     ? projectBlocks?.blocks.find(block => block.blockId === blockSelection.blockId) : undefined;
@@ -591,7 +594,7 @@ export function UnifiedSankeyChart({
                         <>
                           {text}
                           {truncated && <Ellipsis fontPx={fontPx} />}
-                          {` (${formatBudgetFromYen(node.value)})`}
+                          {` (${details?.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(node.value)})`}
                         </>
                       );
                     })()}
@@ -675,8 +678,8 @@ export function UnifiedSankeyChart({
                         )}
                       </div>
                     )}
-                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{formatBudgetFromYen(selectedPanelNode.value)}</div>
-                    <div className="hidden text-[11px] text-mirai-text-muted sm:block">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>
+                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{selectedDetails.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(selectedPanelNode.value)}</div>
+                    {!selectedDetails.budgetUnmatched && <div className="hidden text-[11px] text-mirai-text-muted sm:block">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>}
                     {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
                   </div>
                   <Button variant="ghost" size="icon-sm" title="選択を解除" aria-label="選択を解除" onClick={() => onSelect(null)} className="shrink-0 text-mirai-text-muted hover:text-mirai-text">
@@ -697,7 +700,7 @@ export function UnifiedSankeyChart({
                   )}
                   {selectedDetails.sourceUrl && (
                     <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
-                      予算書の出典
+                      {provisional && isIndividualProject ? 'RSシートの出典' : '予算書の出典'}
                     </a>
                   )}
                   {selectedDetails.column === 'koumoku' && (
@@ -712,20 +715,22 @@ export function UnifiedSankeyChart({
               <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '60%' }}>
                 <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
-                {['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
+                {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
                   <div className="-mx-4 mt-3 border-t border-border">
                     <UnifiedAggregateEvaluation programs={downstreamPrograms} rsSheetYear={rsSheetYear} fontPx={fontPx} />
                   </div>
                 )}
                 {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託） */}
-                {isIndividualProject && selectedDetails.projectId !== undefined && (
+                {isIndividualProject && selectedDetails.projectId !== undefined && (provisional ? (
+                    <RsApiProjectDetail key={selectedDetails.projectId} projectId={selectedDetails.projectId} />
+                  ) : (
                     <UnifiedProjectSections
                       pid={selectedDetails.projectId}
                       projectName={selectedPanelNode.name}
                       rsSheetYear={rsSheetYear}
                       fontPx={fontPx}
                     />
-                  )}
+                  ))}
                 {selectedDetails.aggregated && (
                   <div className="text-xs text-mirai-text-subtle">表示数から溢れた {selectedDetails.aggregatedCount?.toLocaleString()} 件</div>
                 )}
@@ -769,12 +774,14 @@ export function UnifiedSankeyChart({
                   </div>
                   <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-4 pt-1">
                     {activeTab === 'budget-execution' ? (
-                      <BudgetExecutionSection
-                        budgetSummary={budgetSummary}
-                        budgetBreakdown={budgetBreakdown}
-                        scaleFont={px => Math.round((px * fontPx) / 11)}
-                        presentation="tab"
-                      />
+                      <>
+                        <BudgetExecutionSection
+                          budgetSummary={budgetSummary}
+                          budgetBreakdown={budgetBreakdown}
+                          scaleFont={px => Math.round((px * fontPx) / 11)}
+                          presentation="tab"
+                        />
+                      </>
                     ) : activeTab === 'blocks' ? (
                       <UnifiedProjectBlocks graph={projectBlocks} year={rsSheetYear} onSelect={block => {
                         setBlockSelection({ projectId: selectedDetails.projectId!, year: rsSheetYear, blockId: block.blockId });
@@ -792,7 +799,7 @@ export function UnifiedSankeyChart({
                           <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5">
                             <Button variant="ghost" onClick={() => onSelect(item.id)} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
                               <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(item.value)}</span>
+                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
                             </Button>
                           </div>
                         );
@@ -936,10 +943,11 @@ function UnifiedTooltip({ node, x, y, amountLabel }: { node: MOFLayoutNode<Unifi
       )}
       <div className="font-semibold text-mirai-text">{node.name}</div>
       {d?.accountType && <div className="text-xs text-mirai-text-subtle">会計区分：{ACCOUNT_TYPE_LABELS[d.accountType]}</div>}
-      <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(node.value)}</div>
+      <div className="text-lg font-bold text-mirai-text">{d?.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(node.value)}</div>
       {d?.column === 'revenue' && <div className="mt-1 text-xs text-mirai-text-subtle">{revenueAmountLabel(d)}。個別事業への充当額を示すものではありません。</div>}
       {d?.revenueKind === 'internal-transfer' && <div className="mt-1 text-xs text-mirai-text-subtle">会計・勘定間の受入（国全体の単純合計では重複）</div>}
-      {d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
+      {d?.budgetUnmatched && <div className="mt-1 text-xs">予算側の事業と未突合です。0円予算を意味しません。</div>}
+      {!d?.budgetUnmatched && d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
       {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}
       {d?.sectionName && d.column === 'koumoku' && <div className="mt-1 text-xs text-mirai-text-subtle">項: {d.sectionName}</div>}

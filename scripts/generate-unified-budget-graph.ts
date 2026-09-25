@@ -77,8 +77,8 @@ if (!BUDGET_YEAR) {
 }
 const SHEET_YEAR: number = argNum('--sheet') ?? BUDGET_YEAR + 1;
 const BASIS_KEY = (argStr('--basis') ?? 'initial') as UnifiedBasis;
-if (!UNIFIED_BASES.includes(BASIS_KEY)) {
-  console.error(`❌ --basis は ${UNIFIED_BASES.join(' | ')} のいずれか（指定: ${BASIS_KEY}）`);
+if (!UNIFIED_BASES.includes(BASIS_KEY) || BASIS_KEY === 'execution') {
+  console.error(`❌ --basis は ${UNIFIED_BASES.filter(b => b !== 'execution').join(' | ')} のいずれか（指定: ${BASIS_KEY}）。暫定執行実績は generate-rs-api.ts で生成してください`);
   process.exit(1);
 }
 /** MOF 目の予算種別（会計〜目の流量の出典） */

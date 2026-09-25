@@ -33,6 +33,7 @@ import {
 import { usePolicySummary } from '@/client/components/unified-budget/policy-summary-cache';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toRsMinistryGraph, toViewGraph } from '@/app/lib/unified-budget/transform';
+import { withProvisionalSpending } from '@/app/lib/unified-budget/provisional';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -58,7 +59,7 @@ const basesOf = (year: number): readonly UnifiedBasis[] => UNIFIED_BASES_BY_YEAR
 const coerceBasis = (year: number, basis: UnifiedBasis | null | undefined): UnifiedBasis =>
   basis && basesOf(year).includes(basis) ? basis : basesOf(year).includes(DEFAULT_BASIS) ? DEFAULT_BASIS : 'initial';
 /** 読み込んだグラフのキー。府省庁基準は当初予算ファイルを共有する */
-const graphKey = (year: number, basis: UnifiedBasis) => `${year}-${unifiedFileBasis(basis)}`;
+const graphKey = (year: number, basis: UnifiedBasis, provisional = false) => `${year}-${unifiedFileBasis(basis)}${provisional ? '-provisional' : ''}`;
 
 /** 列 → URL パラメータ名の短縮（t=TopN, o=表示位置） */
 const COL_KEY: Record<UnifiedColumn, string> = {
@@ -200,6 +201,8 @@ function UnifiedBudgetSankeyContent() {
     return coerceBasis(year0, searchParams.get('b') as UnifiedBasis | null);
   });
   const [visibleColumns, setVisibleColumns] = useState<UnifiedColumn[]>(() => parseColumns(searchParams.get('cols')) ?? UNIFIED_PRESET_COLUMNS.full);
+  const [provisionalView, setProvisionalView] = useState(() => searchParams.get('view') === 'provisional' || searchParams.get('b') === 'execution');
+  const effectiveProvisional = year === 2025 && provisionalView;
   const [topN, setTopN] = useState<UnifiedTopN>(() => parsePerColumn(searchParams, 't'));
   const [offset, setOffset] = useState<UnifiedOffset>(() => parsePerColumn(searchParams, 'o'));
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
@@ -250,13 +253,18 @@ function UnifiedBudgetSankeyContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const key = graphKey(year, effectiveBasis);
+    const key = graphKey(year, effectiveBasis, effectiveProvisional);
     if (graphs.has(key)) return;
     let cancelled = false;
     setLoading(true);
-    fetch(`/data/${unifiedGraphFileName(year, effectiveBasis)}`)
-      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`統合グラフ（${year}年度・${UNIFIED_BASIS_LABELS[effectiveBasis]}）を取得できませんでした: ${res.status}`))))
-      .then((g: UnifiedGraph) => {
+    const budget = fetch(`/data/${unifiedGraphFileName(year, effectiveBasis)}`)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`統合グラフ（${year}年度・${UNIFIED_BASIS_LABELS[effectiveBasis]}）を取得できませんでした: ${res.status}`))));
+    const data: Promise<UnifiedGraph> = effectiveProvisional
+      ? Promise.all([budget, fetch('/data/unified-budget-2025-execution-graph.json').then(r => {
+        if (!r.ok) throw new Error(`暫定支出データを取得できませんでした: ${r.status}`);
+        return r.json();
+      })]).then(([b, e]) => withProvisionalSpending(b, e)) : budget;
+    data.then((g: UnifiedGraph) => {
         if (cancelled) return;
         setGraphs(prev => new Map(prev).set(key, g));
         setError(null);
@@ -266,9 +274,9 @@ function UnifiedBudgetSankeyContent() {
     return () => {
       cancelled = true;
     };
-  }, [year, effectiveBasis, graphs]);
+  }, [year, effectiveBasis, effectiveProvisional, graphs]);
 
-  const graph = graphs.get(graphKey(year, effectiveBasis)) ?? null;
+  const graph = graphs.get(graphKey(year, effectiveBasis, effectiveProvisional)) ?? null;
   const rsMinistryMode = isRsMinistryBasis(effectiveBasis);
 
   // 変換パイプライン。絞り込み・畳み込みまでは browse（サイドパネル用・全件）、TopN 後が図用。
@@ -294,7 +302,7 @@ function UnifiedBudgetSankeyContent() {
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
   // 取得前（undefined）・取得失敗（null）のときは ctx.policy を渡さず、スコアの絞り込みは効かせない
   const scoreFilterActive = hasScoreRange(filter.scoreO) || hasScoreRange(filter.scoreX) || hasScoreRange(filter.scoreN);
-  const policySummary = usePolicySummary(scoreFilterActive && graph ? graph.metadata.rsSheetYear : null);
+  const policySummary = usePolicySummary(scoreFilterActive && graph && !graph.metadata.apiCoverage ? graph.metadata.rsSheetYear : null);
   const policyScores = useMemo<UnifiedPolicyScores | undefined>(() => {
     if (!policySummary) return undefined;
     const out: UnifiedPolicyScores = {};
@@ -322,6 +330,7 @@ function UnifiedBudgetSankeyContent() {
     const params = new URLSearchParams();
     params.set('year', String(year));
     params.set('b', effectiveBasis);
+    if (effectiveProvisional) params.set('view', 'provisional');
     // 年度による一時的な非表示を、ユーザーが列を隠した設定として保存しない。
     params.set('cols', serializeColumns(visibleColumns));
     for (const c of UNIFIED_COLUMNS) {
@@ -337,7 +346,7 @@ function UnifiedBudgetSankeyContent() {
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, visibleColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -346,6 +355,7 @@ function UnifiedBudgetSankeyContent() {
       const restoredYear = (AVAILABLE_YEARS as readonly number[]).includes(y) ? y : DEFAULT_YEAR;
       setYear(restoredYear);
       setBasis(coerceBasis(restoredYear, params.get('b') as UnifiedBasis | null));
+      setProvisionalView(params.get('view') === 'provisional' || params.get('b') === 'execution');
       setVisibleColumns(parseColumns(params.get('cols')) ?? UNIFIED_PRESET_COLUMNS.full);
       setTopN(parsePerColumn(params, 't'));
       setOffset(parsePerColumn(params, 'o'));
@@ -378,7 +388,9 @@ function UnifiedBudgetSankeyContent() {
   if (!graph || !display || !collapsed) return <CenterMessage text="データを取得できませんでした" error />;
 
   const { metadata } = graph;
-  const summary = rsMinistryMode
+  const summary = metadata.apiCoverage
+    ? `${metadata.budgetYear}年度 統合（暫定） / 左側は${UNIFIED_BASIS_LABELS[effectiveBasis]}、右側はRSの2025年度支出先。公開${metadata.apiCoverage.listed.toLocaleString()}事業中、執行額確認${metadata.apiCoverage.executionKnown.toLocaleString()}件・支出先取得${metadata.apiCoverage.paymentsFetched.toLocaleString()}件。${metadata.notes.join(' ')}`
+    : rsMinistryMode
     ? `${metadata.budgetYear}年度 府省庁基準（RSシステムの府省庁 → 事業。予算書の会計〜目は使わない）。事業の値は${
         metadata.rsAmountKind === 'request' ? '翌年度要求額' : UNIFIED_RS_MINISTRY_MEASURE
       } / RSシート${metadata.rsSheetYear}`
@@ -410,6 +422,12 @@ function UnifiedBudgetSankeyContent() {
     <AppHeader fiscalYear={year} position="fixed" current="/budget-sankey">
       <UnifiedBasisSelect value={effectiveBasis} available={basesOf(year)} onChange={setBasis} />
       <UnifiedViewSelect
+        provisional={effectiveProvisional}
+        provisionalAvailable={year === 2025}
+        onProvisionalChange={enabled => {
+          setProvisionalView(enabled);
+          if (enabled) setVisibleColumns(UNIFIED_PRESET_COLUMNS.full);
+        }}
         visibleColumns={effectiveColumns}
         availableColumns={availableColumns}
         onChange={(preset, columns) => {
@@ -435,14 +453,14 @@ function UnifiedBudgetSankeyContent() {
         onFilterChange={setFilter}
         filterOpen={filterOpen}
         onToggleFilterOpen={() => { const next = !filterOpen; setFilterOpen(next); if (next) setAiOpen(false); }}
-        searchPopover={<AiFilterChat open={aiOpen} year={year} onClose={() => setAiOpen(false)}
+        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} year={year} onClose={() => setAiOpen(false)}
           onApply={result => {
             setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
             setFilterOpen(false);
           }} />}
         searchTrailing={wideControls ? settingsPanel('top-right') : undefined}
         sidePanelTopOffset={wideControls && controlsBottom > 0 ? controlsBottom + SIDE_PANEL_GAP_PX : undefined}
-        searchAddon={<Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
+        searchAddon={!metadata.apiCoverage && <Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
           onClick={() => { const next = !aiOpen; setAiOpen(next); if (next) setFilterOpen(false); }}
           className={cn('h-6 gap-1 px-1.5 text-[11px]', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>
           <Sparkles aria-hidden="true" className="size-3" />AI
@@ -454,10 +472,11 @@ function UnifiedBudgetSankeyContent() {
         basisMeasureLabel={UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}
         rsMeasureLabel={rsMinistryMode ? UNIFIED_RS_MINISTRY_MEASURE : metadata.rsMeasureLabel}
         columnLabels={rsMinistryMode ? UNIFIED_RS_MINISTRY_COLUMN_LABELS : undefined}
+        provisional={!!metadata.apiCoverage}
         rsSheetYear={metadata.rsSheetYear}
         rsAmountKind={metadata.rsAmountKind}
         hasSpending={metadata.hasSpending}
-        scoreStatus={!scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
+        scoreStatus={metadata.apiCoverage ? 'unavailable' : !scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
       />
       {/* 表示数のコントロールパネル。sm 以上は左上（検索・AI・表示設定は右上）。
           sm 未満では右上の 1 ボタンに表示設定と一緒に畳み、押すと下に縦に開く */}
@@ -479,6 +498,15 @@ function UnifiedBudgetSankeyContent() {
       </div>
 
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}
+      {metadata.apiCoverage && (
+        <div data-testid="rs-api-coverage" className="absolute bottom-3 left-1/2 z-30 w-max max-w-[95%] -translate-x-1/2 rounded border border-mirai-border bg-card px-3 py-2 text-[11px] text-mirai-text shadow-xs">
+          <strong>統合（暫定）・2025年度支出先</strong>（{new Date(metadata.apiCoverage.fetchedThrough).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}取得）
+          <br />公開{metadata.apiCoverage.listed.toLocaleString()}事業・支出先取得{metadata.apiCoverage.paymentsFetched.toLocaleString()}件
+          {metadata.apiCoverage.paymentsMissing > 0 && `・未取得${metadata.apiCoverage.paymentsMissing.toLocaleString()}件`}
+          {metadata.apiCoverage.executionUnknown > 0 && `・執行額未確認${metadata.apiCoverage.executionUnknown.toLocaleString()}件`}
+          <br />予算は{UNIFIED_BASIS_LABELS[effectiveBasis]}。支出はRS公開分・予算未突合{metadata.apiCoverage.unmatchedBudgetProjects?.toLocaleString()}件。CSV公開後に更新予定。
+        </div>
+      )}
       {metadata.rsAmountKind === 'request' && (
         <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded bg-stance-neutral-badge-bg px-3 py-1 text-[11px] text-stance-neutral shadow-xs">
           {metadata.budgetYear}年度は「要求→査定」ビュー: RS事業の値は前年度シートの翌年度要求額、目の値はMOF{UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}{effectiveBasis === 'initial' ? '（査定後）' : ''}です

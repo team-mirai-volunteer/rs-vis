@@ -1,5 +1,7 @@
 # Data Pipeline Guide
 
+2025年度執行実績（2026年度シート）の暫定API取得は [rs-api-provisional.md](rs-api-provisional.md) を参照。公式CSVと別の入力・生成物を使い、`/budget-sankey?year=2025&b=initial&view=provisional` の右側「統合（暫定）」に表示する。
+
 RS System CSV → 各種JSON → 各ページ表示 までのデータパイプライン詳細。
 
 ---

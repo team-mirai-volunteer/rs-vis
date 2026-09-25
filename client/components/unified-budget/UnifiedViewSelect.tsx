@@ -8,6 +8,7 @@
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { UNIFIED_PRESET_COLUMNS, UNIFIED_PRESET_LABELS, type UnifiedPreset } from '@/types/unified-budget-view';
 import { ChevronDown } from 'lucide-react';
+import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -33,27 +34,41 @@ export function UnifiedViewSelect({
   visibleColumns,
   availableColumns,
   onChange,
+  provisional = false,
+  provisionalAvailable = false,
+  onProvisionalChange,
 }: {
   visibleColumns: UnifiedColumn[];
   availableColumns: UnifiedColumn[];
   onChange: (preset: UnifiedPreset, columns: UnifiedColumn[]) => void;
+  provisional?: boolean;
+  provisionalAvailable?: boolean;
+  onProvisionalChange?: (enabled: boolean) => void;
 }) {
   const preset = presetOf(visibleColumns, availableColumns);
   return (
     <div className="relative shrink-0" data-pan-disabled="true">
       <select
-        value={preset}
+        value={provisional ? 'provisional' : preset}
         aria-label="表示プリセット"
         onChange={e => {
+          if (e.target.value === 'provisional') {
+            onProvisionalChange?.(true);
+            return;
+          }
+          onProvisionalChange?.(false);
           const p = e.target.value as UnifiedPreset;
           onChange(p, UNIFIED_PRESET_COLUMNS[p]);
         }}
         className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
       >
         {(Object.keys(UNIFIED_PRESET_LABELS) as UnifiedPreset[]).map(p => (
-          <option key={p} value={p}>
-            {UNIFIED_PRESET_LABELS[p]}
-          </option>
+          <Fragment key={p}>
+            <option value={p}>
+              {UNIFIED_PRESET_LABELS[p]}
+            </option>
+            {p === 'full' && provisionalAvailable && <option value="provisional">統合（暫定）</option>}
+          </Fragment>
         ))}
       </select>
       <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted" />

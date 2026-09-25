@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "fetch-rs-api-2026": "node scripts/fetch-rs-api.mjs 2026",
+    "generate-rs-api-2026": "tsx scripts/generate-rs-api.ts 2026",
     "generate-project-budget-history": "python scripts/generate-project-budget-history.py",
     "test:project-budget-history": "python scripts/test_project_budget_history.py",
     "test:fiscal-cpi-backtest": "python scripts/test_fiscal_cpi_backtest.py",

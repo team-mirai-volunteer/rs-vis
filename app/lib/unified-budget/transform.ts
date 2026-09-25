@@ -361,7 +361,7 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
     if (isRsProgram(n)) {
       const pid = n.details.projectId as number;
       const s = spendingByPid.get(pid);
-      const failBudget = hasBudget && ((budgetMin !== null && n.value < budgetMin) || (budgetMax !== null && n.value > budgetMax));
+      const failBudget = hasBudget && (n.details.budgetUnmatched || (budgetMin !== null && n.value < budgetMin) || (budgetMax !== null && n.value > budgetMax));
       // 支出額は事業(支出)の値。支出の無い事業（事業(支出)ノードが無い）は下限指定で落ち、上限のみなら残す
       const spendingValue = s?.value ?? 0;
       const failSpending = hasSpending && ((spendingMin !== null && spendingValue < spendingMin) || (spendingMax !== null && spendingValue > spendingMax));

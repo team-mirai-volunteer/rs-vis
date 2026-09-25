@@ -19,6 +19,7 @@
 import type { BudgetBreakdownItem, BudgetSummary } from './sankey-svg';
 import type { MOFBudgetType } from './mof-jikou';
 import type { MofRsAmountKind } from './mof-rs-kou-moku-linkage';
+import type { RsApiCoverage } from './rs-api';
 
 /** 列。左から右へ。ページ側は列単位で表示/非表示（畳み込み）できる */
 export type UnifiedColumn =
@@ -89,6 +90,8 @@ export const UNIFIED_PROGRAM_KIND_LABELS: Record<UnifiedProgramKind, string> = {
 };
 
 export interface UnifiedNode {
+  /** Provisional spending project with no matching budget-side record; value=0 is layout-only. */
+  budgetUnmatched?: boolean;
   id: string;
   col: UnifiedColumn;
   name: string;
@@ -172,9 +175,9 @@ export interface UnifiedEdge {
  * - settlement: MOF 決算の支出済歳出額 / RS事業は執行額
  * 目の識別子が予算種別間で完全には一致しない（補正は「…外N目」に束ねられる）ため、基準をまたいだ合成はしない
  */
-export type UnifiedBasis = 'initial' | 'supplementary' | 'settlement' | 'ministry';
+export type UnifiedBasis = 'initial' | 'supplementary' | 'settlement' | 'ministry' | 'execution';
 
-export const UNIFIED_BASES: readonly UnifiedBasis[] = ['initial', 'supplementary', 'settlement', 'ministry'];
+export const UNIFIED_BASES: readonly UnifiedBasis[] = ['initial', 'supplementary', 'settlement', 'ministry', 'execution'];
 
 /**
  * 「府省庁」は予算の基準ではなく紐づけの基準: MOF 予算書（会計〜目）を使わず、旧 /sankey-svg と同じ
@@ -191,6 +194,7 @@ export const UNIFIED_BASIS_LABELS: Record<UnifiedBasis, string> = {
   supplementary: '補正予算',
   settlement: '決算',
   ministry: '府省庁',
+  execution: '執行実績（暫定）',
 };
 
 /** 列見出しに添える MOF 側の測定量 */
@@ -199,6 +203,7 @@ export const UNIFIED_BASIS_MOF_MEASURE: Record<UnifiedBasis, string> = {
   supplementary: '補正後（改予算額）',
   settlement: '支出済額',
   ministry: '歳出予算現額',
+  execution: '執行額',
 };
 
 /** 列見出しに添える RS事業側の測定量（執行年度） */
@@ -207,6 +212,7 @@ export const UNIFIED_BASIS_RS_MEASURE: Record<UnifiedBasis, string> = {
   supplementary: '当初＋補正',
   settlement: '執行額',
   ministry: '歳出予算現額',
+  execution: '執行額',
 };
 
 /** 基準 → MOF 予算種別 */
@@ -215,6 +221,7 @@ export const UNIFIED_BASIS_MOF_BUDGET_TYPE: Record<UnifiedBasis, MOFBudgetType> 
   supplementary: '補正予算（第1号）',
   settlement: '決算',
   ministry: '当初予算',
+  execution: '決算', // RS-only execution graphs have no MOF nodes; never generate MOF links for this basis.
 };
 
 /** 年度ごとに生成済みの基準。決算は年度終了後、補正は補正予算成立後に増える */
@@ -241,6 +248,7 @@ export const RS_TOTAL_ID = 'total-rs';
 export const RS_TOTAL_NAME = '予算総計';
 
 export interface UnifiedGraphMetadata {
+  apiCoverage?: RsApiCoverage;
   /** 予算年度（MOF会計年度） */
   budgetYear: number;
   /** 予算の基準（当初・補正・決算）。旧ファイルには無い */
