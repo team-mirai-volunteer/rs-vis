@@ -498,15 +498,6 @@ function UnifiedBudgetSankeyContent() {
       </div>
 
       {loading && <div className="absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded bg-card px-3 py-1 text-xs text-mirai-text-muted shadow-xs">読み込み中…</div>}
-      {metadata.apiCoverage && (
-        <div data-testid="rs-api-coverage" className="absolute bottom-3 left-1/2 z-30 w-max max-w-[95%] -translate-x-1/2 rounded border border-mirai-border bg-card px-3 py-2 text-[11px] text-mirai-text shadow-xs">
-          <strong>統合（暫定）・2025年度支出先</strong>（{new Date(metadata.apiCoverage.fetchedThrough).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}取得）
-          <br />公開{metadata.apiCoverage.listed.toLocaleString()}事業・支出先取得{metadata.apiCoverage.paymentsFetched.toLocaleString()}件
-          {metadata.apiCoverage.paymentsMissing > 0 && `・未取得${metadata.apiCoverage.paymentsMissing.toLocaleString()}件`}
-          {metadata.apiCoverage.executionUnknown > 0 && `・執行額未確認${metadata.apiCoverage.executionUnknown.toLocaleString()}件`}
-          <br />予算は{UNIFIED_BASIS_LABELS[effectiveBasis]}。支出はRS公開分・予算未突合{metadata.apiCoverage.unmatchedBudgetProjects?.toLocaleString()}件。CSV公開後に更新予定。
-        </div>
-      )}
       {metadata.rsAmountKind === 'request' && (
         <div className="absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded bg-stance-neutral-badge-bg px-3 py-1 text-[11px] text-stance-neutral shadow-xs">
           {metadata.budgetYear}年度は「要求→査定」ビュー: RS事業の値は前年度シートの翌年度要求額、目の値はMOF{UNIFIED_BASIS_MOF_MEASURE[effectiveBasis]}{effectiveBasis === 'initial' ? '（査定後）' : ''}です
