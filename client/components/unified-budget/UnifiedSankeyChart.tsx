@@ -698,6 +698,12 @@ export function UnifiedSankeyChart({
                   {selectedDetails.accountType && (
                     <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
                   )}
+                  {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える */}
+                  {(selectedDetails.rsMinistry || selectedDetails.projectId !== undefined) && (
+                    <span className="text-[11px] text-mirai-text-muted">
+                      {[selectedDetails.rsMinistry, selectedDetails.projectId !== undefined ? `予算事業ID ${selectedDetails.projectId}` : null].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                   {selectedDetails.sourceUrl && (
                     <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       {provisional && isIndividualProject ? 'RSシートの出典' : '予算書の出典'}
@@ -730,6 +736,7 @@ export function UnifiedSankeyChart({
                       projectName={selectedPanelNode.name}
                       rsSheetYear={rsSheetYear}
                       fontPx={fontPx}
+                      flush={nodeFactsEmpty(selectedDetails)}
                     />
                   ))}
                 {selectedDetails.aggregated && (
@@ -877,7 +884,8 @@ export function UnifiedSankeyChart({
 function revenueAmountLabel(details: UnifiedViewDetails) {
   return details.revenueBasis === 'settlement' ? '収納済歳入額' : details.revenueBasis === 'supplementary' ? '歳入予算額（補正後）' : '歳入予算額';
 }
-function NodeFacts({ details }: { details: UnifiedViewDetails }) {
+/** ノードの事実表の行と、補足文を出すかどうか。事業ノードでは空になりうる（ID 等はバッジ行へ移した） */
+function nodeFactContent(details: UnifiedViewDetails) {
   const rows: Array<[string, string]> = [];
   if (details.revenueCategory) rows.push(['歳入区分', details.revenueCategory]);
   if (details.column === 'revenue' && details.revenueAmount !== undefined) rows.push([`${revenueAmountLabel(details)}（全額）`, formatBudgetFromYen(details.revenueAmount)]);
@@ -889,8 +897,18 @@ function NodeFacts({ details }: { details: UnifiedViewDetails }) {
   if (details.subItemName) rows.push(['目', `${details.subItemName}${details.subItemCode ? `（${details.subItemCode}）` : ''}`]);
   if (details.majorExpenseCode) rows.push(['主要経費', MAJOR_EXPENSE_NAMES[details.majorExpenseCode] ?? `コード ${details.majorExpenseCode}`]);
   if (details.purposeCode) rows.push(['使途別分類', PURPOSE_NAMES[details.purposeCode] ?? `コード ${details.purposeCode}`]);
-  if (details.rsMinistry) rows.push(['RS府省庁', details.rsMinistry]);
-  if (details.projectId !== undefined) rows.push(['予算事業ID', String(details.projectId)]);
+  const hasNote = details.kind === 'outside' || details.column === 'revenue' || details.revenueKind === 'internal-transfer'
+    || (details.column === 'account' && details.revenueAmount !== undefined);
+  return { rows, hasNote };
+}
+function nodeFactsEmpty(details: UnifiedViewDetails) {
+  const { rows, hasNote } = nodeFactContent(details);
+  return rows.length === 0 && !hasNote;
+}
+function NodeFacts({ details }: { details: UnifiedViewDetails }) {
+  const { rows, hasNote } = nodeFactContent(details);
+  // 空の枠で縦を取らない
+  if (rows.length === 0 && !hasNote) return null;
   return (
     <div className="text-xs text-mirai-text-secondary">
       {rows.length > 0 && (

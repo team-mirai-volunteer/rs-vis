@@ -15,6 +15,7 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
 import type { ProjectDetail } from '@/types/project-details';
+import { cn } from '@/lib/utils';
 import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluationBlock';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
@@ -32,6 +33,7 @@ export function UnifiedProjectSections({
   projectName,
   rsSheetYear,
   fontPx,
+  flush = false,
 }: {
   pid: number;
   projectName: string;
@@ -39,6 +41,8 @@ export function UnifiedProjectSections({
   rsSheetYear: number;
   /** 図のラベル基準サイズ。共有コンポーネントの scaleFont に使う（11px 基準） */
   fontPx: number;
+  /** 上に事実表などが無く、親（p-4）の先頭に来るとき true。上余白と区切り線を打ち消して空白を作らない */
+  flush?: boolean;
 }) {
   const year = String(rsSheetYear);
   const scaleFont = useCallback((px: number) => Math.round((px * fontPx) / 11), [fontPx]);
@@ -64,7 +68,7 @@ export function UnifiedProjectSections({
   const subcontractHref = rsViewUrl(`/subcontracts/${pid}`, year);
 
   return (
-    <div className="-mx-4 mt-3 border-t border-border">
+    <div className={cn('-mx-4', flush ? '-mt-4' : 'mt-3 border-t border-border')}>
       {/* 順番: みんなの意見 → 政策評価 → 事業概要（意見は見てもらいやすいよう最上段） */}
       <ProjectComments context={{ pid: String(pid), year, projectName, detail: detail ?? undefined }} scaleFont={scaleFont} />
       <PolicyEvaluationBlock

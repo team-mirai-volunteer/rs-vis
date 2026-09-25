@@ -92,7 +92,8 @@ export function PolicyEvaluationBlock({
 
   return (
     <div className="shrink-0 border-b border-border px-3.5 py-2">
-      <div className="mb-1.5 flex items-center gap-1.5">
+      {/* 見出し行に推奨判断・改善アクションのバッジもまとめ、ブロックを 1 行詰める（狭い幅では折り返す） */}
+      <div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         <span className="font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}>政策評価</span>
         <span className="text-mirai-text-muted" style={{ fontSize: metaPx }}>暫定</span>
         {view.categoryLabel && (
@@ -103,54 +104,54 @@ export function PolicyEvaluationBlock({
             {view.categoryLabel}
           </span>
         )}
-        {onOpenDetail && (
-          <Button
-            variant="link"
-            onClick={onOpenDetail}
-            disabled={detailLoading}
-            title="スコアの詳細（判定理由・支出先一覧）を開く"
-            className={cn('ml-auto shrink-0 font-normal no-underline hover:underline hover:text-primary-accent', detailLoading && 'cursor-wait')}
+        {view.recommendation && (
+          <span
+            className={cn('whitespace-nowrap rounded-full px-1.5 py-px font-bold', recommendationCls(view.recommendation))}
             style={{ fontSize: metaPx }}
-          >{detailLoading ? '読込中…' : '詳細'}</Button>
+          >
+            {view.recommendation}
+          </span>
         )}
-        <a
-          href={rsViewUrl(`/quality?pid=${pid}`, year)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn('shrink-0 text-primary underline-offset-4 hover:underline hover:text-primary-accent', onOpenDetail ? 'ml-2' : 'ml-auto')}
-          style={{ fontSize: metaPx }}
-        >一覧で見る →</a>
+        {view.improvementAction && (
+          <span
+            className={cn('whitespace-nowrap rounded-full px-1.5 py-px font-bold', ACTION_CLS)}
+            style={{ fontSize: metaPx }}
+          >
+            {view.improvementAction}
+          </span>
+        )}
+        <span className="ml-auto flex shrink-0 items-center gap-2">
+          {onOpenDetail && (
+            <Button
+              variant="link"
+              onClick={onOpenDetail}
+              disabled={detailLoading}
+              title="スコアの詳細（判定理由・支出先一覧）を開く"
+              className={cn('shrink-0 font-normal no-underline hover:underline hover:text-primary-accent', detailLoading && 'cursor-wait')}
+              style={{ fontSize: metaPx }}
+            >{detailLoading ? '読込中…' : '詳細'}</Button>
+          )}
+          <a
+            href={rsViewUrl(`/quality?pid=${pid}`, year)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-primary underline-offset-4 hover:underline hover:text-primary-accent"
+            style={{ fontSize: metaPx }}
+          >一覧で見る →</a>
+        </span>
       </div>
-      <div className={cn('flex items-end', full ? 'flex-wrap gap-y-2 gap-x-3' : 'gap-3.5')}>
+      <div className={cn('flex items-end', full ? 'flex-wrap gap-y-2 gap-x-3' : 'gap-3')}>
         {cells.map(([label, value]) => (
           <div key={label} className="text-center">
             <div
               className={cn('tabular-nums font-bold leading-none', scoreColor(value))}
-              style={{ fontSize: labelPx + 4 }}
+              style={{ fontSize: labelPx + 3 }}
             >
               {value ?? '—'}
             </div>
-            <div className="mt-[3px] text-mirai-text-muted" style={{ fontSize: metaPx }}>{label}</div>
+            <div className="mt-0.5 text-mirai-text-muted" style={{ fontSize: Math.max(9, metaPx - 1) }}>{label}</div>
           </div>
         ))}
-        <div className={cn('flex flex-wrap justify-end gap-1', full ? 'basis-full justify-start' : 'ml-auto')}>
-          {view.recommendation && (
-            <span
-              className={cn('whitespace-nowrap rounded-full px-[7px] py-0.5 font-bold', recommendationCls(view.recommendation))}
-              style={{ fontSize: metaPx }}
-            >
-              {view.recommendation}
-            </span>
-          )}
-          {view.improvementAction && (
-            <span
-              className={cn('whitespace-nowrap rounded-full px-[7px] py-0.5 font-bold', ACTION_CLS)}
-              style={{ fontSize: metaPx }}
-            >
-              {view.improvementAction}
-            </span>
-          )}
-        </div>
       </div>
     </div>
   );
