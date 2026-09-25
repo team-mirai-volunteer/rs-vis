@@ -2,8 +2,9 @@
 
 /**
  * 詳細パネルの支出先の行にホバーしたときのカード（支出先名・金額・主な契約）。
- * 行のクリックは選択の移動に使うので、表示はホバーだけ。ポインタの右下に出し、画面端では内側へ寄せる。
- * 下に入り切らないとき（パネルの下の方の行など）はポインタの上側に出す。
+ * 行のクリックは選択の移動に使うので、表示はホバーだけ。
+ * 常にポインタの上側に出す（行の位置で上下が入れ替わると驚くため。パネルの下の方の行でも見切れない）。
+ * 横は画面端で内側へ寄せ、上端に届くほど高いときだけ上端に合わせる。
  */
 import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -32,25 +33,24 @@ const MARGIN = 8;
 
 export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [top, setTop] = useState<number | null>(null);
-  // 契約の読み込みで高さが変わるので、描画のたびに測り直して上下を決める
+  const [height, setHeight] = useState(0);
+  const visible = hover !== null;
+  // 契約の読み込みで高さが変わるので、表示中は高さを追う
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!hover || !el) return;
-    const height = el.getBoundingClientRect().height;
-    const below = hover.y + OFFSET;
-    const next = below + height <= window.innerHeight - MARGIN
-      ? below
-      : Math.max(MARGIN, hover.y - OFFSET - height);
-    if (next !== top) setTop(next);
-  });
+    if (!visible || !el) return;
+    setHeight(el.getBoundingClientRect().height);
+    const observer = new ResizeObserver(() => setHeight(el.getBoundingClientRect().height));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible]);
   if (!hover || typeof document === 'undefined') return null;
   return createPortal(
     <div
       ref={ref}
       role="tooltip"
       className="pointer-events-none fixed z-[100] rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
-      style={{ width: CARD_W, left: `clamp(${MARGIN}px, ${hover.x + OFFSET}px, calc(100vw - ${CARD_W + MARGIN}px))`, top: top ?? hover.y + OFFSET }}
+      style={{ width: CARD_W, left: `clamp(${MARGIN}px, ${hover.x + OFFSET}px, calc(100vw - ${CARD_W + MARGIN}px))`, top: Math.max(MARGIN, hover.y - OFFSET - height) }}
     >
       <p className="font-bold leading-snug text-mirai-text">{hover.title ?? hover.name}</p>
       {hover.subtitle && <p className="text-[11px] text-mirai-text-muted">{hover.subtitle}</p>}
