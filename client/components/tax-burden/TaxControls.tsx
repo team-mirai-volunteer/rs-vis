@@ -122,9 +122,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
         <label className="block space-y-2 text-sm"><span>家族構成</span><select className={inputClass} value={state.household} onChange={e => set('household', e.target.value as TaxState['household'])}>
           {HOUSEHOLDS.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
         </select></label>
-        {state.view !== 'heatmap' && <div className="space-y-2 rounded-xl bg-mirai-surface p-3">
-          <RangeField label={state.view === 'age' ? '現役期の世帯年収' : '世帯年収'} value={state.income / 10000} min={0} max={2000} suffix="万円" clickToEdit onChange={v => set('income', Math.round(v * 10000))} />
-        </div>}
+        {state.view !== 'heatmap' && <RangeField label={state.view === 'age' ? '現役期の世帯年収' : '世帯年収'} value={state.income / 10000} min={0} max={2000} suffix="万円" clickToEdit onChange={v => set('income', Math.round(v * 10000))} />}
         {state.view === 'curve' && <RangeField label="大人の年齢" value={state.age} min={20} max={64} suffix="歳" onChange={v => set('age', v)} />}
         {household.earners === 2 && <RangeField label="第1就労者の収入割合" value={state.share} min={1} max={99} suffix="%" onChange={v => set('share', v)} />}
         <Toggle label="賞与2か月分を含める" note="月給12回＋1か月分を年2回" checked={state.bonus} onChange={v => set('bonus', v)} />
