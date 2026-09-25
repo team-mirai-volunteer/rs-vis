@@ -712,7 +712,8 @@ export function UnifiedSankeyChart({
               </div>
 
               <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
-              <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '60%' }}>
+              {/* 上段（事業概要・評価・推移）は PC で 45% まで。残りを下段の予算・ブロック・支出先タブに確保する */}
+              <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '45%' }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
