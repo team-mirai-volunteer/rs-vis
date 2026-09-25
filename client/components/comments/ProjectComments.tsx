@@ -10,7 +10,7 @@
  * プライマリ CTA（グラデ・ピル）。フォントサイズは親のフォントスケール（scaleFont）に従うため inline で渡す。
  */
 import { useId, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { InterviewProjectContext } from '@/client/lib/comments/interview-runner';
@@ -75,14 +75,14 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
             aria-controls={listId}
             onClick={() => setListOpenFor(listOpen ? null : context.pid)}
             title={listOpen ? '意見の一覧を閉じる' : '意見の一覧を開く'}
-            className="-ml-1 h-auto gap-1 rounded-md px-1 py-0.5 font-normal hover:bg-mirai-surface"
+            className="h-auto justify-start gap-[5px] rounded-md p-0 font-normal hover:bg-transparent hover:text-mirai-text has-[>svg]:px-0"
           >
-            <ChevronRight
-              className={cn('size-3.5 text-mirai-text-muted transition-transform', listOpen && 'rotate-90')}
-              aria-hidden="true"
-            />
             <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(13) }}>みんなの意見</span>
             <span className="text-mirai-text-muted" style={{ fontSize: META_PX }}>{countLabel}</span>
+            {/* 事業概要（ProjectOverviewSection）と同じく、見出しの右に閉＝右向き・開＝下向きのシェブロン */}
+            {listOpen
+              ? <ChevronDown aria-hidden="true" className="shrink-0 text-mirai-text-muted" style={{ width: META_PX, height: META_PX }} />
+              : <ChevronRight aria-hidden="true" className="shrink-0 text-mirai-text-muted" style={{ width: META_PX, height: META_PX }} />}
           </Button>
         ) : (
           <>
