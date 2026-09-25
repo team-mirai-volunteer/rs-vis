@@ -90,3 +90,32 @@ export interface ProjectMapResponse {
     scored: number;
   };
 }
+
+/**
+ * 支出つながりビュー（/project-bubble の「支出」重畳）の支出先1件。
+ * 事業マップ上の2事業以上から支出を受けている支出先だけを持つ
+ * （1事業にしか繋がらない支出先は事業同士を結ばないので載せない）。
+ */
+export interface ProjectMapSpendingRecipient {
+  /** sankey-svg グラフの recipient ノード id（例: r-123） */
+  id: string;
+  name: string;
+  /** マップ上の事業からの支出の合計（円） */
+  amount: number;
+  /** 支出元の事業 pid。amounts と同じ並び・金額の大きい順 */
+  pids: string[];
+  /** 各事業からの支出額（円） */
+  amounts: number[];
+}
+
+export interface ProjectMapSpendingResponse {
+  year: number;
+  /** 金額の大きい順 */
+  recipients: ProjectMapSpendingRecipient[];
+  summary: {
+    recipients: number;
+    links: number;
+    /** 名前が匿名・集約表記のため除外した支出先の数（「その他」「個人A」など） */
+    excludedPlaceholders: number;
+  };
+}

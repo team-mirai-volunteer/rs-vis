@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import type { ProjectMapCluster, ProjectMapPoint } from '@/types/project-map';
+import { spendingColor, spendingRadius } from '@/app/lib/project-map-view';
+import type { ProjectMapCluster, ProjectMapPoint, ProjectMapSpendingRecipient } from '@/types/project-map';
 
 /**
  * 5,000超のバブルを描く canvas。
@@ -24,6 +25,19 @@ export interface RegionEntry {
   key: string;
   label: string;
   color: string;
+}
+
+/**
+ * 支出つながりの重畳。支出先を菱形で置き、支出元の事業と線で結ぶ。
+ * 事業同士は「同じ支出先に払っている」ことで間接的に繋がる（事業–支出先の二部グラフ）。
+ */
+export interface SpendingOverlay {
+  /** 金額の大きい順。表示件数の絞り込みは呼び出し側で済ませて渡す */
+  recipients: ProjectMapSpendingRecipient[];
+  /** 前面に出す支出先（ホバー中または固定中）。null なら選択中の事業から決める */
+  focusRecipientId: string | null;
+  onHoverRecipient: (r: ProjectMapSpendingRecipient | null, screen: { x: number; y: number } | null) => void;
+  onSelectRecipient: (r: ProjectMapSpendingRecipient) => void;
 }
 
 /** 半径は画面ピクセル固定。ズームは点の間隔だけを広げ、密集を解くために使う */
@@ -53,6 +67,8 @@ export interface BubbleCanvasProps {
    * 絞り込むたびに背景の地図が描き変わると「地形」として信用できなくなるため
    */
   regionPoints: ProjectMapPoint[];
+  /** 支出つながりビューのときだけ渡す。null/未指定なら通常のバブルチャート */
+  spending?: SpendingOverlay | null;
 }
 
 /**
@@ -106,7 +122,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     points, bounds, clusters, clusterLabel, showClusterLabels,
     colorOf, radiusOf, legendKeyOf, highlightKey, selectedPid,
     onHover, onSelect, dark,
-    showRegions, regionEntries, regionKeyOf, regionPoints,
+    showRegions, regionEntries, regionKeyOf, regionPoints, spending = null,
   } = props;
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -118,6 +134,8 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
   const layoutRef = useRef<{
     sx: Float32Array; sy: Float32Array; r: Float32Array;
     grid: Map<number, number[]>;
+    /** 支出先の画面座標（spendGraph.nodes と同じ並び） */
+    rsx: Float32Array; rsy: Float32Array; rr: Float32Array;
   } | null>(null);
 
   // ── 表示領域 ──
@@ -343,6 +361,67 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     return { off, labels, x0, x1, y0, y1 };
   }, [showRegions, regionPoints, regionEntries, regionKeyOf, bounds, dark]);
 
+  /**
+   * 支出先ノードの配置（ズーム1の画面座標系）。
+   *
+   * 支出先には固有の意味座標が無いので、支出元の事業の表示座標の重心に置く。
+   * 重みは金額の平方根。金額そのままだと最大の支出元の真上に重なって菱形が隠れ、
+   * 均等だと大口の支出元との関係が位置に出ない、の中間を取る。
+   * 表示中（絞り込み後）の事業に2件以上繋がる支出先だけを置く。
+   */
+  const spendRecipients = spending?.recipients ?? null;
+  const spendGraph = useMemo(() => {
+    if (!spendRecipients) return null;
+    const indexByPid = new Map<string, number>();
+    for (let i = 0; i < points.length; i++) indexByPid.set(points[i].pid, i);
+    const nodes: Array<{
+      r: ProjectMapSpendingRecipient; x: number; y: number;
+      idx: number[]; color: string; radius: number;
+    }> = [];
+    for (const r of spendRecipients) {
+      const idx: number[] = [];
+      let wx = 0, wy = 0, wt = 0;
+      for (let k = 0; k < r.pids.length; k++) {
+        const i = indexByPid.get(r.pids[k]);
+        if (i === undefined) continue;
+        idx.push(i);
+        const w = Math.sqrt(r.amounts[k]);
+        wx += relaxed.px[i] * w; wy += relaxed.py[i] * w; wt += w;
+      }
+      if (idx.length < 2 || wt === 0) continue;
+      nodes.push({ r, x: wx / wt, y: wy / wt, idx, color: spendingColor(r.amount), radius: spendingRadius(r.amount) });
+    }
+    // 小さい順に描く＝濃い大口が上に来る
+    nodes.reverse();
+    const byProject = new Map<number, number[]>();
+    nodes.forEach((n, ni) => {
+      for (const i of n.idx) {
+        const list = byProject.get(i);
+        if (list) list.push(ni); else byProject.set(i, [ni]);
+      }
+    });
+    return { nodes, byProject };
+  }, [spendRecipients, points, relaxed]);
+
+  const focusRecipientId = spending?.focusRecipientId ?? null;
+
+  /** 前面に出す支出先と事業。支出先の指定が優先、無ければ選択事業の支出先すべて */
+  const spendFocus = useMemo(() => {
+    if (!spendGraph) return null;
+    const rset = new Set<number>();
+    if (focusRecipientId) {
+      const ni = spendGraph.nodes.findIndex(n => n.r.id === focusRecipientId);
+      if (ni >= 0) rset.add(ni);
+    } else if (selectedPid) {
+      const i = points.findIndex(p => p.pid === selectedPid);
+      for (const ni of (i >= 0 ? spendGraph.byProject.get(i) : undefined) ?? []) rset.add(ni);
+    }
+    if (rset.size === 0) return null;
+    const pset = new Set<number>();
+    for (const ni of rset) for (const i of spendGraph.nodes[ni].idx) pset.add(i);
+    return { rset, pset };
+  }, [spendGraph, focusRecipientId, selectedPid, points]);
+
   // ── 描画 ──
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -388,7 +467,12 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     const dimmed: number[] = [];
     const front: number[] = [];
     for (const i of order) {
-      if (highlightKey === null || legendKeyOf(points[i]) === highlightKey) front.push(i);
+      // 支出つながりビューでは、事業は線の下の地図として無彩色で敷き、
+      // 注目中の支出先に繋がる事業だけを色付きで前に出す
+      const isFront = spendGraph
+        ? spendFocus !== null && spendFocus.pset.has(i)
+        : highlightKey === null || legendKeyOf(points[i]) === highlightKey;
+      if (isFront) front.push(i);
       else dimmed.push(i);
     }
 
@@ -413,9 +497,95 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
 
     // 背面（強調外）は無彩色で敷く
     draw(dimmed, dark ? 0.6 : 0.7, true, false);
+
+    // ── 支出つながり（線 → 菱形）。事業の地図の上、注目中の事業の下に敷く ──
+    const nr = spendGraph?.nodes.length ?? 0;
+    const rsx = new Float32Array(nr);
+    const rsy = new Float32Array(nr);
+    const rr = new Float32Array(nr);
+    const diamond = (x: number, y: number, d: number) => {
+      ctx.beginPath();
+      ctx.moveTo(x, y - d); ctx.lineTo(x + d, y); ctx.lineTo(x, y + d); ctx.lineTo(x - d, y);
+      ctx.closePath();
+    };
+    if (spendGraph) {
+      const nodes = spendGraph.nodes;
+      for (let ni = 0; ni < nr; ni++) {
+        rsx[ni] = nodes[ni].x * transform.k + transform.tx;
+        rsy[ni] = nodes[ni].y * transform.k + transform.ty;
+        rr[ni] = nodes[ni].radius;
+      }
+      const focused = spendFocus?.rset;
+      // 線は支出先ごとに1パスにまとめて stroke する（数万本を1本ずつ描くと重い）
+      const strokeLinks = (ni: number, alpha: number, width: number) => {
+        ctx.globalAlpha = alpha;
+        ctx.lineWidth = width;
+        ctx.strokeStyle = nodes[ni].color;
+        ctx.beginPath();
+        for (const i of nodes[ni].idx) {
+          ctx.moveTo(rsx[ni], rsy[ni]);
+          ctx.lineTo(sx[i], sy[i]);
+        }
+        ctx.stroke();
+      };
+      for (let ni = 0; ni < nr; ni++) {
+        if (focused?.has(ni)) continue;
+        strokeLinks(ni, focused ? 0.035 : 0.13, 0.7);
+      }
+      if (focused) for (const ni of focused) strokeLinks(ni, 0.6, 1.3);
+
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = surface;
+      ctx.globalAlpha = focused ? 0.3 : 0.95;
+      for (let ni = 0; ni < nr; ni++) {
+        if (focused?.has(ni)) continue;
+        const x = rsx[ni], y = rsy[ni];
+        if (x < -20 || x > size.w + 20 || y < -20 || y > size.h + 20) continue;
+        diamond(x, y, rr[ni] * 1.25);
+        ctx.fillStyle = nodes[ni].color;
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // 前面は半透明の通常合成。重なりが自然に濃くなり、密度が読める
-    draw(front, highlightKey === null ? 0.78 : 0.9, false, true);
+    draw(front, highlightKey === null && !spendGraph ? 0.78 : 0.9, false, true);
     ctx.globalAlpha = 1;
+
+    // 注目中の支出先は繋がる事業より上に描き、名前を添える
+    if (spendGraph && spendFocus) {
+      const nodes = spendGraph.nodes;
+      const list = [...spendFocus.rset].sort((a, b) => nodes[b].r.amount - nodes[a].r.amount);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = surface;
+      for (const ni of list) {
+        diamond(rsx[ni], rsy[ni], rr[ni] * 1.25 + 1);
+        ctx.fillStyle = nodes[ni].color;
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.font = `600 10px ${uiFont}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      const placed: Array<{ x0: number; y0: number; x1: number; y1: number }> = [];
+      for (const ni of list.slice(0, 40)) {
+        const name = nodes[ni].r.name;
+        const text = name.length > 16 ? name.slice(0, 16) + '…' : name;
+        const lx = rsx[ni] + rr[ni] * 1.25 + 4;
+        const ly = rsy[ni];
+        const w = ctx.measureText(text).width;
+        const box = { x0: lx - 2, y0: ly - 7, x1: lx + w + 2, y1: ly + 7 };
+        if (placed.some(b => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0)) continue;
+        placed.push(box);
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = surface;
+        ctx.strokeText(text, lx, ly);
+        ctx.fillStyle = dark ? LABEL_DARK : LABEL_LIGHT;
+        ctx.fillText(text, lx, ly);
+      }
+    }
 
     // 選択中の事業は最前面に輪で示す（色ではなく形で示すので塗り分けと干渉しない）
     if (selectedPid) {
@@ -510,9 +680,23 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       if (bucket) bucket.push(i);
       else grid.set(key, [i]);
     }
-    layoutRef.current = { sx, sy, r, grid };
+    layoutRef.current = { sx, sy, r, grid, rsx, rsy, rr };
   }, [points, size, transform, toScreen, relaxed, regions, colorOf, legendKeyOf, highlightKey,
-      selectedPid, clusters, clusterLabel, showClusterLabels, dark]);
+      selectedPid, clusters, clusterLabel, showClusterLabels, dark, spendGraph, spendFocus]);
+
+  /** 画面座標から最も近い支出先を引く。菱形は事業の上に描くので事業より先に判定する */
+  const pickRecipient = useCallback((mx: number, my: number): number => {
+    const layout = layoutRef.current;
+    if (!layout) return -1;
+    const { rsx, rsy, rr } = layout;
+    let best = -1;
+    let bestDist = Infinity;
+    for (let ni = 0; ni < rsx.length; ni++) {
+      const d = Math.hypot(rsx[ni] - mx, rsy[ni] - my);
+      if (d <= Math.max(rr[ni] * 1.25 + 2, 7) && d < bestDist) { bestDist = d; best = ni; }
+    }
+    return best;
+  }, []);
 
   /** 画面座標から最も近い点を引く。半径ぶん + 余白を許容して当たりを広げる */
   const pick = useCallback((mx: number, my: number): number => {
@@ -622,10 +806,20 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       if (drag.moved) {
         setTransform(t => ({ ...t, tx: drag.tx + dx, ty: drag.ty + dy }));
         onHover(null, null);
+        spending?.onHoverRecipient(null, null);
         return;
       }
     }
 
+    if (spendGraph && spending) {
+      const ni = pickRecipient(mx, my);
+      if (ni >= 0) {
+        onHover(null, null);
+        spending.onHoverRecipient(spendGraph.nodes[ni].r, { x: mx, y: my });
+        return;
+      }
+      spending.onHoverRecipient(null, null);
+    }
     const i = pick(mx, my);
     onHover(i >= 0 ? points[i] : null, i >= 0 ? { x: mx, y: my } : null);
   };
@@ -639,7 +833,12 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     dragRef.current = null;
     // ドラッグではない＝クリック。選択として扱う
     if (drag && !drag.moved) {
-      const i = pick(e.clientX - rect.left, e.clientY - rect.top);
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      if (spendGraph && spending) {
+        const ni = pickRecipient(mx, my);
+        if (ni >= 0) { spending.onSelectRecipient(spendGraph.nodes[ni].r); return; }
+      }
+      const i = pick(mx, my);
       onSelect(i >= 0 ? points[i] : null);
     }
   };
@@ -656,7 +855,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
         onPointerMove={handlePointerMove}
         onPointerUp={endPointer}
         onPointerCancel={endPointer}
-        onPointerLeave={() => onHover(null, null)}
+        onPointerLeave={() => { onHover(null, null); spending?.onHoverRecipient(null, null); }}
       >
         <canvas ref={canvasRef} style={{ width: size.w, height: size.h }} />
       </div>

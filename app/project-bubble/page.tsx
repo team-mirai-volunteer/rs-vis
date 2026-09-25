@@ -3,7 +3,7 @@
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
@@ -12,15 +12,27 @@ import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import {
-  COLOR_MODE_LABELS, SIZE_METRIC_LABELS,
-  buildColorLookup, buildLegend, buildSizeScale, categoryLabel,
+  COLOR_MODE_LABELS, SIZE_METRIC_LABELS, SPENDING_COLORS,
+  buildColorLookup, buildLegend, buildSizeScale, categoryLabel, spendingColor, spendingStepLabel,
   formatYenShort, legendKeyOf as resolveLegendKey,
   type ColorMode, type LegendEntry, type SizeMetric,
 } from '@/app/lib/project-map-view';
-import type { ProjectMapCluster, ProjectMapPoint, ProjectMapResponse } from '@/types/project-map';
+import type {
+  ProjectMapCluster, ProjectMapPoint, ProjectMapResponse,
+  ProjectMapSpendingRecipient, ProjectMapSpendingResponse,
+} from '@/types/project-map';
 
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
+
+/** ビュー。map = 事業バブルのみ / spending = 支出先を重畳し、支出先経由で事業同士を結ぶ */
+type View = 'map' | 'spending';
+const VIEW_LABELS: Record<View, string> = { map: '事業マップ', spending: '支出つながり' };
+
+/** 支出つながりで描く支出先の件数（金額の大きい順）。0 = すべて */
+const SPEND_LIMITS = [100, 300, 1000, 0] as const;
+type SpendLimit = typeof SPEND_LIMITS[number];
+const DEFAULT_SPEND_LIMIT: SpendLimit = 300;
 
 /** 大きさの上限（画面px）。衝突回避で重なりを解くぶん、以前より大きくできる */
 const MAX_RADIUS = 12;
@@ -38,6 +50,16 @@ export default function ProjectMapPage() {
   const [loading, setLoading] = useState(true);
   const [notGenerated, setNotGenerated] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 支出つながりビュー。データは切り替えたときに初めて取りに行く
+  const [view, setView] = useState<View>('map');
+  const [spendData, setSpendData] = useState<ProjectMapSpendingResponse | null>(null);
+  const [spendError, setSpendError] = useState<string | null>(null);
+  const [spendLimit, setSpendLimit] = useState<SpendLimit>(DEFAULT_SPEND_LIMIT);
+  const [hoverRecipient, setHoverRecipient] = useState<
+    { r: ProjectMapSpendingRecipient; x: number; y: number } | null
+  >(null);
+  const [lockedRecipientId, setLockedRecipientId] = useState<string | null>(null);
 
   // 表示の切り替え
   const [colorMode, setColorMode] = useState<ColorMode>('ministry');
@@ -72,10 +94,14 @@ export default function ProjectMapPage() {
   /** URLで指定された選択事業・強調区分。データ到着後に解決する */
   const pendingPidRef = useRef<string | null>(null);
   const pendingHlRef = useRef<string | null>(null);
+  const pendingRcRef = useRef<string | null>(null);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     setYear(sheetYearFromParams(p, 'yr') as Year);
+    if (p.get('v') === 'sp') setView('spending');
+    const sn = Number(p.get('sn'));
+    if (p.has('sn') && (SPEND_LIMITS as readonly number[]).includes(sn)) setSpendLimit(sn as SpendLimit);
     const c = p.get('c'); if (c === 'ministry' || c === 'policyGroup' || c === 'recommendation') setColorMode(c);
     const s = p.get('s');
     if (s === 'inverseScore' || s === 'inverseProp' || s === 'inverseNec'
@@ -99,6 +125,7 @@ export default function ProjectMapPage() {
     // 強調と選択は、年度フェッチ側のリセットに消されないようデータ到着後に適用する
     pendingHlRef.current = p.get('hl');
     pendingPidRef.current = p.get('pid');
+    pendingRcRef.current = p.get('rc');
     setUrlHydrated(true);
   }, []);
 
@@ -106,6 +133,11 @@ export default function ProjectMapPage() {
     if (!urlHydrated) return;
     const p = new URLSearchParams();
     p.set('fiscalYear', String(fiscalYear(year)));
+    if (view === 'spending') {
+      p.set('v', 'sp');
+      if (spendLimit !== DEFAULT_SPEND_LIMIT) p.set('sn', String(spendLimit));
+      if (lockedRecipientId) p.set('rc', lockedRecipientId);
+    }
     if (colorMode !== 'ministry') p.set('c', colorMode);
     if (sizeMetric !== 'inverseScore') p.set('s', sizeMetric);
     if (!showRegions) p.set('rg', '0');
@@ -124,7 +156,7 @@ export default function ProjectMapPage() {
     if (selected) p.set('pid', selected.pid);
     const qs = p.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [urlHydrated, year, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
+  }, [urlHydrated, year, view, spendLimit, lockedRecipientId, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
       ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query, legendLock, selected]);
 
   // URLの pid / hl はデータが来てから解決する（pid は点オブジェクトが要り、
@@ -149,6 +181,9 @@ export default function ProjectMapPage() {
     setNotGenerated(false);
     setSelected(null);
     setLegendLock(null);
+    setSpendData(null);
+    setSpendError(null);
+    setLockedRecipientId(null);
     fetch(`/api/project-map?year=${year}`)
       .then(async res => {
         if (res.status === 404) { setNotGenerated(true); return null; }
@@ -159,6 +194,27 @@ export default function ProjectMapPage() {
       .catch(e => setError(String(e)))
       .finally(() => setLoading(false));
   }, [year]);
+
+  // 支出つながりは初めて切り替えたときに取る。年度が変わったら上の effect が捨てる
+  useEffect(() => {
+    if (view !== 'spending' || spendData || spendError || !data) return;
+    let cancelled = false;
+    fetch(`/api/project-map/spending?year=${year}`)
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<ProjectMapSpendingResponse>;
+      })
+      .then(json => {
+        if (cancelled) return;
+        setSpendData(json);
+        // URL の rc は、支出先データが来てから（存在するものだけ）適用する
+        const rc = pendingRcRef.current;
+        pendingRcRef.current = null;
+        if (rc && json.recipients.some(r => r.id === rc)) setLockedRecipientId(rc);
+      })
+      .catch(e => { if (!cancelled) setSpendError(String(e)); });
+    return () => { cancelled = true; };
+  }, [view, year, data, spendData, spendError]);
 
   // 空配列を毎レンダー作り直すと、下流の useMemo が全部無効化されて5,794点を毎回引き直す
   const EMPTY: ProjectMapPoint[] = useMemo(() => [], []);
@@ -264,7 +320,77 @@ export default function ProjectMapPage() {
     [],
   );
 
-  const highlightKey = legendLock ?? legendHover;
+  const isSpending = view === 'spending';
+  const filteredPids = useMemo(() => new Set(filtered.map(p => p.pid)), [filtered]);
+  // 支出つながりでは事業の塗り分けは「注目中の事業」に使うので、凡例の強調は効かせない
+  const highlightKey = isSpending ? null : (legendLock ?? legendHover);
+
+  const pointByPid = useMemo(() => new Map(allPoints.map(p => [p.pid, p])), [allPoints]);
+
+  /**
+   * 描く支出先。絞り込み後の事業に2件以上繋がるものから、金額の大きい順に上限件数まで。
+   * 上限を全体の順位で先に切ると、府省庁で絞ったときに線がほとんど残らないため後で切る
+   */
+  const visibleRecipients = useMemo(() => {
+    if (!spendData) return [];
+    const visible = filteredPids;
+    const out: ProjectMapSpendingRecipient[] = [];
+    for (const r of spendData.recipients) {
+      let n = 0;
+      for (const pid of r.pids) if (visible.has(pid) && ++n >= 2) break;
+      if (n < 2) continue;
+      out.push(r);
+      if (spendLimit !== 0 && out.length >= spendLimit) break;
+    }
+    // 固定中の支出先は上限の外でも描く（URL から来た場合・上限を下げた場合）
+    if (lockedRecipientId && !out.some(r => r.id === lockedRecipientId)) {
+      const locked = spendData.recipients.find(r => r.id === lockedRecipientId);
+      if (locked) out.push(locked);
+    }
+    return out;
+  }, [spendData, filteredPids, spendLimit, lockedRecipientId]);
+
+  const recipientById = useMemo(
+    () => new Map((spendData?.recipients ?? []).map(r => [r.id, r])),
+    [spendData],
+  );
+  const lockedRecipient = lockedRecipientId ? recipientById.get(lockedRecipientId) ?? null : null;
+
+  /** pid → その事業が支払っている共有支出先（金額の大きい順）。選択事業のパネル用 */
+  const recipientsByPid = useMemo(() => {
+    const m = new Map<string, Array<{ r: ProjectMapSpendingRecipient; amount: number }>>();
+    for (const r of spendData?.recipients ?? []) {
+      r.pids.forEach((pid, k) => {
+        const list = m.get(pid);
+        const item = { r, amount: r.amounts[k] };
+        if (list) list.push(item); else m.set(pid, [item]);
+      });
+    }
+    for (const list of m.values()) list.sort((a, b) => b.amount - a.amount);
+    return m;
+  }, [spendData]);
+
+  const spendingOverlay = useMemo(() => (isSpending && spendData ? {
+    recipients: visibleRecipients,
+    focusRecipientId: hoverRecipient?.r.id ?? lockedRecipientId,
+    onHoverRecipient: (r: ProjectMapSpendingRecipient | null, sc: { x: number; y: number } | null) =>
+      setHoverRecipient(r && sc ? { r, x: sc.x, y: sc.y } : null),
+    onSelectRecipient: (r: ProjectMapSpendingRecipient) =>
+      setLockedRecipientId(id => (id === r.id ? null : r.id)),
+  } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId]);
+
+  /** 事業の選択。支出つながりでは事業を選び直したら支出先の固定を外す（注目の主語を事業に戻す） */
+  const selectPoint = useCallback((p: ProjectMapPoint | null) => {
+    setSelected(p);
+    setLockedRecipientId(null);
+  }, []);
+
+  const changeView = (v: View) => {
+    setView(v);
+    setHover(null);
+    setHoverRecipient(null);
+    setLockedRecipientId(null);
+  };
 
   const hasFilter = ministries.length > 0 || recommendations.length > 0 || query.trim() !== ''
     || scoreFilter.min || scoreFilter.max || yearsFilter.min || yearsFilter.max
@@ -291,6 +417,7 @@ export default function ProjectMapPage() {
         aria-controls="bubble-help"
         className="h-9 shrink-0 border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
       >説明</Button>
+      <ViewSelect value={view} onChange={changeView} />
       <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as Year)} years={YEARS} />
     </AppHeader>
     <div className="relative min-h-0 w-full flex-1 overflow-hidden">
@@ -313,13 +440,32 @@ export default function ProjectMapPage() {
               highlightKey={highlightKey}
               selectedPid={selected?.pid ?? null}
               onHover={(p, s) => setHover(p && s ? { p, x: s.x, y: s.y } : null)}
-              onSelect={setSelected}
+              onSelect={selectPoint}
               dark={DARK}
               showRegions={showRegions}
               regionEntries={regionEntries}
               regionKeyOf={regionKeyOf}
               regionPoints={allPoints}
+              spending={spendingOverlay}
             />
+            {isSpending && hoverRecipient && (
+              <RecipientTooltip
+                recipient={hoverRecipient.r}
+                x={hoverRecipient.x}
+                y={hoverRecipient.y}
+                visibleCount={hoverRecipient.r.pids.filter(pid => filteredPids.has(pid)).length}
+              />
+            )}
+            {isSpending && !spendData && !spendError && (
+              <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-[11px] text-mirai-text-muted shadow-xs">
+                支出先を読み込み中…
+              </div>
+            )}
+            {isSpending && spendError && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-[11px] text-destructive shadow-xs">
+                支出先の読み込みに失敗しました: {spendError}
+              </div>
+            )}
             {hover && (
               <Tooltip
                 point={hover.p}
@@ -448,6 +594,21 @@ export default function ProjectMapPage() {
               <option key={m} value={m}>{SIZE_METRIC_LABELS[m]}</option>
             ))}
           </select>
+          {isSpending && (
+            <>
+              <span className="text-mirai-text-subtle">支出先</span>
+              <select
+                value={spendLimit}
+                onChange={e => setSpendLimit(Number(e.target.value) as SpendLimit)}
+                className="h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                aria-label="描く支出先の件数"
+              >
+                {SPEND_LIMITS.map(n => (
+                  <option key={n} value={n}>{n === 0 ? 'すべて（金額順）' : `金額の上位${n.toLocaleString('ja-JP')}件`}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-xs">
@@ -551,6 +712,10 @@ export default function ProjectMapPage() {
                     <dd>色は所管の府省庁（切替可）。背景の淡い色面は、その府省庁の事業が集まっている領域です。色を「推奨判断」に切り替えると、どの領域に見直し候補が固まっているかが見えます。</dd>
                   </div>
                   <div>
+                    <dt className="font-bold text-mirai-text">支出つながり</dt>
+                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
+                  </div>
+                  <div>
                     <dt className="font-bold text-mirai-text">操作</dt>
                     <dd>丸にカーソルで概要、クリックで詳細。右の凡例をクリックするとその区分だけ強調。ドラッグで移動、ホイール/ピンチで拡大縮小。</dd>
                   </div>
@@ -565,7 +730,29 @@ export default function ProjectMapPage() {
       </div>
 
       {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
-      {data && !loading && (
+      {data && !loading && isSpending && (
+        <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
+          <SpendingLegend data={spendData} shown={visibleRecipients.length} />
+          {lockedRecipient ? (
+            <RecipientPanel
+              recipient={lockedRecipient}
+              pointByPid={pointByPid}
+              colorOf={colorOf}
+              onSelectPoint={p => setSelected(p)}
+              onClose={() => setLockedRecipientId(null)}
+            />
+          ) : selected && spendData ? (
+            <ProjectRecipientsPanel
+              point={selected}
+              items={recipientsByPid.get(selected.pid) ?? []}
+              onHover={r => setHoverRecipient(r ? { r, x: -1, y: -1 } : null)}
+              onLock={r => setLockedRecipientId(r.id)}
+            />
+          ) : null}
+        </aside>
+      )}
+
+      {data && !loading && !isSpending && (
         <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
           <Legend
             entries={legend}
@@ -584,7 +771,7 @@ export default function ProjectMapPage() {
           <TableView
             points={filtered}
             clusterById={clusterById}
-            onSelect={point => { setSelected(point); setShowTable(false); }}
+            onSelect={point => { selectPoint(point); setShowTable(false); }}
             onClose={() => setShowTable(false)}
           />
         </div>
@@ -840,6 +1027,206 @@ function TableView({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/** ビュー切替。ヘッダーで年度セレクトの左隣に置くので、見た目は YearSelect に揃える */
+function ViewSelect({ value, onChange }: { value: View; onChange: (v: View) => void }) {
+  return (
+    <div className="relative shrink-0">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value as View)}
+        aria-label="ビュー"
+        className="h-9 cursor-pointer appearance-none rounded-full border border-mirai-border bg-card pl-3 pr-8 text-xs font-bold text-mirai-text shadow-xs transition-colors hover:bg-mirai-surface focus-visible:ring-[3px] focus-visible:ring-primary/40 focus-visible:ring-offset-2"
+      >
+        {(Object.keys(VIEW_LABELS) as View[]).map(v => (
+          <option key={v} value={v}>{VIEW_LABELS[v]}</option>
+        ))}
+      </select>
+      <ChevronDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-mirai-text-muted"
+      />
+    </div>
+  );
+}
+
+/** 支出先の菱形（凡例・パネル用の小さな見本） */
+function DiamondSwatch({ color, size = 10 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" aria-hidden="true" className="shrink-0">
+      <path d="M5 0 L10 5 L5 10 L0 5 Z" fill={color} />
+    </svg>
+  );
+}
+
+/** 支出先ホバーの読み取り */
+function RecipientTooltip({
+  recipient, x, y, visibleCount,
+}: {
+  recipient: ProjectMapSpendingRecipient;
+  x: number;
+  y: number;
+  visibleCount: number;
+}) {
+  // パネルの行ホバー（座標なし）ではツールチップを出さない。図上の強調だけで足りる
+  if (x < 0) return null;
+  const flip = x > 380;
+  return (
+    <div
+      className="pointer-events-none absolute z-20 w-64 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
+      style={{
+        left: flip ? undefined : x + 14,
+        right: flip ? `calc(100% - ${x - 14}px)` : undefined,
+        top: Math.max(4, y - 40),
+      }}
+    >
+      <div className="flex items-start gap-1.5">
+        <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
+        <span className="font-bold leading-snug">{recipient.name}</span>
+      </div>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-mirai-text-muted">
+        <dt>受取額</dt>
+        <dd className="tabular-nums text-mirai-text">{formatYenShort(recipient.amount)}</dd>
+        <dt>支出元</dt>
+        <dd className="tabular-nums text-mirai-text">
+          {recipient.pids.length.toLocaleString('ja-JP')}事業
+          {visibleCount < recipient.pids.length && (
+            <span className="ml-1 text-mirai-text-muted">（うち表示中 {visibleCount}）</span>
+          )}
+        </dd>
+      </dl>
+      <p className="mt-1 text-[10px] text-mirai-text-muted">クリックで固定・支出元の一覧</p>
+    </div>
+  );
+}
+
+/** 支出つながりの凡例。濃さ＝受取額の段 */
+function SpendingLegend({
+  data, shown,
+}: {
+  data: ProjectMapSpendingResponse | null;
+  shown: number;
+}) {
+  return (
+    <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
+      <h2 className="mb-2 text-[11px] font-bold tracking-wide text-mirai-text-muted">支出先の受取額（円）</h2>
+      <div className="flex gap-px">
+        {SPENDING_COLORS.map((c, i) => (
+          <div key={c} className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <span className="h-2.5 w-full" style={{ background: c }} aria-hidden="true" />
+            <span className="whitespace-nowrap text-[9px] tabular-nums text-mirai-text-muted">
+              {spendingStepLabel(i)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-mirai-text-muted">
+        {data ? (
+          <>
+            支出先 {shown.toLocaleString('ja-JP')} / {data.summary.recipients.toLocaleString('ja-JP')}件を表示。
+            2事業以上から支出を受けている支出先だけを載せています。
+            菱形をクリックすると、つながる事業だけを前面に出します。
+          </>
+        ) : '読み込み中…'}
+      </p>
+    </div>
+  );
+}
+
+/** 固定中の支出先と、その支出元の事業 */
+function RecipientPanel({
+  recipient, pointByPid, colorOf, onSelectPoint, onClose,
+}: {
+  recipient: ProjectMapSpendingRecipient;
+  pointByPid: Map<string, ProjectMapPoint>;
+  colorOf: (p: ProjectMapPoint) => string;
+  onSelectPoint: (p: ProjectMapPoint) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <div className="flex items-start gap-1.5">
+        <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
+        <h2 className="flex-1 font-bold leading-snug">{recipient.name}</h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={onClose}
+          className="size-6 shrink-0 text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text"
+          aria-label="支出先の固定を解除"
+        ><X className="size-3.5" /></Button>
+      </div>
+      <p className="mt-1 tabular-nums text-mirai-text-muted">
+        受取額 <strong className="font-bold text-mirai-text">{formatYenShort(recipient.amount)}</strong>
+        {' ・ '}{recipient.pids.length.toLocaleString('ja-JP')}事業から
+      </p>
+      <ul className="mt-2 max-h-[40dvh] space-y-px overflow-y-auto border-t border-border pt-1.5">
+        {recipient.pids.map((pid, k) => {
+          const p = pointByPid.get(pid);
+          if (!p) return null;
+          return (
+            <li key={pid}>
+              <button
+                type="button"
+                onClick={() => onSelectPoint(p)}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-mirai-surface"
+                title={p.name}
+              >
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorOf(p) }} aria-hidden="true" />
+                <span className="flex-1 truncate text-mirai-text-secondary">{p.name}</span>
+                <span className="shrink-0 tabular-nums text-[11px] text-mirai-text-muted">
+                  {formatYenShort(recipient.amounts[k])}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** 選択中の事業が払っている共有支出先。行から支出先を固定できる */
+function ProjectRecipientsPanel({
+  point, items, onHover, onLock,
+}: {
+  point: ProjectMapPoint;
+  items: Array<{ r: ProjectMapSpendingRecipient; amount: number }>;
+  onHover: (r: ProjectMapSpendingRecipient | null) => void;
+  onLock: (r: ProjectMapSpendingRecipient) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">この事業の共有支出先</h2>
+      <p className="mt-1 truncate font-bold" title={point.name}>{point.name}</p>
+      {items.length === 0 ? (
+        <p className="mt-2 text-mirai-text-muted">他の事業と共有している支出先はありません。</p>
+      ) : (
+        <ul className="mt-2 max-h-[40dvh] space-y-px overflow-y-auto border-t border-border pt-1.5" onMouseLeave={() => onHover(null)}>
+          {items.map(({ r, amount }) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onMouseEnter={() => onHover(r)}
+                onFocus={() => onHover(r)}
+                onBlur={() => onHover(null)}
+                onClick={() => onLock(r)}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-mirai-surface"
+                title={`${r.name}（${r.pids.length}事業に共通）`}
+              >
+                <DiamondSwatch color={spendingColor(r.amount)} />
+                <span className="flex-1 truncate text-mirai-text-secondary">{r.name}</span>
+                <span className="shrink-0 tabular-nums text-[11px] text-mirai-text-muted">
+                  {formatYenShort(amount)}・{r.pids.length}事業
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

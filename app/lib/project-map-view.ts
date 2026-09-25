@@ -326,3 +326,45 @@ export function categoryLabel(id: string | null): string {
   if (!id) return '未分類';
   return POLICY_CATEGORY_LABELS[id] ?? id;
 }
+
+// ── 支出つながりビュー（支出先の濃淡） ──
+//
+// 支出先の金額は数百万円〜数十兆円と7桁に広がるので、桁で段を切る。
+// 順位スケールにしないのは、凡例を「1億円〜10億円」のような切りの良い実額で読ませるため。
+// 色は dataviz パレットの順序用ブルー（step 250 → 700）。step 250 は地色に対して 2:1 を
+// 確保できる最も明るい段で、それより明るいと小さい支出先が地に溶ける。
+
+/** 段の下限（円）。先頭は 0 */
+export const SPENDING_THRESHOLDS = [0, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12] as const;
+
+export const SPENDING_COLORS = [
+  '#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#184f95', '#104281', '#0d366b',
+] as const;
+
+/** 支出先の菱形の半径（画面px）。段ごとに少しずつ大きくし、色と二重に符号化する */
+const SPENDING_MIN_R = 2.6;
+const SPENDING_R_STEP = 0.9;
+
+/** 金額 → 段（0 = 最も薄い） */
+export function spendingStep(amount: number): number {
+  let s = 0;
+  for (let i = 1; i < SPENDING_THRESHOLDS.length; i++) if (amount >= SPENDING_THRESHOLDS[i]) s = i;
+  return s;
+}
+
+export function spendingColor(amount: number): string {
+  return SPENDING_COLORS[spendingStep(amount)];
+}
+
+export function spendingRadius(amount: number): number {
+  return SPENDING_MIN_R + spendingStep(amount) * SPENDING_R_STEP;
+}
+
+/** 凡例の段ラベル（下限側）。「1億〜」のように詰める */
+export function spendingStepLabel(step: number): string {
+  const v = SPENDING_THRESHOLDS[step];
+  if (v === 0) return '〜1千万';
+  if (v >= 1e12) return `${v / 1e12}兆〜`;
+  if (v >= 1e8) return `${v / 1e8}億〜`;
+  return `${v / 1e7}千万〜`;
+}
