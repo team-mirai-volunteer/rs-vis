@@ -65,7 +65,7 @@ export function UnifiedControls({
             markReplace={() => {}}
             metaFontPx={12}
             // バーの長さは列によらず揃える（カード幅はラベルの長さぶんだけ変わる）
-            trackWidth={170}
+            trackWidth={160}
           />
           </div>
         );
