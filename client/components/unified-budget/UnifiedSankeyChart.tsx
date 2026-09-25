@@ -700,8 +700,9 @@ export function UnifiedSankeyChart({
                   )}
                   {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える */}
                   {(selectedDetails.rsMinistry || selectedDetails.projectId !== undefined) && (
-                    <span className="text-[11px] text-mirai-text-muted">
-                      {[selectedDetails.rsMinistry, selectedDetails.projectId !== undefined ? `予算事業ID ${selectedDetails.projectId}` : null].filter(Boolean).join(' · ')}
+                    <span className="flex gap-2 text-[11px] text-mirai-text-muted">
+                      {selectedDetails.rsMinistry && <span>{selectedDetails.rsMinistry}</span>}
+                      {selectedDetails.projectId !== undefined && <span>予算事業ID {selectedDetails.projectId}</span>}
                     </span>
                   )}
                   {selectedDetails.sourceUrl && (

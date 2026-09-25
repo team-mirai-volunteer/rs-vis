@@ -84,9 +84,13 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
   const active = points.find(point => point.fiscalYear === activeYear);
 
   return <section className="py-2" aria-label="予算・執行額の推移">
-    <div className="flex items-center justify-between gap-2">
+    {/* 見出し・凡例・出典を 1 行にまとめる（狭い幅では凡例が次の行へ折り返す） */}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
       <h3 className="text-xs font-bold text-mirai-text">予算・執行額の推移</h3>
-      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-mirai-text-muted hover:underline" title={`RS ${data.sheetYear}年版の訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
+      <div className="flex flex-wrap gap-x-2.5 text-[10px] text-mirai-text-secondary">
+        {series.map(item => <span key={item.key} className="inline-flex items-center gap-1"><span aria-hidden="true" className="inline-block w-3 border-t-2" style={{ borderColor: item.color, borderStyle: item.dash ? 'dashed' : 'solid' }} />{item.label}</span>)}
+      </div>
+      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] text-mirai-text-muted hover:underline" title={`RS ${data.sheetYear}年版の訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
     </div>
     <div ref={chartRef} className="relative mt-1" onMouseLeave={() => setActiveYear(null)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setActiveYear(null); } }}>
     <svg width={width} height={CHART_H} viewBox={`0 0 ${width} ${CHART_H}`} className="block" role="group" aria-label={`${firstYear}〜${lastYear}年度の予算・執行額。グラフに触れると金額を表示します。`}>
@@ -118,9 +122,6 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
           onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setActiveYear(point.fiscalYear); } }} />
       </g>)}
     </svg>
-    <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-mirai-text-secondary">
-      {series.map(item => <span key={item.key} className="inline-flex items-center gap-1"><span aria-hidden="true" className="inline-block w-3 border-t-2" style={{ borderColor: item.color, borderStyle: item.dash ? 'dashed' : 'solid' }} />{item.label}</span>)}
-    </div>
     {active && createPortal(<div id={`budget-history-tooltip-${pid}`} role="tooltip" className="pointer-events-none fixed z-[100] w-[180px] rounded-md border border-border bg-card p-2 text-[11px] shadow-lg"
       style={{ left: `clamp(8px, ${pointer.x - 90}px, calc(100vw - 188px))`, top: pointer.y - 16, transform: 'translateY(-100%)' }}>
       <p className="mb-1 font-bold text-mirai-text">{active.fiscalYear}年度</p>
