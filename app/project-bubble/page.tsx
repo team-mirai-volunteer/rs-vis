@@ -918,15 +918,13 @@ function Tooltip({
   cluster?: ProjectMapCluster;
   color: string;
 }) {
-  // 端で見切れないように、カーソルの左右どちらに出すかを切り替える。
-  // 重なり順は左右のフロート列（z-30〜40）より上にし、パネルの下にもぐらないようにする
-  const flip = x > 380;
+  // 常にカーソルの右に出し、右端では内側に寄せる（左右を入れ替えない）。
+  // 重なり順は左右のフロート列（z-30〜40）より上なので、パネルに重なってももぐらない
   return (
     <div
       className="pointer-events-none absolute z-50 w-72 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{
-        left: flip ? undefined : x + 14,
-        right: flip ? `calc(100% - ${x - 14}px)` : undefined,
+        left: `min(${x + 14}px, calc(100% - ${288 + 8}px))`,
         top: Math.max(4, y - 60),
       }}
     >
@@ -1159,13 +1157,12 @@ function RecipientTooltip({
 }) {
   // パネルの行ホバー（座標なし）ではツールチップを出さない。図上の強調だけで足りる
   if (x < 0) return null;
-  const flip = x > 380;
+  // 事業のツールチップと同じく、常にカーソルの右（右端では内側に寄せる）
   return (
     <div
       className="pointer-events-none absolute z-50 w-64 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
       style={{
-        left: flip ? undefined : x + 14,
-        right: flip ? `calc(100% - ${x - 14}px)` : undefined,
+        left: `min(${x + 14}px, calc(100% - ${256 + 8}px))`,
         top: Math.max(4, y - 40),
       }}
     >
