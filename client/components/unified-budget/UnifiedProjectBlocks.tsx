@@ -6,6 +6,7 @@ import { TagChip } from '@/client/components/TagChip';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { useCached } from './policy-summary-cache';
 import { BlockBalance } from '@/client/components/subcontract/BlockBalance';
+import { blockBalance } from '@/app/lib/subcontracts/block-balance';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 
@@ -29,6 +30,21 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
   const subcontract = graph.blocks.filter(block => block.originKind === 'subcontract').length;
   const separate = graph.blocks.length - direct - subcontract;
   const availableGraph = graph;
+  /**
+   * 一覧の行に添える差額。直下に再委託先があるブロックだけに出す（再委託の無いブロックは差額の概念が無く、
+   * 一律「算出不可」を並べると一覧がうるさい）。計算式・注意書きは title に寄せる
+   */
+  function balanceBadge(block: BlockNode, hasChildren: boolean) {
+    if (!hasChildren) return null;
+    const balance = blockBalance(availableGraph, block);
+    const title = balance.difference !== null && balance.downstream !== null
+      ? `差額（ブロック単位）: ${formatBudgetFromYen(balance.recorded)} − ${formatBudgetFromYen(balance.downstream)} = ${formatBudgetFromYen(balance.difference)}
+このブロックの記載額 − 直下の再委託先の記載額。実際の受取額や利益を示すものではありません。`
+      : `差額（ブロック単位）を算出できません。${balance.reason ?? ''}`;
+    return <span className="tabular-nums" title={title}>
+      差額 {balance.difference === null ? '算出不可' : formatBudgetFromYen(balance.difference)}
+    </span>;
+  }
   function renderNode({ block, children }: BlockTreeNode): React.ReactNode {
     const card = <Button variant="ghost" onClick={() => onSelect(block)}
       className="flex h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-none border-b border-border px-1 py-1.5 text-left font-normal hover:bg-mirai-surface">
@@ -41,6 +57,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect }: {
           {block.originKind === 'direct' ? '直接' : block.originKind === 'subcontract' ? '再委託' : '別財源'}
         </TagChip>
         <span>支出先 {block.recipients.length.toLocaleString()}件</span>
+        {balanceBadge(block, children.length > 0)}
       </span>
       <BlockSources graph={availableGraph} blockId={block.blockId} />
       {block.role && <span className="text-[11px] leading-relaxed text-mirai-text-muted">{block.role}</span>}
