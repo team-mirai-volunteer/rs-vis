@@ -93,8 +93,8 @@ export interface ProjectMapResponse {
 
 /**
  * 支出つながりビュー（/project-bubble の「支出」重畳）の支出先1件。
- * 事業マップ上の2事業以上から支出を受けている支出先だけを持つ
- * （1事業にしか繋がらない支出先は事業同士を結ばないので載せない）。
+ * 事業マップ上の事業から支出を受けている支出先（匿名・集約表記は除く）。
+ * 2事業以上に繋がるものが事業同士を結ぶ。1事業だけのものも大口を見せるために持つ。
  */
 export interface ProjectMapSpendingRecipient {
   /** sankey-svg グラフの recipient ノード id（例: r-123） */

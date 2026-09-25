@@ -2,8 +2,8 @@
  * 事業マップの支出つながり（Pure）。
  *
  * sankey-svg グラフの「事業(支出) → 支出先」辺を、事業マップに載っている事業だけに絞り、
- * 支出先ごとに束ねる。2事業以上から支出を受ける支出先だけを残すことで、
- * 支出先を経由して事業同士を結ぶ二部グラフになる。
+ * 支出先ごとに束ねる。2事業以上から支出を受ける支出先が事業同士を結ぶ（二部グラフ）。
+ * 1事業だけの支出先も、大口はそれ自体が見どころなので残す（件数の絞り込みは画面側で行う）。
  *
  * 匿名・集約表記の支出先（「その他」「個人A」「A社」「支出先なし」など）は除外する。
  * 名前が同じでも別事業では別の実体を指すため、残すと無関係な事業同士を
@@ -15,10 +15,14 @@ import type { ProjectMapSpendingRecipient, ProjectMapSpendingResponse } from '@/
 /** 匿名・集約表記の支出先名。事業をまたいで同一実体とみなせないもの */
 export function isPlaceholderRecipient(name: string): boolean {
   const n = name.trim();
-  if (n === '' || n === '支出先なし') return true;
-  if (n.startsWith('その他')) return true;
+  if (n === '' || n === '支出先なし' || n === '非公表' || n === '匿名') return true;
+  if (n.includes('その他')) return true;               // その他 / 〜を受給している事業主その他
   if (n.startsWith('個人')) return true;              // 個人A / 個人(B) / 個人事業主A / 個人Aほか
-  if (/^[A-ZＡ-Ｚa-z]{1,2}社$/.test(n)) return true;   // A社 / B社
+  if (/^[A-ZＡ-Ｚa-z]{1,2}$/.test(n)) return true;     // A
+  // A社 / 某A社 / 〜を受給している事業主A社
+  if (/(^|某|事業主)[A-ZＡ-Ｚa-z]{1,2}社$/.test(n)) return true;
+  // 株式会社A / 民間事業者B / 法人A / 企業Kほか / 発信実施団体A：和文の直後に英字1文字で終わる伏せ字
+  if (/[^\x00-\x7F][A-ZＡ-Ｚ](ほか|等)?$/.test(n)) return true;
   return false;
 }
 
@@ -48,7 +52,6 @@ export function buildProjectMapSpending(
   let excludedPlaceholders = 0;
   let links = 0;
   for (const [id, m] of byRecipient) {
-    if (m.size < 2) continue;
     const name = nodeById.get(id)!.name;
     if (isPlaceholderRecipient(name)) { excludedPlaceholders++; continue; }
     const pairs = [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));

@@ -30,9 +30,13 @@ type View = 'map' | 'spending';
 const VIEW_LABELS: Record<View, string> = { map: '事業マップ', spending: '支出つながり' };
 
 /** 支出つながりで描く支出先の件数（金額の大きい順）。0 = すべて */
-const SPEND_LIMITS = [100, 300, 1000, 0] as const;
+const SPEND_LIMITS = [100, 300, 1000, 3000, 0] as const;
 type SpendLimit = typeof SPEND_LIMITS[number];
-const DEFAULT_SPEND_LIMIT: SpendLimit = 300;
+const DEFAULT_SPEND_LIMIT: SpendLimit = 1000;
+/** 支出元の事業数の下限。1 = 1事業だけの大口も出す / 2以上 = 事業同士を結ぶ支出先だけ */
+const SPEND_MIN_DEGREES = [1, 2, 3, 5, 10] as const;
+type SpendMinDegree = typeof SPEND_MIN_DEGREES[number];
+const DEFAULT_SPEND_MIN_DEGREE: SpendMinDegree = 1;
 
 /** 大きさの上限（画面px）。衝突回避で重なりを解くぶん、以前より大きくできる */
 const MAX_RADIUS = 12;
@@ -56,6 +60,8 @@ export default function ProjectMapPage() {
   const [spendData, setSpendData] = useState<ProjectMapSpendingResponse | null>(null);
   const [spendError, setSpendError] = useState<string | null>(null);
   const [spendLimit, setSpendLimit] = useState<SpendLimit>(DEFAULT_SPEND_LIMIT);
+  const [spendMinDegree, setSpendMinDegree] = useState<SpendMinDegree>(DEFAULT_SPEND_MIN_DEGREE);
+  const [spendQuery, setSpendQuery] = useState('');
   const [hoverRecipient, setHoverRecipient] = useState<
     { r: ProjectMapSpendingRecipient; x: number; y: number } | null
   >(null);
@@ -102,6 +108,9 @@ export default function ProjectMapPage() {
     if (p.get('v') === 'sp') setView('spending');
     const sn = Number(p.get('sn'));
     if (p.has('sn') && (SPEND_LIMITS as readonly number[]).includes(sn)) setSpendLimit(sn as SpendLimit);
+    const sd = Number(p.get('sd'));
+    if ((SPEND_MIN_DEGREES as readonly number[]).includes(sd)) setSpendMinDegree(sd as SpendMinDegree);
+    const sq = p.get('sq'); if (sq !== null) setSpendQuery(sq);
     const c = p.get('c'); if (c === 'ministry' || c === 'policyGroup' || c === 'recommendation') setColorMode(c);
     const s = p.get('s');
     if (s === 'inverseScore' || s === 'inverseProp' || s === 'inverseNec'
@@ -136,6 +145,8 @@ export default function ProjectMapPage() {
     if (view === 'spending') {
       p.set('v', 'sp');
       if (spendLimit !== DEFAULT_SPEND_LIMIT) p.set('sn', String(spendLimit));
+      if (spendMinDegree !== DEFAULT_SPEND_MIN_DEGREE) p.set('sd', String(spendMinDegree));
+      if (spendQuery) p.set('sq', spendQuery);
       if (lockedRecipientId) p.set('rc', lockedRecipientId);
     }
     if (colorMode !== 'ministry') p.set('c', colorMode);
@@ -156,7 +167,7 @@ export default function ProjectMapPage() {
     if (selected) p.set('pid', selected.pid);
     const qs = p.toString();
     window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [urlHydrated, year, view, spendLimit, lockedRecipientId, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
+  }, [urlHydrated, year, view, spendLimit, spendMinDegree, spendQuery, lockedRecipientId, colorMode, sizeMetric, showRegions, showClusterLabels, showTable,
       ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query, legendLock, selected]);
 
   // URLの pid / hl はデータが来てから解決する（pid は点オブジェクトが要り、
@@ -328,27 +339,33 @@ export default function ProjectMapPage() {
   const pointByPid = useMemo(() => new Map(allPoints.map(p => [p.pid, p])), [allPoints]);
 
   /**
-   * 描く支出先。絞り込み後の事業に2件以上繋がるものから、金額の大きい順に上限件数まで。
-   * 上限を全体の順位で先に切ると、府省庁で絞ったときに線がほとんど残らないため後で切る
+   * 描く支出先。絞り込み後の事業に下限件数以上繋がり、名前が検索語を含むものから、
+   * 金額の大きい順に上限件数まで。上限を全体の順位で先に切ると、
+   * 府省庁で絞ったときに線がほとんど残らないため後で切る
    */
-  const visibleRecipients = useMemo(() => {
-    if (!spendData) return [];
+  const { visibleRecipients, matchedRecipients } = useMemo(() => {
+    if (!spendData) return { visibleRecipients: [], matchedRecipients: 0 };
     const visible = filteredPids;
+    const normalize = (t: string) => t.replace(/（/g, '(').replace(/）/g, ')').toLowerCase();
+    const q = normalize(spendQuery.trim());
     const out: ProjectMapSpendingRecipient[] = [];
+    let matched = 0;
     for (const r of spendData.recipients) {
       let n = 0;
-      for (const pid of r.pids) if (visible.has(pid) && ++n >= 2) break;
-      if (n < 2) continue;
+      for (const pid of r.pids) if (visible.has(pid) && ++n >= spendMinDegree) break;
+      if (n < spendMinDegree) continue;
+      if (q && !normalize(r.name).includes(q)) continue;
+      matched++;
+      if (spendLimit !== 0 && out.length >= spendLimit) continue;
       out.push(r);
-      if (spendLimit !== 0 && out.length >= spendLimit) break;
     }
     // 固定中の支出先は上限の外でも描く（URL から来た場合・上限を下げた場合）
     if (lockedRecipientId && !out.some(r => r.id === lockedRecipientId)) {
       const locked = spendData.recipients.find(r => r.id === lockedRecipientId);
       if (locked) out.push(locked);
     }
-    return out;
-  }, [spendData, filteredPids, spendLimit, lockedRecipientId]);
+    return { visibleRecipients: out, matchedRecipients: matched };
+  }, [spendData, filteredPids, spendLimit, spendMinDegree, spendQuery, lockedRecipientId]);
 
   const recipientById = useMemo(
     () => new Map((spendData?.recipients ?? []).map(r => [r.id, r])),
@@ -373,11 +390,12 @@ export default function ProjectMapPage() {
   const spendingOverlay = useMemo(() => (isSpending && spendData ? {
     recipients: visibleRecipients,
     focusRecipientId: hoverRecipient?.r.id ?? lockedRecipientId,
+    emphasizeAll: spendQuery.trim() !== '',
     onHoverRecipient: (r: ProjectMapSpendingRecipient | null, sc: { x: number; y: number } | null) =>
       setHoverRecipient(r && sc ? { r, x: sc.x, y: sc.y } : null),
     onSelectRecipient: (r: ProjectMapSpendingRecipient) =>
       setLockedRecipientId(id => (id === r.id ? null : r.id)),
-  } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId]);
+  } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId, spendQuery]);
 
   /** 事業の選択。支出つながりでは事業を選び直したら支出先の固定を外す（注目の主語を事業に戻す） */
   const selectPoint = useCallback((p: ProjectMapPoint | null) => {
@@ -594,21 +612,6 @@ export default function ProjectMapPage() {
               <option key={m} value={m}>{SIZE_METRIC_LABELS[m]}</option>
             ))}
           </select>
-          {isSpending && (
-            <>
-              <span className="text-mirai-text-subtle">支出先</span>
-              <select
-                value={spendLimit}
-                onChange={e => setSpendLimit(Number(e.target.value) as SpendLimit)}
-                className="h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40"
-                aria-label="描く支出先の件数"
-              >
-                {SPEND_LIMITS.map(n => (
-                  <option key={n} value={n}>{n === 0 ? 'すべて（金額順）' : `金額の上位${n.toLocaleString('ja-JP')}件`}</option>
-                ))}
-              </select>
-            </>
-          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-xs">
@@ -713,7 +716,7 @@ export default function ProjectMapPage() {
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">支出つながり</dt>
-                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
+                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます（1事業だけの支出先はその事業の丸のすぐ外に置きます）。右上で支出先名の検索・支出元の事業数・件数を絞り込めます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">操作</dt>
@@ -732,7 +735,17 @@ export default function ProjectMapPage() {
       {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
       {data && !loading && isSpending && (
         <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
-          <SpendingLegend data={spendData} shown={visibleRecipients.length} />
+          <SpendingControls
+            data={spendData}
+            shown={visibleRecipients.length}
+            matched={matchedRecipients}
+            query={spendQuery}
+            onQuery={setSpendQuery}
+            minDegree={spendMinDegree}
+            onMinDegree={setSpendMinDegree}
+            limit={spendLimit}
+            onLimit={setSpendLimit}
+          />
           {lockedRecipient ? (
             <RecipientPanel
               recipient={lockedRecipient}
@@ -1103,16 +1116,60 @@ function RecipientTooltip({
   );
 }
 
-/** 支出つながりの凡例。濃さ＝受取額の段 */
-function SpendingLegend({
-  data, shown,
+/** 支出つながりの絞り込みと凡例（右上）。濃さ＝受取額の段 */
+function SpendingControls({
+  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit,
 }: {
   data: ProjectMapSpendingResponse | null;
   shown: number;
+  /** 検索・事業数の条件に合う件数（上限で切る前） */
+  matched: number;
+  query: string;
+  onQuery: (q: string) => void;
+  minDegree: SpendMinDegree;
+  onMinDegree: (d: SpendMinDegree) => void;
+  limit: SpendLimit;
+  onLimit: (n: SpendLimit) => void;
 }) {
+  const selectCls = 'h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
   return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
-      <h2 className="mb-2 text-[11px] font-bold tracking-wide text-mirai-text-muted">支出先の受取額（円）</h2>
+    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <div className="flex flex-col gap-1.5">
+        <input
+          type="search"
+          value={query}
+          onChange={e => onQuery(e.target.value)}
+          placeholder="支出先名で検索"
+          aria-label="支出先名で検索"
+          className="h-7 w-full rounded-md border border-mirai-border bg-card px-2 text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+        />
+        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5">
+          <span className="text-mirai-text-subtle">支出元</span>
+          <select
+            value={minDegree}
+            onChange={e => onMinDegree(Number(e.target.value) as SpendMinDegree)}
+            className={selectCls}
+            aria-label="支出元の事業数の下限"
+          >
+            {SPEND_MIN_DEGREES.map(d => (
+              <option key={d} value={d}>{d === 1 ? '1事業以上（すべて）' : `${d}事業以上（共有のみ）`}</option>
+            ))}
+          </select>
+          <span className="text-mirai-text-subtle">件数</span>
+          <select
+            value={limit}
+            onChange={e => onLimit(Number(e.target.value) as SpendLimit)}
+            className={selectCls}
+            aria-label="描く支出先の件数"
+          >
+            {SPEND_LIMITS.map(n => (
+              <option key={n} value={n}>{n === 0 ? 'すべて（金額順）' : `金額の上位${n.toLocaleString('ja-JP')}件`}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <h2 className="mb-2 mt-3 border-t border-border pt-2 text-[11px] font-bold tracking-wide text-mirai-text-muted">支出先の受取額（円）</h2>
       <div className="flex gap-px">
         {SPENDING_COLORS.map((c, i) => (
           <div key={c} className="flex min-w-0 flex-1 flex-col items-start gap-1">
@@ -1126,8 +1183,9 @@ function SpendingLegend({
       <p className="mt-2 border-t border-border pt-2 text-[10px] leading-relaxed text-mirai-text-muted">
         {data ? (
           <>
-            支出先 {shown.toLocaleString('ja-JP')} / {data.summary.recipients.toLocaleString('ja-JP')}件を表示。
-            2事業以上から支出を受けている支出先だけを載せています。
+            <strong className="font-bold text-mirai-text-secondary">{shown.toLocaleString('ja-JP')}</strong>
+            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${data.summary.recipients.toLocaleString('ja-JP')}件）。`}
+            「その他」「個人A」「A社」のような匿名・集約表記は除いています。
             菱形をクリックすると、つながる事業だけを前面に出します。
           </>
         ) : '読み込み中…'}

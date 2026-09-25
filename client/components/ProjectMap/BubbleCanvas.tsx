@@ -36,6 +36,8 @@ export interface SpendingOverlay {
   recipients: ProjectMapSpendingRecipient[];
   /** 前面に出す支出先（ホバー中または固定中）。null なら選択中の事業から決める */
   focusRecipientId: string | null;
+  /** 渡した支出先すべてを前面に出す（支出先名で検索中）。focusRecipientId・選択事業が優先 */
+  emphasizeAll?: boolean;
   onHoverRecipient: (r: ProjectMapSpendingRecipient | null, screen: { x: number; y: number } | null) => void;
   onSelectRecipient: (r: ProjectMapSpendingRecipient) => void;
 }
@@ -367,7 +369,11 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
    * 支出先には固有の意味座標が無いので、支出元の事業の表示座標の重心に置く。
    * 重みは金額の平方根。金額そのままだと最大の支出元の真上に重なって菱形が隠れ、
    * 均等だと大口の支出元との関係が位置に出ない、の中間を取る。
-   * 表示中（絞り込み後）の事業に2件以上繋がる支出先だけを置く。
+   *
+   * 支出元が1事業だけの支出先は重心＝その事業の真上になり丸を隠すので、
+   * 事業の縁のすぐ外に画面px固定のずらし（ox, oy）で置く。同じ事業に複数あれば
+   * 黄金角で周りに散らす。ずらしをズーム前の座標に入れないのは、拡大で事業から離れていかないようにするため。
+   * 表示中（絞り込み後）の事業に1件も繋がらない支出先は置かない。
    */
   const spendRecipients = spending?.recipients ?? null;
   const spendGraph = useMemo(() => {
@@ -375,9 +381,10 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     const indexByPid = new Map<string, number>();
     for (let i = 0; i < points.length; i++) indexByPid.set(points[i].pid, i);
     const nodes: Array<{
-      r: ProjectMapSpendingRecipient; x: number; y: number;
+      r: ProjectMapSpendingRecipient; x: number; y: number; ox: number; oy: number;
       idx: number[]; color: string; radius: number;
     }> = [];
+    const singlesAt = new Map<number, number>();
     for (const r of spendRecipients) {
       const idx: number[] = [];
       let wx = 0, wy = 0, wt = 0;
@@ -388,8 +395,18 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
         const w = Math.sqrt(r.amounts[k]);
         wx += relaxed.px[i] * w; wy += relaxed.py[i] * w; wt += w;
       }
-      if (idx.length < 2 || wt === 0) continue;
-      nodes.push({ r, x: wx / wt, y: wy / wt, idx, color: spendingColor(r.amount), radius: spendingRadius(r.amount) });
+      if (idx.length === 0 || wt === 0) continue;
+      const radius = spendingRadius(r.amount);
+      let ox = 0, oy = 0;
+      if (idx.length === 1) {
+        const i = idx[0];
+        const nth = singlesAt.get(i) ?? 0;
+        singlesAt.set(i, nth + 1);
+        const a = -Math.PI / 4 + nth * 2.39996;   // 右上から黄金角で回す
+        const d = relaxed.pr[i] + radius * 1.25 + 1.5;
+        ox = Math.cos(a) * d; oy = Math.sin(a) * d;
+      }
+      nodes.push({ r, x: wx / wt, y: wy / wt, ox, oy, idx, color: spendingColor(r.amount), radius });
     }
     // 小さい順に描く＝濃い大口が上に来る
     nodes.reverse();
@@ -404,6 +421,7 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
   }, [spendRecipients, points, relaxed]);
 
   const focusRecipientId = spending?.focusRecipientId ?? null;
+  const emphasizeAll = spending?.emphasizeAll ?? false;
 
   /** 前面に出す支出先と事業。支出先の指定が優先、無ければ選択事業の支出先すべて */
   const spendFocus = useMemo(() => {
@@ -415,12 +433,14 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     } else if (selectedPid) {
       const i = points.findIndex(p => p.pid === selectedPid);
       for (const ni of (i >= 0 ? spendGraph.byProject.get(i) : undefined) ?? []) rset.add(ni);
+    } else if (emphasizeAll) {
+      for (let ni = 0; ni < spendGraph.nodes.length; ni++) rset.add(ni);
     }
     if (rset.size === 0) return null;
     const pset = new Set<number>();
     for (const ni of rset) for (const i of spendGraph.nodes[ni].idx) pset.add(i);
     return { rset, pset };
-  }, [spendGraph, focusRecipientId, selectedPid, points]);
+  }, [spendGraph, focusRecipientId, selectedPid, points, emphasizeAll]);
 
   // ── 描画 ──
   useEffect(() => {
@@ -467,8 +487,8 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     const dimmed: number[] = [];
     const front: number[] = [];
     for (const i of order) {
-      // 支出つながりビューでは、事業は線の下の地図として無彩色で敷き、
-      // 注目中の支出先に繋がる事業だけを色付きで前に出す
+      // 支出つながりビューでは、事業は線の下の地図として色を残したまま薄く敷き、
+      // 注目中の支出先に繋がる事業だけを濃く前に出す
       const isFront = spendGraph
         ? spendFocus !== null && spendFocus.pset.has(i)
         : highlightKey === null || legendKeyOf(points[i]) === highlightKey;
@@ -495,8 +515,10 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       }
     };
 
-    // 背面（強調外）は無彩色で敷く
-    draw(dimmed, dark ? 0.6 : 0.7, true, false);
+    // 背面（強調外）は無彩色で敷く。支出つながりでは無彩色にせず透明度だけ上げる
+    // （府省庁などの塗り分けを地図として読めるように残す）。注目中はさらに引く
+    if (spendGraph) draw(dimmed, spendFocus ? 0.14 : 0.32, false, false);
+    else draw(dimmed, dark ? 0.6 : 0.7, true, false);
 
     // ── 支出つながり（線 → 菱形）。事業の地図の上、注目中の事業の下に敷く ──
     const nr = spendGraph?.nodes.length ?? 0;
@@ -511,8 +533,8 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
     if (spendGraph) {
       const nodes = spendGraph.nodes;
       for (let ni = 0; ni < nr; ni++) {
-        rsx[ni] = nodes[ni].x * transform.k + transform.tx;
-        rsy[ni] = nodes[ni].y * transform.k + transform.ty;
+        rsx[ni] = nodes[ni].x * transform.k + transform.tx + nodes[ni].ox;
+        rsy[ni] = nodes[ni].y * transform.k + transform.ty + nodes[ni].oy;
         rr[ni] = nodes[ni].radius;
       }
       const focused = spendFocus?.rset;
