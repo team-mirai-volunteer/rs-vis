@@ -20,7 +20,7 @@ import { PolicyEvaluationBlock } from '@/client/components/quality/PolicyEvaluat
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectOverviewSection';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
-import { useCached, usePolicySummary } from './policy-summary-cache';
+import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 
 const detailCache = new Map<string, ProjectDetail | null>();
@@ -64,7 +64,6 @@ export function UnifiedProjectSections({
       .finally(() => setScoreLoading(false));
   }, [pid, year]);
 
-  const entry = policy?.items[String(pid)];
   const subcontractHref = rsViewUrl(`/subcontracts/${pid}`, year);
 
   return (
@@ -75,23 +74,7 @@ export function UnifiedProjectSections({
         pid={pid}
         year={year}
         error={policy === null ? '政策評価を取得できませんでした' : null}
-        view={
-          entry && policy
-            ? {
-                overall: entry.o,
-                designClarity: entry.d,
-                evidence: entry.e,
-                transparency: entry.t,
-                proportionality: entry.x,
-                necessity: entry.n,
-                recommendation: entry.r ? policy.recommendations[entry.r] : null,
-                improvementAction: entry.a ? policy.actions[entry.a] : null,
-                categoryLabel: entry.c ? policy.categories[entry.c] : null,
-              }
-            : policy === undefined
-              ? undefined
-              : null
-        }
+        view={policyViewFor(policy, pid)}
         labelPx={scaleFont(11)}
         metaPx={scaleFont(10)}
         onOpenDetail={openScoreDialog}

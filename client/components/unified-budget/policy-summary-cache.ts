@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import type { PolicySummaryResponse } from '@/app/api/policy-summary/route';
+import type { PolicyEvaluationView } from '@/client/components/quality/PolicyEvaluationBlock';
 
 const policyCache = new Map<string, PolicySummaryResponse | null>();
 
@@ -39,4 +40,25 @@ const extractPolicy = (d: unknown) => d as PolicySummaryResponse;
 export function usePolicySummary(rsSheetYear: number | string | null): PolicySummaryResponse | null | undefined {
   const year = rsSheetYear === null ? null : String(rsSheetYear);
   return useCached(policyCache, year, `/api/policy-summary?year=${year}`, extractPolicy);
+}
+
+/**
+ * 政策評価サマリから 1 事業ぶんの表示用ビューを組み立てる（PolicyEvaluationBlock の view）。
+ * undefined = サマリ取得中、null = サマリが無い／この事業の評価が無い
+ */
+export function policyViewFor(policy: PolicySummaryResponse | null | undefined, pid: number | string): PolicyEvaluationView | null | undefined {
+  if (policy === undefined) return undefined;
+  const entry = policy?.items[String(pid)];
+  if (!policy || !entry) return null;
+  return {
+    overall: entry.o,
+    designClarity: entry.d,
+    evidence: entry.e,
+    transparency: entry.t,
+    proportionality: entry.x,
+    necessity: entry.n,
+    recommendation: entry.r ? policy.recommendations[entry.r] : null,
+    improvementAction: entry.a ? policy.actions[entry.a] : null,
+    categoryLabel: entry.c ? policy.categories[entry.c] : null,
+  };
 }

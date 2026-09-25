@@ -33,6 +33,7 @@ import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from './UnifiedProjectBlocks';
 import { RsApiProjectDetail } from './RsApiProjectDetail';
+import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
 import { FactRow } from './FactRow';
@@ -312,6 +313,12 @@ export function UnifiedSankeyChart({
   const budgetSummary = selectedDetails?.budgetSummary ?? projectBlocks?.budgetSummary;
   const budgetBreakdown = selectedDetails?.budgetBreakdown ?? projectBlocks?.budgetBreakdown ?? [];
   const hasBudgetTab = isIndividualProject && !provisional;
+  /**
+   * 暫定（RS 公開 API）の前年度シート。RS シート年度 N は年度 N−1 の執行を評価したものなので、暫定の予算年度 N から見た前年度にあたる
+   * （rsSheetYear は要求年度用の仮の 2026 になりうるため使わない）。事業が前年度にあるかは政策評価サマリの事業IDで判定する
+   */
+  const priorSheetYear = budgetYear;
+  const priorSheetPolicy = usePolicySummary(provisional && isIndividualProject ? priorSheetYear : null);
   /**
    * パネル上段（事実表・評価・事業の詳細群・集約の内訳）に出すものがあるか。支出先などは何も無いので、
    * 空の枠（余白と罫線だけの帯）を描かない
@@ -743,7 +750,21 @@ export function UnifiedSankeyChart({
                 )}
                 {/* RS事業（個別）: /sankey-svg のサイドパネルと同じ詳細群（政策評価・事業概要・意見・再委託） */}
                 {isIndividualProject && selectedDetails.projectId !== undefined && (provisional ? (
-                    <RsApiProjectDetail key={selectedDetails.projectId} projectId={selectedDetails.projectId} />
+                    // 暫定（RS 公開 API）: 前年度シートに同じ事業IDがあれば通常の事業パネルを前年度データで出す。
+                    // 前年度に無い新規事業だけ暫定パネル（当年度の執行額・支出先ブロック）を出す
+                    priorSheetPolicy === undefined ? (
+                      <p role="status" className="py-2 text-xs text-mirai-text-muted">前年度の事業情報を確認中…</p>
+                    ) : priorSheetPolicy?.items[String(selectedDetails.projectId)] ? (
+                      <UnifiedProjectSections
+                        pid={selectedDetails.projectId}
+                        projectName={selectedPanelNode.name}
+                        rsSheetYear={priorSheetYear}
+                        fontPx={fontPx}
+                        flush={nodeFactsEmpty(selectedDetails)}
+                      />
+                    ) : (
+                      <RsApiProjectDetail key={selectedDetails.projectId} projectId={selectedDetails.projectId} />
+                    )
                   ) : (
                     <UnifiedProjectSections
                       pid={selectedDetails.projectId}
