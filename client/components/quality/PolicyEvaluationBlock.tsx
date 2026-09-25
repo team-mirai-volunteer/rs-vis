@@ -94,8 +94,9 @@ export function PolicyEvaluationBlock({
     <div className="shrink-0 border-b border-border px-3.5 py-2">
       {/* 見出し行に推奨判断・改善アクションのバッジもまとめ、ブロックを 1 行詰める（狭い幅では折り返す） */}
       <div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-        <span className="font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}>政策評価</span>
-        <span className="text-mirai-text-muted" style={{ fontSize: metaPx }}>暫定</span>
+        {/* 「暫定」は全事業に共通なので本文には出さず、見出しのツールチップで断る */}
+        <span className="cursor-help font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}
+          title="AI による暫定の評価です（行政事業レビューシートの記載からのスクリーニングで、結論ではありません）">政策評価</span>
         {view.categoryLabel && (
           <span
             className="whitespace-nowrap rounded-full bg-mirai-surface-light px-1.5 py-px text-mirai-text-subtle"
