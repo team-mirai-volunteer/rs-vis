@@ -1,5 +1,5 @@
 import type { LifecycleYear, TaxState } from '@/types/tax-burden';
-import { DENOMINATOR_LABEL, yearRate } from '@/app/lib/tax-burden/heatmap-items';
+import { yearRate } from '@/app/lib/tax-burden/heatmap-items';
 import { PHASE_LABEL } from './LifecycleChart';
 import { yen } from './BurdenBreakdown';
 

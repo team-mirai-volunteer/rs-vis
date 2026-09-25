@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { COMMENTS_DISABLED_REASON, COMMENTS_ENABLED } from './feature-env';
 
 async function openQualityDetail(page: Page, year: string) {
   await page.goto(`/quality?year=${year}`);
@@ -24,6 +25,7 @@ test('request-year details show unrecorded execution without requesting nonexist
 });
 
 test('recorded-year comments distinguish a failed fetch from zero comments and can retry', async ({ page }) => {
+  test.skip(!COMMENTS_ENABLED, COMMENTS_DISABLED_REASON);
   let attempts = 0;
   await page.route('**/api/projects/1503/comments?*', route => {
     attempts++;
@@ -38,5 +40,20 @@ test('recorded-year comments distinguish a failed fetch from zero comments and c
   await expect(detail.getByText('まだ意見はありません。最初の意見を伝えてみませんか。')).toBeVisible();
   await expect(detail.getByText('0件', { exact: true })).toBeVisible();
   await expect(detail.getByText('件数を取得できません', { exact: true })).toHaveCount(0);
+  expect(attempts).toBe(2);
+});
+
+test('quality scores failure shows a visitor-facing message and retries in place', async ({ page }) => {
+  let attempts = 0;
+  await page.route('**/api/quality-scores?*', route => {
+    attempts++;
+    return attempts === 1 ? route.fulfill({ status: 500, body: 'boom' }) : route.continue();
+  });
+  await page.goto('/quality?year=2024');
+  const alert = page.getByRole('alert').filter({ hasText: '評価データを読み込めませんでした' });
+  await expect(alert).toBeVisible();
+  await expect(page.locator('body')).not.toContainText('python3');
+  await alert.getByRole('button', { name: '再読み込みする', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
   expect(attempts).toBe(2);
 });

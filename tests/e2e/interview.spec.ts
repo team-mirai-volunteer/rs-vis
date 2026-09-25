@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { COMMENTS_DISABLED_REASON, COMMENTS_ENABLED } from './feature-env';
+
+test.skip(!COMMENTS_ENABLED, COMMENTS_DISABLED_REASON);
 
 async function openInterview(page: Page) {
   await page.route('**/api/projects/*/comments?*', route => route.fulfill({

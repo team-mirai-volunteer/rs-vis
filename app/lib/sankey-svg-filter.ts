@@ -75,7 +75,7 @@ export function filterTopN(
   const projectRecipientsMode = focusRelated && pinnedProjectId != null && !recipientFocusMode && !ministryFocusMode;
 
   // 1. TopN ministries by total value (stable ranking)
-  const { ministries, topMinistryNodes, otherMinistries, topMinistryIds, topMinistryNames } =
+  const { ministries, topMinistryNodes, otherMinistries, topMinistryNames } =
     getTopMinistriesInScope(allNodes, topMinistry, ministryFocusMode, pinnedMinistryName);
 
   // ── Project-offset mode: pre-compute project window before recipient window ──
@@ -463,20 +463,6 @@ export function filterTopN(
   const otherProjectBudgetRawTotal = otherProjects.reduce((s, p) => {
     return s + (p.projectId != null ? (nodeById.get(`project-budget-${p.projectId}`)?.value ?? 0) : 0);
   }, 0);
-
-  const totalWindowSpending = windowRecipients.reduce((s, [, v]) => s + v, 0);
-
-  // 6. Ministry window values (for edge widths)
-  const ministryWindowValue = new Map<string, number>();
-  for (const e of allEdges) {
-    if (windowRecipientIds.has(e.target)) {
-      const spNode = nodeById.get(e.source);
-      if (spNode?.type === 'project-spending' && spNode.ministry) {
-        ministryWindowValue.set(spNode.ministry, (ministryWindowValue.get(spNode.ministry) || 0) + e.value);
-      }
-    }
-  }
-  const otherMinistryWindowValue = otherMinistries.reduce((s, n) => s + (ministryWindowValue.get(n.name) || 0), 0);
 
   // 7. Ministry budget totals (sum of project-budget values per ministry — for node heights)
   // Exclude effectively hidden projects (had spending but lost window flow at current offset)

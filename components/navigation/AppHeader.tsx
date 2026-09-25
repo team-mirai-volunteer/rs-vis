@@ -91,7 +91,13 @@ function HeaderFrame({ current, config, slotRef }: {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(nav);
-    return () => observer.disconnect();
+    // Web フォント（Noto Sans JP）の読み込み後は文字幅が変わるが、ナビ自体の幅は変わらず observer が発火しないので測り直す
+    let active = true;
+    void document.fonts?.ready.then(() => { if (active) measure(); });
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
   }, []);
 
   return (

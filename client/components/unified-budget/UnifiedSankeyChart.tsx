@@ -713,7 +713,7 @@ export function UnifiedSankeyChart({
 
               <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
               <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '60%' }}>
-                <NodeFacts details={selectedDetails} amountLabel={amountLabel} />
+                <NodeFacts details={selectedDetails} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
                   <div className="-mx-4 mt-3 border-t border-border">
@@ -876,7 +876,7 @@ export function UnifiedSankeyChart({
 function revenueAmountLabel(details: UnifiedViewDetails) {
   return details.revenueBasis === 'settlement' ? '収納済歳入額' : details.revenueBasis === 'supplementary' ? '歳入予算額（補正後）' : '歳入予算額';
 }
-function NodeFacts({ details, amountLabel }: { details: UnifiedViewDetails; amountLabel: string }) {
+function NodeFacts({ details }: { details: UnifiedViewDetails }) {
   const rows: Array<[string, string]> = [];
   if (details.revenueCategory) rows.push(['歳入区分', details.revenueCategory]);
   if (details.column === 'revenue' && details.revenueAmount !== undefined) rows.push([`${revenueAmountLabel(details)}（全額）`, formatBudgetFromYen(details.revenueAmount)]);

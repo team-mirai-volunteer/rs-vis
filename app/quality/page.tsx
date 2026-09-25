@@ -13,17 +13,15 @@ import { cn } from '@/lib/utils';
 import LoadingSpinner from '@/client/components/LoadingSpinner';
 import type { QualityScoreItem, QualityScoresResponse } from '@/app/api/quality-scores/route';
 import type { QualityYear } from '@/app/lib/api/quality-year';
-import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
-import type { ProjectDetail } from '@/types/project-details';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { useQualityLocation } from '@/client/hooks/useQualityLocation';
 import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
-import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
+import { scoreBand, scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
-  AXIS_META, COL_DESC, UNUSED_TREND_META, TONE_CLS, ACTION_CLS, COL_WIDTHS,
+  AXIS_META, COL_DESC, UNUSED_TREND_META, COL_WIDTHS,
   RECOMMENDATION_LABELS, IMPROVEMENT_ACTION_LABELS,
-  RecommendationBadge, ActionBadge, PersistentUnusedMark, fmtRaw,
+  RecommendationBadge, ActionBadge, PersistentUnusedMark,
   type PolicyMetric, type SortField, type SortDir,
 } from '@/client/components/quality/score-meta';
 import {
@@ -33,7 +31,6 @@ import {
   RECOMMENDATION_ORDER,
   type PolicyEvaluation,
   type PolicyQualityInput,
-  type PolicyRecommendationTone,
 } from '@/app/lib/policy-evaluation';
 
 const PAGE_SIZE = 50;
@@ -167,6 +164,8 @@ export default function QualityPage() {
   const [history, setHistory] = useState<ExecutionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** 読み込み失敗時の「再読み込みする」で増やし、取得 effect を再実行させる */
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // Sankey 等から ?pid= で特定事業を指すことがある。初期表示だけ検索欄へ流し込む
   const [searchQuery, setSearchQuery] = useState(() => {
@@ -219,7 +218,7 @@ export default function QualityPage() {
       .catch(e => { if (!controller.signal.aborted) setError(String(e)); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [year, ready]);
+  }, [year, ready, loadAttempt]);
 
   // 前年度の執行率（pid → 執行率 のみ）。縮小判定で単年度の不用と2年連続の不用を区別するために使う
   useEffect(() => {
@@ -397,14 +396,13 @@ export default function QualityPage() {
   if (!ready || loading || (!error && !data)) return <LoadingSpinner />;
 
   if (error || !data) return (
-    <div className="p-8 text-destructive">
-      <p className="font-bold">データを読み込めません</p>
-      <p className="text-sm mt-1">{error}</p>
-      <p className="text-sm mt-2 text-mirai-text-subtle">
-        <code className="bg-mirai-surface px-1 rounded-md">
-          python3 scripts/score-project-quality.py
-        </code> を実行してください
+    <div role="alert" className="mx-auto max-w-xl space-y-3 p-8">
+      <p className="font-bold text-destructive">評価データを読み込めませんでした</p>
+      <p className="text-sm leading-relaxed text-mirai-text-subtle">
+        通信が不安定か、{fiscalYearLabel(year)}のデータを一時的に取得できない状態です。時間をおいて再読み込みしてください。
       </p>
+      {error && <p className="text-xs text-mirai-text-muted">詳細: {error}</p>}
+      <Button variant="outline" size="sm" onClick={() => setLoadAttempt(value => value + 1)}>再読み込みする</Button>
     </div>
   );
 
@@ -541,19 +539,14 @@ export default function QualityPage() {
             data.items.filter(i => { const s = metricValue(i, distMetric); return s != null && s >= lo && s <= hi; }).length
           );
           const maxCount = Math.max(...counts, 1);
-          const binColor = (lo: number) => {
-            if (lo >= 90) return { bg: 'bg-status-good-bg text-status-good-fg', bar: 'bg-status-good-bar' };
-            if (lo >= 70) return { bg: 'bg-primary/10 text-primary-accent', bar: 'bg-primary/60' };
-            if (lo >= 50) return { bg: 'bg-status-warn-bg text-status-warn-fg', bar: 'bg-status-warn-bar' };
-            return { bg: 'bg-status-bad-bg text-status-bad-fg', bar: 'bg-status-bad-bar' };
-          };
           return (
             <div className="flex items-end gap-4 flex-wrap">
               <div className="flex items-end gap-0.5">
                 {binRanges.map(({ label, range, lo }, i) => {
                   const count = counts[i];
                   const h = Math.max(2, Math.round((count / maxCount) * 56));
-                  const { bar } = binColor(lo);
+                  // ビンの下限はスコア帯の境界（90 / 70 / 50）と揃っているので、下限の帯色で塗る
+                  const { bar } = scoreBand(lo);
                   const isActive = scoreRange === range;
                   return (
                     <Button
