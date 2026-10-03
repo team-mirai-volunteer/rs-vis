@@ -110,3 +110,14 @@ export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: Subco
     {block.recipients.length === 0 && <p className="py-2 text-xs text-mirai-text-muted">このブロックに支出先の記載はありません。</p>}
   </>;
 }
+
+/**
+ * 事業に支出先が1件も記載されていないときの説明。新規・計画段階の事業や、他の事業の結果を受けて実施する事業では
+ * 業者も支出もまだ無いことがある（フィードバック: 「業者無し・支出無しの事業が計画されている」）
+ */
+export function NoRecipientsNote({ className = 'py-2 text-xs' }: { className?: string }) {
+  return <div className={`${className} space-y-1 text-mirai-text-muted`}>
+    <p>支出先の記載はありません。</p>
+    <p className="leading-relaxed">新規・計画段階の事業、他の事業の結果を受けて実施する事業、執行が翌年度に繰り越された事業などでは、レビューシートに支出先が記載されないことがあります。予算上の事情で、事業が不要という意味ではありません。</p>
+  </div>;
+}

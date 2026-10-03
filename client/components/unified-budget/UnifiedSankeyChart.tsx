@@ -33,7 +33,7 @@ import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections, useProjectDetail } from './UnifiedProjectSections';
 import { UnifiedRecipientProfile } from './UnifiedRecipientProfile';
 import { yearsRunning } from '@/client/components/ProjectDescription';
-import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
+import { NoRecipientsNote, UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
 import { rsApiContractLines, rsApiToProjectDetail, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
@@ -972,7 +972,7 @@ export function UnifiedSankeyChart({
                         {selectedBlock.recipients.map(renderBlockRecipient)}
                       </>
                     ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
-                      <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
+                      isIndividualProject ? <NoRecipientsNote /> : <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)

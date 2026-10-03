@@ -10,6 +10,7 @@
 import { fiscalYearLabel, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
 import Link from 'next/link';
+import { NoRecipientsNote } from '@/client/components/unified-budget/UnifiedProjectBlocks';
 import { ScoreBlockFilterHeader, ScoreProjectStructure, type ScoreRecipientTab } from './ScoreProjectStructure';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
@@ -659,7 +660,7 @@ ${a.desc}`}>
             </div>
           )}
           {recipients && recipients.length === 0 && (
-            <div className="px-6 py-4 text-xs text-mirai-text-muted">支出先データなし</div>
+            <NoRecipientsNote className="px-6 py-4 text-xs" />
           )}
           {recipients && recipients.length > 0 && (
             <div>

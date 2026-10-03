@@ -8,7 +8,7 @@ import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
 import { Button } from '@/components/ui/button';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedProjectSections } from '@/client/components/unified-budget/UnifiedProjectSections';
-import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from '@/client/components/unified-budget/UnifiedProjectBlocks';
+import { NoRecipientsNote, UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks } from '@/client/components/unified-budget/UnifiedProjectBlocks';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 
@@ -69,7 +69,7 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
           {block.recipients.map(recipientRow)}
         </>
         : <>
-          {graph.blocks.every(item => item.recipients.length === 0) && <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>}
+          {graph.blocks.every(item => item.recipients.length === 0) && <NoRecipientsNote />}
           {graph.blocks.filter(item => item.recipients.length > 0).map(item => <div key={item.blockId}>
             <Button variant="ghost" className="h-auto w-full justify-start px-1 py-2 text-[11px] font-bold" onClick={() => setBlockId(item.blockId)}>ブロック {item.blockId} {item.blockName}</Button>
             {item.recipients.map(recipientRow)}
