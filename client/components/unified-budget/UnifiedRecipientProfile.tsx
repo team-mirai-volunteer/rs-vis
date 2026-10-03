@@ -25,9 +25,13 @@ export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: 
     {profile.genericNote && <p className="rounded-lg bg-mirai-surface px-3 py-2 leading-relaxed text-mirai-text-secondary">{profile.genericNote}</p>}
     {!entry && !profile.genericNote && <p className="text-mirai-text-muted">{fiscalYearLabel(sheetYear)}の支出先一覧に、この名前の支出先は見つかりませんでした。</p>}
     {entry && <>
-      {/* 法人番号で突き合わせた外部情報（所在地・法人種別は RS 公開 API、説明・設立・公式サイト・Wikipedia は Wikidata） */}
+      {/* 法人番号で突き合わせた外部情報（所在地・法人種別は RS 公開 API、説明は Wikipedia の冒頭、設立・公式サイト・記事は Wikidata） */}
       {(profile.external || entry.corporateNumber) && <div className="space-y-1.5">
-        {profile.external?.desc && <p className="leading-relaxed text-mirai-text-secondary" style={label}>{profile.external.desc}</p>}
+        {/* 説明は Wikipedia の冒頭（CC BY-SA のため出典とリンクを添える）。無ければ Wikidata の短い説明 */}
+        {profile.external?.wt
+          ? <p className="leading-relaxed text-mirai-text-secondary" style={label}>{profile.external.wt}
+            {profile.external.wiki && <a href={profile.external.wiki} target="_blank" rel="noopener noreferrer" className="ml-1 whitespace-nowrap text-mirai-text-muted underline underline-offset-4 hover:text-primary-accent" style={meta}>Wikipedia より（CC BY-SA）</a>}</p>
+          : profile.external?.desc && <p className="leading-relaxed text-mirai-text-secondary" style={label}>{profile.external.desc}</p>}
         {(profile.external?.kindLabel || profile.external?.ad || profile.external?.since) && <dl className="space-y-0.5" style={label}>
           {profile.external.kindLabel && <div className="flex gap-2"><dt className="w-14 shrink-0 text-mirai-text-muted">法人種別</dt><dd className="text-mirai-text-subtle">{profile.external.kindLabel}</dd></div>}
           {profile.external.ad && <div className="flex gap-2"><dt className="w-14 shrink-0 text-mirai-text-muted">所在地</dt><dd className="text-mirai-text-subtle">{profile.external.ad}</dd></div>}
@@ -70,6 +74,6 @@ export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: 
       </div>}
       {entry.aliases.length > 0 && <p className="text-mirai-text-muted" style={meta}>別の表記: {entry.aliases.join('、')}</p>}
     </>}
-    <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式・所在地・法人種別はRS公開API{profile.external?.wd && '、説明・設立・公式サイト・Wikipedia は Wikidata（法人番号で一致したもの）'}</p>
+    <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式・所在地・法人種別はRS公開API{profile.external?.wd && '、設立・公式サイト・Wikipedia の記事は Wikidata（法人番号で一致したもの）'}</p>
   </section>;
 }

@@ -3,8 +3,9 @@
  *   npx tsx scripts/generate-recipient-external.ts [--refresh]
  * - 所在地・法人種別: RS公開APIの支払先（data/rs-api/{2026,2025,2024}。新しいシートを優先）
  * - Wikipedia・公式サイト・設立・説明: Wikidata の「法人番号」(P3225) で完全一致したものだけ
+ * - Wikipedia の冒頭: 上で得た日本語版記事のリード文の最初の1〜2文（CC BY-SA。画面で出典を示す）
  * 入力の法人番号は支出先インデックス（recipient-index-2024/2025）から集める。
- * Wikidata の応答は data/cache/wikidata-corporate-number.json に保存し、再実行時は未取得分だけ問い合わせる。
+ * Wikidata・Wikipedia の応答は data/cache/ に保存し、再実行時は未取得分だけ問い合わせる。
  * 出力: public/data/recipient-external.json(.gz)
  */
 import fs from 'node:fs';
@@ -17,6 +18,8 @@ const SHEETS = [2026, 2025, 2024];
 const BATCH = 250;
 const WIKIDATA = 'https://query.wikidata.org/sparql';
 const CACHE = path.resolve('data/cache/wikidata-corporate-number.json');
+const WIKI_CACHE = path.resolve('data/cache/wikipedia-extracts.json');
+const WIKIPEDIA = 'https://ja.wikipedia.org/w/api.php';
 const UA = 'rs-vis/1.0 (https://rs-vis.team-mir.ai; recipient enrichment)';
 
 type WikidataHit = { item: string; label?: string; desc?: string; site?: string; wiki?: string; since?: string };
@@ -98,6 +101,51 @@ async function fetchWikidata() {
   }
 }
 
+/** リード文の最初の段落から、120字に届くまで（最大2文）を取り、220字で切る */
+function leadSentences(extract: string): string | undefined {
+  const paragraph = extract.split('\n').map(line => line.trim()).find(line => line.length > 0);
+  if (!paragraph) return undefined;
+  const sentences = paragraph.match(/[^。]+。?/g) ?? [paragraph];
+  let text = '';
+  for (const sentence of sentences.slice(0, 2)) {
+    text += sentence;
+    if (text.length >= 120) break;
+  }
+  return text.length > 220 ? `${text.slice(0, 219)}…` : text;
+}
+
+const wikiCache: Record<string, string | null> = !refresh && fs.existsSync(WIKI_CACHE) ? JSON.parse(fs.readFileSync(WIKI_CACHE, 'utf8')) : {};
+const titleOf = (url: string) => decodeURIComponent(url.replace('https://ja.wikipedia.org/wiki/', '')).replace(/_/g, ' ');
+async function fetchWikipedia() {
+  const titles = [...new Set(Object.values(cache).flatMap(hit => (hit?.wiki ? [titleOf(hit.wiki)] : [])))].filter(t => !(t in wikiCache)).sort();
+  for (let i = 0; i < titles.length; i += 20) {
+    const batch = titles.slice(i, i + 20);
+    const url = new URL(WIKIPEDIA);
+    Object.entries({ action: 'query', prop: 'extracts', exintro: '1', explaintext: '1', exlimit: 'max', redirects: '1', format: 'json', formatversion: '2', titles: batch.join('|') })
+      .forEach(([k, v]) => url.searchParams.set(k, v));
+    let body: { query?: { pages?: Array<{ title: string; extract?: string }>; normalized?: Array<{ from: string; to: string }>; redirects?: Array<{ from: string; to: string }> } } = {};
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(60000) });
+        if (!res.ok) throw Error(`HTTP ${res.status}`);
+        body = await res.json();
+        break;
+      } catch (error) {
+        if (attempt === 3) throw error;
+        await delay(3000 * 2 ** attempt);
+      }
+    }
+    // 要求した表記 → 正規化・リダイレクト後の記事名をたどって、元の表記に結果を戻す
+    const step = new Map<string, string>([...(body.query?.normalized ?? []), ...(body.query?.redirects ?? [])].map(m => [m.from, m.to]));
+    const resolve = (t: string) => { let cur = t; for (let n = 0; n < 3 && step.has(cur); n++) cur = step.get(cur)!; return cur; };
+    const extracts = new Map((body.query?.pages ?? []).map(page => [page.title, page.extract ?? '']));
+    for (const t of batch) wikiCache[t] = leadSentences(extracts.get(resolve(t)) ?? '') ?? null;
+    fs.writeFileSync(WIKI_CACHE, JSON.stringify(wikiCache));
+    if ((i / 20) % 25 === 0) console.log(`Wikipedia ${Math.min(i + 20, titles.length)}/${titles.length}`);
+    await delay(300);
+  }
+}
+
 function write() {
   // 3. 出力（どちらにも無い法人番号はキーを作らない）
   const byCn: Record<string, RecipientExternal> = {};
@@ -111,13 +159,15 @@ function write() {
       if (wd.desc) out.desc = wd.desc;
       if (wd.site) out.site = wd.site;
       if (wd.wiki) out.wiki = wd.wiki;
+      const lead = wd.wiki ? wikiCache[titleOf(wd.wiki)] : null;
+      if (lead) out.wt = lead;
       if (wd.since) out.since = wd.since;
     }
     if (Object.keys(out).length > 0) byCn[cn] = out;
   }
   const file: RecipientExternalFile = {
     metadata: { generatedAt: new Date().toISOString(), corporateNumbers: corporateNumbers.size,
-      sources: ['RS公開API（支払先の所在地・法人種別）', 'Wikidata（法人番号 P3225 の完全一致。CC0）'] },
+      sources: ['RS公開API（支払先の所在地・法人種別）', 'Wikidata（法人番号 P3225 の完全一致。CC0）', 'Wikipedia 日本語版のリード文の冒頭（CC BY-SA 4.0）'] },
     byCn,
   };
   const target = path.resolve('public/data/recipient-external.json');
@@ -127,7 +177,7 @@ function write() {
   const values = Object.values(byCn);
   console.log(JSON.stringify({ corporateNumbers: corporateNumbers.size, written: values.length,
     address: values.filter(v => v.ad).length, wikidata: values.filter(v => v.wd).length,
-    wikipedia: values.filter(v => v.wiki).length, website: values.filter(v => v.site).length }));
+    wikipedia: values.filter(v => v.wiki).length, wikipediaLead: values.filter(v => v.wt).length, website: values.filter(v => v.site).length }));
 }
 
-fetchWikidata().then(write).catch(error => { console.error(error); process.exit(1); });
+fetchWikidata().then(fetchWikipedia).then(write).catch(error => { console.error(error); process.exit(1); });

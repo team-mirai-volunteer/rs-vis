@@ -14,6 +14,8 @@ export interface RecipientExternal {
   site?: string;
   /** 日本語版 Wikipedia の記事 URL */
   wiki?: string;
+  /** その記事のリード文の冒頭（1〜2文。CC BY-SA 4.0。表示では出典と記事へのリンクを添える） */
+  wt?: string;
   /** 設立・成立日（Wikidata P571。YYYY-MM-DD。精度は年単位のこともある） */
   since?: string;
 }
