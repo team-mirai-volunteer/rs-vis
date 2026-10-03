@@ -111,6 +111,11 @@ export default function ProjectMapPage() {
   // 対話状態
   const [hover, setHover] = useState<{ p: ProjectMapPoint; x: number; y: number } | null>(null);
   const [selected, setSelected] = useState<ProjectMapPoint | null>(null);
+  /**
+   * 右の詳細パネルに出すもの。支出先を固定したまま、その支出先の事業一覧から事業を選ぶと事業の詳細に切り替える
+   * （一覧は固定した支出先のまま残す）
+   */
+  const [detailFocus, setDetailFocus] = useState<'project' | 'recipient'>('project');
   const [legendHover, setLegendHover] = useState<string | null>(null);
   const [legendLock, setLegendLock] = useState<string | null>(null);
 
@@ -456,6 +461,7 @@ export default function ProjectMapPage() {
     onSelectRecipient: (r: ProjectMapSpendingRecipient) => {
       setSelected(null);
       setLockedRecipientId(r.id);
+      setDetailFocus('recipient');
     },
   } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId, spendQuery, isPlaceholderKind]);
 
@@ -738,7 +744,7 @@ export default function ProjectMapPage() {
 
       </div>
       {/* 支出先（菱形）を固定している間は、その支出先の詳細を出す。固定を外すと選択中の事業の詳細に戻る */}
-      {lockedRecipient ? (
+      {lockedRecipient && (detailFocus === 'recipient' || !selected) ? (
         <RecipientDetailPanel
           key={`${year}-${lockedRecipient.id}`}
           recipient={lockedRecipient}
@@ -830,7 +836,7 @@ export default function ProjectMapPage() {
               recipient={lockedRecipient}
               pointByPid={pointByPid}
               colorOf={colorOf}
-              onSelectPoint={p => setSelected(p)}
+              onSelectPoint={p => { setSelected(p); setDetailFocus('project'); }}
               onClose={() => setLockedRecipientId(null)}
             />
           ) : selected && spendData ? (
@@ -840,7 +846,7 @@ export default function ProjectMapPage() {
               placeholderMode={isPlaceholderKind}
               projectSpending={spendData.projectSpending[selected.pid] ?? 0}
               onHover={r => setHoverRecipient(r ? { r, x: -1, y: -1 } : null)}
-              onLock={r => setLockedRecipientId(r.id)}
+              onLock={r => { setLockedRecipientId(r.id); setDetailFocus('recipient'); }}
             />
           ) : isPlaceholderKind && spendData ? (
             <PlaceholderRankingPanel rows={placeholderRanking} onSelect={selectPoint} />
