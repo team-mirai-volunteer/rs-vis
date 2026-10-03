@@ -860,6 +860,7 @@ export function UnifiedSankeyChart({
                       <p role="status" className="py-2 text-xs text-mirai-text-muted">事業情報を読み込み中…</p>
                     ) : priorSheetPolicy?.items[String(selectedDetails.projectId)] ? (
                       <UnifiedProjectSections
+                        showScoreDetail={false}
                         pid={selectedDetails.projectId}
                         projectName={selectedPanelNode.name}
                         rsSheetYear={priorSheetYear}
@@ -868,6 +869,7 @@ export function UnifiedSankeyChart({
                       />
                     ) : provisionalProject ? (
                       <UnifiedProjectSections
+                        showScoreDetail={false}
                         pid={selectedDetails.projectId}
                         projectName={selectedPanelNode.name}
                         rsSheetYear={priorSheetYear}
@@ -880,6 +882,7 @@ export function UnifiedSankeyChart({
                     )
                   ) : (
                     <UnifiedProjectSections
+                      showScoreDetail={false}
                       pid={selectedDetails.projectId}
                       projectName={selectedPanelNode.name}
                       rsSheetYear={rsSheetYear}
