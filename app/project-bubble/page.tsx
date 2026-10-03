@@ -792,7 +792,7 @@ export default function ProjectMapPage() {
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">大きさ</dt>
-                    <dd>はじめは「AI評価の総合点が低い事業ほど大きく」表示しています。気になる事業ほど目に入るようにするためです。左のメニューで予算額などに切り替えられます。</dd>
+                    <dd>はじめは予算額の大きい事業ほど大きく表示しています。左のメニューで執行額・継続年数や、AI評価の総合点が低い事業ほど大きくする表示などに切り替えられます。</dd>
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">色と背景</dt>

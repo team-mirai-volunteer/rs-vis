@@ -39,6 +39,7 @@ import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
+import { UnifiedHelp } from '@/client/components/unified-budget/UnifiedHelp';
 import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
 import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
@@ -421,6 +422,7 @@ function UnifiedBudgetSankeyContent() {
   return (
     <>
     <AppHeader fiscalYear={year} position="fixed" current="/budget-sankey">
+      <UnifiedHelp sheetYear={graph?.metadata.rsSheetYear ?? year + 1} />
       <UnifiedBasisSelect value={effectiveBasis} available={basesOf(year)} onChange={setBasis} />
       <UnifiedViewSelect
         provisional={effectiveProvisional}
