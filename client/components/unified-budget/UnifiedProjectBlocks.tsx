@@ -10,6 +10,7 @@ import { blockBalance } from '@/app/lib/subcontracts/block-balance';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import type { RsApiDetail } from '@/types/rs-api';
+import { othersTitle } from '@/app/lib/others-count';
 
 type ProjectBlocks = SubcontractGraph & { budgetSummary?: BudgetSummary; budgetBreakdown?: BudgetBreakdownItem[] };
 const cache = new Map<string, ProjectBlocks | null>();
@@ -70,7 +71,9 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
         <TagChip kind={block.originKind === 'direct' ? 'direct' : block.originKind === 'subcontract' ? 'subcontract' : 'separate-origin'}>
           {block.originKind === 'direct' ? '直接' : block.originKind === 'subcontract' ? '再委託' : '別財源'}
         </TagChip>
-        <span>支出先 {block.recipients.length.toLocaleString()}件</span>
+        {block.othersCount
+          ? <span title={othersTitle(block.othersCount)}>支出先 {block.recipients.length.toLocaleString()}件記載（その他を含め全{block.othersCount.t.toLocaleString()}件）</span>
+          : <span>支出先 {block.recipients.length.toLocaleString()}件</span>}
         {balanceBadge(block, children.length > 0)}
       </span>
       <BlockSources graph={availableGraph} blockId={block.blockId} />

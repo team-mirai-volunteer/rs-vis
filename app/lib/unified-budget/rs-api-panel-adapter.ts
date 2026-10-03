@@ -8,6 +8,7 @@ import type { ProjectDetail } from '@/types/project-details';
 import type { RsApiDetail } from '@/types/rs-api';
 import type { BlockEdge, BlockNode, SubcontractGraph } from '@/types/subcontract';
 import { apiContractMethod, contractLines, type ContractLine } from '@/app/lib/contract-method';
+import { othersCountFromGroup } from '@/app/lib/others-count';
 
 const amountOrUnknown = (amount: number | null | undefined) => (amount === null || amount === undefined || amount < 0 ? Number.NaN : amount);
 const finiteSum = (values: number[]) => values.filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
@@ -67,7 +68,9 @@ export function rsApiToSubcontractGraph(detail: RsApiDetail): SubcontractGraph |
 
   const blocks: BlockNode[] = detail.groups.map(group => {
     const direct = hasDirectSource.has(group.display_code) || !hasSubcontractSource.has(group.display_code);
+    const othersCount = othersCountFromGroup(group);
     return {
+      ...(othersCount ? { othersCount } : {}),
       blockId: group.display_code,
       blockName: group.name,
       totalAmount: amountOrUnknown(group.total_amount),

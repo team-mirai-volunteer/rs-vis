@@ -24,6 +24,7 @@ import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
 import { ContractMethodBadge } from './ContractMethodBadge';
+import { isOthersRowName, othersLabel, othersTitle } from '@/app/lib/others-count';
 import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
@@ -698,11 +699,14 @@ ${a.desc}`}>
                 <tbody className="divide-y divide-border">
                   {displayedRecipients.map((row, i) => {
                     const sm = STATUS_META[row.s];
+                    // 「その他」行は、まとめられた件数（分かる場合）と出どころをツールチップに出す
+                    const othersCount = row.oc !== undefined && row.ot !== undefined ? { n: row.oc, t: row.ot } : null;
+                    const isOthers = isOthersRowName(row.n);
                     return (
                       <tr key={i} className="hover:bg-mirai-surface-teal/60 transition-colors">
-                        <td className="px-4 py-1.5 text-mirai-text font-medium" title={row.n}>
+                        <td className="px-4 py-1.5 text-mirai-text font-medium" title={isOthers ? `${othersLabel(row.n, othersCount)}\n${othersTitle(othersCount)}` : row.n}>
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="truncate flex-1">{row.n}</span>
+                            <span className="truncate flex-1">{isOthers ? othersLabel(row.n, othersCount) : row.n}</span>
                             {!row.o && <span title={sm.desc} className={`shrink-0 inline-block cursor-help px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
                             {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="支出先名が「その他」「〇〇等」など、相手を特定できない書き方にあたります（不透明キーワードに一致）">不透明</span>}
                           </div>

@@ -3,6 +3,8 @@ import { buildMetadata, API_CACHE_CONTROL, RECIPIENT_NOTES, SUPPORTED_YEARS } fr
 import { projectLinks, recipientLinks } from '@/app/lib/api/links';
 import { buildRecipientKey, isExcludedRecipientName } from '@/app/lib/recipient-key';
 import { loadSubcontracts, loadProjectBudgetComposition } from '@/app/lib/api/subcontracts-loader';
+import { loadOthersCounts } from '@/app/lib/api/contract-methods-loader';
+import { blockOthersCount } from '@/app/lib/others-count';
 
 type SupportedYear = typeof SUPPORTED_YEARS[number];
 
@@ -33,6 +35,8 @@ export async function GET(
 
   // 予算・執行は再委託データ側に持たないため app/lib で合成する（サンキーグラフから）
   const { budgetSummary, budgetBreakdown } = loadProjectBudgetComposition(year, projectId);
+  // 「その他」行の件数（RS公開API由来。金額が一致するブロックだけ）
+  const othersCounts = loadOthersCounts(year)?.[projectId];
 
   // 既存フィールドはそのまま、各支出先に逆引きキーと関連リンクを追加
   const body = {
@@ -42,6 +46,7 @@ export async function GET(
     metadata: buildMetadata(year, { projectId: graph.projectId }, RECIPIENT_NOTES),
     blocks: graph.blocks.map(block => ({
       ...block,
+      othersCount: blockOthersCount(block.recipients, othersCounts?.[block.blockId]) ?? undefined,
       recipients: block.recipients.map(r =>
         isExcludedRecipientName(r.name)
           ? r
