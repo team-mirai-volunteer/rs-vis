@@ -410,7 +410,6 @@ export function UnifiedSankeyChart({
     }
     return items;
   }, [hasBudgetTab, budgetBreakdown.length, hasBlocksTab, projectBlocks?.blocks.length, selectedBlock, relatedColumnList]);
-  const [mobileOverviewOpen, setMobileOverviewOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (viewport.width < 640 && tabs.some(t => t.id === 'recipient') ? 'recipient' : tabs[0]?.id ?? null);
   /** パネルのタブの1行。クリックで図のノードを選び、支出先はホバーで契約を出す */
@@ -724,6 +723,7 @@ export function UnifiedSankeyChart({
         </g>
       </svg>
 
+      {/* 図のツールチップは詳細パネル（z-25）より下に置く。パネルの上にかぶさってパネルの中身を隠さないように */}
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel}
         contract={hovered.details?.column === 'recipient' && !hovered.details.aggregated && contractSheetYear !== null
           ? { year: contractSheetYear, pids: contractPidsOf(hovered.id) } : undefined} />}
@@ -839,9 +839,9 @@ export function UnifiedSankeyChart({
               </div>
 
               {hasOverview && <>
-              <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
               {/* 上段（事業概要・評価・推移）は PC で 48% まで。フル HD のブラウザ（表示領域 900px 前後）で、意見を閉じた状態ならスクロールなしで収まる高さ。残りを下段の予算・ブロック・支出先タブに確保する */}
-              <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '48%' }}>
+              {/* スマホでも畳まずに出す（開くボタンを探させない）。高さは 35% までで、超える分は中でスクロール */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : '48%' }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
@@ -1107,7 +1107,7 @@ function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
 }) {
   const d = node.details;
   return (
-    <div className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+    <div className="pointer-events-none fixed z-20 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       {d?.column && (
         <div className="text-[11px] font-medium text-mirai-text-muted">
           {UNIFIED_COLUMN_LABELS[d.column]}
@@ -1136,7 +1136,7 @@ function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayout
     && src && !src.aggregated && src.projectId !== undefined && (!src.kind || src.kind === 'rs') ? src.projectId : undefined;
   const accountTypes = [...new Set([link.source.details?.accountType, link.target.details?.accountType].filter((type): type is 'general' | 'special' => !!type))];
   return (
-    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-20 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>

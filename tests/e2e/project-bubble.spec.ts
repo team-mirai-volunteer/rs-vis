@@ -23,7 +23,6 @@ for (const width of [1440, 900, 390]) {
     await expect(panel).toBeVisible();
     await expect(page).toHaveURL(/pid=1503/);
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    if (width < 640) await panel.getByRole('button', { name: '事業概要・評価 を見る' }).click();
     await expect(panel.getByText('検証可能性', { exact: true })).toBeVisible();
     const bounds = (await panel.boundingBox())!;
     const search = width >= 1280 ? (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())! : null;
