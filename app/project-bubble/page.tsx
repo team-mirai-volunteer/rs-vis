@@ -29,9 +29,10 @@ import { useClampedTooltipTop } from '@/client/hooks/useClampedTooltipTop';
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
 
-/** ビュー。map = 事業バブルのみ / spending = 支出先を重畳し、支出先経由で事業同士を結ぶ */
+/** ビュー。spending = 支出先を重畳し、支出先経由で事業同士を結ぶ（既定） / map = 事業バブルのみ */
 type View = 'map' | 'spending';
-const VIEW_LABELS: Record<View, string> = { map: '事業マップ', spending: '支出つながり' };
+/** 選択肢の並び順でもある。既定の支出つながりを先に置く */
+const VIEW_LABELS: Record<View, string> = { spending: '支出つながり', map: '事業のみ' };
 
 /** 支出つながりで描く支出先の件数（金額の大きい順）。0 = すべて */
 const SPEND_LIMITS = [100, 300, 1000, 3000, 0] as const;
@@ -78,7 +79,7 @@ export default function ProjectMapPage() {
   const [error, setError] = useState<string | null>(null);
 
   // 支出つながりビュー。データは切り替えたときに初めて取りに行く
-  const [view, setView] = useState<View>('map');
+  const [view, setView] = useState<View>('spending');
   const [spendData, setSpendData] = useState<ProjectMapSpendingResponse | null>(null);
   const [spendError, setSpendError] = useState<string | null>(null);
   const [spendLimit, setSpendLimit] = useState<SpendLimit>(DEFAULT_SPEND_LIMIT);
@@ -133,7 +134,8 @@ export default function ProjectMapPage() {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     setYear(sheetYearFromParams(p, 'yr') as Year);
-    if (p.get('v') === 'sp') setView('spending');
+    // 既定は支出つながり。事業のみは v=map。旧 URL の v=sp（支出つながり）もそのまま開ける
+    if (p.get('v') === 'map') setView('map');
     const sn = Number(p.get('sn'));
     if (p.has('sn') && (SPEND_LIMITS as readonly number[]).includes(sn)) setSpendLimit(sn as SpendLimit);
     const sd = Number(p.get('sd'));
@@ -172,8 +174,8 @@ export default function ProjectMapPage() {
     if (!urlHydrated) return;
     const p = new URLSearchParams();
     p.set('fiscalYear', String(fiscalYear(year)));
+    if (view === 'map') p.set('v', 'map');
     if (view === 'spending') {
-      p.set('v', 'sp');
       if (spendLimit !== DEFAULT_SPEND_LIMIT) p.set('sn', String(spendLimit));
       if (spendMinDegree !== DEFAULT_SPEND_MIN_DEGREE) p.set('sd', String(spendMinDegree));
       if (spendQuery) p.set('sq', spendQuery);
