@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { computeMOFSankeyLayout, mofRibbonPath, type MOFLayoutLink, type MOFLayoutNode } from '@/app/lib/mof-sankey-layout';
 import { MAJOR_EXPENSE_NAMES, PURPOSE_NAMES, UNIFIED_LAYOUT, unifiedNodeColor } from '@/app/lib/unified-budget/constants';
-import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedNodeIds } from '@/app/lib/unified-budget/focus';
+import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
 import { columnIndex } from '@/app/lib/unified-budget/transform';
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, UNIFIED_PROGRAM_KIND_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { hasActiveUnifiedFilter, UNIFIED_FILTER_DEFAULT, type UnifiedViewDetails, type UnifiedViewFilter, type UnifiedViewNode } from '@/types/unified-budget-view';
@@ -168,17 +168,18 @@ export function UnifiedSankeyChart({
   }, [visibleColumns]);
   const orderedVisible = useMemo(() => UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c)), [visibleColumns]);
 
+  const browse = useMemo(() => (browseNodes && browseLinks ? { nodes: browseNodes, links: browseLinks } : undefined), [browseNodes, browseLinks]);
   const related = useMemo(() => {
     if (!selectedId) return null;
     if (!nodes.some(n => n.id === selectedId)) return null;
-    return relatedNodeIds(links, selectedId, nodes);
-  }, [selectedId, links, nodes]);
+    return relatedThroughAggregates({ nodes, links }, browse, selectedId);
+  }, [selectedId, links, nodes, browse]);
 
-  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedNodeIds(links, hovered.id, nodes) : null), [hovered, selectedId, focusRelated, links, nodes]);
+  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedThroughAggregates({ nodes, links }, browse, hovered.id) : null), [hovered, selectedId, focusRelated, links, nodes, browse]);
 
   const visible = useMemo(() => {
     if (!focusRelated || !selectedId || !related) return { nodes, links };
-    return focusGraph(nodes, links, selectedId);
+    return focusGraph(nodes, links, selectedId, related);
   }, [nodes, links, related, focusRelated, selectedId]);
 
   const layout = useMemo(
