@@ -39,6 +39,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
   /** 一覧を開いている事業。事業を切り替えたら自動で閉じる（pid が一致するときだけ開いている扱い） */
   const [listOpenFor, setListOpenFor] = useState<string | null>(null);
   const listId = useId();
+  const handlingId = useId();
 
   const META_PX = scaleFont(11);
 
@@ -92,17 +93,26 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
           </>
         )}
         <span className="flex-1" />
-        <Button
-          variant="default"
-          size="xs"
-          onClick={() => setOpen(true)}
-          title={list.length === 0 && state.comments !== undefined && !state.error
-            ? 'まだ意見はありません。AIインタビューで最初の意見を伝える（匿名）'
-            : 'AIインタビューでこの事業への意見を伝える（匿名）'}
-          style={{ fontSize: META_PX }}
-        >
-          意見を伝える
-        </Button>
+        {/* 送った意見がどう扱われるかを、ボタンに乗せたとき（フォーカス時も）浮かせて出す */}
+        <span className="group relative">
+          <Button
+            variant="default"
+            size="xs"
+            onClick={() => setOpen(true)}
+            aria-describedby={handlingId}
+            style={{ fontSize: META_PX }}
+          >
+            意見を伝える
+          </Button>
+          <span id={handlingId} role="tooltip"
+            className="pointer-events-none invisible absolute right-0 top-full z-50 mt-1.5 w-64 rounded-xl border border-mirai-border bg-card p-3 text-left font-normal leading-relaxed text-mirai-text-secondary opacity-0 shadow-soft transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+            style={{ fontSize: META_PX }}>
+            <span className="mb-1 block font-bold text-mirai-text">送った意見の扱い</span>
+            AIインタビューで聞き取った内容を整え、最後にあなたが確認してから<strong className="font-bold">匿名</strong>でこの欄に公開します。
+            集まった意見はブロードリスニング（多数の意見の分析）にかけ、重要な論点は国会での質問などに活かします。
+            {list.length === 0 && state.comments !== undefined && !state.error && <span className="mt-1 block text-mirai-text-muted">まだ意見はありません。最初の意見をどうぞ。</span>}
+          </span>
+        </span>
       </div>
 
       {state.error && <div role="alert" className="mt-1.5 text-destructive" style={{ fontSize: META_PX }}>{state.error} <Button variant="link" className="text-[length:inherit] font-medium text-current" onClick={() => void state.refresh()}>再読み込みする</Button></div>}
