@@ -148,6 +148,38 @@ export interface UnifiedFilterContext {
   policy?: UnifiedPolicyScores;
 }
 
+/** 事業列の並べ替え（事業(支出) も従う）。amount=金額（既定） */
+export const UNIFIED_PROGRAM_SORTS = ['amount', 'score-asc', 'score-desc', 'years', 'diff', 'ratio'] as const;
+export type UnifiedProgramSort = (typeof UNIFIED_PROGRAM_SORTS)[number];
+
+export const UNIFIED_PROGRAM_SORT_LABELS: Record<UnifiedProgramSort, string> = {
+  amount: '金額',
+  'score-asc': '総合点（低い順）',
+  'score-desc': '総合点（高い順）',
+  years: '継続年数（長い順）',
+  diff: '差額（大きい順）',
+  ratio: '差額%（大きい順）',
+};
+
+/** 列見出しに添える短い表記 */
+export const UNIFIED_PROGRAM_SORT_SHORT: Record<UnifiedProgramSort, string> = {
+  amount: '',
+  'score-asc': '総合点の低い順',
+  'score-desc': '総合点の高い順',
+  years: '継続年数の長い順',
+  diff: '差額の大きい順',
+  ratio: '差額%の大きい順',
+};
+
+/**
+ * 事業の並べ替えキー（事業ID → 値）と向き。applyTopN・sortForDisplay・offsetToReveal に渡す。
+ * 値の無い事業は値のある事業の後ろ。同値・値無しどうしは金額の大きい順
+ */
+export interface UnifiedProgramRanking {
+  values: ReadonlyMap<number, number>;
+  order: 'asc' | 'desc';
+}
+
 /** プリセット（表示する列の組み合わせ）。設計 3.1 */
 export type UnifiedPreset = 'full' | 'rs' | 'mof' | 'section';
 

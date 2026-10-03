@@ -13,7 +13,7 @@ import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import {
-  COLOR_MODE_LABELS, SIZE_METRIC_LABELS, SPENDING_COLORS,
+  BLOCK_DIFF_METRICS, BLOCK_DIFF_NOTE, COLOR_MODE_LABELS, SIZE_METRIC_LABELS, SPENDING_COLORS,
   buildColorLookup, buildLegend, buildSizeScale, categoryLabel, spendingColor, spendingStepLabel,
   formatYenShort, legendKeyOf as resolveLegendKey,
   type ColorMode, type LegendEntry, type SizeMetric,
@@ -25,6 +25,8 @@ import type {
 } from '@/types/project-map';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { useClampedTooltipTop } from '@/client/hooks/useClampedTooltipTop';
+import { useProjectSortMetrics } from '@/client/hooks/useProjectSortMetrics';
+import type { ProjectSortMetric } from '@/app/lib/project-sort-metrics';
 
 type Year = '2024' | '2025';
 const YEARS: Year[] = ['2025', '2024'];
@@ -145,8 +147,7 @@ export default function ProjectMapPage() {
     if (sk) setSpendKind(sk);
     const c = p.get('c'); if (c === 'ministry' || c === 'policyGroup' || c === 'recommendation') setColorMode(c);
     const s = p.get('s');
-    if (s === 'inverseScore' || s === 'inverseProp' || s === 'inverseNec'
-      || s === 'budget' || s === 'exec' || s === 'years' || s === 'uniform') setSizeMetric(s);
+    if (s !== null && Object.hasOwn(SIZE_METRIC_LABELS, s)) setSizeMetric(s as SizeMetric);
     if (p.get('rg') === '0') setShowRegions(false);
     if (p.get('cl') === '0') setShowClusterLabels(false);
     if (p.get('tb') === '1') setShowTable(true);
@@ -348,10 +349,14 @@ export default function ProjectMapPage() {
     return items;
   }, [allPoints, ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query]);
 
+  // ブロック差額は事業マップの生成物に無いので、その指標を選んだときだけ別に取る
+  const blockDiffMetric = BLOCK_DIFF_METRICS.has(sizeMetric);
+  const sortMetrics = useProjectSortMetrics(blockDiffMetric ? year : null);
+
   // 大きさのスケールは全件で決める。絞り込むたびに同じ事業の大きさが変わると比較できない
   const sizeScale = useMemo(
-    () => buildSizeScale(allPoints, sizeMetric, MAX_RADIUS),
-    [allPoints, sizeMetric],
+    () => buildSizeScale(allPoints, sizeMetric, MAX_RADIUS, sortMetrics),
+    [allPoints, sizeMetric, sortMetrics],
   );
 
   const clusterById = useMemo(
@@ -568,6 +573,7 @@ export default function ProjectMapPage() {
                 y={hover.y}
                 cluster={clusterById.get(hover.p.c)}
                 color={colorOf(hover.p)}
+                blockDiff={blockDiffMetric ? (sortMetrics?.[hover.p.pid] ?? null) : undefined}
               />
             )}
           </>
@@ -688,6 +694,12 @@ export default function ProjectMapPage() {
               <option key={m} value={m}>{SIZE_METRIC_LABELS[m]}</option>
             ))}
           </select>
+          {blockDiffMetric && (
+            <p className="col-span-2 text-[10px] leading-relaxed text-mirai-text-subtle" title={BLOCK_DIFF_NOTE}>
+              {sortMetrics === undefined ? '差額を読み込み中…' : sortMetrics === null ? '差額を取得できませんでした。' : '再委託先を持たない・差額を算出できない事業は最小の点です。'}
+              記載額の差であり、実際の受取額や利益ではありません。
+            </p>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border px-3 py-2 text-xs">
@@ -792,7 +804,7 @@ export default function ProjectMapPage() {
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">大きさ</dt>
-                    <dd>はじめは予算額の大きい事業ほど大きく表示しています。左のメニューで執行額・継続年数や、AI評価の総合点が低い事業ほど大きくする表示などに切り替えられます。</dd>
+                    <dd>はじめは予算額の大きい事業ほど大きく表示しています。左のメニューで執行額・継続年数や、AI評価の総合点が低い事業ほど大きくする表示などに切り替えられます。「ブロック差額」は再委託のあるブロックで、ブロックの記載額から直下の再委託先の記載額を引いた額の事業合計です（記載額の差であり、実際の受取額や利益ではありません）。</dd>
                   </div>
                   <div>
                     <dt className="font-bold text-mirai-text">色と背景</dt>
@@ -931,13 +943,15 @@ function RangeInput({
 
 /** ホバー時の読み取り。値を主、ラベルを従にする */
 function Tooltip({
-  point, x, y, cluster, color,
+  point, x, y, cluster, color, blockDiff,
 }: {
   point: ProjectMapPoint;
   x: number;
   y: number;
   cluster?: ProjectMapCluster;
   color: string;
+  /** 大きさがブロック差額のときだけ渡す。null = 算出不可・未取得 */
+  blockDiff?: ProjectSortMetric | null;
 }) {
   // 常にカーソルの右に出し、右端では内側に寄せる（左右を入れ替えない）。下端では高さぶん上に寄せる。
   // 重なり順は左右のフロート列（z-30〜40）より上なので、パネルに重なってももぐらない
@@ -977,6 +991,14 @@ function Tooltip({
         <dd className="tabular-nums text-mirai-text">
           {point.years === null ? '不明' : `${point.years}年`}
         </dd>
+        {blockDiff !== undefined && (
+          <>
+            <dt>ブロック差額</dt>
+            <dd className="tabular-nums text-mirai-text">
+              {blockDiff?.d === undefined ? '算出不可' : `${formatYenShort(blockDiff.d)}（${Math.round((blockDiff.r ?? 0) * 1000) / 10}%）`}
+            </dd>
+          </>
+        )}
         <dt>分野</dt><dd className="text-mirai-text">{categoryLabel(point.cat)}</dd>
         {cluster && (
           <>
