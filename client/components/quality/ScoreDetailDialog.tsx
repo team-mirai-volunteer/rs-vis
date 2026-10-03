@@ -10,7 +10,7 @@
 import { fiscalYearLabel, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
 import Link from 'next/link';
-import { ScoreProjectStructure } from './ScoreProjectStructure';
+import { ScoreBlockFilterHeader, ScoreProjectStructure, type ScoreRecipientTab } from './ScoreProjectStructure';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,7 +57,9 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [showAxisDetail, setShowAxisDetail] = useState(false);
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
-  const [showStructure, setShowStructure] = useState(false);
+  // 支出先一覧のタブ（支出先・ブロック・予算内訳）と、ブロックでの絞り込み
+  const [recipientTab, setRecipientTab] = useState<ScoreRecipientTab>('recipients');
+  const [blockFilter, setBlockFilter] = useState<string | null>(null);
   // 法人番号列（index 2）は13桁＋gBizINFOアイコンが入るため 130 まで広げる（旧ダイアログと同じ）
   const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 130, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
@@ -87,12 +89,14 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
     setShowAxisDetail(false);
     setShowPolicy(true);
     setShowProjectInfo(true);
-    setShowStructure(false);
+    setRecipientTab('recipients');
+    setBlockFilter(null);
   }, [item.pid, year]);
 
   const displayedRecipients = useMemo(() => {
     if (!recipients) return [];
     let rows = recipients;
+    if (blockFilter) rows = rows.filter(r => r.b === blockFilter);
     if (recipientSearch.trim()) {
       const q = recipientSearch.trim().toLowerCase();
       rows = rows.filter(r => r.n.toLowerCase().includes(q));
@@ -125,7 +129,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
       }
       return recipientSortDir === 'desc' ? -cmp : cmp;
     });
-  }, [recipients, recipientSearch, recipientSortField, recipientSortDir, item.spendNetTotal]);
+  }, [recipients, blockFilter, recipientSearch, recipientSortField, recipientSortDir, item.spendNetTotal]);
 
   function handleRecipientSort(field: typeof recipientSortField) {
     if (recipientSortField === field) {
@@ -269,18 +273,6 @@ ${a.desc}`}>
         <div className="flex-1 min-h-0 overflow-y-auto">
           {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
 
-          <section className="border-b border-mirai-border px-6 py-3" aria-label="予算・委託構造">
-            <Button variant="ghost" size="xs" aria-expanded={showStructure} aria-controls="score-project-structure"
-              onClick={() => setShowStructure(v => !v)} className="px-0 text-primary-accent">
-              {showStructure ? '▾' : '▸'} 予算内訳・ブロック・再委託構造
-            </Button>
-            <div id="score-project-structure">
-              {showStructure && <>
-                {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の実績です。{year}年度の要求額・委託構造ではありません。</p>}
-                <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} />
-              </>}
-            </div>
-          </section>
 
         {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料 */}
         {showProjectInfo && (
@@ -608,30 +600,52 @@ ${a.desc}`}>
 
         {/* Recipients */}
         <div className="flex flex-col">
-          <div className="px-6 py-2.5 border-b border-mirai-border shrink-0 bg-mirai-surface-gray">
-            <div className="flex items-center gap-3">
-              <div className="text-xs font-bold text-mirai-text-secondary shrink-0">
-                支出先一覧
-                {recipients && (
-                  <span className="ml-1.5 text-mirai-text-muted font-normal tabular-nums">
-                    {recipientSearch.trim() && displayedRecipients.length !== recipients.length
-                      ? `${displayedRecipients.length} / ${recipients.length}件`
-                      : `${recipients.length}件`}
-                  </span>
-                )}
-              </div>
-              {recipients && recipients.length > 0 && (
+          <div className="px-6 pt-2 border-b border-mirai-border shrink-0 bg-mirai-surface-gray">
+            {/* 支出先・ブロック（再委託）・予算内訳を1か所のタブにまとめる。ブロックを選ぶと支出先をそのブロックで絞り込む */}
+            <div role="tablist" aria-label="支出先と予算・委託構造" className="flex items-end gap-1">
+              {([
+                ['recipients', '支出先一覧'],
+                ['blocks', 'ブロック・再委託'],
+                ['budget', '予算内訳'],
+              ] as const).map(([id, label]) => (
+                <Button key={id} variant="ghost" role="tab" aria-selected={recipientTab === id} onClick={() => setRecipientTab(id)}
+                  className={`h-auto rounded-none border-b-2 px-2 py-1.5 text-xs font-bold hover:bg-transparent ${recipientTab === id ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'}`}>
+                  {label}
+                  {id === 'recipients' && recipients && (
+                    <span className="ml-1.5 font-normal tabular-nums text-mirai-text-muted">
+                      {displayedRecipients.length !== recipients.length ? `${displayedRecipients.length} / ${recipients.length}件` : `${recipients.length}件`}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+            {recipientTab === 'recipients' && recipients && recipients.length > 0 && (
+              <div className="py-2">
                 <input
                   type="text"
                   placeholder="支出先名で検索..."
                   value={recipientSearch}
                   onChange={e => setRecipientSearch(e.target.value)}
-                  className="min-w-0 flex-1 px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                  className="w-full px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
+          {recipientTab !== 'recipients' && (
+            <div className="px-6 py-2">
+              {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の実績です。{year}年度の要求額・委託構造ではありません。</p>}
+              <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} tab={recipientTab}
+                onSelectBlock={blockId => { setBlockFilter(blockId); setRecipientTab('recipients'); }} />
+            </div>
+          )}
+          {recipientTab === 'recipients' && blockFilter && (
+            <div className="px-6">
+              <ScoreBlockFilterHeader pid={item.pid} year={sourceYear} blockId={blockFilter} onClear={() => setBlockFilter(null)} />
+            </div>
+          )}
+
+          {recipientTab === 'recipients' && <>
           {!recipientsAvailable && <div className="px-6 py-4 text-xs text-mirai-text-muted">{year}年度の支出先・執行実績は未収録です。予算要求の段階のため、この年度の支出先一覧は表示できません。事業概要と評価の元データは{sourceYear}年度のRSシートです。</div>}
           {recipientsAvailable && recipientsError && (
             <div className="px-6 py-4 text-xs text-mirai-text-muted">
@@ -755,6 +769,7 @@ ${a.desc}`}>
               </table>
             </div>
           )}
+          </>}
         </div>
         </div>
       </div>

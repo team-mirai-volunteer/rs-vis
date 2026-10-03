@@ -28,6 +28,13 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
     ref.current?.focus({ preventScroll: true });
   }, []);
 
+  /** 支出先の1行。ホバーで契約（方式つき）を出す。ブロックで絞り込んだときも同じ行を使う */
+  const recipientRow = (recipient: { name: string; amount: number }, index: number) => <div key={index} className="flex justify-between gap-3 border-b border-border px-1 py-1.5 text-xs"
+    onMouseEnter={e => setRecipientHover({ x: e.clientX, y: e.clientY, name: recipient.name, amount: recipient.amount, year, pids: [point.pid] })}
+    onMouseMove={e => setRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+    onMouseLeave={() => setRecipientHover(null)}>
+    <span>{recipient.name}</span><span className="shrink-0 text-[11px] tabular-nums">{formatBudgetFromYen(recipient.amount)}</span>
+  </div>;
   return <section ref={ref} tabIndex={-1} aria-label={`${point.name} の詳細`}
     onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose(); } }}
     className="min-w-0 shrink-0 overflow-hidden rounded-xl border border-mirai-border bg-card shadow-soft outline-none xl:col-start-2 xl:row-start-1 xl:max-h-[calc(100dvh-var(--app-header-h)-48px)] xl:overflow-y-auto">
@@ -57,20 +64,18 @@ export function ProjectDetailPanel({ point, year, onClose }: { point: ProjectMap
         : graph === null ? <p className="py-2 text-xs text-mirai-text-muted">この年度の内訳を取得できませんでした。</p>
         : tab === '予算' ? (graph.budgetSummary || graph.budgetBreakdown?.length ? <BudgetExecutionSection budgetSummary={graph.budgetSummary} budgetBreakdown={graph.budgetBreakdown ?? []} scaleFont={px => px} presentation="tab" /> : <p className="py-2 text-xs text-mirai-text-muted">予算内訳の記載はありません。</p>)
         : tab === 'ブロック' ? <UnifiedProjectBlocks graph={graph} year={Number(year)} onSelect={item => { setBlockId(item.blockId); setTab('支出先'); }} />
-        : block ? <UnifiedBlockRecipients graph={graph} block={block} onClear={() => setBlockId(null)} />
+        : block ? <>
+          <UnifiedBlockRecipients graph={graph} block={block} onClear={() => setBlockId(null)} />
+          {block.recipients.map(recipientRow)}
+        </>
         : <>
           {graph.blocks.every(item => item.recipients.length === 0) && <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>}
           {graph.blocks.filter(item => item.recipients.length > 0).map(item => <div key={item.blockId}>
             <Button variant="ghost" className="h-auto w-full justify-start px-1 py-2 text-[11px] font-bold" onClick={() => setBlockId(item.blockId)}>ブロック {item.blockId} {item.blockName}</Button>
-            {item.recipients.map((recipient, index) => <div key={index} className="flex justify-between gap-3 border-b border-border px-1 py-1.5 text-xs"
-              onMouseEnter={e => setRecipientHover({ x: e.clientX, y: e.clientY, name: recipient.name, amount: recipient.amount, contracts: recipient.contractSummaries, year, pids: [point.pid] })}
-              onMouseMove={e => setRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
-              onMouseLeave={() => setRecipientHover(null)}>
-              <span>{recipient.name}</span><span className="shrink-0 text-[11px] tabular-nums">{formatBudgetFromYen(recipient.amount)}</span>
-            </div>)}
+            {item.recipients.map(recipientRow)}
           </div>)}
         </>}
     </div>
-    <RecipientHoverCard hover={tab === '支出先' && !block ? recipientHover : null} />
+    <RecipientHoverCard hover={tab === '支出先' ? recipientHover : null} />
   </section>;
 }
