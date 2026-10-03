@@ -11,7 +11,8 @@
  * 配色はデザインシステムのトークン（bg-card / border-mirai-border / shadow-soft）を使い、
  * 位置・幅などレイアウトだけをインライン style で持つ。
  *
- * スマホ幅（640px 未満）ではボトムシートになる: 左右下 INSET、高さ 52vh、幅リサイズ無し。
+ * スマホ幅（640px 未満）ではボトムシートになる: 左右下 INSET、幅リサイズ無し。高さは 最小（見出しのみ）／中（45dvh・既定）／最大 の3段。
+ * 既定を中にして、シートを開いたままでも上半分で図を見られるようにする（iPhone で図が見えないという指摘への対応）。
  * 図のフィット計算はパネル幅を 0 として扱うこと（useIsNarrow で分岐）。
  *
  * 対象外: AiChatPanel（右・既に同等機能を自前実装済み。閉状態の見た目が異なるため統合しない）。
@@ -23,6 +24,9 @@ import { Button } from '@/components/ui/button';
 
 /** 浮島パネルの画面端・下端からの余白(px)。ページ側が隣接要素をずらすときは幅 + INSET*2 を使う */
 export const SIDE_PANEL_INSET = 12;
+/** ボトムシートを最小にしたときの高さ（切替ボタンの帯だけ） */
+const SHEET_BAR_PX = 40;
+const SHEET_BUTTON_CLS = 'h-auto min-h-9 flex-1 rounded-none px-3 text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal';
 
 export interface SidePanelChromeProps {
   /** パネルの画面上の位置。境界線・リサイズハンドル・開閉タブの向きが side に応じて鏡映する */
@@ -63,7 +67,7 @@ export function SidePanelChrome({
 }: SidePanelChromeProps) {
   const isLeft = side === 'left';
   const narrow = useIsNarrow();
-  const [expanded, setExpanded] = useState(false);
+  const [sheet, setSheet] = useState<'min' | 'half' | 'full'>('half');
 
   // 浮島型: ヘッダー（下余白込み）の下から画面下端 INSET まで、画面端から INSET 離して浮かせる。
   // 折りたたみ機能は無い（閉じる＝選択解除はページ側の × ボタンが担う）
@@ -73,7 +77,7 @@ export function SidePanelChrome({
         left: SIDE_PANEL_INSET,
         right: SIDE_PANEL_INSET,
         bottom: SIDE_PANEL_INSET,
-        height: expanded ? 'calc(100dvh - var(--app-header-h, 118px) - 24px)' : '72dvh',
+        height: sheet === 'full' ? 'calc(100dvh - var(--app-header-h, 118px) - 24px)' : sheet === 'half' ? '45dvh' : SHEET_BAR_PX,
         maxHeight: 'calc(100dvh - var(--app-header-h, 118px) - 24px)',
         zIndex: Math.max(zIndex, 35),
         overflow: 'visible',
@@ -129,10 +133,14 @@ export function SidePanelChrome({
 
       {/* パネル本体 */}
       <div className="flex h-full flex-col overflow-hidden rounded-2xl">
-        {narrow && <Button variant="ghost" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
-          className="h-auto min-h-9 w-full shrink-0 rounded-none border-b border-border px-3 text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal">
-          {expanded ? '詳細を小さく表示' : '詳細を大きく表示'}
-        </Button>}
+        {narrow && <div className="flex shrink-0 divide-x divide-border border-b border-border">
+          <Button variant="ghost" aria-pressed={sheet === 'min'} onClick={() => setSheet(sheet === 'min' ? 'half' : 'min')} className={SHEET_BUTTON_CLS}>
+            {sheet === 'min' ? '詳細を表示' : '図を見る（詳細を畳む）'}
+          </Button>
+          {sheet !== 'min' && <Button variant="ghost" aria-expanded={sheet === 'full'} onClick={() => setSheet(sheet === 'full' ? 'half' : 'full')} className={SHEET_BUTTON_CLS}>
+            {sheet === 'full' ? '詳細を小さく表示' : '詳細を大きく表示'}
+          </Button>}
+        </div>}
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
