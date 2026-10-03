@@ -31,3 +31,16 @@ export function loadRecipientExternal(): RecipientExternalFile | null {
   if (external === undefined) external = tryReadDataJson<RecipientExternalFile>('recipient-external.json');
   return external;
 }
+
+const projectLabels = new Map<string, Map<string, { name: string; ministry: string }> | null>();
+/**
+ * 事業ID → 事業名・府省（project-quality-scores-{シート年度}.json から名前と府省だけ残す）。
+ * 契約方式の推移で、表示中の年度の支出先インデックスに無い事業の名前を引くのに使う。無ければ null
+ */
+export function loadProjectLabels(sheetYear: string): Map<string, { name: string; ministry: string }> | null {
+  if (!projectLabels.has(sheetYear)) {
+    const items = tryReadDataJson<Array<{ pid: string; name: string; ministry: string }>>(`project-quality-scores-${sheetYear}.json`);
+    projectLabels.set(sheetYear, items ? new Map(items.map(i => [String(i.pid), { name: i.name, ministry: i.ministry }])) : null);
+  }
+  return projectLabels.get(sheetYear)!;
+}
