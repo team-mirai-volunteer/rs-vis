@@ -70,13 +70,14 @@ export type SizeMetric =
   | 'budget' | 'exec' | 'years' | 'uniform'
   | 'inverseScore' | 'inverseProp' | 'inverseNec';
 
+/** 選択肢の並び順でもある。事業そのものの規模（予算・執行・年数）を先に、AI 評価から作る指標を後に置く */
 export const SIZE_METRIC_LABELS: Record<SizeMetric, string> = {
-  inverseScore: '総合点の逆数（低いほど大きい）',
-  inverseProp: '費用対内容の逆数（低いほど大きい）',
-  inverseNec: '必要性の逆数（低いほど大きい）',
   budget: '予算額',
   exec: '執行額',
   years: '継続年数',
+  inverseScore: '総合点の逆数（低いほど大きい）',
+  inverseProp: '費用対内容の逆数（低いほど大きい）',
+  inverseNec: '必要性の逆数（低いほど大きい）',
   uniform: '均一',
 };
 
@@ -342,8 +343,8 @@ export const SPENDING_COLORS = [
 ] as const;
 
 /** 支出先の菱形の半径（画面px）。段ごとに少しずつ大きくし、色と二重に符号化する */
-const SPENDING_MIN_R = 2.6;
-const SPENDING_R_STEP = 0.9;
+const SPENDING_MIN_R = 3.2;
+const SPENDING_R_STEP = 1.0;
 
 /** 金額 → 段（0 = 最も薄い） */
 export function spendingStep(amount: number): number {
