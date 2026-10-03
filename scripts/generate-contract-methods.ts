@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { isContractMethodCode, type ContractMethodEntry, type ContractMethodsByPid } from '../app/lib/contract-method';
+import { apiContractMethod, type ContractMethodEntry, type ContractMethodsByPid } from '../app/lib/contract-method';
 
 type ApiContract = { is_others: boolean; amount: number | null; contract_method: string | null; contract_method_description: string | null;
   number_of_applicants: number | null; bid_rate: number | null; overview?: string | null };
@@ -32,17 +32,10 @@ for (const p of projects) {
   for (const g of groups) for (const pay of g.payments) {
     for (const c of pay.contracts) {
       contracts++;
-      if (!isContractMethodCode(c.contract_method)) { withoutMethod++; continue; }
-      const entry: ContractMethodEntry = { b: g.display_code, n: pay.name, cn: pay.corporate_number ?? '', a: c.amount, m: c.contract_method };
-      const text = c.contract_method_description?.trim();
-      // 「-」「－」「その他」などの埋め草は補足として意味を持たないので落とす
-      if (text && !/^[-－ー‐―—–・\s]*$/.test(text) && text !== 'その他') entry.mt = text;
-      if (Number.isInteger(c.number_of_applicants) && c.number_of_applicants! >= 0) entry.ap = c.number_of_applicants!;
-      // 落札率は 0〜100%。それを超える値（999 など）は誤記載とみなして出さない
-      if (c.bid_rate !== null && Number.isFinite(c.bid_rate)) {
-        if (c.bid_rate > 0 && c.bid_rate <= 100) entry.br = c.bid_rate;
-        else if (c.bid_rate > 100) droppedBidRate++;
-      }
+      const method = apiContractMethod(c);
+      if (!method) { withoutMethod++; continue; }
+      if (c.bid_rate !== null && c.bid_rate > 100) droppedBidRate++;
+      const entry: ContractMethodEntry = { b: g.display_code, n: pay.name, cn: pay.corporate_number ?? '', a: c.amount, ...method };
       entries.push(entry);
     }
   }

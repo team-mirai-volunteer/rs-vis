@@ -4,6 +4,11 @@ export interface RsApiContract {
   amount: number | null;
   negative_amount_count?: number;
   amount_breakdown: { name: string; purpose: string; amount: number | null }[];
+  /** 契約方式（app/lib/contract-method.ts の ContractMethodCode）。古い生成物には無い */
+  contract_method?: string | null;
+  contract_method_description?: string | null;
+  number_of_applicants?: number | null;
+  bid_rate?: number | null;
 }
 export interface RsApiPayment {
   id: string;

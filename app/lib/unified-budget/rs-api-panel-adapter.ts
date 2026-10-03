@@ -7,6 +7,7 @@
 import type { ProjectDetail } from '@/types/project-details';
 import type { RsApiDetail } from '@/types/rs-api';
 import type { BlockEdge, BlockNode, SubcontractGraph } from '@/types/subcontract';
+import { apiContractMethod, type ContractMethodEntry } from '@/app/lib/contract-method';
 
 const amountOrUnknown = (amount: number | null | undefined) => (amount === null || amount === undefined || amount < 0 ? Number.NaN : amount);
 const finiteSum = (values: number[]) => values.filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
@@ -129,4 +130,12 @@ export function rsApiToSubcontractGraph(detail: RsApiDetail): SubcontractGraph |
     hasReferenceFlow: false,
     isInstitutionalFlowOnly: blocks.length > 0 && blocks.every(block => block.totalAmount === 0 && block.recipients.length === 0),
   };
+}
+
+/** 暫定データの契約を、契約方式のまとめ（methodsForRecipient）に渡せる形にする */
+export function rsApiContractEntries(detail: RsApiDetail): ContractMethodEntry[] {
+  return detail.groups.flatMap(group => group.payments.flatMap(payment => payment.contracts.flatMap(contract => {
+    const method = apiContractMethod(contract);
+    return method ? [{ b: group.display_code, n: payment.name, cn: payment.corporate_number ?? '', a: contract.amount, ...method }] : [];
+  })));
 }

@@ -101,6 +101,20 @@ export interface ContractMethodEntry {
 
 export type ContractMethodsByPid = Record<string, ContractMethodEntry[]>;
 
+/** API の契約1件から、方式・補足・応札者数・落札率を取り出す。方式が無い・未知の値なら null */
+export function apiContractMethod(c: { contract_method?: string | null; contract_method_description?: string | null;
+  number_of_applicants?: number | null; bid_rate?: number | null }): Pick<ContractMethodEntry, 'm' | 'mt' | 'ap' | 'br'> | null {
+  if (!isContractMethodCode(c.contract_method)) return null;
+  const out: Pick<ContractMethodEntry, 'm' | 'mt' | 'ap' | 'br'> = { m: c.contract_method };
+  const text = c.contract_method_description?.trim();
+  // 「-」「－」「その他」などの埋め草は補足として意味を持たないので落とす
+  if (text && !/^[-－ー‐―—–・\s]*$/.test(text) && text !== 'その他') out.mt = text;
+  if (Number.isInteger(c.number_of_applicants) && c.number_of_applicants! >= 0) out.ap = c.number_of_applicants!;
+  // 落札率は 0〜100%。それを超える値（999 など）は誤記載とみなして出さない
+  if (typeof c.bid_rate === 'number' && c.bid_rate > 0 && c.bid_rate <= 100) out.br = c.bid_rate;
+  return out;
+}
+
 const norm = (s: string) => s.normalize('NFKC').replace(/\s+/g, '');
 
 /** 支出行（ブロック・名前・金額）に対応する契約を探す。一意に決まらなければ null */

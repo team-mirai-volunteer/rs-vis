@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contractCategory, findContract, methodsForRecipient, type ContractMethodEntry } from '../app/lib/contract-method';
+import { apiContractMethod, contractCategory, findContract, methodsForRecipient, type ContractMethodEntry } from '../app/lib/contract-method';
 
 const e = (over: Partial<ContractMethodEntry>): ContractMethodEntry => ({ b: 'A', n: '株式会社テスト', cn: '', a: 100, m: 'negotiated-contract-others', ...over });
 
@@ -33,4 +33,12 @@ test('支出先ごとに方式をまとめ、1者応札の件数を数える', (
     { m: 'subsidy', amount: 500, count: 1, singleBidder: 0 },
     { m: 'negotiated-contract-others', amount: 150, count: 2, singleBidder: 1 },
   ]);
+});
+
+test('API の契約から方式を取り出し、埋め草の補足と範囲外の落札率は落とす', () => {
+  assert.deepEqual(apiContractMethod({ contract_method: 'negotiated-contract-others', contract_method_description: '特命随意契約', number_of_applicants: 1, bid_rate: 99.5 }),
+    { m: 'negotiated-contract-others', mt: '特命随意契約', ap: 1, br: 99.5 });
+  assert.deepEqual(apiContractMethod({ contract_method: 'others', contract_method_description: '－', bid_rate: 999 }), { m: 'others' });
+  assert.equal(apiContractMethod({ contract_method: null }), null);
+  assert.equal(apiContractMethod({ contract_method: 'unknown-method' }), null);
 });

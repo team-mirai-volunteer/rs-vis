@@ -10,6 +10,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { RecipientContractSummary } from './RecipientContractSummary';
+import type { RecipientMethodSummary } from '@/app/lib/contract-method';
 
 export interface RecipientHover {
   x: number;
@@ -23,6 +24,8 @@ export interface RecipientHover {
   amount: number;
   /** 手元の契約の概要（1事業の再委託構造から）。無ければ year / pids で取得する */
   contracts?: readonly string[];
+  /** 手元の契約方式のまとめ（暫定データなど API で引けないとき） */
+  methods?: readonly RecipientMethodSummary[];
   year: number | string | null;
   pids: readonly (string | number)[];
 }
@@ -55,7 +58,7 @@ export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) 
       <p className="font-bold leading-snug text-mirai-text">{hover.title ?? hover.name}</p>
       {hover.subtitle && <p className="text-[11px] text-mirai-text-muted">{hover.subtitle}</p>}
       {Number.isFinite(hover.amount) && <p className="tabular-nums text-mirai-text-secondary">{formatBudgetFromYen(hover.amount)}</p>}
-      <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={hover.year} name={hover.name} pids={hover.pids} contracts={hover.contracts} />
+      <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={hover.year} name={hover.name} pids={hover.pids} contracts={hover.contracts} methods={hover.methods} />
     </div>,
     document.body,
   );

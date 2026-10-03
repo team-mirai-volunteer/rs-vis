@@ -7,11 +7,12 @@
  */
 import { useRecipientContracts } from '@/client/hooks/useRecipientContracts';
 import { ContractMethodBadge } from '@/client/components/quality/ContractMethodBadge';
+import type { RecipientMethodSummary } from '@/app/lib/contract-method';
 
 /** 出す契約の行数。残りは「ほか○件」にまとめる */
 const MAX_LINES = 3;
 
-export function RecipientContractSummary({ year, name, pids, contracts, className }: {
+export function RecipientContractSummary({ year, name, pids, contracts, methods: localMethods, className }: {
   /** RS シート年度。null なら出さない（暫定データなど再委託構造が無いとき） */
   year: number | string | null;
   name: string;
@@ -19,11 +20,13 @@ export function RecipientContractSummary({ year, name, pids, contracts, classNam
   pids: readonly (string | number)[];
   /** 手元に契約の概要があるとき（1事業の再委託構造を読み込み済みなど）。渡すと API を呼ばない */
   contracts?: readonly string[];
+  /** contracts と一緒に渡す、手元の契約方式のまとめ */
+  methods?: readonly RecipientMethodSummary[];
   className?: string;
 }) {
   const fetched = useRecipientContracts(contracts ? null : year, name, pids);
   const data = contracts
-    ? { name, entries: contracts.length > 0 ? [{ pid: Number(pids[0] ?? 0), projectName: '', amount: 0, contracts: [...contracts] }] : [] }
+    ? { name, entries: contracts.length > 0 || localMethods?.length ? [{ pid: Number(pids[0] ?? 0), projectName: '', amount: 0, contracts: [...contracts], methods: localMethods ? [...localMethods] : undefined }] : [] }
     : fetched;
   if (data === undefined) return <p className={`text-[11px] text-mirai-text-muted ${className ?? ''}`}>契約の内容を読み込み中…</p>;
   if (!data) return null;

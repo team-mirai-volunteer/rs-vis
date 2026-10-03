@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { apiDetail, executionGraph, knownAmount } from './rs-api-adapter';
+import { apiContractMethod } from '../app/lib/contract-method';
 import type { RsApiCoverage, RsApiDetail, RsApiGroup, RsApiEdge, RsApiProject } from '../types/rs-api';
 import { UNIFIED_COLUMNS, type UnifiedGraph } from '../types/unified-budget';
 
@@ -35,7 +36,13 @@ for (const p of projects) {
     overview: g.overview, total_amount: knownAmount(g.total_amount, g.negative_total_amount_count),
     payments: g.payments.map(p => ({ id: p.id, name: p.name, corporate_number: p.corporate_number, is_others: p.is_others, type: p.type,
       total_contract_amount: knownAmount(p.total_contract_amount, p.negative_total_contract_amount_count),
-      contracts: p.contracts.map(c => ({ overview: c.overview, amount: knownAmount(c.amount), amount_breakdown: c.amount_breakdown })) })) }));
+      contracts: p.contracts.map(c => {
+        // 契約方式は正規化済みの値だけ残す（埋め草の補足・範囲外の落札率は落とす）
+        const method = apiContractMethod(c);
+        return { overview: c.overview, amount: knownAmount(c.amount), amount_breakdown: c.amount_breakdown,
+          ...(method ? { contract_method: method.m, contract_method_description: method.mt ?? null,
+            number_of_applicants: method.ap ?? null, bid_rate: method.br ?? null } : {}) };
+      }) })) }));
   d.edges = d.edges.map(e => ({ source_node_id: e.source_node_id, target_node_id: e.target_node_id, is_connected_to_source_root: e.is_connected_to_source_root, label: e.label }));
   details[pid] = d;
 }
