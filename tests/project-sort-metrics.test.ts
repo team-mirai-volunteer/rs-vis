@@ -100,3 +100,20 @@ test('buildProjectSortMetrics: 継続年数と差額を pid ごとに短いキ�
   );
   assert.deepEqual(items, { '1': { y: 5, d: 200, r: 0.6667 }, '3': { d: 200, r: 0.6667 } });
 });
+
+import { buildSizeScale } from '../app/lib/project-map-view';
+import type { ProjectMapPoint } from '../types/project-map';
+
+test('buildSizeScale: ブロック差額は指標の値で大きさを決め、値の無い事業は最小', () => {
+  const pt = (pid: string): ProjectMapPoint => ({ pid, name: pid, ministry: '', x: 0, y: 0, c: 0, budget: 1, exec: 1, score: null, prop: null, nec: null, years: null, cat: null, rec: null });
+  const points = ['1', '2', '3'].map(pt);
+  const metrics = { '1': { d: 100, r: 0.1 }, '2': { d: 900, r: 0.05 }, '3': { y: 4 } };
+  const diff = buildSizeScale(points, 'blockDiff', 20, metrics);
+  assert.ok(diff.radius(points[1]) > diff.radius(points[0]));
+  assert.equal(diff.radius(points[2]), diff.radius(points[0]));
+  const ratio = buildSizeScale(points, 'blockDiffRatio', 20, metrics);
+  assert.ok(ratio.radius(points[0]) > ratio.radius(points[1]));
+  assert.equal(ratio.ticks.at(-1)?.label, '最大 10%');
+  // 未取得なら全件最小・目盛り無し
+  assert.deepEqual(buildSizeScale(points, 'blockDiff', 20).ticks, []);
+});
