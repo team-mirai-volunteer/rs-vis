@@ -865,7 +865,7 @@ export function UnifiedSankeyChart({
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
                 {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&
-                  <UnifiedRecipientProfile name={selectedPanelNode.name} sheetYear={contractSheetYear} scaleFont={px => Math.round((px * fontPx) / 11)} />}
+                  <UnifiedRecipientProfile name={selectedPanelNode.name} sheetYear={contractSheetYear} corporateNumber={selectedDetails.representativeCorporateNumber} scaleFont={px => Math.round((px * fontPx) / 11)} />}
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
                   <div className="-mx-4 mt-3 border-t border-border">

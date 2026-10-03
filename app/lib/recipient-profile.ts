@@ -54,8 +54,14 @@ export function genericRecipientNote(name: string): string | undefined {
 
 export const MINISTRY_LIMIT = 6;
 
-export function buildRecipientProfile(name: string, entry: RecipientEntry | null, methodsByPid: ContractMethodsByPid | null,
-  externalByCn: Record<string, RecipientExternal> | null = null): RecipientProfile {
+/**
+ * @param fallbackCorporateNumber 図のノードが持つ代表法人番号。インデックスのエントリに番号が無いとき
+ *   （国の出先機関など、番号が名前のエントリに付いていない）に使い、見出しの法人番号と説明を食い違わせない
+ */
+export function buildRecipientProfile(name: string, found: RecipientEntry | null, methodsByPid: ContractMethodsByPid | null,
+  externalByCn: Record<string, RecipientExternal> | null = null, fallbackCorporateNumber = ''): RecipientProfile {
+  const entry = found && !found.corporateNumber && /^\d{13}$/.test(fallbackCorporateNumber)
+    ? { ...found, corporateNumber: fallbackCorporateNumber } : found;
   const genericNote = genericRecipientNote(name);
   if (!entry) return { name, genericNote, methods: [] };
   // 契約は法人番号で引く。番号が無いときは表記ゆれ（aliases）のどれかと名前が一致するもの

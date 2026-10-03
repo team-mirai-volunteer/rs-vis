@@ -12,10 +12,20 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { useCached } from './policy-summary-cache';
 
 const cache = new Map<string, RecipientProfile | null>();
+/** 名前の比較用。法人格の表記と空白を落とす */
+const bare = (s: string) => s.normalize('NFKC').replace(/\s|株式会社|有限会社|一般社団法人|公益社団法人|一般財団法人|公益財団法人|独立行政法人|国立研究開発法人|\(株\)|（株）/g, '');
+/** どちらかがもう一方を含めば同じ相手とみなす（「富士通株式会社」と「富士通」など） */
+const sameEntity = (a: string, b: string) => { const x = bare(a), y = bare(b); return x.includes(y) || y.includes(x); };
 const extract = (d: unknown) => d as RecipientProfile;
 
-export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: string; sheetYear: number; scaleFont: (px: number) => number }) {
-  const profile = useCached(cache, `${sheetYear}|${name}`, `/api/recipient-profile?year=${sheetYear}&name=${encodeURIComponent(name)}`, extract);
+export function UnifiedRecipientProfile({ name, sheetYear, corporateNumber, scaleFont }: {
+  name: string; sheetYear: number;
+  /** ノードが持つ代表法人番号。あれば名前より優先して引く（見出しの法人番号と説明を一致させる） */
+  corporateNumber?: string;
+  scaleFont: (px: number) => number;
+}) {
+  const cn = corporateNumber && /^\d{13}$/.test(corporateNumber) ? corporateNumber : '';
+  const profile = useCached(cache, `${sheetYear}|${name}|${cn}`, `/api/recipient-profile?year=${sheetYear}&name=${encodeURIComponent(name)}${cn ? `&cn=${cn}` : ''}`, extract);
   const label = { fontSize: scaleFont(11) };
   const meta = { fontSize: scaleFont(10) };
   if (profile === undefined) return <p role="status" className="py-2 text-xs text-mirai-text-muted">支出先の情報を読み込み中…</p>;
@@ -27,6 +37,10 @@ export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: 
     {entry && <>
       {/* 法人番号で突き合わせた外部情報（所在地・法人種別は RS 公開 API、説明は Wikipedia の冒頭、設立・公式サイト・記事は Wikidata） */}
       {(profile.external || entry.corporateNumber) && <div className="space-y-1.5">
+        {/* 法人番号の持ち主の名前が支出先名と食い違うとき（国の出先機関は本省の番号で記載されるなど）は、以下が誰の情報かを先に言う */}
+        {/* 会社の略称・英語名・旧社名の違いは同じ相手なので出さない。国の機関・自治体（出先機関・部局が本庁の番号で載る）に限る */}
+        {profile.external?.label && (profile.external.k === '101' || profile.external.k === '201') && !sameEntity(profile.name, profile.external.label) &&
+          <p className="text-mirai-text-muted" style={meta}>この法人番号は「{profile.external.label}」のものです。以下の説明・所在地は{profile.external.label}の情報です（国の出先機関などは本省の番号で記載されます）。</p>}
         {/* 説明は Wikipedia の冒頭（CC BY-SA のため出典とリンクを添える）。無ければ Wikidata の短い説明 */}
         {profile.external?.wt
           ? <p className="leading-relaxed text-mirai-text-secondary" style={label}>{profile.external.wt}

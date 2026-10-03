@@ -1,6 +1,7 @@
 /**
  * 支出先そのものの説明（サンキー図で支出先ノードを選んだときの詳細パネル用）
- *   GET /api/recipient-profile?year=2025&name=株式会社〇〇
+ *   GET /api/recipient-profile?year=2025&name=株式会社〇〇[&cn=法人番号13桁]
+ * cn があれば法人番号で引く（同名で番号の無い記載の方が多いと、名前だけでは番号なしのエントリに当たるため）。
  * 支出先インデックス（法人番号・受注額・府省別）と、契約方式の区分ごとの集計を返す。
  */
 import { NextResponse, type NextRequest } from 'next/server';
@@ -18,8 +19,10 @@ export async function GET(req: NextRequest) {
     if (year === null) return NextResponse.json({ error: '対応していない年度です（2024 | 2025）' }, { status: 400 });
     const name = (req.nextUrl.searchParams.get('name') ?? '').trim();
     if (!name || name.length > MAX_NAME_CHARS) return NextResponse.json({ error: 'name が不正です' }, { status: 400 });
-    const entry = /^その他/.test(name) ? null : resolveRecipient(year, `name:${normalizeRecipientName(name)}`);
-    return NextResponse.json(buildRecipientProfile(name, entry, loadContractMethods(year), loadRecipientExternal()?.byCn ?? null), { headers: { 'Cache-Control': API_CACHE_CONTROL } });
+    const cn = req.nextUrl.searchParams.get('cn') ?? '';
+    const entry = /^その他/.test(name) ? null
+      : (/^\d{13}$/.test(cn) ? resolveRecipient(year, cn) : null) ?? resolveRecipient(year, `name:${normalizeRecipientName(name)}`);
+    return NextResponse.json(buildRecipientProfile(name, entry, loadContractMethods(year), loadRecipientExternal()?.byCn ?? null, cn), { headers: { 'Cache-Control': API_CACHE_CONTROL } });
   } catch (e) {
     return serverErrorResponse('recipient-profile', e);
   }

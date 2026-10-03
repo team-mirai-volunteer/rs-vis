@@ -51,3 +51,14 @@ test('外部情報は法人番号で付け、http(s) 以外の URL は使わな�
   assert.equal(profile.external?.wiki, 'https://ja.wikipedia.org/wiki/テスト');
   assert.equal(buildRecipientProfile('株式会社テスト', entry, null, {}).external, undefined);
 });
+
+test('エントリに法人番号が無ければ、図のノードの代表法人番号を使う', () => {
+  const entry = {
+    key: 'name:関東地方整備局', name: '関東地方整備局', corporateNumber: '', aliases: ['関東地方整備局'],
+    totals: { directAmount: 1, directCount: 1, subcontractAmount: 0, subcontractCount: 0 }, byMinistry: [], appearances: [{ pid: 1 }],
+  } as unknown as RecipientEntry;
+  const profile = buildRecipientProfile('関東地方整備局', entry, null, { '4000012100001': { ad: '東京都千代田区', k: '101' } }, '4000012100001');
+  assert.equal(profile.entry?.corporateNumber, '4000012100001');
+  assert.equal(profile.external?.kindLabel, '国の機関');
+  assert.equal(buildRecipientProfile('関東地方整備局', entry, null, null, '').entry?.corporateNumber, '');
+});
