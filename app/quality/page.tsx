@@ -370,6 +370,19 @@ export default function QualityPage() {
   const filterKey = `${selectedMinistry}|${scoreRange}|${distMetric}|${searchQuery}|${amountFilterKey}|${sortField}|${sortDir}`
     + `|${selectedRecommendation}|${selectedAction}|${selectedCategory}|${yearsFilter.min}-${yearsFilter.max}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  const hasFilters = Boolean(searchQuery || selectedMinistry || scoreRange !== 'all' || selectedRecommendation.length
+    || selectedAction.length || selectedCategory || yearsFilter.min || yearsFilter.max
+    || Object.values(amountFilters).some(f => f.min || f.max) || Object.values(scoreFilters).some(f => f.min || f.max));
+  function clearAllFilters() {
+    setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
+    setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
+    setScoreFilters(EMPTY_SCORE_FILTERS());
+    setYearsFilter({ min: '', max: '' });
+    setAmountFilters({
+      budgetAmount: { min: '', max: '' }, execAmount: { min: '', max: '' },
+      spendTotal: { min: '', max: '' }, spendNetTotal: { min: '', max: '' },
+    });
+  }
   if (filterKey !== lastFilterKey) {
     setLastFilterKey(filterKey);
     setPage(1);
@@ -600,6 +613,11 @@ export default function QualityPage() {
                     <span className="text-mirai-text-muted font-normal"> / {summary.total.toLocaleString()}</span>
                   </div>
                 </Button>
+                {/* 個別の「✕」とは別に、検索・府省・範囲をまとめて既定に戻す */}
+                <Button variant="outline" size="xs" onClick={clearAllFilters} disabled={!hasFilters}
+                  className="border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
+                  条件をクリア
+                </Button>
               </div>
               <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
                 <div className="flex flex-wrap items-center gap-2">
@@ -792,7 +810,10 @@ ${a.desc}` })),
 
       {/* Table */}
       <div className="shrink-0 space-y-2 px-3 pb-3 sm:hidden">
-        <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-mirai-border bg-card p-2 text-sm" />
+        <div className="flex gap-2">
+          <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-mirai-border bg-card p-2 text-sm" />
+          <Button variant="outline" size="sm" onClick={clearAllFilters} disabled={!hasFilters} className="shrink-0 border-mirai-border text-xs font-normal text-mirai-text-subtle disabled:opacity-40">条件をクリア</Button>
+        </div>
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">
@@ -1047,16 +1068,7 @@ ${a.desc}`}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
-                  setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
-                  setScoreFilters(EMPTY_SCORE_FILTERS());
-                  setYearsFilter({ min: '', max: '' });
-                  setAmountFilters({
-                    budgetAmount: { min: '', max: '' }, execAmount: { min: '', max: '' },
-                    spendTotal: { min: '', max: '' }, spendNetTotal: { min: '', max: '' },
-                  });
-                }}
+                onClick={clearAllFilters}
                 className="mt-3 border-mirai-border text-xs text-mirai-text-subtle"
               >
                 すべての絞り込みを解除
