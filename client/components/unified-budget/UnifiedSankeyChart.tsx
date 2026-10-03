@@ -30,9 +30,10 @@ import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
-import { UnifiedProjectSections } from './UnifiedProjectSections';
+import { UnifiedProjectSections, useProjectDetail } from './UnifiedProjectSections';
+import { yearsRunning } from '@/client/components/ProjectDescription';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
-import { rsApiContractLines, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
+import { rsApiContractLines, rsApiToProjectDetail, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 import { recipientContractsInProject } from '@/app/lib/recipient-contracts';
@@ -386,6 +387,16 @@ export function UnifiedSankeyChart({
    */
   const priorSheetYear = budgetYear;
   const priorSheetPolicy = usePolicySummary(provisional && isIndividualProject ? priorSheetYear : null);
+  /**
+   * 見出しの継続年数。下の事業概要と同じシート年度・同じデータで数える（暫定は、前年度シートにある事業はその事業概要、
+   * 無い新規事業は RS 公開 API の事業概要）
+   */
+  const inPriorSheet = provisional && selectedDetails?.projectId !== undefined && !!priorSheetPolicy?.items[String(selectedDetails.projectId)];
+  const detailSheetYear = provisional ? (inPriorSheet ? priorSheetYear : null) : rsSheetYear;
+  const headerDetail = useProjectDetail(isIndividualProject ? selectedDetails?.projectId : undefined, detailSheetYear);
+  const headerYears = provisional && !inPriorSheet
+    ? yearsRunning(provisionalProject ? rsApiToProjectDetail(provisionalProject).startYear : null, rsSheetYear)
+    : yearsRunning(headerDetail?.startYear ?? null, detailSheetYear ?? undefined);
   /**
    * パネル上段（事実表・評価・事業の詳細群・集約の内訳）に出すものがあるか。支出先などは何も無いので、
    * 空の枠（余白と罫線だけの帯）を描かない
@@ -829,6 +840,7 @@ export function UnifiedSankeyChart({
                     <span className="flex flex-wrap gap-x-2 whitespace-nowrap text-[11px] text-mirai-text-muted">
                       {selectedDetails.rsMinistry && <span>{selectedDetails.rsMinistry}</span>}
                       {selectedDetails.projectId !== undefined && <span>予算事業ID {selectedDetails.projectId}</span>}
+                      {isIndividualProject && headerYears !== null && <span title="継続年数（対象年度 − 開始年度 ＋ 1。評価一覧と同じ定義）">継続{headerYears}年</span>}
                     </span>
                   )}
                   {selectedDetails.sourceUrl && (

@@ -28,6 +28,11 @@ import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
 
+/** 事業概要（/api/project-details）。パネル見出しの継続年数とここで同じキャッシュを使う。pid が無ければ取得しない */
+export function useProjectDetail(pid: number | undefined, rsSheetYear: number | null): ProjectDetail | null | undefined {
+  return useCached(detailCache, pid === undefined || rsSheetYear === null ? null : `${rsSheetYear}-${pid}`, `/api/project-details/${pid}?year=${rsSheetYear}`, extractDetail);
+}
+
 const OVERVIEW_PREVIEW_HEIGHT = 72;
 
 export function UnifiedProjectSections({
@@ -63,7 +68,7 @@ export function UnifiedProjectSections({
   const [scoreLoading, setScoreLoading] = useState(false);
 
   const policy = usePolicySummary(isProvisional ? null : year);
-  const sheetDetail = useCached(detailCache, isProvisional ? null : `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
+  const sheetDetail = useProjectDetail(isProvisional ? undefined : pid, rsSheetYear);
   const detail = provisionalDetail ? rsApiToProjectDetail(provisionalDetail) : sheetDetail;
 
   const openScoreDialog = useCallback(() => {
