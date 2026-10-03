@@ -22,6 +22,7 @@ import { useDialogFocus } from '@/client/hooks/useDialogFocus';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
+import { ContractMethodBadge } from './ContractMethodBadge';
 import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
@@ -31,7 +32,7 @@ import {
 /** ヘッダ下の「▼ 事業内容」等の開閉リンク。Button の link variant を 11px の細字に寄せる */
 const TOGGLE_LINK_CLS = 'text-[11px] font-normal no-underline hover:underline hover:text-primary-accent';
 
-const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, undefined, undefined];
+const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, 160, undefined, undefined];
 
 export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, navigation }: {
   item: QualityScoreItem;
@@ -58,7 +59,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [showProjectInfo, setShowProjectInfo] = useState(true);
   const [showStructure, setShowStructure] = useState(false);
   // 法人番号列（index 2）は13桁＋gBizINFOアイコンが入るため 130 まで広げる（旧ダイアログと同じ）
-  const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 200, 200]);
+  const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 130, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
 
   useEffect(() => {
@@ -659,6 +660,7 @@ ${a.desc}`}>
                       { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号(Corporate Number)。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）' },
                       { label: '金額', align: 'right', sort: 'a2' as const, title: '個別支出額（CSVの「金額」列）' },
                       { label: '実支出比', align: 'right', sort: 'pct' as const, title: '実質支出合計に対する割合' },
+                      { label: '契約方式', align: 'left', sort: null, title: '入札・随意契約などの契約方式と応札・応募者数（RS公開APIから突き合わせ。補助金等は「契約以外」）。バッジにカーソルを合わせると補足・落札率を表示' },
                       { label: '役割', align: 'left', sort: null, title: '事業を行う上での役割（ブロック単位）' },
                       { label: '契約概要', align: 'left', sort: null, title: undefined },
                     ] as const).map((col, ci) => (
@@ -735,6 +737,9 @@ ${a.desc}`}>
                           {row.a2 !== null && row.a2 > 0 && item.spendNetTotal > 0
                             ? (() => { const p = row.a2 / item.spendNetTotal * 100; return p >= 1 ? `${p.toFixed(0)}%` : '<1%'; })()
                             : <span className="text-mirai-text-placeholder">—</span>}
+                        </td>
+                        <td className="px-3 py-1.5 min-w-0">
+                          {row.m ? <ContractMethodBadge method={row.m} text={row.mt} applicants={row.ap} bidRate={row.br} /> : <span className="text-mirai-text-placeholder">—</span>}
                         </td>
                         <td className="px-3 py-1.5 text-mirai-text-muted truncate" title={row.role || undefined}>
                           {row.role || <span className="text-mirai-text-placeholder">—</span>}

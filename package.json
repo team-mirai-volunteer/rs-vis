@@ -52,6 +52,7 @@
     "generate-subcontracts-2025": "tsx scripts/generate-subcontracts.ts 2025",
     "generate-sankey-svg": "tsx scripts/generate-sankey-svg-data.ts 2024",
     "generate-sankey-svg-2025": "tsx scripts/generate-sankey-svg-data.ts 2025",
+    "generate-contract-methods": "npx tsx scripts/generate-contract-methods.ts 2024 && npx tsx scripts/generate-contract-methods.ts 2025",
     "generate-project-map-2024": "python3 scripts/generate-project-map.py --year 2024",
     "generate-project-map-2025": "python3 scripts/generate-project-map.py --year 2025",
     "benchmark-embedding-models": "python3 scripts/benchmark-embedding-models.py --year 2025",
