@@ -45,9 +45,9 @@ export function RecipientContractSummary({ year, name, pids, contracts, lines: l
         {shown.map(({ pid, projectName, line }) => (
           <li key={`${pid}-${line.text}-${line.m ?? ''}`} className="text-mirai-text-secondary">
             {multiProject && <span className="text-mirai-text-muted">{projectName}：</span>}
+            {/* 方式は概要の頭に置く。後ろに付けると、長い概要のとき方式だけが次の行に送られる */}
+            {line.m && <span className="mr-1 inline-flex max-w-full align-middle"><ContractMethodBadge method={line.m} text={line.mt} applicants={line.ap} /></span>}
             {line.text}
-            {/* 方式は概要の後ろに続けて置く（改行して別欄にすると概要が読みにくい） */}
-            {line.m && <span className={`inline-flex max-w-full align-middle ${line.text ? 'ml-1' : ''}`}><ContractMethodBadge method={line.m} text={line.mt} applicants={line.ap} /></span>}
           </li>
         ))}
       </ul>
