@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * 支出先ノードを選んだときの「支出先そのものの説明」。法人番号・受注額・支出元の府省・契約方式の内訳を出す。
+ * 支出先ノードを選んだときの「支出先そのものの説明」。法人番号・受注額・支出元の府省・契約方式の内訳と3年度の推移を出す。
  * データは /api/recipient-profile（支出先インデックスと RS 公開 API の契約方式）。シート年度ごとにキャッシュする。
  */
 import { corporateLinks, type RecipientProfile } from '@/app/lib/recipient-profile';
@@ -10,6 +10,7 @@ import { CONTRACT_CATEGORY_DESCRIPTIONS, CONTRACT_CATEGORY_LABELS } from '@/app/
 import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { useCached } from './policy-summary-cache';
+import { RecipientContractHistory } from './RecipientContractHistory';
 
 const cache = new Map<string, RecipientProfile | null>();
 /** 名前の比較用。法人格の表記と空白を落とす */
@@ -77,7 +78,7 @@ export function UnifiedRecipientProfile({ name, sheetYear, corporateNumber, scal
         </ul>
       </div>}
       {profile.methods.length > 0 && <div>
-        <div className="mb-1 font-bold text-mirai-text-secondary" style={label}>契約方式の内訳</div>
+        <div className="mb-1 font-bold text-mirai-text-secondary" style={label}>契約方式の内訳<span className="ml-1 font-normal text-mirai-text-muted">{fiscalYearLabel(sheetYear)}</span></div>
         <ul className="m-0 list-none space-y-0.5 p-0" style={label}>
           {profile.methods.map(m => <li key={m.category} className="flex justify-between gap-3" title={CONTRACT_CATEGORY_DESCRIPTIONS[m.category]}>
             <span className="text-mirai-text-subtle">{CONTRACT_CATEGORY_LABELS[m.category]}<span className="ml-1 text-mirai-text-muted">{m.count}件</span>
@@ -86,6 +87,7 @@ export function UnifiedRecipientProfile({ name, sheetYear, corporateNumber, scal
           </li>)}
         </ul>
       </div>}
+      {profile.history && <RecipientContractHistory history={profile.history} label={label} meta={meta} />}
       {entry.aliases.length > 0 && <p className="text-mirai-text-muted" style={meta}>別の表記: {entry.aliases.join('、')}</p>}
     </>}
     <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式・所在地・法人種別はRS公開API{profile.external?.wd && '、設立・公式サイト・Wikipedia の記事は Wikidata（法人番号で一致したもの）'}</p>

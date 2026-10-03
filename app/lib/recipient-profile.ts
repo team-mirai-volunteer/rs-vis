@@ -6,6 +6,7 @@ import type { RecipientEntry } from '@/types/recipient-index';
 import { totalsByCategory, type CategoryTotal, type ContractMethodsByPid } from '@/app/lib/contract-method';
 import { normalizeRecipientName } from '@/app/lib/recipient-key';
 import type { RecipientExternal } from '@/types/recipient-external';
+import type { ContractHistory } from '@/app/lib/contract-history';
 
 export interface RecipientProfile {
   name: string;
@@ -26,6 +27,8 @@ export interface RecipientProfile {
   methods: CategoryTotal[];
   /** 法人番号で突き合わせた外部情報（所在地・法人種別・Wikipedia・公式サイトなど） */
   external?: RecipientExternal & { kindLabel?: string };
+  /** 契約方式の3年度の推移（API が付ける。法人番号か名前で引けたときだけ） */
+  history?: ContractHistory;
 }
 
 /** 国税庁の法人番号の「法人種別」コード */
