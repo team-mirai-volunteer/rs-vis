@@ -571,7 +571,6 @@ export default function ProjectMapPage() {
             <p className="font-medium">{fiscalYear(year)}年度の事業バブルチャートはまだ生成されていません</p>
             <p className="max-w-md text-xs leading-relaxed text-mirai-text-muted">
               このビューは事業説明文の埋め込みを使うため、年度ごとに座標を生成する必要があります。
-              現在は2024年度実績（2025年度レビューシート）のみ生成済みです。
             </p>
             <code className="mt-1 rounded-md bg-mirai-surface px-2.5 py-1.5 text-[11px]">
               python3 scripts/generate-project-map.py --year {year}
