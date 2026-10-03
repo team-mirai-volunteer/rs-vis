@@ -154,3 +154,26 @@ export function contractLines(rows: ReadonlyArray<{ text?: string | null; m?: Co
   }
   return out;
 }
+
+export interface CategoryTotal {
+  category: ContractCategory;
+  /** 契約金額の合計（円）。非公表を除く */
+  amount: number;
+  count: number;
+  /** 応札・応募者数が1者だった件数 */
+  singleBidder: number;
+}
+
+/** 支出先の全契約を区分（一般競争・随意契約（競争なし）など）ごとに集計する（金額の大きい順） */
+export function totalsByCategory(entries: readonly ContractMethodEntry[]): CategoryTotal[] {
+  const by = new Map<ContractCategory, CategoryTotal>();
+  for (const e of entries) {
+    const category = contractCategory(e.m);
+    const t = by.get(category) ?? { category, amount: 0, count: 0, singleBidder: 0 };
+    t.amount += e.a ?? 0;
+    t.count++;
+    if (e.ap === 1) t.singleBidder++;
+    by.set(category, t);
+  }
+  return [...by.values()].sort((a, b) => b.amount - a.amount);
+}
