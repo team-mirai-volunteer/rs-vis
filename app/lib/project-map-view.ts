@@ -343,7 +343,7 @@ export const SPENDING_COLORS = [
 ] as const;
 
 /** 支出先の菱形の半径（画面px）。段ごとに少しずつ大きくし、色と二重に符号化する */
-const SPENDING_MIN_R = 3.2;
+const SPENDING_MIN_R = 3;
 const SPENDING_R_STEP = 1.0;
 
 /** 金額 → 段（0 = 最も薄い） */
