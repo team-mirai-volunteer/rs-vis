@@ -238,7 +238,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(sidePanel.getByRole('tabpanel').getByText('会計', { exact: true }).first()).toBeVisible();
 
     // 政策評価は 6 軸（総合点 + 5 軸）で出る
-    for (const axis of ['総合点', '成果設計', '検証可能性', '執行透明性', '費用対内容', '必要性']) {
+    for (const axis of ['総合点', '成果設計', '検証可能性', '執行透明性', '費用対内容', '代替困難性']) {
       await expect(sidePanel.getByText(axis, { exact: true }).first()).toBeVisible();
     }
     await expect(sidePanel.getByText('図には出ていません')).toHaveCount(0);

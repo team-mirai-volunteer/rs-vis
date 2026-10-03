@@ -21,13 +21,13 @@ import { TONE_CLS, ACTION_CLS } from '@/client/components/quality/score-meta';
 export interface PolicyEvaluationView {
   /** 総合点（0-100） */
   overall: number | null;
-  /** 成果設計・検証可能性・執行透明性。渡すと 5 軸すべてを並べる（幅のあるパネル向け）。省略時は総合・費用対内容・必要性の 3 つ */
+  /** 成果設計・検証可能性・執行透明性。渡すと 5 軸すべてを並べる（幅のあるパネル向け）。省略時は総合・費用対内容・代替困難性の 3 つ */
   designClarity?: number | null;
   evidence?: number | null;
   transparency?: number | null;
   /** 費用対内容（0-100） */
   proportionality: number | null;
-  /** 必要性（0-100） */
+  /** 代替困難性（0-100。データ上の名前は necessity） */
   necessity: number | null;
   /** 推奨判断の表示名。未判定は null */
   recommendation: string | null;
@@ -91,15 +91,15 @@ export function PolicyEvaluationBlock({
   }
   if (!view) return null;   // 取得中・スコアなしはブロックごと出さない（パネルのちらつき防止）
 
-  // 既定は、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸（費用対内容・必要性）＋総合点。
+  // 既定は、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸（費用対内容・代替困難性）＋総合点。
   // 残り3軸（成果設計・検証可能性・執行透明性）は呼び出し側が渡したときだけ並べる（統合ビューの広いパネル）。
   const full = view.designClarity !== undefined || view.evidence !== undefined || view.transparency !== undefined;
   const cells: Array<[string, number | null]> = full
     ? [
         ['総合点', view.overall], ['成果設計', view.designClarity ?? null], ['検証可能性', view.evidence ?? null],
-        ['執行透明性', view.transparency ?? null], ['費用対内容', view.proportionality], ['必要性', view.necessity],
+        ['執行透明性', view.transparency ?? null], ['費用対内容', view.proportionality], ['代替困難性', view.necessity],
       ]
-    : [['総合点', view.overall], ['費用対内容', view.proportionality], ['必要性', view.necessity]];
+    : [['総合点', view.overall], ['費用対内容', view.proportionality], ['代替困難性', view.necessity]];
 
   return (
     <div className="shrink-0 border-b border-border px-3.5 py-2">

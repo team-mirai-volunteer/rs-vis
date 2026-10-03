@@ -77,7 +77,7 @@ export const SIZE_METRIC_LABELS: Record<SizeMetric, string> = {
   years: '継続年数',
   inverseScore: '総合点の逆数（低いほど大きい）',
   inverseProp: '費用対内容の逆数（低いほど大きい）',
-  inverseNec: '必要性の逆数（低いほど大きい）',
+  inverseNec: '代替困難性の逆数（低いほど大きい）',
   uniform: '均一',
 };
 

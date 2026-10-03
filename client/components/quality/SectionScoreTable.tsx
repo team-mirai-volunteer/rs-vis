@@ -27,7 +27,7 @@ const AXIS_DESC: Record<PolicyAxis, string> = {
   e: '検証可能性の加重平均',
   t: '執行透明性の加重平均',
   x: '費用対内容の加重平均',
-  n: '必要性の加重平均',
+  n: '代替困難性の加重平均',
 };
 
 const AXIS_WIDTH: Record<PolicyAxis, number> = { o: 70, d: 84, e: 96, t: 96, x: 96, n: 72 };

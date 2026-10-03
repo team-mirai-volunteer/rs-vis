@@ -338,7 +338,7 @@ ${a.desc}`}>
                   <div>成果設計: {fmtRaw(policy.designClarity)}/10</div>
                   <div>検証可能性: {policy.evidenceReadiness != null ? `${fmtRaw(policy.evidenceReadiness)}/10` : '未評価'}</div>
                   <div>費用対内容: {policy.budgetProportionality != null ? `${fmtRaw(policy.budgetProportionality)}/10` : '未評価'}</div>
-                  <div>必要性: {policy.necessity != null ? `${fmtRaw(policy.necessity)}/10` : '未評価'}</div>
+                  <div>代替困難性: {policy.necessity != null ? `${fmtRaw(policy.necessity)}/10` : '未評価'}</div>
                 </div>
               </div>
               <div>
@@ -395,7 +395,7 @@ ${a.desc}`}>
                 { label: '成果設計', text: policy.findings.design },
                 { label: '検証可能性', text: policy.findings.evidence },
                 { label: '費用対内容', text: policy.findings.proportionality },
-                { label: '必要性', text: policy.findings.necessity },
+                { label: '代替困難性', text: policy.findings.necessity },
               ] as const).map(({ label, text }) => text ? (
                 <div key={label}>
                   <span className="font-bold text-mirai-text-secondary">{label}: </span>
@@ -468,7 +468,7 @@ ${a.desc}`}>
                   {policy?.findings.proportionality && <div className="leading-relaxed">{policy.findings.proportionality}</div>}
                 </div>
                 <div>
-                  <span className="font-medium text-mirai-text-subtle">必要性</span>
+                  <span className="font-medium text-mirai-text-subtle">代替困難性</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.necessityScore}</span>:
                   廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に「そもそも要るのか」を問う
                   <div className="tabular-nums text-mirai-text-muted">
@@ -550,7 +550,7 @@ ${a.desc}`}>
                 )}
               </div>
               <div className="mt-1 text-[11px] leading-4 text-mirai-text-muted">
-                費用対内容と必要性を厚くしているのは、この2軸だけが所管庁の作文が支配できない証拠
+                費用対内容と代替困難性を厚くしているのは、この2軸だけが所管庁の作文が支配できない証拠
                 （支出先の実績・予算執行）に基づくためです。よく書けた事業計画だけで上位に来ないようにしています。
               </div>
             </div>

@@ -60,7 +60,7 @@ export const AXIS_META: { key: PolicyMetric; label: string; weight: number; shor
 予算額が0でも執行額があれば執行額で判定します。予算・執行ともに0の事業は判定対象外（未評価）です。`,
   },
   {
-    key: 'necessityScore', label: '必要性', weight: 20, short: '必要',
+    key: 'necessityScore', label: '代替困難性', weight: 20, short: '代替',
     desc: `この事業を廃止したら誰が具体的に困るか、その手当ては他の手段で代替できるか。
 
 設計の巧拙とは切り離して「そもそも要るのか」だけを問う軸です。
@@ -75,7 +75,7 @@ export const AXIS_META: { key: PolicyMetric; label: string; weight: number; shor
 export const COL_DESC: Record<string, string> = {
   総合点: `5軸の加重平均（0-100）。
 
-成果設計×15 ＋ 検証可能性×15 ＋ 執行透明性×15 ＋ 費用対内容×35 ＋ 必要性×20
+成果設計×15 ＋ 検証可能性×15 ＋ 執行透明性×15 ＋ 費用対内容×35 ＋ 代替困難性×20
 
 未評価の軸は、その重みごと除外して残りで再正規化します（0点扱いにはしません）。
 不用額は総合点に算入していません。返納は適切な行動であり、減点すると年度末の使い切りを誘発するためです。`,
@@ -175,7 +175,7 @@ export const COL_WIDTHS = [
   74,  // 検証可能性
   74,  // 執行透明性
   74,  // 費用対内容
-  58,  // 必要性
+  58,  // 代替困難性
   120, // 推奨（2年連続の不用マーカーを含む）
   112, // 改善アクション
   64,  // 継続年数
