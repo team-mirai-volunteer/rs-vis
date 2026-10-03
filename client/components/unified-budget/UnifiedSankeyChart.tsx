@@ -56,6 +56,12 @@ const CONTROL_ROW_PX = 60; // sm 以上: 左上の表示数カード（1行）�
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
 
+/**
+ * ポータルで body に出したもの（政策評価の詳細ダイアログ・ホバーカードなど）のイベントも、React では
+ * コンポーネントの親であるこの図まで伝わる。図の DOM の外から来たホイール・ドラッグでズーム・パンしない
+ */
+const fromPortal = (e: React.SyntheticEvent) => !e.currentTarget.contains(e.target as Node);
+
 export function UnifiedSankeyChart({
   nodes,
   links,
@@ -465,7 +471,7 @@ export function UnifiedSankeyChart({
   }, []);
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
-      if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
+      if (fromPortal(e) || (e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
       const rect = containerRef.current?.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, rect ? e.clientX - rect.left : 0, rect ? e.clientY - rect.top : 0);
     },
@@ -517,7 +523,7 @@ export function UnifiedSankeyChart({
       onWheel={handleWheel}
       style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
       onPointerDown={e => {
-        if (e.pointerType !== 'touch' || (e.target as Element).closest('[data-pan-disabled="true"]')) return;
+        if (e.pointerType !== 'touch' || fromPortal(e) || (e.target as Element).closest('[data-pan-disabled="true"]')) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const points = [...touches.current.values()];
@@ -567,7 +573,7 @@ export function UnifiedSankeyChart({
         setIsPanning(false);
       }}
       onMouseDown={e => {
-        if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
+        if (fromPortal(e) || (e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
         panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
         dragged.current = false;
         setIsPanning(true);
