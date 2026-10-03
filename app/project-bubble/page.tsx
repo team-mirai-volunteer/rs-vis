@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { ProjectDetailPanel } from '@/client/components/ProjectMap/ProjectDetailPanel';
+import { RecipientDetailPanel } from '@/client/components/ProjectMap/RecipientDetailPanel';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -91,7 +92,7 @@ export default function ProjectMapPage() {
 
   // 表示の切り替え
   const [colorMode, setColorMode] = useState<ColorMode>('ministry');
-  const [sizeMetric, setSizeMetric] = useState<SizeMetric>('inverseScore');
+  const [sizeMetric, setSizeMetric] = useState<SizeMetric>('budget');
   const [showClusterLabels, setShowClusterLabels] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
   const [showTable, setShowTable] = useState(false);
@@ -175,7 +176,7 @@ export default function ProjectMapPage() {
       if (lockedRecipientId) p.set('rc', lockedRecipientId);
     }
     if (colorMode !== 'ministry') p.set('c', colorMode);
-    if (sizeMetric !== 'inverseScore') p.set('s', sizeMetric);
+    if (sizeMetric !== 'budget') p.set('s', sizeMetric);
     if (!showRegions) p.set('rg', '0');
     if (!showClusterLabels) p.set('cl', '0');
     if (showTable) p.set('tb', '1');
@@ -450,8 +451,12 @@ export default function ProjectMapPage() {
     selectedOnly: isPlaceholderKind,
     onHoverRecipient: (r: ProjectMapSpendingRecipient | null, sc: { x: number; y: number } | null) =>
       setHoverRecipient(r && sc ? { r, x: sc.x, y: sc.y } : null),
-    onSelectRecipient: (r: ProjectMapSpendingRecipient) =>
-      setLockedRecipientId(id => (id === r.id ? null : r.id)),
+    // 事業のクリックと同じ: クリックした支出先を選び（もう一度押しても外さない）、事業の選択とは入れ替える。
+    // 空白のクリックで外れるのも事業と同じ（selectPoint(null) が固定も外す）
+    onSelectRecipient: (r: ProjectMapSpendingRecipient) => {
+      setSelected(null);
+      setLockedRecipientId(r.id);
+    },
   } : null), [isSpending, spendData, visibleRecipients, hoverRecipient, lockedRecipientId, spendQuery, isPlaceholderKind]);
 
   /** 事業の選択。支出つながりでは事業を選び直したら支出先の固定を外す（注目の主語を事業に戻す） */
@@ -592,8 +597,8 @@ export default function ProjectMapPage() {
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[calc(100dvh-var(--app-header-h)-24px)]',
           'sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-[calc(100%-24px)] sm:w-[360px]',
-          selected ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
-          mobilePanelOpen || selected ? 'flex' : 'hidden'
+          selected || lockedRecipient ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
+          mobilePanelOpen || selected || lockedRecipient ? 'flex' : 'hidden'
         )}
       >
 
@@ -601,7 +606,7 @@ export default function ProjectMapPage() {
       <div className="contents xl:col-start-1 xl:flex xl:min-w-0 xl:flex-col xl:gap-2">
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft", selected && !mobilePanelOpen && "max-sm:hidden")}>
+          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-sm:hidden")}>
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"
@@ -732,7 +737,15 @@ export default function ProjectMapPage() {
       </div>
 
       </div>
-      {selected && (
+      {/* 支出先（菱形）を固定している間は、その支出先の詳細を出す。固定を外すと選択中の事業の詳細に戻る */}
+      {lockedRecipient ? (
+        <RecipientDetailPanel
+          key={`${year}-${lockedRecipient.id}`}
+          recipient={lockedRecipient}
+          year={year}
+          onClose={() => setLockedRecipientId(null)}
+        />
+      ) : selected && (
         <ProjectDetailPanel
           key={`${year}-${selected.pid}`}
           point={selected}
