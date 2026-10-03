@@ -8,6 +8,7 @@
 
 import type { Dispatch, SetStateAction } from 'react';
 import { RangeWindowRow } from '@/client/components/SankeySvg/RangeWindowRows';
+import { useMediaQuery } from '@/client/hooks/useMediaQuery';
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { DEFAULT_UNIFIED_TOP_N, type UnifiedOffset, type UnifiedTopN } from '@/types/unified-budget-view';
 
@@ -30,11 +31,14 @@ export function UnifiedControls({
   onTopNChange: Dispatch<SetStateAction<UnifiedTopN>>;
   onOffsetChange: (next: UnifiedOffset) => void;
 }) {
+  // 1 段に並べたときバーが一番短くなるノート PC 幅では、バー内の件数を 1px 小さくして収める
+  const compact = useMediaQuery('(min-width: 1280px) and (max-width: 1535px)');
   const rows = UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c) && isRankable(c));
   if (rows.length === 0) return null;
   return (
-    // 列ごとに独立したカードを横に並べる（1 枚 ≒ 260px）。縦に積むと図の上端を圧迫するため。狭幅では折り返す
-    <div data-pan-disabled="true" className="pointer-events-none flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start">
+    // 列ごとに独立したカードを横に並べる。縦に積むと図の上端を圧迫するため。
+    // xl 以上（1280px〜。ノート PC を含む）は折り返さず、カードを空き幅に合わせて同じ割合で縮める（つまみのバーが縮む）。タブレット幅では折り返す
+    <div data-pan-disabled="true" className="pointer-events-none flex min-w-0 flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start xl:flex-1 xl:flex-nowrap">
       {rows.map(column => {
         const total = columnCounts[column] ?? 0;
         const limit = topN[column] ?? DEFAULT_UNIFIED_TOP_N[column];
@@ -53,7 +57,7 @@ export function UnifiedControls({
           });
         };
         return (
-          <div key={column} className="pointer-events-auto min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs">
+          <div key={column} className="pointer-events-auto w-[280px] min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-1.5 shadow-xs xl:w-auto xl:flex-[0_1_300px] xl:px-2">
           <RangeWindowRow
             label={UNIFIED_COLUMN_LABELS[column]}
             total={total}
@@ -63,9 +67,8 @@ export function UnifiedControls({
             maxOffset={maxOffset}
             onOffsetChange={v => onOffsetChange({ ...offset, [column]: v })}
             markReplace={() => {}}
-            metaFontPx={12}
-            // バーの長さは列によらず揃える（カード幅はラベルの長さぶんだけ変わる）
-            trackWidth={156}
+            metaFontPx={compact ? 11 : 12}
+            // バーはカードの残り幅いっぱい（カード幅を揃えるので、バーの長さはラベルの長さぶんだけ変わる）
           />
           </div>
         );

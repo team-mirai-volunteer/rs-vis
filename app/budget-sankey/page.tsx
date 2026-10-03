@@ -493,7 +493,7 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>}
-      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-[2px] sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-[2px] sm:flex sm:max-w-[calc(100%-372px)] xl:max-w-[calc(100%-356px)] 2xl:max-w-[calc(100%-372px)] sm:flex-row sm:items-start xl:w-[calc(100%-356px)] 2xl:w-[calc(100%-372px)]', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         {!wideControls && settingsPanel('top-right')}
       </div>

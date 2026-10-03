@@ -103,7 +103,7 @@ export function UnifiedSearch({
               setOpen(false);
             }
           }}
-          className="h-8 w-44 bg-transparent text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
+          className="h-8 w-44 bg-transparent xl:w-40 2xl:w-44 text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
         />
         <Button
           variant="ghost"

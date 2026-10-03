@@ -808,30 +808,30 @@ export function UnifiedSankeyChart({
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: unifiedNodeColor({ ...selectedDetails, aggregated: false }) }}>
+                  <span className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: unifiedNodeColor({ ...selectedDetails, aggregated: false }) }}>
                     {UNIFIED_COLUMN_LABELS[selectedDetails.column]}
                   </span>
                   {selectedDetails.kind && selectedDetails.kind !== 'rs' && (
-                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
+                    <span className="whitespace-nowrap rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
                   )}
-                  {selectedDetails.aggregated && <span className="rounded-full border border-mirai-border bg-card px-2 py-0.5 text-[11px] font-medium text-mirai-text-subtle">集約</span>}
+                  {selectedDetails.aggregated && <span className="whitespace-nowrap rounded-full border border-mirai-border bg-card px-2 py-0.5 text-[11px] font-medium text-mirai-text-subtle">集約</span>}
                   {selectedDetails.accountType && (
-                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
+                    <span className="whitespace-nowrap rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
                   )}
-                  {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える */}
+                  {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える。各項目の途中では折り返さない（「予算事業」「ID 7」に割れないように） */}
                   {(selectedDetails.rsMinistry || selectedDetails.projectId !== undefined) && (
-                    <span className="flex gap-2 text-[11px] text-mirai-text-muted">
+                    <span className="flex flex-wrap gap-x-2 whitespace-nowrap text-[11px] text-mirai-text-muted">
                       {selectedDetails.rsMinistry && <span>{selectedDetails.rsMinistry}</span>}
                       {selectedDetails.projectId !== undefined && <span>予算事業ID {selectedDetails.projectId}</span>}
                     </span>
                   )}
                   {selectedDetails.sourceUrl && (
-                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
+                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       {provisional && isIndividualProject ? 'RSシートの出典' : '予算書の出典'}
                     </a>
                   )}
                   {selectedDetails.column === 'koumoku' && (
-                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
+                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       科目別内訳で開く
                     </a>
                   )}
