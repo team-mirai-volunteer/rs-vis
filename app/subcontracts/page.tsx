@@ -705,29 +705,29 @@ function SubcontractsPageInner() {
               </colgroup>
               <thead>
                 <tr className="bg-mirai-surface">
-                  <SortHeader sort="projectId" columnIndex={0}>PID</SortHeader>
-                  <SortHeader sort="projectName" columnIndex={1}>事業名</SortHeader>
-                  <SortHeader sort="ministry" columnIndex={2}>省庁</SortHeader>
-                  <SortHeader sort="bureau" columnIndex={3}>担当組織</SortHeader>
-                  <SortHeader sort="accountCategory" columnIndex={4}>会計区分</SortHeader>
-                  <SortHeader sort="budget" columnIndex={5} align="right">予算額</SortHeader>
-                  <SortHeader sort="execution" columnIndex={6} align="right">執行額</SortHeader>
-                  <SortHeader sort="directExpenseTotal" columnIndex={7} align="right">直接支出合計</SortHeader>
-                  <SortHeader sort="totalExpense" columnIndex={8} align="right">支出額合計</SortHeader>
+                  <SortHeader sort="projectId" title="予算事業ID（RSシステムの事業番号）。年度をまたいで同じ事業を指します" columnIndex={0}>PID</SortHeader>
+                  <SortHeader sort="projectName" title="事業名。クリックするとその事業の委託構造（ブロックと資金の流れ）を開きます" columnIndex={1}>事業名</SortHeader>
+                  <SortHeader sort="ministry" title="事業を所管する府省庁" columnIndex={2}>省庁</SortHeader>
+                  <SortHeader sort="bureau" title="事業を担当する局・庁／部／課" columnIndex={3}>担当組織</SortHeader>
+                  <SortHeader sort="accountCategory" title="一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）" columnIndex={4}>会計区分</SortHeader>
+                  <SortHeader sort="budget" title="歳出予算現額の合計（レビューシート 2-1）" columnIndex={5} align="right">予算額</SortHeader>
+                  <SortHeader sort="execution" title="実際に執行された額の合計（レビューシート 2-1）" columnIndex={6} align="right">執行額</SortHeader>
+                  <SortHeader sort="directExpenseTotal" title="事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません" columnIndex={7} align="right">直接支出合計</SortHeader>
+                  <SortHeader sort="totalExpense" title="全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります" columnIndex={8} align="right">支出額合計</SortHeader>
                   <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）">支出額合計 − 直接支出合計</SortHeader>
                   <SortHeader sort="executionMinusDirect" columnIndex={10} align="right" title="執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり">執行額 − 直接支出合計</SortHeader>
-                  <SortHeader sort="totalBlockCount" columnIndex={11} align="right">ブロック</SortHeader>
-                  <SortHeader sort="directBlockCount" columnIndex={12} align="right">直接支出</SortHeader>
-                  <SortHeader sort="subcontractBlockCount" columnIndex={13} align="right">再委託</SortHeader>
-                  <SortHeader sort="indirectCostCount" columnIndex={14} align="right">間接経費</SortHeader>
-                  <SortHeader sort="separateOriginCount" columnIndex={15} align="right">別財源</SortHeader>
-                  <SortHeader sort="totalRecipientCount" columnIndex={16} align="right">支出先</SortHeader>
-                  <SortHeader sort="maxDepth" columnIndex={17} align="right">階層</SortHeader>
-                  <SortHeader sort="branchingBlockCount" columnIndex={18} align="right">分岐</SortHeader>
-                  <SortHeader sort="maxBranchWidth" columnIndex={19} align="right">最大分岐</SortHeader>
-                  <SortHeader sort="mergeTargetCount" columnIndex={20} align="right">合流</SortHeader>
-                  <SortHeader sort="maxMergeWidth" columnIndex={21} align="right">最大合流</SortHeader>
-                  <SortHeader sort="institutional" columnIndex={22} align="center">構造</SortHeader>
+                  <SortHeader sort="totalBlockCount" title="ブロック（同じ役割の支出先のまとまり。A・B・C…）の数" columnIndex={11} align="right">ブロック</SortHeader>
+                  <SortHeader sort="directBlockCount" title="事業（国）から直接支払っているブロックの数" columnIndex={12} align="right">直接支出</SortHeader>
+                  <SortHeader sort="subcontractBlockCount" title="他のブロックから再委託・再々委託を受けているブロックの数" columnIndex={13} align="right">再委託</SortHeader>
+                  <SortHeader sort="indirectCostCount" title="国自らが支出する間接経費（職員旅費・事務費など）の記載件数" columnIndex={14} align="right">間接経費</SortHeader>
+                  <SortHeader sort="separateOriginCount" title="事業から直接も再委託でもつながっていない起点ブロックの数（別の財源・負担金などから出ているもの）" columnIndex={15} align="right">別財源</SortHeader>
+                  <SortHeader sort="totalRecipientCount" title="全ブロックに記載された支出先の数" columnIndex={16} align="right">支出先</SortHeader>
+                  <SortHeader sort="maxDepth" title="再委託の最も深い段数（直接支出だけなら1）" columnIndex={17} align="right">階層</SortHeader>
+                  <SortHeader sort="branchingBlockCount" title="1つのブロックから2つ以上のブロックへ再委託している「分岐元」の数" columnIndex={18} align="right">分岐</SortHeader>
+                  <SortHeader sort="maxBranchWidth" title="1つのブロックから出ている再委託先ブロックの最大数" columnIndex={19} align="right">最大分岐</SortHeader>
+                  <SortHeader sort="mergeTargetCount" title="2つ以上のブロックから資金を受けている「合流先」ブロックの数" columnIndex={20} align="right">合流</SortHeader>
+                  <SortHeader sort="maxMergeWidth" title="1つのブロックに流れ込む委託元ブロックの最大数" columnIndex={21} align="right">最大合流</SortHeader>
+                  <SortHeader sort="institutional" title="全ブロックが金額0・支出先なしの「制度上の流れ」だけを記載した事業か（交付先の制度を示すだけの記載）" columnIndex={22} align="center">構造</SortHeader>
                 </tr>
               </thead>
               <tbody>
