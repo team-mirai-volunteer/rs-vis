@@ -238,12 +238,16 @@ export function ActionBadge({ action }: { action: string }) {
   );
 }
 
-export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string }> = {
-  valid:   { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
-  gov:     { label: '行政機関', cls: 'bg-status-good-bg text-status-good-fg' },
-  supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent' },
+/**
+ * 支出先名の横のバッジ。desc はホバーで出す説明。判定は scripts/score-project-quality.py の
+ * 「支出先名の辞書 → 行政機関 → 補助辞書 → 法人番号の裏取り（国税庁データの公式名と一致）」の順
+ */
+export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string; desc: string }> = {
+  valid:   { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg', desc: '支出先名が正式な法人名として確認でき、法人番号も記載されています。' },
+  gov:     { label: '行政機関', cls: 'bg-status-good-bg text-status-good-fg', desc: '国の機関・地方公共団体などの行政機関として確認できた支出先です。' },
+  supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent', desc: '表記ゆれ・略称の補助辞書で、実在の相手として確認できた支出先です。' },
   // 番号一致(houjin.db裏取り)も表示上は valid と同格の OK に統合（内部 s='cn' と cnVerifiedCount は集計用に保持）
-  cn:      { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
-  invalid: { label: '不一致',  cls: 'bg-status-bad-bg text-status-bad-fg' },
-  unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle' },
+  cn:      { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg', desc: '記載された法人番号の公式名（国税庁の法人番号データ）が支出先名と一致しました。' },
+  invalid: { label: '不一致',  cls: 'bg-status-bad-bg text-status-bad-fg', desc: '支出先名が正式な法人名として確認できないか（「〇〇ほか」や略称など）、正式な名称なのに法人番号の記載がありません。' },
+  unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle', desc: '支出先名の辞書に無く、法人番号からも特定できませんでした。任意団体・個人・海外の相手など、法人番号を持たない相手のことも多くあります。' },
 };

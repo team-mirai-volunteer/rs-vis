@@ -672,7 +672,7 @@ ${a.desc}`}>
                     {([
                       { label: '支出先名', align: 'left', sort: null, title: undefined },
                       { label: '委託チェーン', align: 'left', sort: 'chain' as const, title: '委託チェーン（A→B→C）でソート' },
-                      { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号(Corporate Number)。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）' },
+                      { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）。支出先名の横の OK・未登録などのバッジにカーソルを合わせると判定の意味を表示' },
                       { label: '金額', align: 'right', sort: 'a2' as const, title: '個別支出額（CSVの「金額」列）' },
                       { label: '実支出比', align: 'right', sort: 'pct' as const, title: '実質支出合計に対する割合' },
                       { label: '契約方式', align: 'left', sort: null, title: '入札・随意契約などの契約方式と応札・応募者数（RS公開APIから突き合わせ。補助金等は「契約以外」）。バッジにカーソルを合わせると補足・落札率を表示' },
@@ -702,8 +702,8 @@ ${a.desc}`}>
                         <td className="px-4 py-1.5 text-mirai-text font-medium" title={row.n}>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className="truncate flex-1">{row.n}</span>
-                            {!row.o && <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
-                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="不透明キーワードにマッチ">不透明</span>}
+                            {!row.o && <span title={sm.desc} className={`shrink-0 inline-block cursor-help px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
+                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="支出先名が「その他」「〇〇等」など、相手を特定できない書き方にあたります（不透明キーワードに一致）">不透明</span>}
                           </div>
                         </td>
                         <td className="px-3 py-1.5 tabular-nums text-mirai-text-muted truncate" title={row.chain}>
