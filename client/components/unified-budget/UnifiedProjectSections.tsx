@@ -38,7 +38,6 @@ export function UnifiedProjectSections({
   flush = false,
   seamless = false,
   provisionalDetail,
-  showScoreDetail = true,
 }: {
   pid: number;
   projectName: string;
@@ -55,11 +54,6 @@ export function UnifiedProjectSections({
    * 政策評価は点数の代わりに未実施の旨を出す（評価・再委託構造ページを引かない）
    */
   provisionalDetail?: RsApiDetail;
-  /**
-   * 政策評価の「詳細」（評価一覧と同じ詳細ダイアログ）を出すか。サンキー図はパネル自体に事業の詳細が並び、
-   * ダイアログが同じ内容を重ねて出すだけなので出さない（バブルチャートなどは出す）
-   */
-  showScoreDetail?: boolean;
 }) {
   const year = String(rsSheetYear);
   const isProvisional = provisionalDetail !== undefined;
@@ -97,7 +91,7 @@ export function UnifiedProjectSections({
         unavailable={isProvisional ? 'この事業はまだ政策評価を実施していません（RS公開APIから暫定取得した新規事業）。' : undefined}
         labelPx={scaleFont(11)}
         metaPx={scaleFont(10)}
-        onOpenDetail={isProvisional || !showScoreDetail ? undefined : openScoreDialog}
+        onOpenDetail={isProvisional ? undefined : openScoreDialog}
         detailLoading={scoreLoading}
       />
 
