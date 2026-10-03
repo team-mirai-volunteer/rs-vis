@@ -32,8 +32,7 @@ import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-rea
 import { externalCorporateLinks } from '@/app/lib/api/links';
 import { UnifiedProjectSections } from './UnifiedProjectSections';
 import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
-import { rsApiContractEntries, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
-import { methodsForRecipient } from '@/app/lib/contract-method';
+import { rsApiContractLines, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 import { recipientContractsInProject } from '@/app/lib/recipient-contracts';
@@ -322,8 +321,6 @@ export function UnifiedSankeyChart({
     [provisionalProject]
   );
   const projectBlocks = provisional ? provisionalBlocks : sheetBlocks;
-  /** 暫定データの契約方式（ホバー用）。シート年度のデータは API が返すので手元では持たない */
-  const provisionalContracts = useMemo(() => (provisionalProject ? rsApiContractEntries(provisionalProject) : []), [provisionalProject]);
   const budgetSummary = selectedDetails?.budgetSummary ?? sheetBlocks?.budgetSummary;
   const budgetBreakdown = selectedDetails?.budgetBreakdown ?? sheetBlocks?.budgetBreakdown ?? [];
   const hasBudgetTab = isIndividualProject && !provisional;
@@ -357,13 +354,13 @@ export function UnifiedSankeyChart({
     if (isIndividualProject && selectedDetails?.projectId !== undefined && projectBlocks) {
       if (contractSheetYear !== null) return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: [selectedDetails.projectId] };
       const own = recipientContractsInProject(projectBlocks, item.name);
-      return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], methods: methodsForRecipient(provisionalContracts, item.name),
+      return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], lines: provisionalProject ? rsApiContractLines(provisionalProject, item.name) : undefined,
         year: contractSheetYear, pids: [selectedDetails.projectId] };
     }
     // 所管・項などを選んでいるときは、その選択に連なる事業（パネルの事業タブに出るもの）からの契約だけにする
     const inSelection = selectionProjectIds.size > 0 ? contractPidsOf(item.id).filter(pid => selectionProjectIds.has(pid)) : contractPidsOf(item.id);
     return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: inSelection };
-  }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, provisionalContracts, contractSheetYear, contractPidsOf, selectionProjectIds]);
+  }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, provisionalProject, contractSheetYear, contractPidsOf, selectionProjectIds]);
   /**
    * 支出先を選んでいるときの「事業」「事業(支出)」タブの行ホバー。その事業がこの支出先に払った額と契約を出す。
    * 金額は事業全体ではなく、この支出先へのつながり（絞り込み前の browseLinks）の合計
@@ -445,7 +442,7 @@ export function UnifiedSankeyChart({
     const hover = (x: number, y: number): RecipientHover => ({ x, y, name: recipient.name, amount: recipient.amount, year: contractSheetYear,
       pids: selectedDetails?.projectId !== undefined ? [selectedDetails.projectId] : [],
       ...(contractSheetYear === null && projectBlocks ? { contracts: recipientContractsInProject(projectBlocks, recipient.name)?.contracts ?? [],
-        methods: methodsForRecipient(provisionalContracts, recipient.name) } : {}) });
+        lines: provisionalProject ? rsApiContractLines(provisionalProject, recipient.name) : undefined } : {}) });
     return <div key={`${recipient.name}-${index}`} className="flex w-full items-baseline justify-between gap-3 border-b border-border px-1 py-1.5"
       onMouseEnter={e => setPanelRecipientHover(hover(e.clientX, e.clientY))}
       onMouseMove={e => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}

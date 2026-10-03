@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apiContractMethod, contractCategory, findContract, methodsForRecipient, type ContractMethodEntry } from '../app/lib/contract-method';
+import { apiContractMethod, contractCategory, contractLines, findContract, type ContractMethodEntry } from '../app/lib/contract-method';
 
 const e = (over: Partial<ContractMethodEntry>): ContractMethodEntry => ({ b: 'A', n: '株式会社テスト', cn: '', a: 100, m: 'negotiated-contract-others', ...over });
 
@@ -27,11 +27,19 @@ test('金額で決まらず方式も割れるときは推測しない', () => {
   assert.equal(findContract(same, { b: 'A', n: '株式会社テスト', a2: 300 })?.m, 'negotiated-contract-others');
 });
 
-test('支出先ごとに方式をまとめ、1者応札の件数を数える', () => {
-  const s = methodsForRecipient([e({ a: 100, ap: 1 }), e({ a: 50, ap: 3 }), e({ a: 500, m: 'subsidy' }), e({ n: '別会社', a: 999 })], '株式会社テスト');
-  assert.deepEqual(s, [
-    { m: 'subsidy', amount: 500, count: 1, singleBidder: 0 },
-    { m: 'negotiated-contract-others', amount: 150, count: 2, singleBidder: 1 },
+test('契約の行は同じ概要・同じ方式を1行にまとめ、概要も方式も無い行は落とす', () => {
+  assert.deepEqual(contractLines([
+    { text: '広報業務', m: 'negotiated-contract-others', ap: 1 },
+    { text: ' 広報業務 ', m: 'negotiated-contract-others', ap: 1 },
+    { text: '広報業務', m: 'open-tendering-lowest-price' },
+    { text: '', m: 'subsidy' },
+    { text: '' },
+    { text: '印刷' },
+  ]), [
+    { text: '広報業務', m: 'negotiated-contract-others', ap: 1 },
+    { text: '広報業務', m: 'open-tendering-lowest-price' },
+    { text: '', m: 'subsidy' },
+    { text: '印刷' },
   ]);
 });
 

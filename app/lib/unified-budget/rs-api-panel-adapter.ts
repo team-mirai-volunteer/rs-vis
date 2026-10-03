@@ -7,7 +7,7 @@
 import type { ProjectDetail } from '@/types/project-details';
 import type { RsApiDetail } from '@/types/rs-api';
 import type { BlockEdge, BlockNode, SubcontractGraph } from '@/types/subcontract';
-import { apiContractMethod, type ContractMethodEntry } from '@/app/lib/contract-method';
+import { apiContractMethod, contractLines, type ContractLine } from '@/app/lib/contract-method';
 
 const amountOrUnknown = (amount: number | null | undefined) => (amount === null || amount === undefined || amount < 0 ? Number.NaN : amount);
 const finiteSum = (values: number[]) => values.filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
@@ -132,10 +132,9 @@ export function rsApiToSubcontractGraph(detail: RsApiDetail): SubcontractGraph |
   };
 }
 
-/** 暫定データの契約を、契約方式のまとめ（methodsForRecipient）に渡せる形にする */
-export function rsApiContractEntries(detail: RsApiDetail): ContractMethodEntry[] {
-  return detail.groups.flatMap(group => group.payments.flatMap(payment => payment.contracts.flatMap(contract => {
-    const method = apiContractMethod(contract);
-    return method ? [{ b: group.display_code, n: payment.name, cn: payment.corporate_number ?? '', a: contract.amount, ...method }] : [];
-  })));
+/** 暫定データで、支出先名が一致する契約を「概要＋契約方式」の行にする */
+export function rsApiContractLines(detail: RsApiDetail, name: string): ContractLine[] {
+  const target = name.trim();
+  return contractLines(detail.groups.flatMap(group => group.payments.filter(payment => payment.name.trim() === target)
+    .flatMap(payment => payment.contracts.map(contract => ({ text: contract.overview, ...apiContractMethod(contract) })))));
 }

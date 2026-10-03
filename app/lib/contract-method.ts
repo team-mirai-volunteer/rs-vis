@@ -132,27 +132,25 @@ export function findContract(entries: readonly ContractMethodEntry[] | undefined
   return pool.every(e => e.m === pool[0].m) ? pool[0] : null;
 }
 
-export interface RecipientMethodSummary {
-  m: ContractMethodCode;
-  /** この方式の契約金額の合計（円）。非公表を除く */
-  amount: number;
-  /** この方式の契約の件数 */
-  count: number;
-  /** 応札・応募者数が1者だった件数 */
-  singleBidder: number;
+/** ホバーに出す契約1行（契約の概要と、突き合わせできれば契約方式） */
+export interface ContractLine {
+  text: string;
+  m?: ContractMethodCode;
+  mt?: string;
+  ap?: number;
 }
 
-/** 1事業の中で、支出先名が一致する契約を方式ごとにまとめる（金額の大きい順） */
-export function methodsForRecipient(entries: readonly ContractMethodEntry[] | undefined, name: string): RecipientMethodSummary[] {
-  const target = norm(name);
-  const byMethod = new Map<ContractMethodCode, RecipientMethodSummary>();
-  for (const e of entries ?? []) {
-    if (norm(e.n) !== target) continue;
-    const s = byMethod.get(e.m) ?? { m: e.m, amount: 0, count: 0, singleBidder: 0 };
-    s.amount += e.a ?? 0;
-    s.count++;
-    if (e.ap === 1) s.singleBidder++;
-    byMethod.set(e.m, s);
+/** 契約の行を、同じ概要・同じ方式ごとに1行にまとめる（記載順）。概要も方式も無い行は落とす */
+export function contractLines(rows: ReadonlyArray<{ text?: string | null; m?: ContractMethodCode; mt?: string; ap?: number }>): ContractLine[] {
+  const out: ContractLine[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const text = row.text?.trim() ?? '';
+    if (!text && !row.m) continue;
+    const key = `${text}|${row.m ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ text, ...(row.m ? { m: row.m } : {}), ...(row.mt ? { mt: row.mt } : {}), ...(row.ap !== undefined ? { ap: row.ap } : {}) });
   }
-  return [...byMethod.values()].sort((a, b) => b.amount - a.amount);
+  return out;
 }
