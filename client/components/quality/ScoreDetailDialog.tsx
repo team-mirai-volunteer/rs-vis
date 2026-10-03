@@ -240,7 +240,7 @@ ${a.desc}`}>
               </div>
             </div>
           </div>
-          {/* 何を評価した結果なのかを先に読めるよう、事業内容 → 政策評価 → 計算根拠 の順に並べる */}
+          {/* 何を評価した結果なのかを先に読めるよう、事業内容 → 政策評価 の順に並べる。計算根拠の開閉は政策評価の直下に置く */}
           <div className="mt-1 flex items-center gap-4">
             <Button
               variant="link"
@@ -258,13 +258,6 @@ ${a.desc}`}>
                 {showPolicy ? '▲ 政策評価を閉じる' : '▼ 政策評価'}
               </Button>
             )}
-            <Button
-              variant="link"
-              onClick={() => setShowAxisDetail(d => !d)}
-              className={TOGGLE_LINK_CLS}
-            >
-              {showAxisDetail ? '▲ 計算根拠を閉じる' : '▼ スコア計算根拠'}
-            </Button>
           </div>
         </div>
 
@@ -428,9 +421,17 @@ ${a.desc}`}>
           </div>
         )}
 
+        {/* スコア計算根拠の開閉。上部の切替列に置くと、開いた中身がずっと下に出て開いたことに気づけないので、中身の直上に置く */}
+        <section className="border-b border-mirai-border px-6 py-2" aria-label="スコア計算根拠">
+          <Button variant="ghost" size="xs" aria-expanded={showAxisDetail} aria-controls="score-axis-detail"
+            onClick={() => setShowAxisDetail(v => !v)} className="px-0 text-primary-accent">
+            {showAxisDetail ? '▾' : '▸'} スコア計算根拠
+          </Button>
+        </section>
+
         {/* Axis detail (collapsible) */}
         {showAxisDetail && (
-          <div className="border-b border-mirai-border divide-y divide-border">
+          <div id="score-axis-detail" className="border-b border-mirai-border divide-y divide-border">
             <div className="px-5 py-1.5 bg-mirai-surface-teal/60 text-[11px] text-mirai-text-muted">
               欠測した項目は重みごと除外して再正規化します（0点扱いにはしません）。
             </div>
