@@ -298,7 +298,7 @@ ${a.desc}`}>
               </div>
             )}
             {projectInfo === null && <div className="text-xs text-mirai-text-muted">事業内容データなし</div>}
-            {projectInfo && <ProjectDescription detail={projectInfo} />}
+            {projectInfo && <ProjectDescription detail={projectInfo} sheetYear={year} />}
           </div>
         )}
 

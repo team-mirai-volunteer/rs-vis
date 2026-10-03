@@ -139,7 +139,7 @@ export function ProjectOverviewSection({
         <div className="px-3.5 pb-3 text-xs text-mirai-text-secondary">
           {isLoading && <span className="text-mirai-text-placeholder">読み込み中...</span>}
           {!isLoading && detail === null && <span className="text-mirai-text-placeholder">詳細情報が見つかりませんでした</span>}
-          {!isLoading && detail && <ProjectDescription detail={detail} showSourceLink={false} />}
+          {!isLoading && detail && <ProjectDescription detail={detail} showSourceLink={false} sheetYear={year} />}
         </div>
       )}
     </div>
