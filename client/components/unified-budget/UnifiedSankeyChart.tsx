@@ -86,6 +86,7 @@ export function UnifiedSankeyChart({
   rsMeasureLabel,
   columnLabels,
   rsSheetYear,
+  programSortLabel,
   rsAmountKind,
   hasSpending = true,
   scoreStatus = 'idle',
@@ -127,6 +128,8 @@ export function UnifiedSankeyChart({
   /** 列見出しの差し替え（府省庁基準では 会計→予算総計、所管→府省庁）。無い列は既定の列名 */
   columnLabels?: Partial<Record<UnifiedColumn, string>>;
   rsSheetYear: number;
+  /** 事業列を金額以外で並べているときの表記（「総合点の低い順」など）。列見出しの測定量に添える */
+  programSortLabel?: string;
   rsAmountKind: MofRsAmountKind;
   /** 事業(支出)・支出先の列がある年度か（無ければ支出額・支出先名・再委託の絞り込みを出さない） */
   hasSpending?: boolean;
@@ -522,7 +525,7 @@ export function UnifiedSankeyChart({
     if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: '当初予算・会計間受入含む' };
     if (column === 'program') {
       const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
-      return { label: `${base}_${budgetYear}`, measure };
+      return { label: `${base}_${budgetYear}`, measure: programSortLabel ? `${measure}・${programSortLabel}` : measure };
     }
     if (column === 'program-spending') return { label: `${base}_${budgetYear}`, measure: '支出額' };
     if (column === 'recipient') return { label: `${base}_${budgetYear}`, measure: '支出額' };

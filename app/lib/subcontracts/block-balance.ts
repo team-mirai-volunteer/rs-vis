@@ -38,3 +38,21 @@ export function blockBalance(graph: Pick<SubcontractGraph, 'blocks' | 'flows'>, 
   }
   return result(paid, block.totalAmount - paid, null);
 }
+
+/**
+ * 事業単位の差額。直下に再委託先ブロックを持ち差額を算出できたブロックだけを合計する。
+ * 記載額の差であり、実際の受取額や利益ではない。該当ブロックが無ければ null。
+ */
+export function projectBlockDifference(graph: Pick<SubcontractGraph, 'blocks' | 'flows'>): { difference: number; recorded: number; ratio: number } | null {
+  let difference = 0;
+  let recorded = 0;
+  let found = false;
+  for (const block of graph.blocks) {
+    const balance = blockBalance(graph, block);
+    if (balance.difference === null) continue;
+    difference += balance.difference;
+    recorded += balance.recorded;
+    found = true;
+  }
+  return found && recorded > 0 ? { difference, recorded, ratio: difference / recorded } : null;
+}
