@@ -37,3 +37,17 @@ test('契約は法人番号で集め、支出元の事業に限る', () => {
 test('支出先インデックスに無ければ説明だけ返す', () => {
   assert.deepEqual(buildRecipientProfile('その他', null, null), { name: 'その他', genericNote: genericRecipientNote('その他'), methods: [] });
 });
+
+test('外部情報は法人番号で付け、http(s) 以外の URL は使わない', () => {
+  const entry = {
+    key: '1234567890123', name: '株式会社テスト', corporateNumber: '1234567890123', aliases: ['株式会社テスト'],
+    totals: { directAmount: 1, directCount: 1, subcontractAmount: 0, subcontractCount: 0 }, byMinistry: [], appearances: [{ pid: 1 }],
+  } as unknown as RecipientEntry;
+  const profile = buildRecipientProfile('株式会社テスト', entry, null, {
+    '1234567890123': { ad: '東京都千代田区', k: '301', wd: 'Q1', site: 'javascript:alert(1)', wiki: 'https://ja.wikipedia.org/wiki/テスト', since: '1970-01-01' },
+  });
+  assert.equal(profile.external?.kindLabel, '株式会社');
+  assert.equal(profile.external?.site, undefined);
+  assert.equal(profile.external?.wiki, 'https://ja.wikipedia.org/wiki/テスト');
+  assert.equal(buildRecipientProfile('株式会社テスト', entry, null, {}).external, undefined);
+});

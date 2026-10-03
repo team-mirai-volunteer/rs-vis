@@ -4,7 +4,8 @@
  * 支出先ノードを選んだときの「支出先そのものの説明」。法人番号・受注額・支出元の府省・契約方式の内訳を出す。
  * データは /api/recipient-profile（支出先インデックスと RS 公開 API の契約方式）。シート年度ごとにキャッシュする。
  */
-import type { RecipientProfile } from '@/app/lib/recipient-profile';
+import { corporateLinks, type RecipientProfile } from '@/app/lib/recipient-profile';
+import { externalCorporateLinks } from '@/app/lib/api/links';
 import { CONTRACT_CATEGORY_DESCRIPTIONS, CONTRACT_CATEGORY_LABELS } from '@/app/lib/contract-method';
 import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -24,6 +25,26 @@ export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: 
     {profile.genericNote && <p className="rounded-lg bg-mirai-surface px-3 py-2 leading-relaxed text-mirai-text-secondary">{profile.genericNote}</p>}
     {!entry && !profile.genericNote && <p className="text-mirai-text-muted">{fiscalYearLabel(sheetYear)}の支出先一覧に、この名前の支出先は見つかりませんでした。</p>}
     {entry && <>
+      {/* 法人番号で突き合わせた外部情報（所在地・法人種別は RS 公開 API、説明・設立・公式サイト・Wikipedia は Wikidata） */}
+      {(profile.external || entry.corporateNumber) && <div className="space-y-1.5">
+        {profile.external?.desc && <p className="leading-relaxed text-mirai-text-secondary" style={label}>{profile.external.desc}</p>}
+        {(profile.external?.kindLabel || profile.external?.ad || profile.external?.since) && <dl className="space-y-0.5" style={label}>
+          {profile.external.kindLabel && <div className="flex gap-2"><dt className="w-14 shrink-0 text-mirai-text-muted">法人種別</dt><dd className="text-mirai-text-subtle">{profile.external.kindLabel}</dd></div>}
+          {profile.external.ad && <div className="flex gap-2"><dt className="w-14 shrink-0 text-mirai-text-muted">所在地</dt><dd className="text-mirai-text-subtle">{profile.external.ad}</dd></div>}
+          {/* Wikidata の日付は年までの精度のことが多い（1月1日で入る）ので年だけ出す */}
+          {profile.external.since && <div className="flex gap-2"><dt className="w-14 shrink-0 text-mirai-text-muted">設立</dt><dd className="tabular-nums text-mirai-text-subtle">{profile.external.since.slice(0, 4)}年</dd></div>}
+        </dl>}
+        <div className="flex flex-wrap gap-x-3 gap-y-1" style={label}>
+          {[
+            ['公式サイト', profile.external?.site],
+            ['Wikipedia', profile.external?.wiki],
+            ['法人番号公表サイト', entry.corporateNumber ? corporateLinks(entry.corporateNumber).nta : undefined],
+            ['gBizINFO', entry.corporateNumber ? externalCorporateLinks(entry.corporateNumber)?.gbizinfo : undefined],
+            ['Wikidata', profile.external?.wd ? `https://www.wikidata.org/wiki/${profile.external.wd}` : undefined],
+          ].filter((link): link is [string, string] => !!link[1]).map(([text, href]) =>
+            <a key={text} href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">{text} ↗</a>)}
+        </div>
+      </div>}
       {/* 法人番号はパネルの見出しに出るので、ここでは記載が無いときだけ伝える */}
       {!entry.corporateNumber && <p className="text-mirai-text-muted" style={meta}>法人番号の記載はありません（任意団体・個人など番号を持たない相手か、記載漏れの可能性があります）。</p>}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1" style={label}>
@@ -49,6 +70,6 @@ export function UnifiedRecipientProfile({ name, sheetYear, scaleFont }: { name: 
       </div>}
       {entry.aliases.length > 0 && <p className="text-mirai-text-muted" style={meta}>別の表記: {entry.aliases.join('、')}</p>}
     </>}
-    <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式はRS公開API</p>
+    <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式・所在地・法人種別はRS公開API{profile.external?.wd && '、説明・設立・公式サイト・Wikipedia は Wikidata（法人番号で一致したもの）'}</p>
   </section>;
 }

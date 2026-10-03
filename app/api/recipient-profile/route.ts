@@ -6,7 +6,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { resolveRecipient } from '@/app/lib/api/recipient-index-loader';
-import { loadContractMethods } from '@/app/lib/api/contract-methods-loader';
+import { loadContractMethods, loadRecipientExternal } from '@/app/lib/api/contract-methods-loader';
 import { buildRecipientProfile } from '@/app/lib/recipient-profile';
 import { normalizeRecipientName } from '@/app/lib/recipient-key';
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const name = (req.nextUrl.searchParams.get('name') ?? '').trim();
     if (!name || name.length > MAX_NAME_CHARS) return NextResponse.json({ error: 'name が不正です' }, { status: 400 });
     const entry = /^その他/.test(name) ? null : resolveRecipient(year, `name:${normalizeRecipientName(name)}`);
-    return NextResponse.json(buildRecipientProfile(name, entry, loadContractMethods(year)), { headers: { 'Cache-Control': API_CACHE_CONTROL } });
+    return NextResponse.json(buildRecipientProfile(name, entry, loadContractMethods(year), loadRecipientExternal()?.byCn ?? null), { headers: { 'Cache-Control': API_CACHE_CONTROL } });
   } catch (e) {
     return serverErrorResponse('recipient-profile', e);
   }

@@ -5,6 +5,7 @@
 import { tryReadDataJson } from '@/app/lib/api/data-file';
 import { findContract, type ContractMethodsByPid } from '@/app/lib/contract-method';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
+import type { RecipientExternalFile } from '@/types/recipient-external';
 
 const cache = new Map<string, ContractMethodsByPid | null>();
 
@@ -22,4 +23,11 @@ export function withContractMethods(rows: RecipientRow[], pid: string, sheetYear
     if (!c) return row;
     return { ...row, m: c.m, ...(c.mt ? { mt: c.mt } : {}), ...(c.ap !== undefined ? { ap: c.ap } : {}), ...(c.br !== undefined ? { br: c.br } : {}) };
   });
+}
+
+let external: RecipientExternalFile | null | undefined;
+/** 支出先の外部情報（recipient-external.json）。年度によらず1ファイル。無ければ null */
+export function loadRecipientExternal(): RecipientExternalFile | null {
+  if (external === undefined) external = tryReadDataJson<RecipientExternalFile>('recipient-external.json');
+  return external;
 }
