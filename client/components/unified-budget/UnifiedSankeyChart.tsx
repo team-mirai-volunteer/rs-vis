@@ -38,6 +38,8 @@ import { rsApiContractLines, rsApiToProjectDetail, rsApiToSubcontractGraph } fro
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 import { recipientContractsInProject } from '@/app/lib/recipient-contracts';
+import { isOthersRowName, othersLabel, othersTitle, sumOthersCounts } from '@/app/lib/others-count';
+import type { BlockNode } from '@/types/subcontract';
 import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
@@ -431,11 +433,26 @@ export function UnifiedSankeyChart({
   }, [hasBudgetTab, budgetBreakdown.length, hasBlocksTab, projectBlocks?.blocks.length, selectedBlock, relatedColumnList]);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (viewport.width < 640 && tabs.some(t => t.id === 'recipient') ? 'recipient' : tabs[0]?.id ?? null);
+  /**
+   * 「その他」行（上位以外をまとめた行）の表示名と注記。ブロック内の行はそのブロックの件数、
+   * 事業の支出先一覧は直接支出ブロックの件数の合計、複数事業にまたがる行は事業を選ぶよう案内する
+   */
+  const othersNote = (name: string, block?: BlockNode): { label: string; note: string } | undefined => {
+    if (!isOthersRowName(name)) return undefined;
+    if (block) return { label: othersLabel(name, block.othersCount), note: othersTitle(block.othersCount) };
+    if (isIndividualProject && projectBlocks) {
+      const sum = sumOthersCounts(projectBlocks.blocks
+        .filter(b => b.originKind === 'direct' && b.recipients.some(r => isOthersRowName(r.name)))
+        .map(b => ({ blockId: b.blockId, count: b.othersCount })));
+      return { label: sum.total === null ? name : `${name}（計${sum.total.toLocaleString('ja-JP')}件）`, note: sum.title };
+    }
+    return { label: name, note: '行政側が上位以外をまとめて記載した行（複数事業の合計）です。件数は事業を選ぶと「ブロック」タブでブロックごとに確認できます。' };
+  };
   /** パネルのタブの1行。クリックで図のノードを選び、支出先はホバーで契約を出す */
-  const renderPanelRow = (item: UnifiedViewNode) => (
+  const renderPanelRow = (item: UnifiedViewNode, others = activeTab === 'recipient' && !item.details.aggregated ? othersNote(item.name) : undefined) => (
     <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
       {...(activeTab === 'recipient' ? {
-        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
+        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover({ ...recipientHoverFor(item, e.clientX, e.clientY), ...(others ? { title: others.label, note: others.note } : {}) }),
         onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
         onMouseLeave: () => setPanelRecipientHover(null),
       } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
@@ -444,7 +461,7 @@ export function UnifiedSankeyChart({
         onMouseLeave: () => setPanelRecipientHover(null),
       } : {})}>
       <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
-        <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+        <span className="truncate text-xs text-mirai-text-secondary">{others?.label ?? item.name}</span>
         <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
       </Button>
     </div>
@@ -454,10 +471,12 @@ export function UnifiedSankeyChart({
    * 再委託先や TopN の外など図にノードが無い支出先は、選択はできないがホバーで契約を出す
    */
   const recipientItems = relatedColumnList.find(t => t.column === 'recipient')?.items ?? [];
-  const renderBlockRecipient = (recipient: { name: string; amount: number }, index: number) => {
+  const renderBlockRecipient = (block: BlockNode, recipient: { name: string; amount: number }, index: number) => {
+    const others = othersNote(recipient.name, block);
     const item = recipientItems.find(n => n.name.trim() === recipient.name.trim());
-    if (item) return <Fragment key={`${item.id}-${index}`}>{renderPanelRow(item)}</Fragment>;
+    if (item) return <Fragment key={`${item.id}-${index}`}>{renderPanelRow(item, others)}</Fragment>;
     const hover = (x: number, y: number): RecipientHover => ({ x, y, name: recipient.name, amount: recipient.amount, year: contractSheetYear,
+      ...(others ? { title: others.label, note: others.note } : {}),
       pids: selectedDetails?.projectId !== undefined ? [selectedDetails.projectId] : [],
       ...(contractSheetYear === null && projectBlocks ? { contracts: recipientContractsInProject(projectBlocks, recipient.name)?.contracts ?? [],
         lines: provisionalProject ? rsApiContractLines(provisionalProject, recipient.name) : undefined } : {}) });
@@ -465,7 +484,7 @@ export function UnifiedSankeyChart({
       onMouseEnter={e => setPanelRecipientHover(hover(e.clientX, e.clientY))}
       onMouseMove={e => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
       onMouseLeave={() => setPanelRecipientHover(null)}>
-      <span className="truncate text-xs text-mirai-text-secondary" title="図に単独のノードが無い支出先（再委託先・表示件数の外など）">{recipient.name}</span>
+      <span className="truncate text-xs text-mirai-text-secondary" title={others ? undefined : '図に単独のノードが無い支出先（再委託先・表示件数の外など）'}>{others?.label ?? recipient.name}</span>
       <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(recipient.amount)}</span>
     </div>;
   };
@@ -969,14 +988,14 @@ export function UnifiedSankeyChart({
                     ) : activeTab === 'recipient' && selectedBlock && projectBlocks ? (
                       <>
                         <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
-                        {selectedBlock.recipients.map(renderBlockRecipient)}
+                        {selectedBlock.recipients.map((recipient, index) => renderBlockRecipient(selectedBlock, recipient, index))}
                       </>
                     ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
                       <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)
-                      .map(renderPanelRow)}
+                      .map(item => renderPanelRow(item))}
                   </div>
                 </div>
               )}

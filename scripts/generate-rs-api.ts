@@ -33,7 +33,7 @@ for (const p of projects) {
   const d = apiDetail(p, groups?.data, edges?.data, groups?.fetchedAt ?? null);
   // Retain only fields used by the provisional detail view (raw API envelopes stay under data/rs-api).
   d.groups = d.groups.map(g => ({ id: g.id, project_id: g.project_id, display_code: g.display_code, name: g.name,
-    overview: g.overview, total_amount: knownAmount(g.total_amount, g.negative_total_amount_count),
+    overview: g.overview, payment_count: g.payment_count ?? null, total_amount: knownAmount(g.total_amount, g.negative_total_amount_count),
     payments: g.payments.map(p => ({ id: p.id, name: p.name, corporate_number: p.corporate_number, is_others: p.is_others, type: p.type,
       total_contract_amount: knownAmount(p.total_contract_amount, p.negative_total_contract_amount_count),
       contracts: p.contracts.map(c => {

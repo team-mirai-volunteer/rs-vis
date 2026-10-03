@@ -4,6 +4,7 @@
  */
 import { tryReadDataJson } from '@/app/lib/api/data-file';
 import { findContract, type ContractMethodsByPid } from '@/app/lib/contract-method';
+import { isOthersRowName, matchOthersCount, type OthersCountsByPid } from '@/app/lib/others-count';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 import type { RecipientExternalFile } from '@/types/recipient-external';
 
@@ -22,6 +23,26 @@ export function withContractMethods(rows: RecipientRow[], pid: string, sheetYear
     const c = findContract(entries, row);
     if (!c) return row;
     return { ...row, m: c.m, ...(c.mt ? { mt: c.mt } : {}), ...(c.ap !== undefined ? { ap: c.ap } : {}), ...(c.br !== undefined ? { br: c.br } : {}) };
+  });
+}
+
+const othersCache = new Map<string, OthersCountsByPid | null>();
+/** others-counts-{シート年度}.json（その他行にまとめられた件数）。生成は scripts/generate-others-counts.ts */
+export function loadOthersCounts(sheetYear: string): OthersCountsByPid | null {
+  if (!othersCache.has(sheetYear)) othersCache.set(sheetYear, tryReadDataJson<OthersCountsByPid>(`others-counts-${sheetYear}.json`));
+  return othersCache.get(sheetYear)!;
+}
+
+/** 「その他」行に件数（oc）とブロックの支出先の数（ot）を付ける。ブロック内のその他行の金額合計が API と一致するときだけ */
+export function withOthersCounts(rows: RecipientRow[], pid: string, sheetYear: string): RecipientRow[] {
+  const blocks = loadOthersCounts(sheetYear)?.[pid];
+  if (!blocks) return rows;
+  const sums = new Map<string, number>();
+  for (const row of rows) if (isOthersRowName(row.n)) sums.set(row.b, (sums.get(row.b) ?? 0) + (row.a2 ?? Number.NaN));
+  return rows.map(row => {
+    if (!isOthersRowName(row.n)) return row;
+    const c = matchOthersCount(blocks[row.b], sums.get(row.b));
+    return c ? { ...row, oc: c.n, ot: c.t } : row;
   });
 }
 

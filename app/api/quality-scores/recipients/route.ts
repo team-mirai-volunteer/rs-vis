@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { loadRecipientRows } from '@/app/lib/api/quality-recipients-loader';
-import { withContractMethods } from '@/app/lib/api/contract-methods-loader';
+import { withContractMethods, withOthersCounts } from '@/app/lib/api/contract-methods-loader';
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     }
 
     const data = loadRecipientRows(year);
-    return NextResponse.json(withContractMethods(data[pid] ?? [], pid, year));
+    return NextResponse.json(withOthersCounts(withContractMethods(data[pid] ?? [], pid, year), pid, year));
   } catch (e) {
     return serverErrorResponse('quality-scores/recipients', e);
   }

@@ -22,6 +22,8 @@ export interface RecipientHover {
   /** 見出しの下の補足（例: 「→ 個人A」） */
   subtitle?: string;
   amount: number;
+  /** 金額の下の注記（「その他」行の件数の出どころなど） */
+  note?: string;
   /** 手元の契約の概要（1事業の再委託構造から）。無ければ year / pids で取得する */
   contracts?: readonly string[];
   /** 手元の「概要＋契約方式」の行（暫定データなど API で引けないとき）。contracts より優先 */
@@ -58,6 +60,7 @@ export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) 
       <p className="font-bold leading-snug text-mirai-text">{hover.title ?? hover.name}</p>
       {hover.subtitle && <p className="text-[11px] text-mirai-text-muted">{hover.subtitle}</p>}
       {Number.isFinite(hover.amount) && <p className="tabular-nums text-mirai-text-secondary">{formatBudgetFromYen(hover.amount)}</p>}
+      {hover.note && <p className="mt-1 whitespace-pre-line text-[11px] leading-relaxed text-mirai-text-muted">{hover.note}</p>}
       <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={hover.year} name={hover.name} pids={hover.pids} contracts={hover.contracts} lines={hover.lines} />
     </div>,
     document.body,

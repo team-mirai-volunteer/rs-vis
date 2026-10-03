@@ -34,6 +34,9 @@ export interface RecipientRow {
   mt?: string;
   ap?: number;
   br?: number;
+  // その他行にまとめられた件数（oc）とブロックの支出先の数（ot）。contract-methods-loader の withOthersCounts が付与
+  oc?: number;
+  ot?: number;
 }
 
 export type RecipientRowsByPid = Record<string, RecipientRow[]>;

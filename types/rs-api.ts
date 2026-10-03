@@ -26,6 +26,8 @@ export interface RsApiGroup {
   display_code: string;
   name: string;
   overview: string | null;
+  /** ブロックの「支出先の数」（府省庁の記載。その他行にまとめた分も含む）。古い生成物には無い */
+  payment_count?: number | null;
   total_amount: number | null;
   negative_total_amount_count?: number;
   payments: RsApiPayment[];
