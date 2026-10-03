@@ -23,7 +23,7 @@ function ConnectionConditions({ value, onChange }: { value: ModelParameters; onC
         <option value="peak">単年ピーク（既定）</option><option value="average">評価期間の平均</option>
       </select></label>
       <p className="text-xs md:col-span-2">構造的失業率は日本のNAIRU推定幅（約2.3〜2.7%）を参考にした仮定で、推定値ではありません。労働需給の制約は「構造的失業率÷失業率」で判定し、許容する失業率下限は上限設定で決まります。物価判定を「平均」にすると、単年のピークではなく評価期間の平均CPIを上限と比較します。</p>
-      <RangeField label="消費税1ポイントの減収額" value={value.consumptionTax.revenuePerPoint / 1e12} min={1} max={5} step={.1} unit="兆円" onChange={n => change('consumptionTax', { ...value.consumptionTax, revenuePerPoint: n * 1e12 })} />
+      <RangeField label="消費税1ポイントの減収額" value={value.consumptionTax.revenuePerPoint / 1e12} min={.3} max={5} step={.1} unit="兆円" onChange={n => change('consumptionTax', { ...value.consumptionTax, revenuePerPoint: n * 1e12 })} />
       <RangeField label="消費税対象品目のCPI比率" value={value.consumptionTax.cpiShare * 100} min={0} max={100} step={1} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, cpiShare: n / 100 })} />
       <RangeField label="対象品目の基準消費税率" value={value.consumptionTax.baseRate * 100} min={8} max={10} step={2} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, baseRate: n / 100 })} />
       <RangeField label="消費税の価格転嫁率" value={value.consumptionTax.passThrough * 100} min={0} max={100} step={10} unit="%" onChange={n => change('consumptionTax', { ...value.consumptionTax, passThrough: n / 100 })} />

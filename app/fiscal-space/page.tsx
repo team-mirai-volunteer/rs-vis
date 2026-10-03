@@ -4,6 +4,7 @@ import { decodeSharedScenario } from '@/client/lib/fiscal-space-share';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { policyCostYen, policyInputLimitYen, totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
+import { consumptionTaxFor, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
 import { CalculationOverview } from '@/client/components/fiscal-space/CalculationOverview';
 import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
@@ -116,6 +117,9 @@ export default function FiscalSpacePage() {
     inputs: (v: FiscalForm['inputs']) => setForm(f => ({ ...f, inputs: v, capacity: { ...f.capacity, mode: 'manual' } })), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
     calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: f.horizon === EXTENDED_HORIZON ? f.horizon : Math.min(f.horizon, REFERENCES[v.referenceModel].years),
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
+    // A different target changes yen per point, so the old amount would mean a different rate; restart from no cut.
+    consumptionTarget: (t: ConsumptionTaxTarget) => setForm(f => ({ ...f, calibration: { ...f.calibration, consumptionTax: consumptionTaxFor(t, f.calibration.consumptionTax) },
+      amounts: { ...f.amounts, 'consumption-tax': 0 } })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
     demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
@@ -180,6 +184,7 @@ export default function FiscalSpacePage() {
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} stresses={form.stresses} onStress={change.stress}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
           consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
+          consumptionTax={form.calibration.consumptionTax} onConsumptionTaxTarget={change.consumptionTarget}
           socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
           additionalSettings={Object.entries(DETAIL_SETTINGS).filter(([key]) => key !== 'poverty' && key !== 'childcare').map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
           policies={policies} onPowerSettings={openPowerSettings} onCashSettings={openCashSettings} onChildcareSettings={openChildcareSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}

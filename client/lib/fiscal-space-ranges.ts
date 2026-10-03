@@ -22,7 +22,7 @@ const calibration: Record<string, Bounds> = {
   netLabourIncomeShare: [.2, .7], employerLabourCostShare: [.3, .9],
   energyPricePassThrough: [0, 1], energyDomesticPricePassThrough: [0, 1], expenditurePriceIndexation: [0, 1],
   capacityPriceSensitivity: [0, .02], capacityPressureStart: [.5, .95], referenceCapacityRatio: [1.01, 1.5],
-  'consumptionTax.revenuePerPoint': [1e12, 5e12], 'consumptionTax.cpiShare': [0, 1],
+  'consumptionTax.revenuePerPoint': [.3e12, 5e12], 'consumptionTax.cpiShare': [0, 1],
   'consumptionTax.baseRate': [.08, .1], 'consumptionTax.passThrough': [0, 1], 'consumptionTax.referenceDirectCpi': [0, 1],
   'electricity.generationTwh': [1, 3000], 'electricity.thermalShare': [0, 1],
   'electricity.demandGrowth': [-.1, .1], 'electricity.peakGrowth': [-.1, .1],

@@ -9,6 +9,8 @@ import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 import { STRESSES, type StressId, type StressSelection } from '@/app/lib/fiscal-space/stress-envelope';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
+import { amountFromRate, consumptionTaxTarget, FOOD_TAX, householdBurdenHref, rateFromAmount, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
+import type { ModelParameters } from '@/types/fiscal-space';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
 const CONDITIONS_KEY = 'fiscal-space:constraint-conditions-open';
@@ -32,8 +34,30 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full" />
   </div>;
 }
-const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
+const TARGET_LABELS: Record<ConsumptionTaxTarget, string> = { all: '全品目', food: '食料品のみ（軽減税率）' };
+function ConsumptionTaxTargetField({ value, amount, max, onTarget, onAmount }: {
+  value: ModelParameters['consumptionTax']; amount: number; max: number;
+  onTarget: (t: ConsumptionTaxTarget) => void; onAmount: (id: string, n: number) => void;
+}) {
+  const target = consumptionTaxTarget(value);
+  const rate = rateFromAmount(Math.min(amount, max), value);
+  return <div className="space-y-2">
+    <fieldset className="flex flex-wrap gap-x-3 gap-y-1 text-xs"><legend className="sr-only">消費税減税の対象</legend>
+      {(Object.keys(TARGET_LABELS) as ConsumptionTaxTarget[]).map(t => <label key={t} className="flex items-center gap-1">
+        <input type="radio" name="consumption-tax-target" checked={target === t} onChange={() => onTarget(t)} />{TARGET_LABELS[t]}</label>)}
+    </fieldset>
+    {target === 'food' && <>
+      <RangeField label="食料品の消費税率" value={Number((rate * 100).toFixed(2))} min={0} max={value.baseRate * 100} step={.5} unit="%"
+        onChange={n => onAmount('consumption-tax', Number(amountFromRate(n / 100, value).toFixed(4)))} />
+      <p className="text-xs leading-relaxed text-mirai-text-subtle">現行{value.baseRate * 100}%から{Number((rate * 100).toFixed(2))}%へ：減収 {money(Math.min(amount, max) * 1e12, 1)}／年。
+        税率1ポイント＝{money(value.revenuePerPoint, 1)}で換算（<a className="underline" href={FOOD_TAX.sourceUrl} target="_blank" rel="noreferrer">財務省試算として報じられた、税率ゼロで年4.8兆円</a>を8で割った値）。外食・酒類は標準税率のままです。
+        <a className="underline" href={householdBurdenHref(rate)}>この税率で家計ごとの負担を見る</a></p>
+    </>}
+  </div>;
+}
+const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, consumptionTax, onConsumptionTaxTarget, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
   policy: Policy; amount: number; consumptionTaxMax: number; socialInsuranceMax: number;
+  consumptionTax?: ModelParameters['consumptionTax']; onConsumptionTaxTarget?: (t: ConsumptionTaxTarget) => void;
   onPowerSettings: () => void;
   onCashSettings: () => void;
   onChildcareSettings: () => void;
@@ -45,6 +69,8 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   const max = policy.id === 'consumption-tax' ? consumptionTaxMax : policy.id === 'social-insurance' ? socialInsuranceMax : revenue ? Math.floor(revenue.amount / 1e11) / 10 : 100;
   return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
     <RangeField label={policy.name} value={Math.min(amount, max)} min={0} max={max} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    {policy.id === 'consumption-tax' && consumptionTax && onConsumptionTaxTarget &&
+      <ConsumptionTaxTargetField value={consumptionTax} amount={amount} max={max} onTarget={onConsumptionTaxTarget} onAmount={onAmount} />}
     {policy.id === 'cash' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onCashSettings}>給付対象を設定</Button>}
     {policy.id === 'childcare' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onChildcareSettings}>現金給付の割合を設定</Button>}
     {policy.id === 'generation' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onPowerSettings}>電源構成・稼働時期を設定</Button>}
@@ -66,10 +92,11 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
     </details>}
   </div>;
 });
-export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
+export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, consumptionTax, onConsumptionTaxTarget, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
   structuralUnemployment, headline, onClose, stresses, onStress,
   onPowerSettings, onCashSettings, onChildcareSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
-  consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
+  consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[];
+  consumptionTax?: ModelParameters['consumptionTax']; onConsumptionTaxTarget?: (t: ConsumptionTaxTarget) => void; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
   gap: number; inflation: number; construction: number; firmCapacity: number;
@@ -85,7 +112,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
-  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
+  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} consumptionTax={consumptionTax} onConsumptionTaxTarget={onConsumptionTaxTarget} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
   const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);
