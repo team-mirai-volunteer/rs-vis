@@ -98,6 +98,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
   </>;
 }
 
+/** ブロックで絞り込んだ支出先の見出し（行は呼び出し側が普段の支出先一覧と同じ形で並べる） */
 export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: SubcontractGraph; block: BlockNode; onClear: () => void }) {
   return <>
     <div className="flex items-start justify-between gap-2 border-b border-border py-2 text-xs">
@@ -107,13 +108,5 @@ export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: Subco
     <BlockSources graph={graph} blockId={block.blockId} />
     <BlockBalance graph={graph} block={block} />
     {block.recipients.length === 0 && <p className="py-2 text-xs text-mirai-text-muted">このブロックに支出先の記載はありません。</p>}
-    {block.recipients.map((recipient, index) => <div key={`${recipient.name}-${index}`} className="border-b border-border px-1 py-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 text-xs text-mirai-text-secondary">{recipient.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{yen(recipient.amount)}</span>
-      </div>
-      {recipient.corporateNumber && <div className="mt-1 text-[11px] text-mirai-text-muted">法人番号 {recipient.corporateNumber}</div>}
-      {recipient.contractSummaries.map((summary, i) => <p key={i} className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">{summary}</p>)}
-    </div>)}
   </>;
 }

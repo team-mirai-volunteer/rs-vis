@@ -9,7 +9,7 @@
  * 絞る前のものを受け取る。
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { computeMOFSankeyLayout, mofRibbonPath, type MOFLayoutLink, type MOFLayoutNode } from '@/app/lib/mof-sankey-layout';
 import { MAJOR_EXPENSE_NAMES, PURPOSE_NAMES, UNIFIED_LAYOUT, unifiedNodeColor } from '@/app/lib/unified-budget/constants';
 import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
@@ -350,7 +350,9 @@ export function UnifiedSankeyChart({
   const [panelRecipientHover, setPanelRecipientHover] = useState<RecipientHover | null>(null);
   const recipientHoverFor = useCallback((item: UnifiedViewNode, x: number, y: number): RecipientHover => {
     // 個別事業を選んでいるときは、その事業の中の契約だけ。読み込み済みの再委託構造（暫定は RS 公開 API 由来）から手元で引く
+    // 年度があれば API から引く（同じ再委託構造に加えて契約方式も返る）。暫定は API に無いので手元の構造を使う
     if (isIndividualProject && selectedDetails?.projectId !== undefined && projectBlocks) {
+      if (contractSheetYear !== null) return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: [selectedDetails.projectId] };
       const own = recipientContractsInProject(projectBlocks, item.name);
       return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], year: contractSheetYear, pids: [selectedDetails.projectId] };
     }
@@ -410,6 +412,43 @@ export function UnifiedSankeyChart({
   const [mobileOverviewOpen, setMobileOverviewOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (viewport.width < 640 && tabs.some(t => t.id === 'recipient') ? 'recipient' : tabs[0]?.id ?? null);
+  /** パネルのタブの1行。クリックで図のノードを選び、支出先はホバーで契約を出す */
+  const renderPanelRow = (item: UnifiedViewNode) => (
+    <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
+      {...(activeTab === 'recipient' ? {
+        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
+        onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+        onMouseLeave: () => setPanelRecipientHover(null),
+      } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
+        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(projectHoverFor(item, e.clientX, e.clientY)),
+        onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+        onMouseLeave: () => setPanelRecipientHover(null),
+      } : {})}>
+      <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
+        <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
+      </Button>
+    </div>
+  );
+  /**
+   * ブロックで絞り込んだ支出先。普段の支出先一覧と同じ行（クリックで選択・ホバーで契約）にする。
+   * 再委託先や TopN の外など図にノードが無い支出先は、選択はできないがホバーで契約を出す
+   */
+  const recipientItems = relatedColumnList.find(t => t.column === 'recipient')?.items ?? [];
+  const renderBlockRecipient = (recipient: { name: string; amount: number }, index: number) => {
+    const item = recipientItems.find(n => n.name.trim() === recipient.name.trim());
+    if (item) return <Fragment key={`${item.id}-${index}`}>{renderPanelRow(item)}</Fragment>;
+    const hover = (x: number, y: number): RecipientHover => ({ x, y, name: recipient.name, amount: recipient.amount, year: contractSheetYear,
+      pids: selectedDetails?.projectId !== undefined ? [selectedDetails.projectId] : [],
+      ...(contractSheetYear === null && projectBlocks ? { contracts: recipientContractsInProject(projectBlocks, recipient.name)?.contracts ?? [] } : {}) });
+    return <div key={`${recipient.name}-${index}`} className="flex w-full items-baseline justify-between gap-3 border-b border-border px-1 py-1.5"
+      onMouseEnter={e => setPanelRecipientHover(hover(e.clientX, e.clientY))}
+      onMouseMove={e => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+      onMouseLeave={() => setPanelRecipientHover(null)}>
+      <span className="truncate text-xs text-mirai-text-secondary" title="図に単独のノードが無い支出先（再委託先・表示件数の外など）">{recipient.name}</span>
+      <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(recipient.amount)}</span>
+    </div>;
+  };
 
   const zoomRef = useRef(1);
   useLayoutEffect(() => {
@@ -903,31 +942,16 @@ export function UnifiedSankeyChart({
                         setPanelTab('recipient');
                       }} />
                     ) : activeTab === 'recipient' && selectedBlock && projectBlocks ? (
-                      <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                      <>
+                        <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                        {selectedBlock.recipients.map(renderBlockRecipient)}
+                      </>
                     ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
                       <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)
-                      .map(item => {
-                        return (
-                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
-                            {...(activeTab === 'recipient' ? {
-                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
-                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
-                              onMouseLeave: () => setPanelRecipientHover(null),
-                            } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
-                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(projectHoverFor(item, e.clientX, e.clientY)),
-                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
-                              onMouseLeave: () => setPanelRecipientHover(null),
-                            } : {})}>
-                            <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
-                              <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
-                            </Button>
-                          </div>
-                        );
-                      })}
+                      .map(renderPanelRow)}
                   </div>
                 </div>
               )}
