@@ -1,6 +1,4 @@
 import { PARAMETERS, TRILLION } from '@/app/lib/fiscal-space/assumptions';
-import { encodeTaxState } from '@/app/lib/tax-burden/reform-url';
-import { initialTaxState } from '@/app/lib/tax-burden/households';
 import type { ModelParameters } from '@/types/fiscal-space';
 
 type ConsumptionTax = ModelParameters['consumptionTax'];
@@ -26,9 +24,3 @@ export const rateFromAmount = (amountTrillion: number, c: ConsumptionTax) =>
   Math.max(0, c.baseRate - amountTrillion * TRILLION / c.revenuePerPoint / 100);
 export const amountFromRate = (rate: number, c: ConsumptionTax) =>
   Math.max(0, c.baseRate - rate) * 100 * c.revenuePerPoint / TRILLION;
-
-/** Same reduced rate on the household-burden page, to see the effect per household. */
-export const householdBurdenHref = (reducedRate: number) => {
-  const state = initialTaxState();
-  return `/tax-burden?${encodeTaxState({ ...state, includeConsumption: true, reform: { ...state.reform, reducedVat: Number(reducedRate.toFixed(4)) } })}`;
-};

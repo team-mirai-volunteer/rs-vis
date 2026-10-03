@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PARAMETERS } from '@/app/lib/fiscal-space/assumptions';
 import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
-import { amountFromRate, consumptionTaxFor, consumptionTaxTarget, householdBurdenHref, rateFromAmount } from '@/client/lib/fiscal-space-food-tax';
-import { decodeTaxState } from '@/app/lib/tax-burden/reform-url';
+import { amountFromRate, consumptionTaxFor, consumptionTaxTarget, rateFromAmount } from '@/client/lib/fiscal-space-food-tax';
 import { defaults } from '@/client/lib/fiscal-space-form';
 import { decodeSharedScenario, encodeSharedScenario } from '@/client/lib/fiscal-space-share';
 
@@ -27,12 +26,4 @@ test('食料品のみの条件を共有URLで復元できる', async () => {
   const base = defaults();
   const form = { ...base, calibration: { ...base.calibration, consumptionTax: food }, amounts: { ...base.amounts, 'consumption-tax': 4.2 } };
   assert.deepEqual((await decodeSharedScenario(await encodeSharedScenario(form))).form, form);
-});
-
-test('家計の負担比較へのリンクは軽減税率だけを変える', () => {
-  const { state, warning } = decodeTaxState(householdBurdenHref(.01).split('?')[1]);
-  assert.equal(warning, null);
-  assert.equal(state.reform.reducedVat, .01);
-  assert.equal(state.reform.standardVat, .1);
-  assert.equal(state.includeConsumption, true);
 });

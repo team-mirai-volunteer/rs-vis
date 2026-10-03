@@ -9,7 +9,7 @@ import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 import { STRESSES, type StressId, type StressSelection } from '@/app/lib/fiscal-space/stress-envelope';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
-import { amountFromRate, consumptionTaxTarget, FOOD_TAX, householdBurdenHref, rateFromAmount, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
+import { amountFromRate, consumptionTaxTarget, FOOD_TAX, rateFromAmount, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
 import type { ModelParameters } from '@/types/fiscal-space';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
@@ -50,8 +50,7 @@ function ConsumptionTaxTargetField({ value, amount, max, onTarget, onAmount }: {
       <RangeField label="食料品の消費税率" value={Number((rate * 100).toFixed(2))} min={0} max={value.baseRate * 100} step={.5} unit="%"
         onChange={n => onAmount('consumption-tax', Number(amountFromRate(n / 100, value).toFixed(4)))} />
       <p className="text-xs leading-relaxed text-mirai-text-subtle">現行{value.baseRate * 100}%から{Number((rate * 100).toFixed(2))}%へ：減収 {money(Math.min(amount, max) * 1e12, 1)}／年。
-        税率1ポイント＝{money(value.revenuePerPoint, 1)}で換算（<a className="underline" href={FOOD_TAX.sourceUrl} target="_blank" rel="noreferrer">財務省試算として報じられた、税率ゼロで年4.8兆円</a>を8で割った値）。外食・酒類は標準税率のままです。
-        <a className="underline" href={householdBurdenHref(rate)}>この税率で家計ごとの負担を見る</a></p>
+        税率1ポイント＝{money(value.revenuePerPoint, 1)}で換算（<a className="underline" href={FOOD_TAX.sourceUrl} target="_blank" rel="noreferrer">財務省試算として報じられた、税率ゼロで年4.8兆円</a>を8で割った値）。外食・酒類は標準税率のままです。</p>
     </>}
   </div>;
 }
