@@ -613,11 +613,6 @@ export default function QualityPage() {
                     <span className="text-mirai-text-muted font-normal"> / {summary.total.toLocaleString()}</span>
                   </div>
                 </Button>
-                {/* 個別の「✕」とは別に、検索・府省・範囲をまとめて既定に戻す */}
-                <Button variant="outline" size="xs" onClick={clearAllFilters} disabled={!hasFilters}
-                  className="border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
-                  条件をクリア
-                </Button>
               </div>
               <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
                 <div className="flex flex-wrap items-center gap-2">
@@ -680,6 +675,43 @@ export default function QualityPage() {
                         </Button>
                   </>}
                 </div>
+                {/* 足きり（政策評価の各指標）。表の列と同じく指標を上に置く。狭い画面では折り返す */}
+                {policyByPid && (
+                  <div className="flex items-center gap-1 text-xs flex-wrap">
+                        {([
+                          { key: 'overallScore' as const, label: '総合', desc: COL_DESC.総合点 },
+                          ...AXIS_META.map(a => ({ key: a.key, label: a.short,
+                            desc: `${a.label}（総合点への重み ${a.weight}）
+
+${a.desc}` })),
+                        ]).map(({ key, label, desc }) => (
+                          <div key={key} className="flex items-center shrink-0" title={desc}>
+                            <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
+                            <RangeStepInput
+                              value={scoreFilters[key].min} width={40} placeholder="下限" title="下限 (0-100)"
+                              onStep={(c, d) => stepScore(c, d)}
+                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
+                            />
+                            <span className="text-mirai-text-muted mx-px">~</span>
+                            <RangeStepInput
+                              value={scoreFilters[key].max} width={40} placeholder="上限" title="上限 (0-100)"
+                              onStep={(c, d) => stepScore(c, d)}
+                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setScoreFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
+                              disabled={!(scoreFilters[key].min || scoreFilters[key].max)}
+                              aria-label={`${label}の範囲を解除`}
+                              className={CLEAR_BTN_CLS}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ))}
+                  </div>
+                )}
                 {/* 金額の範囲フィルタ */}
                 <div className="flex items-center gap-1 text-xs flex-wrap">
                   {([
@@ -737,6 +769,11 @@ export default function QualityPage() {
                           ✕
                         </Button>
                       </div>
+                      {/* 個別の「✕」とは別に、検索・府省・範囲をまとめて既定に戻す */}
+                      <Button variant="outline" size="xs" onClick={clearAllFilters} disabled={!hasFilters}
+                        className="ml-1 shrink-0 border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
+                        条件をクリア
+                      </Button>
                       {/* 指標の説明。足きり行は6組で最も詰まるので、余裕のある金額行の末尾に置く */}
                       {/* 指標の説明なので、指標そのものが並ぶこの行の末尾に置く */}
                       <Button
@@ -747,43 +784,6 @@ export default function QualityPage() {
                         {showGuide ? '▲ 読み方を閉じる' : '▼ 指標の読み方'}
                       </Button>
                 </div>
-                {/* 足きり。1600px幅で列Cは1040pxあり7組が収まる。狭い画面では折り返す */}
-                {policyByPid && (
-                  <div className="flex items-center gap-1 text-xs flex-wrap">
-                        {([
-                          { key: 'overallScore' as const, label: '総合', desc: COL_DESC.総合点 },
-                          ...AXIS_META.map(a => ({ key: a.key, label: a.short,
-                            desc: `${a.label}（総合点への重み ${a.weight}）
-
-${a.desc}` })),
-                        ]).map(({ key, label, desc }) => (
-                          <div key={key} className="flex items-center shrink-0" title={desc}>
-                            <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
-                            <RangeStepInput
-                              value={scoreFilters[key].min} width={50} placeholder="下限" title="下限 (0-100)"
-                              onStep={(c, d) => stepScore(c, d)}
-                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
-                            />
-                            <span className="text-mirai-text-muted mx-px">~</span>
-                            <RangeStepInput
-                              value={scoreFilters[key].max} width={50} placeholder="上限" title="上限 (0-100)"
-                              onStep={(c, d) => stepScore(c, d)}
-                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setScoreFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
-                              disabled={!(scoreFilters[key].min || scoreFilters[key].max)}
-                              aria-label={`${label}の範囲を解除`}
-                              className={CLEAR_BTN_CLS}
-                            >
-                              ✕
-                            </Button>
-                          </div>
-                        ))}
-                  </div>
-                )}
               </div>
             </div>
           );
