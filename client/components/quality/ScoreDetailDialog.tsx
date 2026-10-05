@@ -24,6 +24,7 @@ import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
 import { ContractMethodBadge } from './ContractMethodBadge';
+import { PromptText } from '@/client/components/unified-budget/UnifiedHelp';
 import { isOthersRowName, othersLabel, othersTitle } from '@/app/lib/others-count';
 import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
@@ -57,6 +58,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [recipientSortField, setRecipientSortField] = useState<'chain' | 'b' | 's' | 'c' | 'o' | 'a2' | 'pct'>('chain');
   const [recipientSortDir, setRecipientSortDir] = useState<'asc' | 'desc'>('asc');
   const [showAxisDetail, setShowAxisDetail] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
   // 支出先一覧のタブ（支出先・ブロック・予算内訳）と、ブロックでの絞り込み
@@ -596,6 +598,14 @@ ${a.desc}`}>
                 {item.hasRedelegation && <span>再委託深度 {item.redelegationDepth}</span>}
                 <span>整合スコア {item.axisStructure != null ? item.axisStructure.toFixed(0) : "—"}</span>
               </div>
+            </div>
+
+            {/* AI が採点したときのプロンプト全文と採点モデル（サンキー図・評価一覧の「説明」と同じもの） */}
+            <div className="px-5 py-2.5 text-xs">
+              <Button variant="ghost" size="xs" aria-expanded={showPrompt} aria-controls="score-axis-prompt" onClick={() => setShowPrompt(v => !v)} className="px-0 text-primary-accent">
+                {showPrompt ? '▾' : '▸'} AI 評価に使ったプロンプト（全文）と採点モデル
+              </Button>
+              <div id="score-axis-prompt">{showPrompt && <PromptText sheetYear={Number(sourceYear)} />}</div>
             </div>
           </div>
         )}
