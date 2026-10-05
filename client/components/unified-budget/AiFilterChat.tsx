@@ -32,8 +32,10 @@ const EXAMPLES = ['再エネ関連で予算100億円以上の事業', '子育て
 const INPUT_CLASS =
   'w-full min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-2 text-[13px] leading-relaxed text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
-export function AiFilterChat({ open, onClose, year, onApply }: {
-  open: boolean; onClose: () => void; year: number;
+export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
+  open: boolean; onClose: () => void;
+  /** RS シート年度（グラフの metadata.rsSheetYear）。予算年度 N の支出は N+1 年版シートにあるので、予算年度をそのまま渡さない */
+  sheetYear: number;
   /** 結果をフィルターへ写す */
   onApply: (result: SankeyChatResult) => void;
 }) {
@@ -63,7 +65,7 @@ export function AiFilterChat({ open, onClose, year, onApply }: {
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [messages, progress]);
 
   const mode: 'byok' | 'server' | null = settings ? 'byok' : serverEnabled ? 'server' : null;
-  const yearKey = String(year);
+  const yearKey = String(sheetYear);
   const yearSupported = AI_YEARS.has(yearKey);
   const canSend = !!mode && !sending && yearSupported;
 
@@ -173,7 +175,7 @@ export function AiFilterChat({ open, onClose, year, onApply }: {
 
     {/* 会話ログ */}
     <div ref={logRef} className="flex flex-1 flex-col gap-2.5 overflow-y-auto bg-mirai-surface px-4 py-3">
-      {!yearSupported && <p className="m-0 rounded-xl border border-stance-against/30 bg-stance-against-bg px-3 py-2 text-xs leading-relaxed text-stance-against">AI検索は2024・2025年度のデータにだけ対応しています。ヘッダーの年度を切り替えてください。</p>}
+      {!yearSupported && <p className="m-0 rounded-xl border border-stance-against/30 bg-stance-against-bg px-3 py-2 text-xs leading-relaxed text-stance-against">AI検索は2023・2024年度（支出データのある年度）にだけ対応しています。ヘッダーの年度を切り替えてください。</p>}
       {messages.length === 0 && <div className="space-y-3">
         <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。</p>
         <div className="flex flex-wrap gap-1.5">

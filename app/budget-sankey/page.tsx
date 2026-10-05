@@ -489,7 +489,7 @@ function UnifiedBudgetSankeyContent() {
         onFilterChange={setFilter}
         filterOpen={filterOpen}
         onToggleFilterOpen={() => { const next = !filterOpen; setFilterOpen(next); if (next) setAiOpen(false); }}
-        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} year={year} onClose={() => setAiOpen(false)}
+        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} sheetYear={metadata.rsSheetYear} onClose={() => setAiOpen(false)}
           onApply={result => {
             setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
             setFilterOpen(false);
