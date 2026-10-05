@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apiContractMethod, contractCategory, contractLines, findContract, type ContractMethodEntry } from '../app/lib/contract-method';
+import { apiContractMethod, contractCategory, contractLines, contractMethodFromCsvLabel, findContract, type ContractMethodEntry } from '../app/lib/contract-method';
 
 const e = (over: Partial<ContractMethodEntry>): ContractMethodEntry => ({ b: 'A', n: '株式会社テスト', cn: '', a: 100, m: 'negotiated-contract-others', ...over });
 
@@ -49,4 +49,11 @@ test('API の契約から方式を取り出し、埋め草の補足と範囲外�
   assert.deepEqual(apiContractMethod({ contract_method: 'others', contract_method_description: '－', bid_rate: 999 }), { m: 'others' });
   assert.equal(apiContractMethod({ contract_method: null }), null);
   assert.equal(apiContractMethod({ contract_method: 'unknown-method' }), null);
+});
+
+test('公式CSVの契約方式の文言を API の列挙値に変換する', () => {
+  assert.equal(contractMethodFromCsvLabel('随意契約（その他）'), 'negotiated-contract-others');
+  assert.equal(contractMethodFromCsvLabel('一般競争契約(総合評価)'), 'open-tendering-comprehensive-evaluation');
+  assert.equal(contractMethodFromCsvLabel('補助金等交付'), 'subsidy');
+  assert.equal(contractMethodFromCsvLabel('未知の方式'), null);
 });

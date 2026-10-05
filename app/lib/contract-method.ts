@@ -177,3 +177,26 @@ export function totalsByCategory(entries: readonly ContractMethodEntry[]): Categ
   }
   return [...by.values()].sort((a, b) => b.amount - a.amount);
 }
+
+/** 公式CSV（5-1）の「契約方式等」の文言 → API の列挙値。両者は1対1に対応する */
+const CSV_LABEL_TO_CODE: Record<string, ContractMethodCode> = {
+  '一般競争契約（最低価格）': 'open-tendering-lowest-price',
+  '一般競争契約（総合評価）': 'open-tendering-comprehensive-evaluation',
+  '指名競争契約（最低価格）': 'selective-tendering-lowest-price',
+  '指名競争契約（総合評価）': 'selective-tendering-comprehensive-evaluation',
+  '随意契約（少額）': 'negotiated-contract-small-amount',
+  '随意契約（企画競争）': 'negotiated-contract-competitive-bidding',
+  '随意契約（公募）': 'negotiated-contract-public-offering',
+  '随意契約（不落・不調）': 'negotiated-contract-unsuccessful',
+  '随意契約（その他）': 'negotiated-contract-others',
+  '補助金等交付': 'subsidy',
+  '運営費交付金交付': 'management-expense-grant',
+  '国庫債務負担行為等': 'act-bearing-national-treasury-liabilities',
+  'その他': 'others',
+};
+
+/** CSV の文言から列挙値を引く。表記の揺れ（半角括弧など）は NFKC で吸収し、知らない文言は null */
+export function contractMethodFromCsvLabel(label: string): ContractMethodCode | null {
+  const key = label.trim().normalize('NFKC').replace(/\(/g, '（').replace(/\)/g, '）');
+  return CSV_LABEL_TO_CODE[key] ?? CSV_LABEL_TO_CODE[label.trim()] ?? null;
+}

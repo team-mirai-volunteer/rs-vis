@@ -1,7 +1,7 @@
 /**
  * 支出先（法人番号）を外部情報と突き合わせる。
  *   npx tsx scripts/generate-recipient-external.ts [--refresh]
- * - 所在地・法人種別: RS公開APIの支払先（data/rs-api/{2026,2025,2024}。新しいシートを優先）
+ * - 所在地・法人種別: 公式CSV（5-1）。CSV の無い 2026 シートは RS公開APIの支払先（新しいシートを優先）
  * - Wikipedia・公式サイト・設立・説明: Wikidata の「法人番号」(P3225) で完全一致したものだけ
  * - Wikipedia の冒頭: 上で得た日本語版記事のリード文の最初の1〜2文（CC BY-SA。画面で出典を示す）
  * 入力の法人番号は支出先インデックス（recipient-index-2024/2025）から集める。
@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { RecipientExternal, RecipientExternalFile } from '../types/recipient-external';
+import { loadSheetGroups } from './rs-sheet-groups';
 
 const refresh = process.argv.includes('--refresh');
 const SHEETS = [2026, 2025, 2024];
@@ -30,21 +31,18 @@ for (const year of [2024, 2025]) {
   for (const e of Object.values<{ corporateNumber: string }>(index.recipients)) if (/^\d{13}$/.test(e.corporateNumber)) corporateNumbers.add(e.corporateNumber);
 }
 
-// 1. RS公開API: 所在地・法人種別
+// 1. 所在地・法人種別: 公式CSV（5-1）。CSV の無い年度（2026 シート）は RS公開API（scripts/rs-sheet-groups.ts）。新しいシートを優先し、空欄は古いシートで埋める
 const fromApi = new Map<string, { ad?: string; k?: string }>();
 for (const sheet of SHEETS) {
-  const root = path.resolve(`data/rs-api/${sheet}`);
-  if (!fs.existsSync(path.join(root, 'projects.json'))) continue;
-  for (const p of JSON.parse(fs.readFileSync(path.join(root, 'projects.json'), 'utf8')) as Array<{ id: string }>) {
-    const file = path.join(root, p.id, 'payment-groups.json');
-    if (!fs.existsSync(file)) continue;
-    for (const g of JSON.parse(fs.readFileSync(file, 'utf8')).data as Array<{ payments: Array<{ corporate_number: string | null; corporate_address: string | null; corporate_kind: string | null }> }>) {
-      for (const pay of g.payments) {
-        const cn = pay.corporate_number;
-        if (!cn || !corporateNumbers.has(cn) || fromApi.has(cn)) continue;
-        fromApi.set(cn, { ...(pay.corporate_address?.trim() ? { ad: pay.corporate_address.trim() } : {}), ...(pay.corporate_kind ? { k: pay.corporate_kind } : {}) });
-      }
-    }
+  let groups;
+  try { groups = loadSheetGroups(sheet); } catch { continue; }
+  for (const list of groups.byPid.values()) for (const g of list) for (const pay of g.payments) {
+    const cn = pay.corporate_number;
+    if (!cn || !corporateNumbers.has(cn)) continue;
+    const cur = fromApi.get(cn) ?? {};
+    if (!cur.ad && pay.corporate_address?.trim()) cur.ad = pay.corporate_address.trim();
+    if (!cur.k && pay.corporate_kind) cur.k = pay.corporate_kind;
+    fromApi.set(cn, cur);
   }
 }
 
@@ -167,7 +165,7 @@ function write() {
   }
   const file: RecipientExternalFile = {
     metadata: { generatedAt: new Date().toISOString(), corporateNumbers: corporateNumbers.size,
-      sources: ['RS公開API（支払先の所在地・法人種別）', 'Wikidata（法人番号 P3225 の完全一致。CC0）', 'Wikipedia 日本語版のリード文の冒頭（CC BY-SA 4.0）'] },
+      sources: ['RSシート5-1（所在地・法人種別。2026シートは RS公開API）', 'Wikidata（法人番号 P3225 の完全一致。CC0）', 'Wikipedia 日本語版のリード文の冒頭（CC BY-SA 4.0）'] },
     byCn,
   };
   const target = path.resolve('public/data/recipient-external.json');
