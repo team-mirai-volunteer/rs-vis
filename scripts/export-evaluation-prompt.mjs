@@ -6,6 +6,18 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
+
+/** 実際の採点に使ったモデル。スコアの aiSource（"openrouter:<model>"）の最頻値 */
+function scoringModel(year) {
+  const file = `public/data/project-quality-scores-${year}.json.gz`;
+  if (!fs.existsSync(file)) return null;
+  const data = JSON.parse(gunzipSync(fs.readFileSync(file)).toString());
+  const counts = new Map();
+  for (const item of Array.isArray(data) ? data : data.items ?? []) if (item.aiSource) counts.set(item.aiSource, (counts.get(item.aiSource) ?? 0) + 1);
+  const top = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return top ? top.replace(/^openrouter:/, '') : null;
+}
 
 const years = process.argv.slice(2).length ? process.argv.slice(2) : ['2025', '2024'];
 const python = process.platform === 'win32' ? 'python' : 'python3';
@@ -18,7 +30,10 @@ for (const year of years) {
   const parts = run.stdout.split(/^={100}$/m);
   if (parts.length < 3) throw Error(`unexpected dump output for ${year}`);
   const system = parts[1].trim();
-  const header = `# AI 政策評価のシステムプロンプト（${year}年版レビューシートの採点に使用）\n# 生成: scripts/score-project-quality-ai.py（--dump-prompt）\n\n`;
+  const model = scoringModel(year);
+  const header = `# AI 政策評価のシステムプロンプト（${year}年版レビューシートの採点に使用）\n`
+    + (model ? `# 採点モデル: ${model}（OpenRouter 経由）\n` : '')
+    + `# 生成: scripts/score-project-quality-ai.py（--dump-prompt）\n\n`;
   const file = path.join('public/policy-evaluation', `prompt-${year}.txt`);
   fs.writeFileSync(file, header + system + '\n');
   console.log(`${file}: ${system.length.toLocaleString()} chars`);
