@@ -30,8 +30,9 @@ function PromptText({ sheetYear }: { sheetYear: number }) {
   const model = /^# 採点モデル: (.+)$/m.exec(text)?.[1];
   return <>
     {model && <p className="mt-2 text-mirai-text-secondary"><span className="font-bold">採点モデル</span>　{model}</p>}
-    <p className="mt-2 text-mirai-text-muted">{year}年版レビューシート（{fiscalYearLabel(year)}）の採点に使った全文です。
-      <a href={`/policy-evaluation/prompt-${year}.txt`} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline underline-offset-4 hover:text-primary-accent">テキストで開く ↗</a></p>
+    <p className="mt-2 text-mirai-text-muted">{year}年版レビューシート（{fiscalYearLabel(year)}）の採点に使った全文です。</p>
+    {/* リンクは文の途中で折り返さないよう、独立した行に置く */}
+    <p className="mt-1"><a href={`/policy-evaluation/prompt-${year}.txt`} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-primary underline underline-offset-4 hover:text-primary-accent">テキストで開く ↗</a></p>
     <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-mirai-surface p-2 text-[11px] leading-relaxed text-mirai-text-secondary">{text}</pre>
   </>;
 }
