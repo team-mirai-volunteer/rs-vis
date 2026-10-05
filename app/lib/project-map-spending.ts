@@ -10,6 +10,7 @@
  * 巨大なハブで結んでしまう（「その他」だけで1,000事業超に繋がる）。
  * 一方で「支出先を具体的に書いていない事業」を洗い出す材料にはなるので、捨てずに別枠で持つ。
  */
+import { normalizeRecipientName } from '@/app/lib/recipient-key';
 import type { GraphData } from '@/types/sankey-svg';
 import type {
   PlaceholderKind, ProjectMapSpendingRecipient, ProjectMapSpendingResponse,
@@ -98,4 +99,44 @@ export function buildProjectMapSpending(
     projectSpending,
     summary: { recipients: recipients.length, links, excludedPlaceholders: placeholders.length },
   };
+}
+
+/**
+ * 年度をまたいで支出先の位置をそろえるための重心。一緒に配置した年度の支出つながりを支出先名で束ね、
+ * 支払い額（年度合計）の平方根で重み付けしたマップ座標の重心を取る（画面側の重心と同じ重み）。
+ * 匿名・集約表記（その他・個人A など）は事業ごとに別の相手なので対象外。
+ */
+export function crossYearAnchors(
+  byYear: readonly ProjectMapSpendingResponse[],
+  coords: ReadonlyMap<string, { x: number; y: number }>,
+): Map<string, { ax: number; ay: number; single: boolean }> {
+  const paid = new Map<string, Map<string, number>>();
+  for (const data of byYear) {
+    for (const r of data.recipients) {
+      const key = normalizeRecipientName(r.name);
+      let m = paid.get(key);
+      if (!m) { m = new Map(); paid.set(key, m); }
+      r.pids.forEach((pid, k) => m!.set(pid, (m!.get(pid) ?? 0) + r.amounts[k]));
+    }
+  }
+  const out = new Map<string, { ax: number; ay: number; single: boolean }>();
+  for (const [key, m] of paid) {
+    let wx = 0, wy = 0, wt = 0;
+    for (const [pid, amount] of m) {
+      const p = coords.get(pid);
+      if (!p || !(amount > 0)) continue;
+      const w = Math.sqrt(amount);
+      wx += p.x * w; wy += p.y * w; wt += w;
+    }
+    if (wt > 0) out.set(key, { ax: Math.round((wx / wt) * 1000) / 1000, ay: Math.round((wy / wt) * 1000) / 1000, single: m.size === 1 });
+  }
+  return out;
+}
+
+/** 支出先に年度共通の重心を付ける（見つからない支出先はそのまま） */
+export function withAnchors(data: ProjectMapSpendingResponse, anchors: ReadonlyMap<string, { ax: number; ay: number; single: boolean }>): ProjectMapSpendingResponse {
+  return { ...data, recipients: data.recipients.map(r => {
+    const a = anchors.get(normalizeRecipientName(r.name));
+    return a ? { ...r, ax: a.ax, ay: a.ay, single: a.single } : r;
+  }) };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProjectMapSpending, isPlaceholderRecipient, placeholderKindOf } from '../app/lib/project-map-spending';
+import { buildProjectMapSpending, crossYearAnchors, isPlaceholderRecipient, placeholderKindOf, withAnchors } from '../app/lib/project-map-spending';
 import { SPENDING_COLORS, spendingRadius, spendingStep, spendingStepLabel } from '../app/lib/project-map-view';
 import type { GraphData } from '../types/sankey-svg';
 
@@ -79,4 +79,16 @@ test('spending steps are monotonic by amount and cut at round yen values', () =>
   assert.equal(spendingStep(3e13), SPENDING_COLORS.length - 1);
   assert.ok(spendingRadius(3e13) > spendingRadius(1e6));
   assert.deepEqual([0, 2, 6].map(spendingStepLabel), ['〜1千万', '1億〜', '1兆〜']);
+});
+
+test('支出先の重心は年度をまたいで支出先名で束ね、両年度で同じ位置にする', () => {
+  const r = (name: string, pids: string[], amounts: number[]) => ({ id: name, name, amount: amounts.reduce((s, v) => s + v, 0), pids, amounts });
+  const y2025 = { year: 2025, recipients: [r('株式会社テスト', ['1'], [400])], placeholders: [], projectSpending: {}, summary: { recipients: 1, links: 1, excludedPlaceholders: 0 } };
+  const y2024 = { year: 2024, recipients: [r('株式会社テスト', ['2'], [100]), r('単独会社', ['1'], [5])], placeholders: [], projectSpending: {}, summary: { recipients: 2, links: 2, excludedPlaceholders: 0 } };
+  const coords = new Map([['1', { x: 0, y: 0 }], ['2', { x: 3, y: 0 }]]);
+  const anchors = crossYearAnchors([y2025, y2024], coords);
+  // 重みは平方根: √400=20 と √100=10 → x = (0×20 + 3×10) / 30 = 1
+  assert.deepEqual(anchors.get('株式会社テスト'), { ax: 1, ay: 0, single: false });
+  assert.equal(anchors.get('単独会社')?.single, true);
+  assert.equal(withAnchors(y2025, anchors).recipients[0].ax, withAnchors(y2024, anchors).recipients[0].ax);
 });

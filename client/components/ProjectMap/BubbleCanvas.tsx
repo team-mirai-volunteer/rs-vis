@@ -406,7 +406,11 @@ export function BubbleCanvas(props: BubbleCanvasProps) {
       const radius = spendingRadius(r.amount);
       let x: number, y: number;
       let ox = 0, oy = 0;
-      if (r.pids.length > 1) {
+      // 年度共通の重心（API が付ける）があれば使う。年度を切り替えても同じ支出先は同じ位置に来る
+      const single = r.single ?? r.pids.length <= 1;
+      if (!single && r.ax !== undefined && r.ay !== undefined) {
+        x = r.ax * base.k + base.ox; y = r.ay * base.k + base.oy;
+      } else if (!single) {
         let wx = 0, wy = 0, wt = 0;
         for (let k = 0; k < r.pids.length; k++) {
           const p = allByPid.get(r.pids[k]);

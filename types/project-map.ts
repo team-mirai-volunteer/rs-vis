@@ -18,6 +18,8 @@ export interface ProjectMapFile {
     clusters: number;
     seed: number;
     maxChars: number;
+    /** 一緒に配置した年度（同じ pid はこれらの年度で同じ座標）。単年度で配置した古いファイルには無い */
+    jointYears?: number[];
   };
   quality: {
     /** KMeansクラスタと policyCategory の一致度。マップの妥当性の目安 */
@@ -115,6 +117,14 @@ export interface ProjectMapSpendingRecipient {
   amounts: number[];
   /** 匿名・集約表記のときだけ付く種類 */
   kind?: PlaceholderKind;
+  /**
+   * 年度をまたいで同じ位置に置くための重心（マップ座標）。一緒に配置した全年度の支払いを支出先名で合わせて取る。
+   * 無ければ画面側でその年度の支出元から重心を取る
+   */
+  ax?: number;
+  ay?: number;
+  /** 全年度を通じて支出元が1事業だけ（重心＝事業の真上になるので、事業の縁に置く） */
+  single?: boolean;
 }
 
 export interface ProjectMapSpendingResponse {
