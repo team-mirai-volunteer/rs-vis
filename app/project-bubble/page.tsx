@@ -10,6 +10,7 @@ import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { ProjectDetailPanel } from '@/client/components/ProjectMap/ProjectDetailPanel';
 import { RecipientDetailPanel } from '@/client/components/ProjectMap/RecipientDetailPanel';
 import { HeaderHelp } from '@/client/components/HeaderHelp';
+import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -833,6 +834,7 @@ export default function ProjectMapPage() {
               colorOf={colorOf}
               onSelectPoint={p => { setSelected(p); setDetailFocus('project'); }}
               onClose={() => setLockedRecipientId(null)}
+              year={year}
             />
           ) : selected && spendData ? (
             <ProjectRecipientsPanel
@@ -1320,16 +1322,20 @@ function SpendingControls({
 
 /** 固定中の支出先と、その支出元の事業 */
 function RecipientPanel({
-  recipient, pointByPid, colorOf, onSelectPoint, onClose,
+  recipient, pointByPid, colorOf, onSelectPoint, onClose, year,
 }: {
   recipient: ProjectMapSpendingRecipient;
+  /** RS シート年度。事業の行のホバーで、その事業がこの支出先に払った契約（方式つき）を引く */
+  year: string;
   pointByPid: Map<string, ProjectMapPoint>;
   colorOf: (p: ProjectMapPoint) => string;
   onSelectPoint: (p: ProjectMapPoint) => void;
   onClose: () => void;
 }) {
+  const [hover, setHover] = useState<RecipientHover | null>(null);
   return (
     <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <RecipientHoverCard hover={hover} />
       <div className="flex items-start gap-1.5">
         <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
         <h2 className="flex-1 font-bold leading-snug">{recipient.name}</h2>
@@ -1350,12 +1356,15 @@ function RecipientPanel({
           const p = pointByPid.get(pid);
           if (!p) return null;
           return (
-            <li key={pid}>
+            <li key={pid}
+              // 事業の行にカーソル：この事業がこの支出先に払った契約の概要と契約方式
+              onMouseEnter={e => setHover({ x: e.clientX, y: e.clientY, name: recipient.name, title: p.name, subtitle: `→ ${recipient.name}`, amount: recipient.amounts[k], year, pids: [pid] })}
+              onMouseMove={e => setHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+              onMouseLeave={() => setHover(null)}>
               <button
                 type="button"
-                onClick={() => onSelectPoint(p)}
+                onClick={() => { setHover(null); onSelectPoint(p); }}
                 className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-mirai-surface"
-                title={p.name}
               >
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorOf(p) }} aria-hidden="true" />
                 <span className="flex-1 truncate text-mirai-text-secondary">{p.name}</span>
