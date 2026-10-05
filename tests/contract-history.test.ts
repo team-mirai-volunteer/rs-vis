@@ -63,3 +63,17 @@ test('法人番号が無ければ名前だけで拾い、名前も無ければ n
   assert.equal(h.continuing[0].years[1].soleAmount, 120);
   assert.equal(buildContractHistory('', [], methods), null);
 });
+
+test('国庫債務負担行為が2年度以上続く事業を、随意契約とは別に拾う', () => {
+  const e = (m: string, a: number) => ({ b: 'A', n: '株式会社テスト', cn: '1234567890123', a, m }) as never;
+  const h = buildContractHistory('1234567890123', [], {
+    '2024': { 1: [e('act-bearing-national-treasury-liabilities', 100)], 2: [e('act-bearing-national-treasury-liabilities', 5)] },
+    '2025': { 1: [e('act-bearing-national-treasury-liabilities', 200)], 2: [e('open-tendering-lowest-price', 7)] },
+    '2026': { 1: [e('act-bearing-national-treasury-liabilities', 300)] },
+  })!;
+  assert.equal(h.continuingMultiYearCount, 1);
+  assert.equal(h.continuingMultiYear[0].pid, '1');
+  assert.equal(h.continuingMultiYear[0].amount, 600);
+  assert.equal(h.continuingMultiYear[0].multiYearYears, 3);
+  assert.equal(h.continuingCount, 0);
+});

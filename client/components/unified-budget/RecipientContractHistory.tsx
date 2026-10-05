@@ -35,6 +35,7 @@ export function RecipientContractHistory({ history, label, meta }: {
   history: ContractHistory; label: React.CSSProperties; meta: React.CSSProperties;
 }) {
   if (history.years.every(y => y.count === 0)) return null;
+  const multiYear = history.continuingMultiYear ?? [];
   return <div className="space-y-3">
     <div>
       <div className="mb-1 font-bold text-mirai-text-secondary" style={label}>契約方式の推移（3年度）</div>
@@ -78,6 +79,26 @@ export function RecipientContractHistory({ history, label, meta }: {
         </li>)}
       </ul>
       {history.continuingCount > history.continuing.length && <p className="mt-1 text-mirai-text-muted" style={meta}>随意契約の金額が大きい{history.continuing.length}事業を表示しています。</p>}
+    </div>}
+    {multiYear.length > 0 && <div>
+      <div className="mb-1 font-bold text-mirai-text-secondary" style={label}>同じ事業で国庫債務負担行為が続いているもの
+        <span className="ml-1 font-normal text-mirai-text-muted">{history.continuingMultiYearCount}事業</span></div>
+      <p className="mb-1.5 leading-relaxed text-mirai-text-muted" style={meta}>3年度のうち2年度以上、同じ事業でこの相手と国庫債務負担行為（複数年度にわたる支出を約束する契約）がある事業です。複数年度に続くのは制度上ふつうですが、相手の決め方（入札か随意契約か）は元データに書かれていないため、更新のたびに同じ相手が続いていないかを確かめる手がかりとしてご覧ください。</p>
+      <ul className="m-0 list-none space-y-2 p-0">
+        {multiYear.map(p => <li key={p.pid} className="rounded-lg bg-mirai-surface px-2.5 py-2">
+          <div className="text-mirai-text" style={label}>{p.name ?? `事業ID ${p.pid}`}</div>
+          <div className="mb-1 text-mirai-text-muted" style={meta}>{p.ministry && `${p.ministry} · `}国庫債務負担行為 計{formatBudgetFromYen(p.amount)}（{p.multiYearYears}年度）</div>
+          <div className="grid grid-cols-3 gap-1.5" style={meta}>
+            {p.years.map(y => <div key={y.sheetYear}>
+              <div className="text-mirai-text-muted">{historyYearLabel(y.sheetYear)}</div>
+              {!y.projectListed ? <span className="text-mirai-text-muted">事業の記載なし</span>
+                : y.count === 0 ? <span className="text-mirai-text-muted">なし</span>
+                : <div className="tabular-nums text-mirai-text-subtle">{yen(y.amount)}<span className="ml-1 text-mirai-text-muted">{y.count}件</span></div>}
+            </div>)}
+          </div>
+        </li>)}
+      </ul>
+      {history.continuingMultiYearCount > multiYear.length && <p className="mt-1 text-mirai-text-muted" style={meta}>金額が大きい{multiYear.length}事業を表示しています。</p>}
     </div>}
   </div>;
 }

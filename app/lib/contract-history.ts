@@ -62,8 +62,26 @@ export interface ContinuingNegotiatedProject {
   negotiatedAmount: number;
 }
 
+/** 同じ事業で国庫債務負担行為（複数年度の契約）が続いているもの。年度ごとの金額・件数 */
+export interface ContinuingMultiYearProject {
+  pid: string;
+  name?: string;
+  ministry?: string;
+  years: { sheetYear: string; amount: number; count: number; projectListed: boolean }[];
+  /** 国庫債務負担行為があった年度の数 */
+  multiYearYears: number;
+  /** 3年度の国庫債務負担行為の金額の合計。並び順に使う */
+  amount: number;
+}
+
 export interface ContractHistory {
   years: ContractHistoryYear[];
+  /**
+   * 国庫債務負担行為が2年度以上続く事業（金額の大きい順に上位 limit 件）。複数年度にまたがるのが制度上ふつうで、
+   * 相手の決め方（入札か随意か）は元データに書かれていない。随意契約の一覧とは分けて出す
+   */
+  continuingMultiYear: ContinuingMultiYearProject[];
+  continuingMultiYearCount: number;
   /** 随意契約の金額の大きい順に上位 limit 件 */
   continuing: ContinuingNegotiatedProject[];
   /** 該当事業の総数（continuing は上位だけ） */
@@ -128,12 +146,27 @@ export function buildContractHistory(corporateNumber: string, aliases: readonly 
       negotiatedAmount: projYears.reduce((s, y) => s + y.soleAmount + y.negotiatedCompetitiveAmount, 0) });
   }
   continuing.sort((a, b) => b.negotiatedAmount - a.negotiatedAmount || Number(a.pid) - Number(b.pid));
+
+  const multiYear: ContinuingMultiYearProject[] = [];
+  for (const [pid, perYear] of byPid) {
+    const projYears = HISTORY_SHEET_YEARS.map(sheetYear => {
+      const es = (perYear.get(sheetYear) ?? []).filter(e => contractCategory(e.m) === 'multi-year');
+      return { sheetYear, amount: es.reduce((s, e) => s + (e.a ?? 0), 0), count: es.length, projectListed: !!methodsByYear[sheetYear]?.[pid] };
+    });
+    const multiYearYears = projYears.filter(y => y.count > 0).length;
+    if (multiYearYears < 2) continue;
+    multiYear.push({ pid, years: projYears, multiYearYears, amount: projYears.reduce((s, y) => s + y.amount, 0) });
+  }
+  multiYear.sort((a, b) => b.amount - a.amount || Number(a.pid) - Number(b.pid));
+  const named = <T extends { pid: string }>(p: T) => {
+    const info = projectInfo(p.pid);
+    return info ? { ...p, name: info.name, ...(info.ministry ? { ministry: info.ministry } : {}) } : p;
+  };
   return {
     years,
-    continuing: continuing.slice(0, limit).map(p => {
-      const info = projectInfo(p.pid);
-      return info ? { ...p, name: info.name, ...(info.ministry ? { ministry: info.ministry } : {}) } : p;
-    }),
+    continuingMultiYear: multiYear.slice(0, limit).map(named),
+    continuingMultiYearCount: multiYear.length,
+    continuing: continuing.slice(0, limit).map(named),
     continuingCount: continuing.length,
     continuingAllSoleCount: continuing.filter(p => p.allSole).length,
   };
