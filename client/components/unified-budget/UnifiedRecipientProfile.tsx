@@ -88,6 +88,16 @@ export function UnifiedRecipientProfile({ name, sheetYear, corporateNumber, scal
         </ul>
       </div>}
       {profile.history && <RecipientContractHistory history={profile.history} label={label} meta={meta} />}
+      {profile.funds && profile.funds.length > 0 && <div>
+        <div className="mb-1 font-bold text-mirai-text-secondary" style={label}>この法人が保有する基金<span className="ml-1 font-normal text-mirai-text-muted">{profile.funds.length}基金</span></div>
+        <ul className="m-0 list-none space-y-0.5 p-0" style={label}>
+          {profile.funds.slice(0, 8).map(f => <li key={f.key} className="flex justify-between gap-3">
+            <a href={`/funds?fund=${encodeURIComponent(f.key)}`} className="min-w-0 truncate text-primary underline underline-offset-4 hover:text-primary-accent" title={f.name}>{f.name}</a>
+            <span className="shrink-0 tabular-nums text-mirai-text-muted" title={`${f.sheetYear - 1}年度末の残高`}>残高 {f.balance === null ? '—' : formatBudgetFromYen(f.balance)}</span>
+          </li>)}
+        </ul>
+        {profile.funds.length > 8 && <p className="mt-0.5 text-mirai-text-muted" style={meta}>ほか{profile.funds.length - 8}基金（基金一覧で保有法人名を検索）</p>}
+      </div>}
       {entry.aliases.length > 0 && <p className="text-mirai-text-muted" style={meta}>別の表記: {entry.aliases.join('、')}</p>}
     </>}
     <p className="text-mirai-text-muted" style={meta}>出典: {fiscalYearLabel(sheetYear)}のRSシート（支出先・再委託）、契約方式・所在地・法人種別はRS公開API{profile.external?.wd && '、設立・公式サイト・Wikipedia の記事は Wikidata（法人番号で一致したもの）'}</p>

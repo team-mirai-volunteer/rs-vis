@@ -12,6 +12,8 @@ import { loadContractMethods, loadProjectLabels, loadRecipientExternal } from '@
 import { buildRecipientProfile } from '@/app/lib/recipient-profile';
 import { buildContractHistory, HISTORY_SHEET_YEARS } from '@/app/lib/contract-history';
 import { normalizeRecipientName } from '@/app/lib/recipient-key';
+import { loadFunds } from '@/app/lib/api/funds-loader';
+import { fundsHeldBy, latestYear } from '@/app/lib/funds';
 
 const MAX_NAME_CHARS = 200;
 
@@ -32,6 +34,10 @@ export async function GET(req: NextRequest) {
         Object.fromEntries(HISTORY_SHEET_YEARS.map(y => [y, loadContractMethods(y)])),
         pid => fromIndex.get(pid) ?? loadProjectLabels('2025')?.get(pid) ?? loadProjectLabels('2024')?.get(pid));
       if (history) profile.history = history;
+      // 基金シートの保有法人名と、支出先名・表記ゆれが一致する基金
+      const held = fundsHeldBy(loadFunds()?.funds ?? [], [entry.name, ...entry.aliases]);
+      if (held.length) profile.funds = held.map(f => { const y = latestYear(f); return { key: f.key, name: f.name, balance: y.balance, sheetYear: y.sheetYear }; })
+        .sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0));
     }
     return NextResponse.json(profile, { headers: { 'Cache-Control': API_CACHE_CONTROL } });
   } catch (e) {

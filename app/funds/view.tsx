@@ -1,0 +1,216 @@
+'use client';
+
+/**
+ * 基金一覧（/funds）。RSシステムの基金シートを、残高・支出・国庫返納・終了予定・点検の観点で絞り込み・並べ替えする。
+ * 行を選ぶと右に基金の詳細（3年度の推移・造成の経緯と造成元の事業・必要性・保有割合の根拠・点検結果）を出す。
+ */
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { X } from 'lucide-react';
+import { AppHeader } from '@/components/navigation/AppHeader';
+import { Button } from '@/components/ui/button';
+import { HeaderHelp } from '@/client/components/HeaderHelp';
+import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
+import {
+  BUSINESS_FORM_LABELS, FUND_SIGNALS, FUND_SIGNAL_DESCRIPTIONS, FUND_SIGNAL_LABELS, FUND_SIGNAL_SHORT, INSPECTION_LABELS, OPERATION_FORM_LABELS,
+  OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, latestYear, spendingYears,
+  type FundSignal,
+} from '@/app/lib/funds';
+import type { Fund, FundsFile } from '@/types/funds';
+
+type SortKey = 'balance' | 'expense' | 'years' | 'returned' | 'adminRate' | 'ownership' | 'endDate' | 'name';
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'balance', label: '残高' }, { key: 'expense', label: '前年度支出' }, { key: 'years', label: '残高÷支出' },
+  { key: 'returned', label: '国庫返納' }, { key: 'adminRate', label: '管理費率' }, { key: 'ownership', label: '保有割合' },
+  { key: 'endDate', label: '終了予定' }, { key: 'name', label: '基金名' },
+];
+
+const yen = (v: number | null) => (v === null ? '—' : formatBudgetFromYen(v));
+const pct = (v: number | null) => (v === null ? '—' : `${v.toFixed(1)}%`);
+/** シート年度 N の「前年度」＝年度 N−1、残高＝年度 N−1 の末 */
+const fyLabel = (sheetYear: number) => `${sheetYear - 1}年度`;
+
+function sortValue(f: Fund, key: SortKey): number | string | null {
+  const y = latestYear(f);
+  switch (key) {
+    case 'balance': return y.balance;
+    case 'expense': return y.expense;
+    case 'years': return spendingYears(y);
+    case 'returned': return y.returned;
+    case 'adminRate': return y.adminRate;
+    case 'ownership': return y.ownership;
+    case 'endDate': return f.endDate;
+    case 'name': return f.name;
+  }
+}
+
+export default function FundsView() {
+  const [data, setData] = useState<FundsFile | null | undefined>(undefined);
+  const [signal, setSignal] = useState<FundSignal | null>(null);
+  const [ministry, setMinistry] = useState('');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'balance', desc: true });
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/funds').then(r => (r.ok ? r.json() : null)).then(setData).catch(() => setData(null));
+    const p = new URLSearchParams(window.location.search);
+    setSelectedKey(p.get('fund'));
+    const s = p.get('signal');
+    if (s && (FUND_SIGNALS as string[]).includes(s)) setSignal(s as FundSignal);
+  }, []);
+  // 選択・絞り込みを URL に残す（共有・戻る用）
+  useEffect(() => {
+    if (data === undefined) return;
+    const p = new URLSearchParams();
+    if (selectedKey) p.set('fund', selectedKey);
+    if (signal) p.set('signal', signal);
+    window.history.replaceState(null, '', `/funds${p.toString() ? `?${p}` : ''}`);
+  }, [selectedKey, signal, data]);
+
+  const rows = useMemo(() => (data?.funds ?? []).map(f => ({ f, signals: fundSignals(f) })), [data]);
+  const ministries = useMemo(() => [...new Set(rows.map(r => r.f.ministry))].filter(Boolean).sort(), [rows]);
+  const counts = useMemo(() => Object.fromEntries(FUND_SIGNALS.map(s => [s, rows.filter(r => r.signals.includes(s))])) as Record<FundSignal, typeof rows>, [rows]);
+  const filtered = useMemo(() => {
+    const q = query.trim();
+    const list = rows.filter(r => (!signal || r.signals.includes(signal)) && (!ministry || r.f.ministry === ministry)
+      && (!q || r.f.name.includes(q) || r.f.owner.includes(q)));
+    return [...list].sort((a, b) => {
+      const va = sortValue(a.f, sort.key), vb = sortValue(b.f, sort.key);
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      const c = typeof va === 'string' ? va.localeCompare(String(vb), 'ja') : va - (vb as number);
+      return sort.desc ? -c : c;
+    });
+  }, [rows, signal, ministry, query, sort]);
+  const selected = rows.find(r => r.f.key === selectedKey) ?? null;
+  const totalBalance = filtered.reduce((s, r) => s + (latestYear(r.f).balance ?? 0), 0);
+
+  return <div className="flex h-dvh flex-col bg-background text-mirai-text">
+    <AppHeader current="/funds">
+      <FundsHelp />
+    </AppHeader>
+    <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+        <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
+          <h1 className="text-base font-bold">基金</h1>
+          <p className="mt-1 text-xs text-mirai-text-muted">RSシステムの基金シート（{data?.metadata.sheetYears.join('・')}年版）。金額・率は府省の記載どおりです。論点のボタンで絞り込めます（カーソルを合わせると説明）。</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button variant={signal === null ? 'default' : 'outline'} size="xs" onClick={() => setSignal(null)}>すべて {rows.length}</Button>
+            {FUND_SIGNALS.map(s => <Button key={s} variant={signal === s ? 'default' : 'outline'} size="xs" title={FUND_SIGNAL_DESCRIPTIONS[s]}
+              onClick={() => setSignal(signal === s ? null : s)}>{FUND_SIGNAL_LABELS[s]} {counts[s]?.length ?? 0}</Button>)}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="基金名・保有法人で検索" aria-label="基金名・保有法人で検索"
+              className="min-w-0 flex-1 rounded-md border border-mirai-border bg-card px-2.5 py-1.5" />
+            <select value={ministry} onChange={e => setMinistry(e.target.value)} aria-label="府省庁" className="rounded-md border border-mirai-border bg-card px-2 py-1.5">
+              <option value="">全府省庁</option>{ministries.map(m => <option key={m}>{m}</option>)}
+            </select>
+            <select value={sort.key} onChange={e => setSort({ key: e.target.value as SortKey, desc: e.target.value !== 'name' && e.target.value !== 'endDate' })} aria-label="並び順" className="rounded-md border border-mirai-border bg-card px-2 py-1.5">
+              {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}{s.key === 'name' || s.key === 'endDate' ? '（昇順）' : '（大きい順）'}</option>)}
+            </select>
+            <span className="tabular-nums text-mirai-text-muted">{filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-soft">
+          {data === undefined ? <p role="status" className="p-4 text-sm text-mirai-text-muted">読み込み中…</p>
+            : data === null ? <p className="p-4 text-sm text-mirai-text-muted">基金データを読み込めませんでした。</p>
+            : <table className="w-full min-w-[880px] text-xs">
+              <thead className="sticky top-0 z-10 bg-mirai-surface text-mirai-text-muted">
+                <tr>{[['基金・保有法人・府省', 'name'], ['残高', 'balance'], ['前年度支出', 'expense'], ['残高÷支出', 'years'], ['国庫返納', 'returned'], ['管理費率', 'adminRate'], ['保有割合', 'ownership'], ['終了予定', 'endDate'], ['論点', null]].map(([label, key]) =>
+                  <th key={label} className={`whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' && key !== 'endDate' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : ''}`}
+                    onClick={key ? () => setSort(s => ({ key: key as SortKey, desc: s.key === key ? !s.desc : key !== 'name' && key !== 'endDate' })) : undefined}>
+                    {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map(({ f, signals }) => { const y = latestYear(f); const yrs = spendingYears(y); return <tr key={f.key}
+                  onClick={() => setSelectedKey(f.key)} className={`cursor-pointer hover:bg-mirai-surface-teal/60 ${selectedKey === f.key ? 'bg-mirai-surface-teal/60' : ''}`}>
+                  <td className="max-w-[300px] px-2 py-1.5"><div className="truncate font-medium" title={f.name}>{f.name}</div><div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yen(y.balance)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{yen(y.expense)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yrs === null ? '—' : `${yrs >= 100 ? Math.round(yrs).toLocaleString() : yrs.toFixed(1)}年分`}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{y.returned ? yen(y.returned) : '—'}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{pct(y.adminRate)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{y.ownership === null ? '—' : y.ownership.toFixed(2)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-mirai-text-subtle">{f.endDate ?? '—'}</td>
+                  <td className="px-2 py-1.5"><div className="flex min-w-[9rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={`${FUND_SIGNAL_LABELS[s]}：${FUND_SIGNAL_DESCRIPTIONS[s]}`}
+                    className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{FUND_SIGNAL_SHORT[s]}</span>)}</div></td>
+                </tr>; })}
+              </tbody>
+            </table>}
+        </div>
+      </section>
+      {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)} />}
+    </main>
+  </div>;
+}
+
+function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSignal[]; onClose: () => void }) {
+  const latestSheet = latestYear(f).sheetYear;
+  const projects = [...new Set([...f.relatedPids, ...f.compositions.flatMap(c => (c.pid ? [c.pid] : []))])];
+  return <aside aria-label={`${f.name} の詳細`} className="min-h-0 w-full shrink-0 overflow-y-auto rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:w-[440px]">
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-[11px] text-mirai-text-muted">{f.ministry}{f.sheetNumber !== null && ` · 基金シート ${f.sheetNumber}`}</div>
+        <h2 className="mt-1 text-sm font-bold">{f.name}</h2>
+        <div className="mt-0.5 text-mirai-text-subtle">保有法人: {f.owner || '—'}{f.ownerForm && `（${OWNER_FORM_LABELS[f.ownerForm] ?? f.ownerForm}）`}</div>
+      </div>
+      <Button variant="ghost" size="icon-sm" aria-label="選択を解除" onClick={onClose}><X /></Button>
+    </div>
+    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={FUND_SIGNAL_DESCRIPTIONS[s]}
+      className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{FUND_SIGNAL_LABELS[s]}</span>)}</div>}
+    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1">
+      <div><dt className="text-mirai-text-muted">造成年度</dt><dd>{f.createdYear ?? '—'}</dd></div>
+      <div><dt className="text-mirai-text-muted">終了予定</dt><dd>{f.endDate ?? '—'}</dd></div>
+      <div><dt className="text-mirai-text-muted">新規受付の終了</dt><dd>{f.newApplicationEndDate ?? '—'}</dd></div>
+      <div><dt className="text-mirai-text-muted">運営の形態</dt><dd>{formLabels(f.operationForms, OPERATION_FORM_LABELS).join('・') || '—'}</dd></div>
+      <div><dt className="text-mirai-text-muted">事業の形態</dt><dd>{formLabels(f.businessForms, BUSINESS_FORM_LABELS).join('・') || '—'}</dd></div>
+    </dl>
+    <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">残高と収支の推移</h3>
+    <table className="w-full table-fixed text-[11px]">
+      <thead className="text-mirai-text-muted"><tr><th className="w-[30%] text-left font-normal" />{f.years.map(y => <th key={y.sheetYear} className="text-right font-normal">{fyLabel(y.sheetYear)}</th>)}</tr></thead>
+      <tbody className="divide-y divide-border tabular-nums">
+        {([['年度末の残高', y => yen(y.balance)], ['国からの交付', y => yen(y.granted)], ['支出', y => yen(y.expense)], ['うち管理費', y => yen(y.adminExpense)],
+          ['管理費率', y => pct(y.adminRate)], ['国庫返納', y => yen(y.returned)], ['乖離率', y => pct(y.divergence)], ['保有割合', y => (y.ownership === null ? '—' : y.ownership.toFixed(2))]] as [string, (y: Fund['years'][number]) => string][])
+          .map(([label, fmt]) => <tr key={label}><td className="py-1 text-mirai-text-muted">{label}</td>{f.years.map(y => <td key={y.sheetYear} className="py-1 text-right">{fmt(y)}</td>)}</tr>)}
+      </tbody>
+    </table>
+    <p className="mt-1 text-[10px] text-mirai-text-muted">年度は実績の年度（{f.years[0].sheetYear}〜{latestSheet}年版の基金シートの「前年度」の値）。残高はその年度の末の値です。</p>
+    {f.compositions.length > 0 && <>
+      <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">造成の経緯（国費の投入）</h3>
+      <ul className="m-0 list-none space-y-0.5 p-0">{f.compositions.map((c, i) => <li key={i} className="flex justify-between gap-2">
+        <span className="text-mirai-text-subtle">{c.fiscalYear ?? '—'}年度 {budgetLabel(c.budget)}</span><span className="tabular-nums">{yen(c.amount)}</span></li>)}</ul>
+    </>}
+    {projects.length > 0 && <>
+      <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">造成元・関連の事業</h3>
+      <ul className="m-0 list-none space-y-0.5 p-0">{projects.map(pid => <li key={pid}>
+        <Link href={unifiedProjectUrl(pid, Math.min(latestSheet, 2025))} className="text-primary underline underline-offset-4 hover:text-primary-accent">予算事業ID {pid} をサンキー図で見る</Link></li>)}</ul>
+    </>}
+    {f.owner && <p className="mt-3"><Link href={`/budget-sankey?year=2024&frq=${encodeURIComponent(f.owner)}`} className="text-primary underline underline-offset-4 hover:text-primary-accent">保有法人「{f.owner}」への支出をサンキー図で見る</Link></p>}
+    {f.necessity && <><h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">基金で行う必要性（府省の記載）</h3><p className="whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.necessity}</p></>}
+    {f.ownershipBasis && <><h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">保有割合の算定根拠（府省の記載）</h3><p className="whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.ownershipBasis}</p></>}
+    <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">低執行の基金の点検（府省の記載）</h3>
+    <ul className="m-0 list-none space-y-0.5 p-0">{(Object.keys(INSPECTION_LABELS) as (keyof Fund['inspection'])[]).map(k => <li key={k} className="flex justify-between gap-2">
+      <span className="text-mirai-text-subtle">{INSPECTION_LABELS[k]}</span><span className={f.inspection[k] ? 'font-bold text-status-warn-fg' : 'text-mirai-text-muted'}>{f.inspection[k] ? '該当' : '—'}</span></li>)}</ul>
+    {f.inspectionNote && <p className="mt-1 whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.inspectionNote}</p>}
+    {f.overviewUrl && /^https?:\/\//.test(f.overviewUrl) && <p className="mt-3"><a href={f.overviewUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">府省の事業概要 ↗</a></p>}
+  </aside>;
+}
+
+function FundsHelp() {
+  return <HeaderHelp id="funds-help" label="基金一覧の説明">
+    <h2 className="mb-2 text-[13px] font-bold">基金とは</h2>
+    <p className="text-mirai-text-subtle">複数年度にわたる事業の費用を、国があらかじめ法人（基金保有法人）に積み立てておく仕組みです。単年度の予算では対応しにくい事業に使われます。残高が大きいこと自体は問題ではありません。</p>
+    <h2 className="mb-2 mt-4 text-[13px] font-bold">論点（絞り込みのボタン）</h2>
+    <dl className="space-y-1.5 text-mirai-text-subtle">{FUND_SIGNALS.map(s => <div key={s}><dt className="inline font-bold text-mirai-text">{FUND_SIGNAL_LABELS[s]}：</dt><dd className="inline">{FUND_SIGNAL_DESCRIPTIONS[s]}</dd></div>)}</dl>
+    <p className="mt-2 text-mirai-text-muted">いずれも確かめる手がかりで、不適切さの判定ではありません。</p>
+    <h2 className="mb-2 mt-4 text-[13px] font-bold">データについて</h2>
+    <ul className="m-0 list-disc space-y-1 pl-4 text-mirai-text-subtle">
+      <li>RSシステムの基金シート（RS公開API）。金額・率は府省の記載どおりで、このサイトでは検証していません。</li>
+      <li>シート年度 N の「前年度」の値は年度 N−1 の実績です。残高は年度 N−1 の末（年度 N の初め）の値です。</li>
+      <li>造成元の事業は、基金シートに記載された関連レビューシート・造成の経緯から引き当てています（全基金の約3分の1）。</li>
+    </ul>
+  </HeaderHelp>;
+}

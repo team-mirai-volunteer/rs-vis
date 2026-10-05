@@ -25,6 +25,8 @@ export interface RecipientProfile {
   };
   /** 契約方式の区分ごとの集計（RS公開APIと突き合わせできた契約のみ） */
   methods: CategoryTotal[];
+  /** この法人が保有する基金（基金シートの保有法人名で一致したもの。残高の大きい順） */
+  funds?: { key: string; name: string; balance: number | null; sheetYear: number }[];
   /** 法人番号で突き合わせた外部情報（所在地・法人種別・Wikipedia・公式サイトなど） */
   external?: RecipientExternal & { kindLabel?: string };
   /** 契約方式の3年度の推移（API が付ける。法人番号か名前で引けたときだけ） */

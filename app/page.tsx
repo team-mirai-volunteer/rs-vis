@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   ArrowRight,
   ChartScatter,
+  PiggyBank,
   ClipboardCheck,
   Landmark,
   Network,
@@ -23,6 +24,7 @@ const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
   '/project-bubble': ChartScatter,
   '/quality': ClipboardCheck,
   '/subcontracts': Network,
+  '/funds': PiggyBank,
   '/tax-expenditures': ReceiptJapaneseYen,
   '/tax-burden': Scale,
   '/fiscal-space': Landmark,

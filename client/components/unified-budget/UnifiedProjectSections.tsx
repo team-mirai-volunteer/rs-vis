@@ -24,6 +24,7 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
+import { ProjectFunds } from './ProjectFunds';
 
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
@@ -99,6 +100,8 @@ export function UnifiedProjectSections({
         onOpenDetail={isProvisional ? undefined : openScoreDialog}
         detailLoading={scoreLoading}
       />
+
+      {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} />}
 
       <ProjectOverviewSection
         detail={detail}
