@@ -1,5 +1,6 @@
 'use client';
 
+import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { subcontractSources } from '@/app/lib/subcontracts/block-sources';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
@@ -1778,6 +1779,7 @@ function SubcontractDetailPageInner() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <AppHeader fiscalYear={fiscalYear(year)} current="/subcontracts">
+        <SubcontractsHelp />
         <YearSelect labelForYear={fiscalYearLabel}
           value={String(year)}
           onChange={(y) => router.push(rsViewUrl(`/subcontracts/${projectId}`, y))}

@@ -1,5 +1,6 @@
 'use client';
 
+import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 
 /**
@@ -570,6 +571,7 @@ function SubcontractsPageInner() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
       <AppHeader fiscalYear={fiscalYear(year)} current="/subcontracts">
+        <SubcontractsHelp />
         <YearSelect labelForYear={fiscalYearLabel} value={String(year)} onChange={y => setYear(Number(y))} years={[2025, 2024]} />
       </AppHeader>
       {/* ── 上部: フィルタ群 ── */}

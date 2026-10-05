@@ -1,5 +1,6 @@
 'use client';
 
+import { QualityHelp } from '@/client/components/quality/QualityHelp';
 import { fiscalYear, fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
@@ -430,6 +431,7 @@ export default function QualityPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <AppHeader fiscalYear={fiscalYear(year)} current="/quality">
+        <QualityHelp sheetYear={Number(year)} />
         {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
         <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
           {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { BubbleCanvas } from '@/client/components/ProjectMap/BubbleCanvas';
 import { ProjectDetailPanel } from '@/client/components/ProjectMap/ProjectDetailPanel';
 import { RecipientDetailPanel } from '@/client/components/ProjectMap/RecipientDetailPanel';
+import { HeaderHelp } from '@/client/components/HeaderHelp';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -99,7 +100,6 @@ export default function ProjectMapPage() {
   const [showClusterLabels, setShowClusterLabels] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
   const [showTable, setShowTable] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
   /** sm 未満で左の絞り込み列（ボトムシート）を開いているか。既定は閉（図を広く見せる） */
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
@@ -508,14 +508,34 @@ export default function ProjectMapPage() {
     // サンキー図と同じく画面全体を図に使う。UIはすべてフロートで重ねる（ヘッダー分だけ上を空ける）
     <div className="flex h-dvh flex-col bg-background text-mirai-text">
     <AppHeader fiscalYear={fiscalYear(year)} position="static" current="/project-bubble">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setHelpOpen(v => !v)}
-        aria-expanded={helpOpen}
-        aria-controls="bubble-help"
-        className="h-9 shrink-0 border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text"
-      >説明</Button>
+      <HeaderHelp id="bubble-help" label="このチャートの説明">
+        <h2 className="mb-2 text-[13px] font-bold">このチャートの読み方</h2>
+        <dl className="space-y-2 text-mirai-text-subtle">
+          <div>
+            <dt className="font-bold text-mirai-text">配置</dt>
+            <dd>丸1つが国の事業1つ。事業の説明文（目的・概要・課題）が似ているものほど近くに置かれます。上下左右の向きに意味はありません。</dd>
+          </div>
+          <div>
+            <dt className="font-bold text-mirai-text">大きさ</dt>
+            <dd>はじめは予算額の大きい事業ほど大きく表示しています。左のメニューで執行額・継続年数や、AI評価の総合点が低い事業ほど大きくする表示などに切り替えられます。「ブロック差額」は再委託のあるブロックで、ブロックの記載額から直下の再委託先の記載額を引いた額の事業合計です（記載額の差であり、実際の受取額や利益ではありません）。</dd>
+          </div>
+          <div>
+            <dt className="font-bold text-mirai-text">色と背景</dt>
+            <dd>色は所管の府省庁（切替可）。背景の淡い色面は、その府省庁の事業が集まっている領域です。色を「推奨判断」に切り替えると、どの領域に見直し候補が固まっているかが見えます。</dd>
+          </div>
+          <div>
+            <dt className="font-bold text-mirai-text">支出つながり</dt>
+            <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます（1事業だけの支出先はその事業の丸のすぐ外に置きます）。右上で支出先名の検索・支出元の事業数・件数を絞り込めます。「種類」を匿名・集約表記にすると、「その他」「個人A」「A社」「支出先なし」のように支出先を具体的に書いていない支出だけを表示し、それが多い事業を金額順・割合順で並べます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
+          </div>
+          <div>
+            <dt className="font-bold text-mirai-text">操作</dt>
+            <dd>丸にカーソルで概要、クリックで詳細。右の凡例をクリックするとその区分だけ強調。ドラッグで移動、ホイール/ピンチで拡大縮小。</dd>
+          </div>
+        </dl>
+        <p className="mt-2.5 border-t border-border pt-2 text-[10px] text-mirai-text-muted">
+          評価はAIによるスクリーニングであり、結論ではありません。位置と評価の詳しい算出方法は開発ドキュメントを参照してください。
+        </p>
+      </HeaderHelp>
       <ViewSelect value={view} onChange={changeView} />
       <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as Year)} years={YEARS} />
     </AppHeader>
@@ -787,45 +807,6 @@ export default function ProjectMapPage() {
         >
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
-      </div>
-
-      {/* ── ヘッダーの説明ボタンで開くヘルプ ── */}
-      <div className="absolute right-3 top-3 z-40 flex items-center gap-2">
-        <div className="relative">
-          {helpOpen && (
-            <>
-              <div className="fixed inset-0" onClick={() => setHelpOpen(false)} aria-hidden="true" />
-              <div id="bubble-help" className="absolute right-0 top-0 max-h-[calc(100dvh-var(--app-header-h)-24px)] w-80 max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-mirai-border bg-card p-3.5 text-xs leading-relaxed shadow-soft">
-                <h2 className="mb-2 text-[13px] font-bold">このチャートの読み方</h2>
-                <dl className="space-y-2 text-mirai-text-subtle">
-                  <div>
-                    <dt className="font-bold text-mirai-text">配置</dt>
-                    <dd>丸1つが国の事業1つ。事業の説明文（目的・概要・課題）が似ているものほど近くに置かれます。上下左右の向きに意味はありません。</dd>
-                  </div>
-                  <div>
-                    <dt className="font-bold text-mirai-text">大きさ</dt>
-                    <dd>はじめは予算額の大きい事業ほど大きく表示しています。左のメニューで執行額・継続年数や、AI評価の総合点が低い事業ほど大きくする表示などに切り替えられます。「ブロック差額」は再委託のあるブロックで、ブロックの記載額から直下の再委託先の記載額を引いた額の事業合計です（記載額の差であり、実際の受取額や利益ではありません）。</dd>
-                  </div>
-                  <div>
-                    <dt className="font-bold text-mirai-text">色と背景</dt>
-                    <dd>色は所管の府省庁（切替可）。背景の淡い色面は、その府省庁の事業が集まっている領域です。色を「推奨判断」に切り替えると、どの領域に見直し候補が固まっているかが見えます。</dd>
-                  </div>
-                  <div>
-                    <dt className="font-bold text-mirai-text">支出つながり</dt>
-                    <dd>ヘッダーの「ビュー」で切り替えます。菱形は支出先で、色が濃い（形が大きい）ほどマップ上の事業から受け取った額が大きい支出先です。菱形は支出元の事業の重心に置かれ、線で結ばれます（1事業だけの支出先はその事業の丸のすぐ外に置きます）。右上で支出先名の検索・支出元の事業数・件数を絞り込めます。「種類」を匿名・集約表記にすると、「その他」「個人A」「A社」「支出先なし」のように支出先を具体的に書いていない支出だけを表示し、それが多い事業を金額順・割合順で並べます。同じ支出先に払っている事業同士が、その菱形を経由してつながって見えます。「その他」「個人A」のように事業をまたいで同じ相手と言えない表記は除いています。</dd>
-                  </div>
-                  <div>
-                    <dt className="font-bold text-mirai-text">操作</dt>
-                    <dd>丸にカーソルで概要、クリックで詳細。右の凡例をクリックするとその区分だけ強調。ドラッグで移動、ホイール/ピンチで拡大縮小。</dd>
-                  </div>
-                </dl>
-                <p className="mt-2.5 border-t border-border pt-2 text-[10px] text-mirai-text-muted">
-                  評価はAIによるスクリーニングであり、結論ではありません。位置と評価の詳しい算出方法は開発ドキュメントを参照してください。
-                </p>
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}

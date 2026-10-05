@@ -7,13 +7,14 @@
  */
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { HeaderHelp } from '@/client/components/HeaderHelp';
 import { AXIS_META } from '@/client/components/quality/score-meta';
 import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 
 /** プロンプトを書き出してあるシート年度。無い年度は最新の版を案内する */
 const PROMPT_YEARS = [2025, 2024];
 
-function PromptText({ sheetYear }: { sheetYear: number }) {
+export function PromptText({ sheetYear }: { sheetYear: number }) {
   const year = PROMPT_YEARS.includes(sheetYear) ? sheetYear : PROMPT_YEARS[0];
   const [text, setText] = useState<string | null | undefined>(undefined);
   useEffect(() => {
@@ -38,15 +39,8 @@ function PromptText({ sheetYear }: { sheetYear: number }) {
 }
 
 export function UnifiedHelp({ sheetYear }: { sheetYear: number }) {
-  const [open, setOpen] = useState(false);
   const [promptOpen, setPromptOpen] = useState(false);
-  return <div className="relative shrink-0">
-    <Button variant="outline" size="sm" onClick={() => setOpen(v => !v)} aria-expanded={open} aria-controls="sankey-help"
-      className="h-9 shrink-0 border-mirai-border px-2.5 text-xs font-medium text-mirai-text-subtle hover:text-mirai-text">説明</Button>
-    {open && <>
-      <div className="fixed inset-0 z-[230]" onClick={() => setOpen(false)} aria-hidden="true" />
-      <div id="sankey-help" role="dialog" aria-label="この図の説明" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } }}
-        className="absolute right-0 top-full z-[240] mt-2 max-h-[calc(100dvh-var(--app-header-h)-24px)] w-[26rem] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border border-mirai-border bg-card p-3.5 text-xs leading-relaxed shadow-soft">
+  return <HeaderHelp id="sankey-help" label="この図の説明">
         <h2 className="mb-2 text-[13px] font-bold">この図の読み方</h2>
         <dl className="space-y-2 text-mirai-text-subtle">
           <div><dt className="font-bold text-mirai-text">流れ</dt>
@@ -81,7 +75,5 @@ export function UnifiedHelp({ sheetYear }: { sheetYear: number }) {
           </Button>
           <div id="sankey-help-prompt">{promptOpen && <PromptText sheetYear={sheetYear} />}</div>
         </div>
-      </div>
-    </>}
-  </div>;
+  </HeaderHelp>;
 }
