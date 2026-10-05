@@ -65,9 +65,11 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [messages, progress]);
 
   const mode: 'byok' | 'server' | null = settings ? 'byok' : serverEnabled ? 'server' : null;
-  const yearKey = String(sheetYear);
-  const yearSupported = AI_YEARS.has(yearKey);
-  const canSend = !!mode && !sending && yearSupported;
+  // AI が条件を考えるのに使う支出データの年度。支出データの無い年度（予算年度2025以降）は最も近い年度で代用し、
+  // できた条件（府省・事業名・金額・スコアなど）を表示中の年度の図に当てる
+  const ownData = AI_YEARS.has(String(sheetYear));
+  const yearKey = ownData ? String(sheetYear) : String(sheetYear > 2025 ? 2025 : 2024);
+  const canSend = !!mode && !sending;
 
   const getGraph = useCallback(async (y: SupportedYear): Promise<GraphData> => {
     const cached = graphCache.current.get(String(y));
@@ -175,7 +177,7 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
 
     {/* 会話ログ */}
     <div ref={logRef} className="flex flex-1 flex-col gap-2.5 overflow-y-auto bg-mirai-surface px-4 py-3">
-      {!yearSupported && <p className="m-0 rounded-xl border border-stance-against/30 bg-stance-against-bg px-3 py-2 text-xs leading-relaxed text-stance-against">AI検索は2023・2024年度（支出データのある年度）にだけ対応しています。ヘッダーの年度を切り替えてください。</p>}
+      {!ownData && <p className="m-0 rounded-xl border border-mirai-border bg-card px-3 py-2 text-xs leading-relaxed text-mirai-text-secondary">この年度はまだ支出データがないため、条件は{Number(yearKey) - 1}年度の実績データで解釈して、表示中の図に当てます。府省・事業名・予算額の条件は効きます。AIが事業を選んだ場合はその年度にある事業だけが対象で、支出先・支出額の条件は効きません。</p>}
       {messages.length === 0 && <div className="space-y-3">
         <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。</p>
         <div className="flex flex-wrap gap-1.5">
@@ -207,7 +209,7 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
 
     {/* 入力 */}
     <div className="flex flex-col gap-2 border-t border-mirai-border bg-card px-4 py-3">
-      <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} rows={2} disabled={!mode || sending || !yearSupported}
+      <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} rows={2} disabled={!mode || sending}
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(input); } }}
         placeholder={mode ? '例: 再エネ関連で予算100億円以上（Ctrl+Enter で送信）' : 'APIキーを設定すると利用できます'} className={cn(INPUT_CLASS, 'resize-y')} />
       <div className="flex items-center gap-2">
