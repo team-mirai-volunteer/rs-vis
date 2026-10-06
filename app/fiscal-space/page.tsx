@@ -148,7 +148,7 @@ export default function FiscalSpacePage() {
       </Button>
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
-      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）でどこまで追加支出を許すかを条件付きで比較します。15年評価は公表期間外を仮定で延長します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
+      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">減税・公共投資・研究・エネルギーなどの使い道と規模・期間を入れると、物価・労働・電力・産業能力のどの制約に最初に当たるかを試算できます。債務持続性の判定ではなく、公表モデルの期間（最大5年）での条件付きの比較です。15年評価は公表期間外を仮定で延長します。</p></section>
       <ShareScenario form={form} onPreset={change.preset} onOptimizationSettings={openOptimizationSettings} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
@@ -162,7 +162,7 @@ export default function FiscalSpacePage() {
         {result && <p>下の結果は直前に計算できた条件です。</p>}
         <Button variant="outline" onClick={retry} className="mt-2">計算を再試行</Button>
       </div>}
-      {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
+      {result && <p role="status" aria-live="polite" className="sr-only">追加の財政措置は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">

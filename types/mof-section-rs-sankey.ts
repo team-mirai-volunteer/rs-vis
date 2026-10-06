@@ -1,7 +1,7 @@
 /**
  * MOF 予算 → 項 → RS紐づけサンキーの型定義。
  *
- * 予算合計 → 所管 → 組織/特会 → 勘定/業務 → 項 → RS対象/RS対象外 の6列。
+ * 予算合計 → 所管 → 組織/特会 → 勘定/業務 → 項 → RS対象/RS事業の対応なし の6列。
  * `/mof-hierarchy`（事項別内訳の階層サンキー）と同じ 項 までの5列に、事項の代わりに
  * 「その項に、RSへ紐づく目が1件でもあるか」を2ノードで示す列を足したもの。
  *
@@ -78,7 +78,7 @@ export interface MOFSectionRsNodeDetails {
   sourceUrl?: string;
   /**
    * rsStatus列のノードの種別。'linked' は個別のRS事業ノード、'unlinked' は
-   * RS対象外（紐づく目が無い分・紐づく目はあるが本年度額に届かない分）
+   * RS事業の対応なし（紐づく目が無い分・紐づく目はあるが本年度額に届かない分）
    */
   rsStatus?: MOFSectionRsStatus;
   /** RS事業のプロジェクトID。rsStatus列の個別事業ノードのみ持つ */

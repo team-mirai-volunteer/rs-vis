@@ -63,7 +63,7 @@ export function generateTransferDetailSankey(
       details: {
         nodeType: 'account',
         accountKind: 'special',
-        description: `自前財源比率 ${(account.ownRevenueRate * 100).toFixed(1)}%`,
+        description: `他会計受入以外の割合 ${(account.ownRevenueRate * 100).toFixed(1)}%`,
       },
     } as Node);
 
@@ -94,7 +94,7 @@ export function generateTransferDetailSankey(
       fromOtherTotal,
       '受入のうち一般会計からの繰入で説明できない分',
     ],
-    [SOURCE_OWN, '自前財源', ownTotal, '保険料・公債金・運用収入など、その会計自身の歳入'],
+    [SOURCE_OWN, '他会計受入以外の歳入', ownTotal, '保険料・公債金・運用収入など、その会計自身の歳入'],
   ];
 
   for (const [id, name, value, description] of sourceNodes) {

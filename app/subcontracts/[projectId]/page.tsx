@@ -123,7 +123,7 @@ function originPalette(originKind: BlockOriginKind): OriginPalette {
       bodyText: COLOR_SEPARATE_ORIGIN_BODY_TEXT,
       bodySubtle: COLOR_SEPARATE_ORIGIN_BODY_SUBTLE,
       selectedStroke: '#312e81',
-      badgeText: '別財源',
+      badgeText: '接続未確認',
     };
   }
   if (originKind === 'direct') {
@@ -166,7 +166,7 @@ function flowOriginLabel(origin: FlowOrigin): string {
   switch (origin) {
     case 'direct': return '直接';
     case 'transfer': return '移替';
-    case 'separate-origin': return '別財源';
+    case 'separate-origin': return '接続未確認の起点';
     case 'reference': return '参考';
     case 'subcontract': return '再委託';
   }
@@ -654,7 +654,7 @@ function SidePane({
           <TagChip kind="direct" fontSize={PANEL_META_FONT_PX}>直接 {graph.directBlockCount}</TagChip>
           <TagChip kind="subcontract" fontSize={PANEL_META_FONT_PX}>再委託 {Math.max(0, graph.totalBlockCount - graph.directBlockCount - graph.separateOriginCount)}</TagChip>
           {graph.separateOriginCount > 0 && (
-            <TagChip kind="separate-origin" fontSize={PANEL_META_FONT_PX}>別財源 {graph.separateOriginCount}</TagChip>
+            <TagChip kind="separate-origin" fontSize={PANEL_META_FONT_PX}>接続未確認 {graph.separateOriginCount}</TagChip>
           )}
         </div>
       </div>
@@ -717,7 +717,7 @@ function SidePane({
                 ['all', 'すべて'],
                 ['direct', '直接'],
                 ['transfer', '移替'],
-                ['separate-origin', '別財源'],
+                ['separate-origin', '接続未確認'],
                 ['subcontract', '再委託'],
                 ['reference', '参考'],
               ] as const).map(([key, label]) => (
@@ -796,7 +796,7 @@ function SidePane({
                 ['all', 'すべて'],
                 ['direct', '直接'],
                 ['subcontract', '再委託'],
-                ['separate-origin', '別財源'],
+                ['separate-origin', '接続未確認'],
               ] as const).map(([key, label]) => (
                 <Button
                   key={key}
@@ -2263,7 +2263,7 @@ function SubcontractDetailPageInner() {
                   fill={COLOR_SEPARATE_ORIGIN_STRONG}
                   style={{ userSelect: 'none' }}
                 >
-                  別財源
+                  接続未確認の起点
                 </text>
               </g>
             )}

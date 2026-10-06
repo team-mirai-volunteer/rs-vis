@@ -8,7 +8,7 @@ export function PowerTimeline({ rows }: { rows: FiscalCalculation['powerTimeline
     <div className="mt-3 space-y-3 text-sm">
       <p>上の電力メーターは、評価期間で最も余裕が少ない年を表示します。建設中に需要が先に増えると、完成後に供給が改善してもメーターが上がることがあります。</p>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="年ごとの発電供給と電力需給"><table className="w-full min-w-[640px] text-right">
-        <caption className="mb-2 text-left">年ごとの供給増と需要増（入力した追加予算の効果）</caption>
+        <caption className="mb-2 text-left">年ごとの供給増と需要増（入力した追加の財政措置の効果）</caption>
         <thead><tr>{['年', '発電投資による供給増 GW', '全政策の需要増 GW', '全政策の供給増 GW', '需要÷供給：政策なし', '需要÷供給：政策あり', '最も余裕が少ない地域・時期'].map(label => <th className="p-2" scope="col" key={label}>{label}</th>)}</tr></thead>
         <tbody>{rows.map(row => <tr key={row.year} className="border-t border-mirai-border" data-power-year={row.year}>
           <th className="p-2" scope="row">{row.year}年目</th><td className="p-2" data-power-supply>{row.generationSupplyGw.toFixed(2)}</td><td className="p-2">{row.extraDemandGw.toFixed(2)}</td><td className="p-2">{row.extraSupplyGw.toFixed(2)}</td><td className="p-2">{percent(row.baselineUtilization)}</td><td className="p-2">{percent(row.utilization)}</td><td className="p-2">{row.region}</td>

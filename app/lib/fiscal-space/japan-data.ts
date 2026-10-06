@@ -34,7 +34,7 @@ export const JAPAN_RECORDS: SourceValue[] = [
   record('macro.coreInflation', .025, '比率（1 = 100%）', '総務省 消費者物価指数 2024年平均', CPI, '全国・生鮮食品を除く総合の前年比。'),
   fiscal('taxRevenue', .201 + .131, '税（罰金を含む）20.1%＋社会負担13.1%。画面では「税・社会負担収入」と表示。'),
   fiscal('taxes', .201, '税（罰金を含む）。所得税・住民税・消費税の減税はこの区分から控除。'),
-  fiscal('socialContributions', .131, '社会負担（社会保険料）。社会保険料減税はこの区分から控除し、弾性値も別に設定。'),
+  fiscal('socialContributions', .131, '社会負担（社会保険料）。社会保険料の軽減はこの区分から控除し、弾性値も別に設定。'),
   fiscal('otherPrimaryRevenue', .356 - .201 - .131 - .013, '総収入35.6%から税・社会負担・受取利子1.3%を控除。内訳の丸め差をここで調整。'),
   fiscal('interestRevenue', .013, '受取利子。PBから除外し、資金調達需要から控除。'),
   fiscal('primaryExpenditure', .373 - .014, '総支出37.3%−支払利子1.4%。政府財政統計の非金融資産純投資を含む。'),

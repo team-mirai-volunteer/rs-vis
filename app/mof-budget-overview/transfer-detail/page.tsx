@@ -111,8 +111,8 @@ function TransferDetailContent() {
                   <th className="px-2 py-2 text-left font-medium">特別会計</th>
                   <th className="px-2 py-2 text-right font-medium">歳入</th>
                   <th className="px-2 py-2 text-right font-medium">他会計から</th>
-                  <th className="px-2 py-2 text-right font-medium">自前財源</th>
-                  <th className="px-2 py-2 text-right font-medium">自前財源比率</th>
+                  <th className="px-2 py-2 text-right font-medium">他会計受入以外</th>
+                  <th className="px-2 py-2 text-right font-medium">他会計受入以外の割合</th>
                 </tr>
               </thead>
               <tbody className="text-mirai-text-secondary">

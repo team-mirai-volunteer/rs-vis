@@ -55,7 +55,7 @@ export function Calibration({ value, onChange, embedded = false }: { value: Sens
       <div className="space-y-2 md:col-span-2">
         <RangeField label="名目GDPに対する税収弾性値（税）" value={value.taxRevenueElasticity} min={0} max={2} step={.1} unit="" onChange={n => change('taxRevenueElasticity', n)} />
         <RangeField label="名目GDPに対する社会負担の弾性値" value={value.socialContributionElasticity} min={0} max={2} step={.1} unit="" onChange={n => change('socialContributionElasticity', n)} />
-        <p className="text-xs">名目GDPが1%増えたとき、税（罰金を含む）が約{value.taxRevenueElasticity.toFixed(1)}%、社会保険料が約{value.socialContributionElasticity.toFixed(1)}%増える想定です（減税分を引く前）。所得税・住民税・消費税の減税は税から、社会保険料減税は社会負担から差し引きます。入力した値を評価期間全体に適用します。</p>
+        <p className="text-xs">名目GDPが1%増えたとき、税（罰金を含む）が約{value.taxRevenueElasticity.toFixed(1)}%、社会保険料が約{value.socialContributionElasticity.toFixed(1)}%増える想定です（減税分を引く前）。所得税・住民税・消費税の減税は税から、社会保険料の軽減は社会負担から差し引きます。入力した値を評価期間全体に適用します。</p>
         <p className="text-xs">初期値は比較用の1.3。政府の後年度試算は従来1.1、<a className="underline" href="https://www.mof.go.jp/policy/budget/topics/outlook/sy2026a.htm" target="_blank" rel="noreferrer">現在は1.2</a>です。<a className="underline" href="https://www.shugiin.go.jp/Internet/itdb_kaigiroku.nsf/html/kaigiroku/009522120260410006.htm" target="_blank" rel="noreferrer">財務省答弁の実績ベースの値は1.7（2015〜2024年度）</a>。期間によって変わり、将来も1.7になるという推定ではありません。</p>
       </div>
       <RangeField label="税収への反映ラグ" value={value.taxCollectionLag} min={0} max={3} step={1} unit="年" onChange={n => change('taxCollectionLag', n)} />

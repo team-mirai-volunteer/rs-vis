@@ -85,7 +85,7 @@ export const POLICIES: Policy[] = [
   policy('income-tax', '所得税減税', { channel: 'tax', kind: 'permanent' }),
   policy('resident-tax', '住民税減税', { channel: 'tax', kind: 'permanent' }),
   policy('consumption-tax', '消費税減税', { channel: 'tax', kind: 'permanent' }),
-  policy('social-insurance', '社会保険料減税', { channel: 'tax', kind: 'permanent' }),
+  policy('social-insurance', '社会保険料の軽減', { channel: 'tax', kind: 'permanent' }),
   policy('cash', '現金給付', {}),
   policy('public-investment', '公共投資', { kind: 'growth', sector: 'construction' }),
   policy('defence', '防衛', {}),

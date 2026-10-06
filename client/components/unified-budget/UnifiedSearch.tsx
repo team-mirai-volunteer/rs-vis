@@ -80,8 +80,8 @@ export function UnifiedSearch({
         <input
           type="search"
           value={query}
-          placeholder="ノードを検索（2文字以上）"
-          aria-label="ノードを検索"
+          placeholder="事業・府省庁・支出先などを検索（2文字以上）"
+          aria-label="事業・府省庁・支出先などを検索"
           onChange={e => {
             setQuery(e.target.value);
             setOpen(true);

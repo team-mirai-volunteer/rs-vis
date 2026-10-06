@@ -3,7 +3,7 @@
  *
  * 所管〜項の配色は /mof-hierarchy（`mof-hierarchy-constants.ts`）と同じ緑〜橙の
  * グラデーションに揃える。同じ「予算の階層」を表す図で色相が変わると、
- * 読み手が別の意味だと誤解するため。RS対象/RS対象外の2ノードだけは
+ * 読み手が別の意味だと誤解するため。RS対象/RS事業の対応なしの2ノードだけは
  * 階層の一部ではなく判定結果なので、階層の配色とは別の意味の色を当てる。
  */
 
@@ -20,7 +20,7 @@ export const MOF_SECTION_RS_COLORS: Record<Exclude<MOFSectionRsColumn, 'rsStatus
 /** 集約ノードの色。/mof-hierarchy と同じ */
 export const AGGREGATED_COLOR = '#999999';
 
-/** RS対象/RS対象外の色。/sankey-svg 系の配色とは独立（判定結果を示す色なので） */
+/** RS対象/RS事業の対応なしの色。/sankey-svg 系の配色とは独立（判定結果を示す色なので） */
 export const MOF_SECTION_RS_STATUS_COLORS: Record<MOFSectionRsStatus, string> = {
   linked: '#0d9488',
   unlinked: '#94a3b8',
@@ -28,7 +28,7 @@ export const MOF_SECTION_RS_STATUS_COLORS: Record<MOFSectionRsStatus, string> = 
 
 export const MOF_SECTION_RS_STATUS_LABELS: Record<MOFSectionRsStatus, string> = {
   linked: 'RS対象',
-  unlinked: 'RS対象外',
+  unlinked: 'RS事業の対応なし',
 };
 
 export function sectionRsNodeColor(node: {

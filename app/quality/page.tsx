@@ -509,7 +509,7 @@ export default function QualityPage() {
                 { label: '総合点', s: stat(p => p.overallScore) },
                 ...AXIS_META.map(a => ({ label: a.label, s: stat(p => p[a.key]) })),
               ];
-              const abolition = policyRows.filter(p => p.recommendation === '終了・廃止候補').length;
+              const abolition = policyRows.filter(p => p.recommendation === '見直し候補').length;
               return (
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <span className="tabular-nums">{summary.total.toLocaleString()}事業</span>
@@ -524,7 +524,7 @@ export default function QualityPage() {
                     </span>
                   ))}
                   <span className="whitespace-nowrap">
-                    <span className="text-mirai-text-subtle font-medium">終了・廃止候補</span>
+                    <span className="text-mirai-text-subtle font-medium">見直し候補</span>
                     <span className="ml-1 tabular-nums text-xs">{abolition.toLocaleString()}件</span>
                   </span>
                 </span>
@@ -720,8 +720,8 @@ ${a.desc}` })),
                   {([
                     { key: 'budgetAmount', label: '予算', desc: COL_DESC.予算額 },
                     { key: 'execAmount', label: '執行', desc: COL_DESC.執行額 },
-                    { key: 'spendTotal', label: '支出計', desc: COL_DESC.支出先合計 },
-                    { key: 'spendNetTotal', label: '実質', desc: COL_DESC.実質支出額 },
+                    { key: 'spendTotal', label: '延べ', desc: COL_DESC.支出先合計 },
+                    { key: 'spendNetTotal', label: '再委託除く', desc: COL_DESC.実質支出額 },
                   ] as const).map(({ key, label, desc }) => (
                     <div key={key} className="flex items-center shrink-0" title={desc}>
                       <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
@@ -806,7 +806,7 @@ ${a.desc}` })),
         単年度の不用は入札差金でも生じるため、縮小は<span className="font-bold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
         単年度のみ・前年度実績が無い事業は要改善（差異理由の説明）にとどめています。
         逆に予算をほぼ消化していても支出先が不透明な事業は「継続」とせず要改善として拾います。
-        「終了・廃止候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
+        「見直し候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
         判断（推奨）と改善（改善アクション）は分離して表示しています。
         </p>
         )}
@@ -821,7 +821,7 @@ ${a.desc}` })),
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">
-            <option value="spendNetTotal">実質支出額</option><option value="budgetAmount">予算額</option><option value="overallScore">総合点</option><option value="recommendation">推奨</option><option value="name">事業名</option><option value="pid">PID</option>
+            <option value="spendNetTotal">再委託を除く支出額</option><option value="budgetAmount">予算額</option><option value="overallScore">総合点</option><option value="recommendation">推奨</option><option value="name">事業名</option><option value="pid">PID</option>
           </select>
           <Button variant="outline" size="xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>{sortDir === 'asc' ? '昇順' : '降順'}</Button>
         </div>
@@ -883,10 +883,10 @@ ${a.desc}`}
                   執行額<SortIcon field="execAmount" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.支出先合計} onClick={() => handleSort('spendTotal')}>
-                  支出先合計<SortIcon field="spendTotal" />
+                  支出先延べ合計<SortIcon field="spendTotal" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.実質支出額} onClick={() => handleSort('spendNetTotal')}>
-                  実質支出額<SortIcon field="spendNetTotal" />
+                  再委託を除く支出額<SortIcon field="spendNetTotal" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.再委託階層} onClick={() => handleSort('redelegationDepth')}>
                   再委託階層<SortIcon field="redelegationDepth" />
@@ -1032,7 +1032,7 @@ ${a.desc}`}
                                   {UNUSED_TREND_META[policy.unusedTrend].label}
                                 </div>
                               )}
-                              <div>実質支出額: {formatAmount(item.spendNetTotal)}</div>
+                              <div>再委託を除く支出額: {formatAmount(item.spendNetTotal)}</div>
                             </div>
                           </div>
                           <div>

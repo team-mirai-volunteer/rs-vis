@@ -307,7 +307,7 @@ export default function ProjectMapPage() {
   const recommendationOptions = useMemo(() => {
     const seen = new Set<string>();
     for (const p of allPoints) if (p.rec) seen.add(p.rec);
-    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '終了・廃止候補'];
+    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '見直し候補'];
     return order.filter(r => seen.has(r));
   }, [allPoints]);
 
@@ -731,7 +731,7 @@ export default function ProjectMapPage() {
               onChange={e => setShowRegions(e.target.checked)}
               className="accent-primary"
             />
-            <span className="text-mirai-text-muted">勢力圏</span>
+            <span className="text-mirai-text-muted">府省庁ごとの分布</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1">
             <input
@@ -740,7 +740,7 @@ export default function ProjectMapPage() {
               onChange={e => setShowClusterLabels(e.target.checked)}
               className="accent-primary"
             />
-            <span className="text-mirai-text-muted">クラスタ名</span>
+            <span className="text-mirai-text-muted">事業グループ名</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1">
             <input

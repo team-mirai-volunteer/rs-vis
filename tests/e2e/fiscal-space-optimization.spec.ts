@@ -11,7 +11,7 @@ test('shared values open the optimization panel with the saved conditions', asyn
   const panel = page.getByRole('dialog', { name: '価値の重み・自動最適化', exact: true });
   await panel.getByLabel('評価する時点', { exact: true }).selectOption('15:terminal');
   await panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true }).fill('30');
-  await panel.getByLabel('追加予算の上限（兆円／年）', { exact: true }).fill('8');
+  await panel.getByLabel('追加の財政措置の上限（兆円／年）', { exact: true }).fill('8');
   await panel.getByLabel('実質GDP・望ましい方向', { exact: true }).selectOption('target');
   await panel.getByLabel('実質GDP・目標値', { exact: true }).fill('700');
   await panel.getByLabel('実質GDP・基準となる改善幅', { exact: true }).fill('20');
@@ -28,7 +28,7 @@ test('shared values open the optimization panel with the saved conditions', asyn
   await expect(panel).toBeVisible();
   await expect(panel.getByLabel('評価する時点', { exact: true })).toHaveValue('15:terminal');
   await expect(panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true })).toHaveValue('30');
-  await expect(panel.getByLabel('追加予算の上限（兆円／年）', { exact: true })).toHaveValue('8');
+  await expect(panel.getByLabel('追加の財政措置の上限（兆円／年）', { exact: true })).toHaveValue('8');
   await expect(panel.getByLabel('実質GDP・目標値', { exact: true })).toHaveValue('700');
   await expect(panel.getByLabel('実質GDP・基準となる改善幅', { exact: true })).toHaveValue('20');
   await expect(panel.getByRole('checkbox').first()).not.toBeChecked();
@@ -49,8 +49,8 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   const panel = page.getByRole('dialog', { name: '価値の重み・自動最適化', exact: true });
   await expect(panel.getByLabel('評価する時点', { exact: true })).toHaveValue('5:terminal');
   await expect(panel.getByLabel('評価する時点', { exact: true }).locator('option')).toHaveText(['5年目', '5年間の平均', '15年目', '15年間の平均']);
-  await panel.getByLabel('追加予算の下限（兆円／年）', { exact: true }).fill('1');
-  await panel.getByLabel('追加予算の上限（兆円／年）', { exact: true }).fill('1');
+  await panel.getByLabel('追加の財政措置の下限（兆円／年）', { exact: true }).fill('1');
+  await panel.getByLabel('追加の財政措置の上限（兆円／年）', { exact: true }).fill('1');
   await panel.getByLabel('相対的貧困率（直接効果）・重み', { exact: true }).fill('4');
   await panel.getByLabel('国民負担率（GDP比）・重み', { exact: true }).fill('12');
   await expect(panel.getByLabel('輸出（名目）・重み', { exact: true })).toHaveValue('5');
@@ -85,7 +85,7 @@ test('weighted search previews, invalidates, applies and shares preferences', as
   await expect(panel.getByLabel('国民負担率（GDP比）・重み', { exact: true })).toHaveValue('12');
   await expect(panel.getByLabel('子どもの貧困率（直接効果）・重み', { exact: true })).toHaveValue('18');
   await expect(panel.getByLabel('実質可処分所得（固定価格・中央値）・重み', { exact: true })).toHaveValue('13');
-  await expect(panel.getByLabel('追加予算の下限（兆円／年）', { exact: true })).toHaveValue('1');
+  await expect(panel.getByLabel('追加の財政措置の下限（兆円／年）', { exact: true })).toHaveValue('1');
 });
 
 test('search can be stopped and invalid budgets cannot change the allocation', async ({ page }) => {
@@ -96,7 +96,7 @@ test('search can be stopped and invalid budgets cannot change the allocation', a
   await panel.getByRole('button', { name: '探索を中止', exact: true }).click();
   await expect(panel.getByRole('alert')).toContainText('探索を中止しました');
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');
-  await panel.getByLabel('追加予算の下限（兆円／年）', { exact: true }).fill('20');
+  await panel.getByLabel('追加の財政措置の下限（兆円／年）', { exact: true }).fill('20');
   await panel.getByRole('button', { name: 'この価値観で自動探索', exact: true }).click();
   await expect(panel.getByRole('alert')).toContainText('予算の範囲');
   await expect(page.getByTestId('annual-total')).toHaveText('0.0兆円');

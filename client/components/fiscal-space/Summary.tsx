@@ -58,8 +58,8 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
         </tr>)}</tbody>
       </table><p className="mt-2 text-xs">CPI上限だけを変え、全制約を再探索しています。表示桁は計算の丸めで、推定精度を表しません。上限の設定に強く依存する条件付きの値で、許容物価の推奨や信頼区間ではありません。</p></div></details>
       <details><summary className="cursor-pointer text-sm font-bold">この数字の読み方</summary><div className="mt-2 space-y-2 text-sm">
-        <p>追加予算に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
-        <p>参考上限（ストレス耐性額）を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加予算と国の一般会計予算」を参照してください。</p>
+        <p>追加の財政措置に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
+        <p>参考上限（ストレス耐性額）を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加の財政措置と国の一般会計予算」を参照してください。</p>
         <p><strong>安全性は未判定です。</strong> 産業内の職種・設備の偏り、地域間の電力融通、追加の為替ストレスは上限に十分反映できません。手入力の空欄は未評価です。参考上限は政策の推奨額や便益の評価ではありません。</p>
       </div></details>
 

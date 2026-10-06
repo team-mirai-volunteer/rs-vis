@@ -8,7 +8,7 @@ export const BudgetReference = memo(function BudgetReference() {
       <h3 className="text-sm">国の一般会計予算 <span className="rounded bg-mirai-surface-warm px-2 py-1 text-xs">公表予算</span></h3>
       <p className="text-xl font-bold tabular-nums">{money(budget.amount)}</p>
       <p className="text-xs">{budget.label}</p>
-      <p className="text-xs text-mirai-text-subtle">追加予算の規模を考えるための参考です。試算の一般政府は地方・社会保障基金も含むため、この金額とは合算しません。</p>
+      <p className="text-xs text-mirai-text-subtle">追加の財政措置の規模を考えるための参考です。試算の一般政府は地方・社会保障基金も含むため、この金額とは合算しません。</p>
       <details><summary className="cursor-pointer text-sm font-bold">一般会計の歳入・歳出内訳</summary><div className="mt-3 space-y-4">
       <div className="grid gap-5 xl:grid-cols-2">
         {([['歳出の内訳', budget.expenditure], ['歳入の内訳', budget.revenue]] as const).map(([heading, rows]) => <section key={heading} className="min-w-0">

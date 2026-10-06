@@ -4,7 +4,7 @@
  * 予算→項→RS紐づけサンキーの描画（自前 SVG）。
  *
  * `/mof-hierarchy` の HierarchyChart.tsx と同じ作り（パン・ズーム・ミニマップ・
- * 検索・フィルタ・左ドックのサイドパネル）を、列が5列+RS対象/RS対象外の
+ * 検索・フィルタ・左ドックのサイドパネル）を、列が5列+RS対象/RS事業の対応なしの
  * 6列版に合わせて移植したもの。配置計算は `app/lib/mof-sankey-layout.ts` を共有する。
  */
 
@@ -146,7 +146,7 @@ export function SankeyChart({
     if (!selected) return null;
     const set = relatedNodeIds(links, selectedId);
     /**
-     * 個別のRS事業/RS対象外は、真の親項（browseで分かる）のうち一部が項のTopNに
+     * 個別のRS事業/RS事業の対応なしは、真の親項（browseで分かる）のうち一部が項のTopNに
      * 収まらず「N項」集約に畳まれていることがある。畳まれた項からこのノードへの
      * 寄与は、表示グラフ上は集約の総額に紛れて個別の帯を持たないため、
      * relatedNodeIds だけでは「N項」集約ノードが関連扱いにならない。
@@ -311,7 +311,7 @@ export function SankeyChart({
     return map;
   }, [layout]);
 
-  /** rsStatus列の内訳。RS対象外を除いた分（個別のRS事業＋集約）がRS対象の総額 */
+  /** rsStatus列の内訳。RS事業の対応なしを除いた分（個別のRS事業＋集約）がRS対象の総額 */
   const rsLinkedTotal = useMemo(() => {
     let sum = 0;
     for (const node of layout.nodes) {
@@ -590,7 +590,7 @@ export function SankeyChart({
         height={layout.contentHeight}
         style={{ position: 'absolute', left: pan.x, top: pan.y, display: 'block' }}
         role="img"
-        aria-label="所管から項を経てRS対象/RS対象外に至る予算の流れ"
+        aria-label="所管から項を経てRS対象/RS事業の対応なしに至る予算の流れ"
       >
         <g>
           {visibleColumns.map(({ column, index }) => (

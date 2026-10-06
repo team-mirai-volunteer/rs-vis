@@ -90,7 +90,7 @@ export function CurrentMetrics({ step, baseline, medium, poverty, publishedYears
     {note && <p className="mt-1 text-xs text-mirai-text-subtle" data-testid="metric-note">{note}</p>}
   </div>);
   return <Card data-testid="horizon-results"><CardHeader><h2 className="text-xl font-bold">{s.year}年目の結果（試算{longRun && '・公表期間外の延長'}）</h2>
-    <p className="text-sm">設定した追加予算を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、反応解消・長期供給の設定に依存します。`}</p>
+    <p className="text-sm">設定した追加の財政措置を実施した場合。主表示は{step.demographics ? FERTILITY_LABELS[step.demographics.fertilityVariant] : '出生低位'}です。「政策なしとの差」は主表示と同じ出生推計・経済条件での比較です。率の差はポイント、出生率の差は出生率の値の差で示します。{longRun && `†は公表期間（${publishedYears}年）を超える延長計算で、反応解消・長期供給の設定に依存します。`}</p>
     <p className="text-xs text-mirai-text-subtle">歳出・収入・国民負担・債務は、地方と社会保障基金を含む一般政府のモデル値です。</p>
   </CardHeader><CardContent className="space-y-4">
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{renderRows(rows)}</div>

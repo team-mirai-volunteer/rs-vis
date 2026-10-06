@@ -8,7 +8,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${process.env.BASE_URL || 'http://127.0.0.1:3000'}/tax-expenditures`);
-  await expect(page.getByRole('heading', { name: '税優遇は、どこに届いている？', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '法人税の特例は、どの制度でどれだけ使われている？', exact: true })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('79 / 79');
   const switchView = async name => page.getByRole('navigation', { name: '租税特別措置の表示切替' }).getByRole('button', { name, exact: true }).click();
   await page.screenshot({ path: 'test-results/tax-expenditures/design-desktop.png' });
@@ -16,7 +16,7 @@ try {
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await switchView('妥当性を評価');
+  await switchView('AI評価と根拠を見る');
   const assessments = page.getByRole('region', { name: '租特の妥当性評価', exact: true });
   await expect(assessments).toBeVisible();
   await assessments.getByLabel('評価表の並び順').selectOption('verification');
@@ -77,7 +77,7 @@ try {
   await measure.locator('summary').click();
   await expect(measure.getByRole('cell', { name: '2,899,075', exact: true })).toBeVisible();
   await page.getByLabel('適用年度', { exact: true }).selectOption('2022');
-  await switchView('妥当性を評価');
+  await switchView('AI評価と根拠を見る');
   await expect(assessments).toContainText('金額は選択中の2022年度');
   await switchView('適用額を見る');
   await expect(chart.getByRole('button', { name: /企業版ふるさと納税/ })).toContainText('13.31 億円');

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 
 export function InsuranceConditions({ value, onChange }: { value: ModelParameters; onChange: (v: ModelParameters) => void }) {
   const c = value.insurance ?? INSURANCE_LEGACY;
-  return <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="社会保険料減税の賃金・長期労働反応">
-    <h3 className="font-bold">社会保険料減税の賃金・長期労働反応</h3>
+  return <section className="space-y-3 border-t border-mirai-border pt-4" aria-label="社会保険料の軽減の賃金・長期労働反応">
+    <h3 className="font-bold">社会保険料の軽減の賃金・長期労働反応</h3>
     <label className="block"><input type="checkbox" checked={c.enabled} onChange={e => onChange({ ...value, insurance: { ...c, enabled: e.target.checked } })} /> 賃金転嫁と長期労働反応を計算する</label>
     <p className="text-xs">本人負担の軽減は手取りへ、事業主負担の軽減は賃上げと残りの雇用コスト低下へ分けます。同じ軽減額を両方へ全額計上しません。賃上げは就労世帯の所得分布へ反映し、退職世帯には配分しません。</p>
     <div className="flex flex-wrap gap-2">{([

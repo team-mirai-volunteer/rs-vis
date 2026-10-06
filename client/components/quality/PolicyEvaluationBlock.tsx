@@ -41,7 +41,7 @@ export interface PolicyEvaluationView {
 function recommendationCls(rec: string): string {
   if (rec === '継続') return TONE_CLS.green;
   if (rec === '要改善') return TONE_CLS.blue;
-  if (rec === '再設計' || rec === '終了・廃止候補') return TONE_CLS.red;
+  if (rec === '再設計' || rec === '見直し候補') return TONE_CLS.red;
   return TONE_CLS.amber;
 }
 

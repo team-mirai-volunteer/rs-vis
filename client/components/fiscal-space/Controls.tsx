@@ -160,7 +160,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, consumpti
           </fieldset>
         </div>
       </details>
-      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
+      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加の財政措置（年額）</p><output data-testid="annual-total" aria-label="追加の財政措置（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4">
         {[...policies.filter(p => p.id === 'social-insurance'), ...policies.filter(p => p.id !== 'social-insurance')].map(policyField)}

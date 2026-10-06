@@ -20,7 +20,7 @@ export function calibratedEducationGain(transfer: number) {
     * c.scoreSd * c.pisaPointsPerSd * c.schoolYears / c.exposureYears * transfer).toFixed(2));
 }
 export const OECD_EDUCATION_EVIDENCE = 'Jackson・Mackevicius（2024）の米国の学校追加支出の因果研究メタ分析：1人年1,000ドル（2018年価格）を4年間追加すると学力0.0316標準偏差改善。日本の初期条件は約930万人・2024年価格への購買力換算・9年間への比例延長・移転率50%で校正。移転率は日本の実証推定ではない。OECD WP1781（2023）§2.3の全国平均PISA約8点→長期生産性約1%を参考換算に使用。高支出国での相関の弱さを因果効果ゼロとは扱わない。';
-export const OECD_EDUCATION_FORMULA = '各年の実質追加予算÷施策の基準年額（純追加性を反映、1で頭打ち）×設定した全国平均PISA改善幅。9学年へ均等配分し、5〜13年後に順次就労、40世代の就労人口へ反映する比較仮定。就労後の減耗と退職を控除し、PISA 1点あたり0.125%を生産性へ換算。';
+export const OECD_EDUCATION_FORMULA = '各年の追加の財政措置（実質）÷施策の基準年額（純追加性を反映、1で頭打ち）×設定した全国平均PISA改善幅。9学年へ均等配分し、5〜13年後に順次就労、40世代の就労人口へ反映する比較仮定。就労後の減耗と退職を控除し、PISA 1点あたり0.125%を生産性へ換算。';
 export const OECD_EDUCATION_SETTINGS = {
   educationModel: 'oecd' as const, educationPisaGain: calibratedEducationGain(EDUCATION_CALIBRATION.transfer), educationAnnualBudget: EDUCATION_CALIBRATION.annualBudget, educationSchoolYears: EDUCATION_CALIBRATION.schoolYears,
   additionality: 1, lag: 5, depreciation: .02, lifetime: 40, yield: .01 / 8,

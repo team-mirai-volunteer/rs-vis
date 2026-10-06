@@ -30,8 +30,8 @@ export function SpecialAccountTable({
         特別会計 {accounts.length}会計
       </h2>
       <p className="mb-3 text-xs text-mirai-text-muted">
-        自前財源比率 = 歳入のうち他会計からの受入でない割合。低いほど一般会計等から
-        回ってきた金を通している性格が強くなります。
+        他会計受入以外の割合 = 歳入のうち他会計からの受入でない割合。低いほど、一般会計等からの
+        資金移転を通している性格が強くなります。公債金・借入金・前年度剰余金受入も「他会計受入以外」に含みます。
       </p>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-xs">
@@ -43,7 +43,7 @@ export function SpecialAccountTable({
               <th className="px-2 py-2 text-right font-medium">歳入</th>
               <th className="px-2 py-2 text-right font-medium">他会計から</th>
               <th className="px-2 py-2 text-right font-medium">他会計へ</th>
-              <th className="px-2 py-2 text-left font-medium">自前財源比率</th>
+              <th className="px-2 py-2 text-left font-medium">他会計受入以外の割合</th>
             </tr>
           </thead>
           <tbody className="text-mirai-text-secondary">

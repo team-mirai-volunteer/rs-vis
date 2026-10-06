@@ -57,7 +57,7 @@ export const RECOMMENDATION_COLORS: Record<string, string> = {
   縮小: STATUS.serious,
   他事業と統合: STATUS.serious,
   再設計: STATUS.serious,
-  '終了・廃止候補': STATUS.critical,
+  '見直し候補': STATUS.critical,
 };
 
 /** 政策分野グループ（7分類）。policyCategory の id からグループ id を引く */
@@ -141,7 +141,7 @@ export function buildLegend(
 
   if (mode === 'recommendation') {
     // 推奨判断は「継続寄り → 見直し寄り」の並びが意味を持つので件数順にしない
-    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '終了・廃止候補'];
+    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '見直し候補'];
     const entries: LegendEntry[] = [];
     for (const key of order) {
       const count = counts.get(key) ?? 0;

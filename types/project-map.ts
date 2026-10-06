@@ -71,7 +71,7 @@ export interface ProjectMapPoint {
   years: number | null;
   /** policyCategory の id */
   cat: string | null;
-  /** 推奨判断（継続 / 要改善 / … / 終了・廃止候補） */
+  /** 推奨判断（継続 / 要改善 / … / 見直し候補） */
   rec: string | null;
 }
 
