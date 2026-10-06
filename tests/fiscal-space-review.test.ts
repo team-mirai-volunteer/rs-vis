@@ -107,7 +107,7 @@ test('load coefficients constrain construction, while operating power survives s
 test('consumption-tax table uses percentage points, direct CPI is counted once and restoration raises headline inflation', () => {
   const s = initial();
   // 表⑤は全品目1ポイントの実験：標準税率と軽減税率を同時に1ポイント下げる。直接CPIが表⑤の0.78と一致するよう標準側にまとめる
-  const p = { ...flat, consumptionTax: { ...flat.consumptionTax, cpiShare: .78 * 1.1 }, reducedConsumptionTax: { ...flat.reducedConsumptionTax, cpiShare: 0 } };
+  const p = { ...flat, consumptionTax: { ...flat.consumptionTax, cpiShare: .78 * 1.1, passThrough: 1 }, reducedConsumptionTax: { ...flat.reducedConsumptionTax, cpiShare: 0, passThrough: 1 } };
   const q = policy('consumption-tax', { annualCost: p.consumptionTax.revenuePerPoint });
   const reduced = policy('consumption-tax-reduced', { annualCost: p.reducedConsumptionTax.revenuePerPoint });
   const path = simulate(s, [q, reduced], 5, p);

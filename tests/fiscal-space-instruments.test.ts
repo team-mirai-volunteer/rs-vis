@@ -37,7 +37,7 @@ function legacy(consumptionTax: Partial<typeof PARAMETERS.consumptionTax>, amoun
   delete ((form.optimization as Record<string, unknown>).eligible as Record<string, unknown>)['consumption-tax-reduced'];
   delete form.calibration.reducedConsumptionTax;
   delete (form as Record<string, unknown>).insuranceHealthShare;
-  form.calibration.consumptionTax = { ...PARAMETERS.consumptionTax, revenuePerPoint: 3.5e12, cpiShare: .85, ...consumptionTax };
+  form.calibration.consumptionTax = { ...PARAMETERS.consumptionTax, revenuePerPoint: 3.5e12, cpiShare: .85, passThrough: 1, ...consumptionTax };
   (form.amounts as Record<string, number>)['consumption-tax'] = amount;
   return decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: '2026-09-24.5', form })));
 }
@@ -49,6 +49,7 @@ test('旧リンクの全品目の消費税減税は、年額を変えずに標�
   near(form.calibration.consumptionTax.revenuePerPoint, 2.9e12, 1);
   near(form.calibration.consumptionTax.cpiShare, .63);
   assert.deepEqual(form.calibration.reducedConsumptionTax, PARAMETERS.reducedConsumptionTax);
+  assert.equal(form.calibration.consumptionTax.passThrough, 1);
   assert.equal(form.optimization.eligible['consumption-tax-reduced'], true);
   assert.equal(form.insuranceHealthShare, .5);
   assert.ok(filled.some(x => x.includes('按分')));
@@ -58,8 +59,8 @@ test('旧リンクの「食料品のみ」は軽減税率の減税へ移る', ()
   const { form, filled } = legacy({ revenuePerPoint: .6e12, cpiShare: .22, baseRate: .08 }, 4.2);
   near(form.amounts['consumption-tax'], 0);
   near(form.amounts['consumption-tax-reduced'], 4.2);
-  assert.deepEqual(form.calibration.consumptionTax, PARAMETERS.consumptionTax);
-  assert.deepEqual(form.calibration.reducedConsumptionTax, { revenuePerPoint: .6e12, cpiShare: .22, baseRate: .08 });
+  assert.deepEqual(form.calibration.consumptionTax, { ...PARAMETERS.consumptionTax, passThrough: 1 });
+  assert.deepEqual(form.calibration.reducedConsumptionTax, { revenuePerPoint: .6e12, cpiShare: .22, baseRate: .08, passThrough: PARAMETERS.reducedConsumptionTax.passThrough });
   assert.ok(filled.some(x => x.includes('食料品のみ')));
 });
 

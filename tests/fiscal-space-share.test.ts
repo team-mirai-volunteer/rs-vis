@@ -22,7 +22,8 @@ test('compact sharing keeps all settings and stays short for custom optimization
     assert.deepEqual((await decodeSharedScenario(hash)).form, form);
     assert.deepEqual((await decodeSharedScenario(encodeScenario(form))).form, form);
   }
-  assert((await encodeSharedScenario(defaults())).length < 150);
+  // 既定値は固定した基準スナップショット（v2）との差分で送る。既定値の見直しで数項目ずれるので余裕を持たせる
+  assert((await encodeSharedScenario(defaults())).length < 200);
 });
 
 test('zero, null and removal of optional settings are distinct from frozen defaults', async () => {

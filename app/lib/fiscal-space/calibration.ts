@@ -86,7 +86,7 @@ export const CONSUMPTION_TAX_CUT: ResponseProfile = {
 };
 export const CONSUMPTION_TAX_IDS = ['consumption-tax', 'consumption-tax-reduced'] as const;
 export const isConsumptionTax = (id: string) => (CONSUMPTION_TAX_IDS as readonly string[]).includes(id);
-/** 標準税率と軽減税率の換算。価格転嫁率と表⑤から分離する直接効果は共通 */
+/** 標準税率と軽減税率の換算。表⑤から分離する直接効果は共通、価格への反映率は税率ごと */
 export const consumptionTaxParams = (id: string, p: ModelParameters) =>
   id === 'consumption-tax-reduced' ? { ...p.consumptionTax, ...p.reducedConsumptionTax } : p.consumptionTax;
 /** 表⑤（消費税率1ポイント引下げ）は全品目の実験。マクロ反応は全品目1ポイント相当の減収額で円換算する */
@@ -178,7 +178,7 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
   result.exports *= initial.external.exports / (initial.macro.nominalGdp / initial.macro.realGdp);
   return { ...result,
     directTaxPrices: -taxPoints / 100 / (1 + tax.baseRate) * tax.cpiShare * tax.passThrough * taxPriceFactor,
-    directTaxDeflator: -equivalentPoints / 100 * p.consumptionTax.referenceDirectDeflator * p.consumptionTax.passThrough * taxPriceFactor,
+    directTaxDeflator: -equivalentPoints / 100 * p.consumptionTax.referenceDirectDeflator * tax.passThrough * taxPriceFactor,
   };
 }
 
