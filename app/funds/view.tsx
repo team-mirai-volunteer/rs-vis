@@ -141,13 +141,13 @@ export default function FundsView() {
           <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
         </div>
         {/* 論点の絞り込み。切り替えなのでグラデ（主要操作用）は使わず、選択中はティールの面と枠で示す */}
-        <div role="group" aria-label="論点で絞り込む" className="flex flex-wrap items-center gap-1.5">
+        <div role="group" aria-label="論点で絞り込む" className="flex flex-wrap items-center gap-1">
           <span className="text-xs text-mirai-text-muted">論点</span>
           {([null, ...FUND_SIGNALS] as (FundSignal | null)[]).map(s => {
             const active = signal === s;
             return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? FUND_SIGNAL_DESCRIPTIONS[s] : undefined}
               onClick={() => setSignal(active || s === null ? null : s)}
-              className={`h-7 rounded-full px-2.5 text-xs font-medium ${active ? 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'border-mirai-border bg-card text-mirai-text-subtle'}`}>
+              className={`h-7 rounded-full px-2 text-xs font-medium ${active ? 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'border-mirai-border bg-card text-mirai-text-subtle'}`}>
               {s ? FUND_SIGNAL_LABELS[s] : 'すべて'}<span className="ml-1 tabular-nums text-mirai-text-muted">{s ? counts[s]?.length ?? 0 : rows.length}</span>
             </Button>;
           })}

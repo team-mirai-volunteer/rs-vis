@@ -13,7 +13,7 @@ export const FUND_SIGNAL_LABELS: Record<FundSignal, string> = {
   pastEnd: '終了予定日の後も残高',
   tenYears: '残高が支出の10年分以上',
   noSpending: '残高はあるが支出ゼロ',
-  noSpendingRecord: '残高はあるが支出額の記載なし',
+  noSpendingRecord: '残高はあるが支出の記載なし',
   returned: '国庫返納あり',
   ownershipOverOne: '保有割合が100%超',
   inspection: '低執行の点検に該当',
