@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
 import { HeaderHelp } from '@/client/components/HeaderHelp';
@@ -86,6 +86,27 @@ export default function FundsView() {
     });
   }, [rows, signal, ministry, query, sort]);
   const selected = rows.find(r => r.f.key === selectedKey) ?? null;
+  /** 表示中（絞り込み・並べ替え後）の並びでの位置。前後移動に使う。絞り込みで外れたら -1 */
+  const selectedIndex = filtered.findIndex(r => r.f.key === selectedKey);
+  // ↑↓で前後の基金へ、Esc で閉じる（入力欄・セレクトの操作中は奪わない）
+  useEffect(() => {
+    if (!selectedKey) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.key === 'Escape') { setSelectedKey(null); return; }
+      const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      if (!step) return;
+      const next = filtered[selectedIndex + step];
+      if (next) { e.preventDefault(); setSelectedKey(next.f.key); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedKey, selectedIndex, filtered]);
+  // 前後移動で選んだ行が表の外に出ないようにする
+  useEffect(() => {
+    if (selectedKey) document.querySelector(`tr[data-fund="${CSS.escape(selectedKey)}"]`)?.scrollIntoView({ block: 'nearest' });
+  }, [selectedKey]);
   const totalBalance = filtered.reduce((s, r) => s + (latestYear(r.f).balance ?? 0), 0);
   const summary = useMemo(() => rows.reduce((acc, r) => { const y = latestYear(r.f);
     return { balance: acc.balance + (y.balance ?? 0), expense: acc.expense + (y.expense ?? 0), returned: acc.returned + (y.returned ?? 0) }; },
@@ -107,8 +128,6 @@ export default function FundsView() {
       </p>
     </div>
     <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
-      {/* 詳細は他の画面（サンキー図・バブルチャート）と同じく左に開く */}
-      {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)} />}
       <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="基金名・保有法人で検索" aria-label="基金名・保有法人で検索"
@@ -144,7 +163,8 @@ export default function FundsView() {
                     {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map(({ f, signals }) => { const y = latestYear(f); const yrs = spendingYears(y); return <tr key={f.key}
+                {filtered.map(({ f, signals }) => { const y = latestYear(f); const yrs = spendingYears(y); return <tr key={f.key} data-fund={f.key}
+                  aria-selected={selectedKey === f.key}
                   onClick={() => setSelectedKey(f.key)} className={`cursor-pointer hover:bg-mirai-surface-teal/60 ${selectedKey === f.key ? 'bg-mirai-surface-teal/60' : ''}`}>
                   <td className="max-w-[300px] px-2 py-1.5"><div className="truncate font-medium" title={f.name}>{f.name}</div><div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yen(y.balance)}</td>
@@ -161,13 +181,33 @@ export default function FundsView() {
             </table>}
         </div>
       </section>
+      {/* 表が主役の画面なので、詳細は右に並べる（左から名前を読んで選び、右で中身を見る）。狭い画面では全画面のシート。
+          PC では右の列を常に置き、未選択のときは論点の概要を出す（開閉で表の幅が変わらないように） */}
+      {!selected && <FundsOverview rows={rows} signal={signal} onSignal={setSignal} />}
+      {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)}
+        position={{ index: selectedIndex, total: filtered.length }}
+        onPrev={selectedIndex > 0 ? () => setSelectedKey(filtered[selectedIndex - 1].f.key) : undefined}
+        onNext={selectedIndex >= 0 && selectedIndex < filtered.length - 1 ? () => setSelectedKey(filtered[selectedIndex + 1].f.key) : undefined} />}
     </main>
   </div>;
 }
 
-function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSignal[]; onClose: () => void }) {
+function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
+  fund: Fund; signals: FundSignal[]; onClose: () => void;
+  /** 表示中の並びでの前後（端・絞り込みで外れたときは undefined） */
+  onPrev?: () => void; onNext?: () => void;
+  position: { index: number; total: number };
+}) {
   const latestSheet = latestYear(f).sheetYear;
-  return <aside aria-label={`${f.name} の詳細`} className="min-h-0 w-full shrink-0 overflow-y-auto rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:w-[440px]">
+  return <aside aria-label={`${f.name} の詳細`}
+    className="fixed inset-0 z-50 overflow-y-auto bg-card p-4 text-xs lg:static lg:z-auto lg:min-h-0 lg:w-[440px] lg:shrink-0 lg:rounded-xl lg:border lg:border-mirai-border lg:shadow-soft">
+    {/* 前後の基金へ（↑↓キーでも移れる） */}
+    <div className="mb-2 flex items-center gap-1 border-b border-border pb-2">
+      <Button variant="outline" size="xs" onClick={onPrev} disabled={!onPrev} aria-label="前の基金" className="border-mirai-border"><ChevronUp className="size-3.5" />前</Button>
+      <Button variant="outline" size="xs" onClick={onNext} disabled={!onNext} aria-label="次の基金" className="border-mirai-border"><ChevronDown className="size-3.5" />次</Button>
+      <span className="ml-1 tabular-nums text-mirai-text-muted">{position.index >= 0 ? `${position.index + 1} / ${position.total}` : '絞り込みの外'}</span>
+      <span className="ml-auto hidden text-[10px] text-mirai-text-muted lg:inline">↑↓キーでも移れます</span>
+    </div>
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
         <div className="text-[11px] text-mirai-text-muted">{f.ministry}{f.sheetNumber !== null && ` · 基金シート ${f.sheetNumber}`}</div>
@@ -213,12 +253,13 @@ function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSi
         <span className="ml-1 text-[11px] text-mirai-text-muted">予算事業ID {p.pid}・{p.sheetYear - 1}年度まで</span></li>)}</ul>
     </>}
     {f.owner && <p className="mt-3"><Link href={`/budget-sankey?year=2024&frq=${encodeURIComponent(f.owner)}`} className="text-primary underline underline-offset-4 hover:text-primary-accent">保有法人「{f.owner}」への支出をサンキー図で見る</Link></p>}
-    {f.necessity && <><h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">基金で行う必要性（府省の記載）</h3><p className="whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.necessity}</p></>}
-    {f.ownershipBasis && <><h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">保有割合の算定根拠（府省の記載）</h3><p className="whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.ownershipBasis}</p></>}
+    {/* 長い文章は折りたたむ（パネルの先頭は数字と推移で見比べられるように） */}
+    {f.necessity && <LongText title="基金で行う必要性（府省の記載）" text={f.necessity} />}
+    {f.ownershipBasis && <LongText title="保有割合の算定根拠（府省の記載）" text={f.ownershipBasis} />}
     <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">低執行の基金の点検（府省の記載）</h3>
     <ul className="m-0 list-none space-y-0.5 p-0">{(Object.keys(INSPECTION_LABELS) as (keyof Fund['inspection'])[]).map(k => <li key={k} className="flex justify-between gap-2">
       <span className="text-mirai-text-subtle">{INSPECTION_LABELS[k]}</span><span className={f.inspection[k] ? 'font-bold text-status-warn-fg' : 'text-mirai-text-muted'}>{f.inspection[k] ? '該当' : '—'}</span></li>)}</ul>
-    {f.inspectionNote && <p className="mt-1 whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.inspectionNote}</p>}
+    {f.inspectionNote && <LongText title="点検の記載" text={f.inspectionNote} />}
     {f.overviewUrl && /^https?:\/\//.test(f.overviewUrl) && <p className="mt-3"><a href={f.overviewUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">府省の事業概要 ↗</a></p>}
   </aside>;
 }
@@ -237,4 +278,38 @@ function FundsHelp() {
       <li>造成元の事業は、基金シートに記載された関連レビューシート・造成の経緯から引き当てています（全基金の約3分の1）。</li>
     </ul>
   </HeaderHelp>;
+}
+
+function LongText({ title, text }: { title: string; text: string }) {
+  return <details className="mt-3 rounded-lg border border-border px-3 py-2">
+    <summary className="cursor-pointer font-bold text-mirai-text-secondary">{title}</summary>
+    <p className="mt-2 whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{text}</p>
+  </details>;
+}
+
+/** 未選択のときの右の列。論点ごとの基金数と残高の合計（クリックで絞り込み）と、選び方の案内 */
+function FundsOverview({ rows, signal, onSignal }: {
+  rows: { f: Fund; signals: FundSignal[] }[]; signal: FundSignal | null; onSignal: (s: FundSignal | null) => void;
+}) {
+  return <aside aria-label="論点の概要" className="hidden min-h-0 w-[440px] shrink-0 overflow-y-auto rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:block">
+    <h2 className="text-sm font-bold">論点ごとの基金</h2>
+    <p className="mt-1 leading-relaxed text-mirai-text-muted">表の行を選ぶと、ここにその基金の詳細が出ます（↑↓キーで前後の基金に移れます）。論点を選ぶと表を絞り込みます。</p>
+    <ul className="m-0 mt-3 list-none space-y-1 p-0">
+      {FUND_SIGNALS.map(s => {
+        const hit = rows.filter(r => r.signals.includes(s));
+        const balance = hit.reduce((sum, r) => sum + (latestYear(r.f).balance ?? 0), 0);
+        const active = signal === s;
+        return <li key={s}>
+          <Button variant="ghost" onClick={() => onSignal(active ? null : s)} aria-pressed={active} title={FUND_SIGNAL_DESCRIPTIONS[s]}
+            className={`h-auto w-full justify-between gap-3 rounded-lg px-2.5 py-2 text-left text-xs font-normal ${active ? 'bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'hover:bg-mirai-surface'}`}>
+            <span className="min-w-0"><span className="block font-bold text-mirai-text">{FUND_SIGNAL_LABELS[s]}</span>
+              <span className="block truncate text-[11px] text-mirai-text-muted">{FUND_SIGNAL_DESCRIPTIONS[s]}</span></span>
+            <span className="shrink-0 text-right tabular-nums"><span className="block font-bold text-mirai-text">{hit.length}基金</span>
+              <span className="block text-[11px] text-mirai-text-muted">残高 {formatBudgetFromYen(balance)}</span></span>
+          </Button>
+        </li>;
+      })}
+    </ul>
+    <p className="mt-3 text-[11px] leading-relaxed text-mirai-text-muted">いずれも確かめる手がかりで、不適切さの判定ではありません。金額は府省の記載どおりです。</p>
+  </aside>;
 }
