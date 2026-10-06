@@ -50,6 +50,13 @@ export interface Fund {
   /** 年度をまたいだ基金の識別子（lineage_id） */
   key: string;
   name: string;
+  /**
+   * シートごとの事業名（例：安定供給確保支援事業（蓄電池））。同じ基金が造成元の事業ごとに別シートを持つとき、
+   * 基金名だけでは見分けられないので併記する。基金名と同じなら null
+   */
+  sheetTitle: string | null;
+  /** 基金シートの枝番（同じ基金番号の中の通し番号） */
+  branchNumber: number | null;
   ministry: string;
   owner: string;
   /** 保有法人の法人格（national-research-and-development-agency など） */

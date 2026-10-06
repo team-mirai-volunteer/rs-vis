@@ -85,9 +85,12 @@ for (const [key, acc] of byKey) {
     text(basis.contents_of_fund_project_costs) && `必要額: ${text(basis.contents_of_fund_project_costs)}`].filter(Boolean).join('\n') || null;
   const inspectionNote = [text(low.reasons_for_leaving) && `残している理由: ${text(low.reasons_for_leaving)}`,
     text(low.results_of_investigations) && `点検の結果: ${text(low.results_of_investigations)}`].filter(Boolean).join('\n') || null;
+  const name = text(a.fund_business_name) ?? p.name;
   funds.push({
     key,
-    name: text(a.fund_business_name) ?? p.name,
+    name,
+    sheetTitle: text(p.name) && text(p.name) !== name ? text(p.name) : null,
+    branchNumber: num(p.fund_sheet_branch_number),
     ministry: p.ministry_name ?? '',
     owner: text(p.fund_owner) ?? text(a.fund_owner) ?? '',
     ownerForm: text(a.corporate_form),

@@ -52,11 +52,14 @@ export default function FundsView() {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'balance', desc: true });
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // 既定は最新のシート年度に載っている基金だけ。以前の年度だけに載っている基金（終了・未提出）を足すと年度の違う数字が混ざる
+  const [includeOlder, setIncludeOlder] = useState(false);
 
   useEffect(() => {
     fetch('/api/funds').then(r => (r.ok ? r.json() : null)).then(setData).catch(() => setData(null));
     const p = new URLSearchParams(window.location.search);
     setSelectedKey(p.get('fund'));
+    setIncludeOlder(p.get('older') === '1');
     const s = p.get('signal');
     if (s && (FUND_SIGNALS as string[]).includes(s)) setSignal(s as FundSignal);
   }, []);
@@ -66,16 +69,20 @@ export default function FundsView() {
     const p = new URLSearchParams();
     if (selectedKey) p.set('fund', selectedKey);
     if (signal) p.set('signal', signal);
+    if (includeOlder) p.set('older', '1');
     window.history.replaceState(null, '', `/funds${p.toString() ? `?${p}` : ''}`);
-  }, [selectedKey, signal, data]);
+  }, [selectedKey, signal, includeOlder, data]);
 
-  const rows = useMemo(() => (data?.funds ?? []).map(f => ({ f, signals: fundSignals(f) })), [data]);
+  const currentYear = useMemo(() => Math.max(0, ...(data?.funds ?? []).map(f => latestYear(f).sheetYear)), [data]);
+  const olderCount = useMemo(() => (data?.funds ?? []).filter(f => latestYear(f).sheetYear < currentYear).length, [data, currentYear]);
+  const rows = useMemo(() => (data?.funds ?? []).filter(f => includeOlder || latestYear(f).sheetYear === currentYear)
+    .map(f => ({ f, signals: fundSignals(f) })), [data, includeOlder, currentYear]);
   const ministries = useMemo(() => [...new Set(rows.map(r => r.f.ministry))].filter(Boolean).sort(), [rows]);
   const counts = useMemo(() => Object.fromEntries(FUND_SIGNALS.map(s => [s, rows.filter(r => r.signals.includes(s))])) as Record<FundSignal, typeof rows>, [rows]);
   const filtered = useMemo(() => {
     const q = query.trim();
     const list = rows.filter(r => (!signal || r.signals.includes(signal)) && (!ministry || r.f.ministry === ministry)
-      && (!q || r.f.name.includes(q) || r.f.owner.includes(q)));
+      && (!q || r.f.name.includes(q) || r.f.owner.includes(q) || !!r.f.sheetTitle?.includes(q)));
     return [...list].sort((a, b) => {
       const va = sortValue(a.f, sort.key), vb = sortValue(b.f, sort.key);
       if (va === null && vb === null) return 0;
@@ -124,7 +131,7 @@ export default function FundsView() {
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">残高</span> 計{formatBudgetFromYen(summary.balance)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">前年度支出</span> 計{formatBudgetFromYen(summary.expense)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">国庫返納</span> 計{formatBudgetFromYen(summary.returned)}</span>
-        <span className="inline-block text-xs">RSシステムの基金シート（{data?.metadata.sheetYears.join('・')}年版）・府省の記載どおり</span>
+        <span className="inline-block text-xs">RSシステムの基金シート（{includeOlder ? `${data?.metadata.sheetYears.join('・')}年版。以前の年度だけに載っている基金はその年度の値` : `最新の${currentYear}年版に載っている基金`}）・府省の記載どおり</span>
       </p>
     </div>
     <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
@@ -138,6 +145,9 @@ export default function FundsView() {
           <select value={sort.key} onChange={e => setSort({ key: e.target.value as SortKey, desc: e.target.value !== 'name' && e.target.value !== 'endDate' })} aria-label="並び順" className="rounded-md border border-mirai-border bg-card px-2 py-1.5 text-sm">
             {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}{s.key === 'name' || s.key === 'endDate' ? '（昇順）' : '（大きい順）'}</option>)}
           </select>
+          <label className="flex items-center gap-1 text-mirai-text-subtle" title="最新のシート年度に載っていない基金（終了した・シートが出ていないもの）。残高や支出は、その基金が最後に載った年度の値です">
+            <input type="checkbox" checked={includeOlder} onChange={e => setIncludeOlder(e.target.checked)} />以前の年度だけに載っている基金も表示（{olderCount}件）
+          </label>
           <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
         </div>
         {/* 論点の絞り込み。切り替えなのでグラデ（主要操作用）は使わず、選択中はティールの面と枠で示す */}
@@ -166,7 +176,7 @@ export default function FundsView() {
                 {filtered.map(({ f, signals }) => { const y = latestYear(f); const yrs = spendingYears(y); return <tr key={f.key} data-fund={f.key}
                   aria-selected={selectedKey === f.key}
                   onClick={() => setSelectedKey(f.key)} className={`cursor-pointer hover:bg-mirai-surface-teal/60 ${selectedKey === f.key ? 'bg-mirai-surface-teal/60' : ''}`}>
-                  <td className="max-w-[260px] px-2 py-1.5 min-[1700px]:max-w-[300px]"><div className="truncate font-medium" title={f.name}>{f.name}</div><div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
+                  <td className="max-w-[260px] px-2 py-1.5 min-[1700px]:max-w-[300px]"><div className="truncate font-medium" title={f.name}>{f.name}{latestYear(f).sheetYear < currentYear && <span className="ml-1 rounded bg-mirai-surface px-1 text-[10px] font-normal text-mirai-text-muted">{latestYear(f).sheetYear}年版まで</span>}</div>{f.sheetTitle && <div className="truncate text-[11px] text-mirai-text-subtle" title={f.sheetTitle}>{f.sheetTitle}</div>}<div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yen(y.balance)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{yen(y.expense)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yrs === null ? '—' : `${yrs >= 100 ? Math.round(yrs).toLocaleString() : yrs.toFixed(1)}年分`}</td>
@@ -214,6 +224,7 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
       <div className="min-w-0">
         <div className="text-[11px] text-mirai-text-muted">{f.ministry}{f.sheetNumber !== null && ` · 基金シート ${f.sheetNumber}`}</div>
         <h2 className="mt-1 text-sm font-bold">{f.name}</h2>
+        {f.sheetTitle && <div className="text-mirai-text-subtle">{f.sheetTitle}</div>}
         <div className="mt-0.5 text-mirai-text-subtle">保有法人: {f.owner || '—'}{f.ownerForm && `（${OWNER_FORM_LABELS[f.ownerForm] ?? f.ownerForm}）`}</div>
       </div>
     </div>
