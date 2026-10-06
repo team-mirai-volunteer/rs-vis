@@ -207,6 +207,8 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
       <Button variant="outline" size="xs" onClick={onNext} disabled={!onNext} aria-label="次の基金" className="border-mirai-border"><ChevronDown className="size-3.5" />次</Button>
       <span className="ml-1 tabular-nums text-mirai-text-muted">{position.index >= 0 ? `${position.index + 1} / ${position.total}` : '絞り込みの外'}</span>
       <span className="ml-auto hidden text-[10px] text-mirai-text-muted lg:inline">↑↓キーでも移れます</span>
+      {/* 閉じるはパネルの一番上の段（前後移動と同じ段）の右端に置く */}
+      <Button variant="ghost" size="icon-sm" aria-label="選択を解除" onClick={onClose} className="ml-1 lg:ml-2"><X /></Button>
     </div>
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -214,7 +216,6 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
         <h2 className="mt-1 text-sm font-bold">{f.name}</h2>
         <div className="mt-0.5 text-mirai-text-subtle">保有法人: {f.owner || '—'}{f.ownerForm && `（${OWNER_FORM_LABELS[f.ownerForm] ?? f.ownerForm}）`}</div>
       </div>
-      <Button variant="ghost" size="icon-sm" aria-label="選択を解除" onClick={onClose}><X /></Button>
     </div>
     {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={FUND_SIGNAL_DESCRIPTIONS[s]}
       className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{FUND_SIGNAL_LABELS[s]}</span>)}</div>}
