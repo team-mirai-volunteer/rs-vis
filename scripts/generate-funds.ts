@@ -9,8 +9,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
-import type { Fund, FundComposition, FundPaymentGroup, FundPaymentsFile, FundsFile, FundYear } from '../types/funds';
-import { normalizeRecipientName } from '../app/lib/recipient-key';
+import type { Fund, FundComposition, FundPaymentsFile, FundsFile, FundYear } from '../types/funds';
+import { paymentGroups } from '../app/lib/payment-groups';
 
 const SHEET_YEARS = [2024, 2025, 2026];
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -123,28 +123,6 @@ for (const [key, acc] of byKey) {
 }
 funds.sort((x, y) => (y.years.at(-1)?.balance ?? 0) - (x.years.at(-1)?.balance ?? 0));
 
-/** 支出先のグループ。グループ間のつながり（どのブロックからどのブロックへ）は基金シートに無いので、合計は出さない */
-function paymentGroups(groups: Raw[], owner: string): FundPaymentGroup[] {
-  const ownerKey = normalizeRecipientName(owner);
-  return groups.map(g => {
-    const payees = (g.payments ?? []).map((pay: Raw) => ({
-      name: text(pay.name) ?? '（名称なし）',
-      corporateNumber: text(pay.corporate_number),
-      amount: pay.negative_total_contract_amount_count ? null : num(pay.total_contract_amount),
-      method: text(pay.contracts?.[0]?.contract_method),
-      others: !!pay.is_others,
-    })).sort((a: { amount: number | null }, b: { amount: number | null }) => (b.amount ?? 0) - (a.amount ?? 0));
-    const overview = text(g.overview);
-    return {
-      code: text(g.display_code) ?? '',
-      name: text(g.name) ?? '',
-      overview: overview && overview.length > 300 ? `${overview.slice(0, 300)}…` : overview,
-      total: g.negative_total_amount_count ? null : num(g.total_amount),
-      self: !!ownerKey && payees.length > 0 && payees.every((pay: { name: string }) => normalizeRecipientName(pay.name) === ownerKey),
-      payees,
-    };
-  }).sort((a, b) => a.code.localeCompare(b.code));
-}
 const paymentsOut: FundPaymentsFile = {
   metadata: {
     generatedAt: new Date().toISOString(), sheetYears: SHEET_YEARS, source: 'RSシステム 基金シートの支出先（RS公開API payment-groups）',

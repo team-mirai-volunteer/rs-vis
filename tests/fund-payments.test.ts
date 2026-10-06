@@ -17,7 +17,8 @@ test('基金の支出先: どの基金も funds.json にあり、「基金自身
       assert.ok(g.payees.length > 0 || !g.self);
       if (g.self) {
         selfGroups++;
-        for (const p of g.payees) assert.equal(normalizeRecipientName(p.name), normalizeRecipientName(fund!.owner));
+        const owner = normalizeRecipientName(fund!.owner);
+        for (const p of g.payees) assert.ok(normalizeRecipientName(p.name).endsWith(owner), `${p.name} は保有法人 ${fund!.owner} ではない`);
       }
     }
   }

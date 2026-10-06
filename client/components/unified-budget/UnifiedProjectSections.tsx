@@ -25,6 +25,7 @@ import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 import { ProjectFunds } from './ProjectFunds';
+import { ProjectAgencySegments } from './ProjectAgencySegments';
 import { ProjectBudgetExecutionAudit } from './ProjectBudgetExecutionAudit';
 import { ProjectAuditReport } from './ProjectAuditReport';
 
@@ -107,6 +108,7 @@ export function UnifiedProjectSections({
       {!isProvisional && <ProjectBudgetExecutionAudit pid={pid} scaleFont={scaleFont} />}
       {!isProvisional && <ProjectAuditReport pid={pid} scaleFont={scaleFont} />}
       {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} />}
+      {!isProvisional && <ProjectAgencySegments pid={pid} rsSheetYear={rsSheetYear} scaleFont={scaleFont} />}
 
       <ProjectOverviewSection
         detail={detail}

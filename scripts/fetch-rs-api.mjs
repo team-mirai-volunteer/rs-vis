@@ -1,6 +1,7 @@
 /** Public RS snapshot, isolated from official CSVs. Resume cached responses by default.
- * node scripts/fetch-rs-api.mjs [2026] [--refresh] [--limit N] [--sheet KS]
+ * node scripts/fetch-rs-api.mjs [2026] [--refresh] [--limit N] [--sheet KS|SS]
  * --sheet KS は基金シート。data/rs-api-ks/{年}/ に一覧・支払先に加えて詳細（造成元の事業・保有割合の根拠など）も取る
+ * --sheet SS はセグメントシート（独立行政法人の運営費交付金を法人内の事業区分まで示す）。data/rs-api-ss/{年}/ に詳細も取る
  * Failed endpoints remain missing, never represented as empty/zero data.
  */
 import fs from 'node:fs';
@@ -15,8 +16,8 @@ const limit = limitAt < 0 ? Infinity : Number(process.argv[limitAt + 1]);
 if (!(limit > 0)) throw Error('Invalid limit');
 const sheetAt = process.argv.indexOf('--sheet');
 const sheet = sheetAt < 0 ? 'RS' : process.argv[sheetAt + 1];
-if (!['RS', 'KS'].includes(sheet)) throw Error('Invalid sheet type');
-const root = path.resolve(sheet === 'RS' ? `data/rs-api/${year}` : `data/rs-api-ks/${year}`);
+if (!['RS', 'KS', 'SS'].includes(sheet)) throw Error('Invalid sheet type');
+const root = path.resolve(sheet === 'RS' ? `data/rs-api/${year}` : `data/rs-api-${sheet.toLowerCase()}/${year}`);
 fs.mkdirSync(root, { recursive: true });
 const delay = ms => new Promise(r => setTimeout(r, ms));
 function save(file, data) {
@@ -69,7 +70,7 @@ await Promise.all(Array.from({ length: 4 }, async () => {
         if (!Array.isArray(result.data)) throw Error(`Unexpected ${endpoint}`);
       }
       // 基金シートは詳細も取る（造成元の事業 related_projects・保有割合の根拠・収支の見込み）
-      if (sheet === 'KS') {
+      if (sheet === 'KS' || sheet === 'SS') {
         const detail = await get(`projects/${p.id}/`, path.join(root, p.id, 'detail.json'));
         if (detail.data?.id !== p.id) throw Error('Unexpected detail');
       }
