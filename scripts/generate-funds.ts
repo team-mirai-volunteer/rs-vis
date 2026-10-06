@@ -2,13 +2,15 @@
  * 基金シート（RSシステムの sheet_type=KS）を、基金（lineage_id）ごとに年度をまたいでまとめる。
  *   node scripts/fetch-rs-api.mjs 2025 --sheet KS   # data/rs-api-ks/{年}/ に一覧・詳細・支払先を取得
  *   npx tsx scripts/generate-funds.ts
- * 出力: public/data/funds.json(.gz)。金額・率は府省の記載どおり（検証はしていない）。
+ * 出力: public/data/funds.json(.gz)、支出先は public/data/fund-payments.json(.gz)（基金の詳細を開いたときだけ読む）。
+ * 金額・率は府省の記載どおり（検証はしていない）。
  * 造成元の事業は、詳細の related_projects（ks-link-base）と造成の経緯の related_review_sheet_id から予算事業IDに引き当てる。
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
-import type { Fund, FundComposition, FundsFile, FundYear } from '../types/funds';
+import type { Fund, FundComposition, FundPaymentGroup, FundPaymentsFile, FundsFile, FundYear } from '../types/funds';
+import { normalizeRecipientName } from '../app/lib/recipient-key';
 
 const SHEET_YEARS = [2024, 2025, 2026];
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -30,7 +32,7 @@ for (const y of SHEET_YEARS) {
   }
 }
 
-type Acc = { latest: Raw; detail: Raw | null; years: FundYear[]; related: Set<string>; compositions: Map<string, FundComposition> };
+type Acc = { latest: Raw; detail: Raw | null; years: FundYear[]; related: Set<string>; compositions: Map<string, FundComposition>; payments: Map<number, Raw[]> };
 const byKey = new Map<string, Acc>();
 for (const sheetYear of SHEET_YEARS) {
   const root = path.resolve(`data/rs-api-ks/${sheetYear}`);
@@ -41,7 +43,9 @@ for (const sheetYear of SHEET_YEARS) {
     const detail: Raw | null = fs.existsSync(detailFile) ? JSON.parse(fs.readFileSync(detailFile, 'utf8')).data : null;
     const ie: Raw = detail?.fund_additional_income_and_expenditure ?? {};
     const key = p.lineage_id ?? p.id;
-    const acc: Acc = byKey.get(key) ?? { latest: p, detail, years: [], related: new Set<string>(), compositions: new Map() };
+    const acc: Acc = byKey.get(key) ?? { latest: p, detail, years: [], related: new Set<string>(), compositions: new Map(), payments: new Map() };
+    const groupsFile = path.join(root, p.id, 'payment-groups.json');
+    if (fs.existsSync(groupsFile)) acc.payments.set(sheetYear, JSON.parse(fs.readFileSync(groupsFile, 'utf8')).data ?? []);
     // 新しいシートの記載（名称・終了予定・点検など）を正にする
     if (sheetYear >= (acc.latest.fiscal_year ?? 0)) { acc.latest = p; acc.detail = detail ?? acc.detail; }
     acc.years.push({
@@ -118,6 +122,45 @@ for (const [key, acc] of byKey) {
   });
 }
 funds.sort((x, y) => (y.years.at(-1)?.balance ?? 0) - (x.years.at(-1)?.balance ?? 0));
+
+/** 支出先のグループ。グループ間のつながり（どのブロックからどのブロックへ）は基金シートに無いので、合計は出さない */
+function paymentGroups(groups: Raw[], owner: string): FundPaymentGroup[] {
+  const ownerKey = normalizeRecipientName(owner);
+  return groups.map(g => {
+    const payees = (g.payments ?? []).map((pay: Raw) => ({
+      name: text(pay.name) ?? '（名称なし）',
+      corporateNumber: text(pay.corporate_number),
+      amount: pay.negative_total_contract_amount_count ? null : num(pay.total_contract_amount),
+      method: text(pay.contracts?.[0]?.contract_method),
+      others: !!pay.is_others,
+    })).sort((a: { amount: number | null }, b: { amount: number | null }) => (b.amount ?? 0) - (a.amount ?? 0));
+    const overview = text(g.overview);
+    return {
+      code: text(g.display_code) ?? '',
+      name: text(g.name) ?? '',
+      overview: overview && overview.length > 300 ? `${overview.slice(0, 300)}…` : overview,
+      total: g.negative_total_amount_count ? null : num(g.total_amount),
+      self: !!ownerKey && payees.length > 0 && payees.every((pay: { name: string }) => normalizeRecipientName(pay.name) === ownerKey),
+      payees,
+    };
+  }).sort((a, b) => a.code.localeCompare(b.code));
+}
+const paymentsOut: FundPaymentsFile = {
+  metadata: {
+    generatedAt: new Date().toISOString(), sheetYears: SHEET_YEARS, source: 'RSシステム 基金シートの支出先（RS公開API payment-groups）',
+    notes: ['シート年度 N の支出先は年度 N−1 の実績。', '支出先のグループ間のつながりは基金シートに記載が無く、国→基金→事業実施主体→最終的な支払先の各段階が並ぶため、合計すると同じお金を重ねて数える。'],
+  },
+  funds: Object.fromEntries([...byKey].flatMap(([key, acc]) => {
+    const owner = funds.find(f => f.key === key)?.owner ?? '';
+    const years = Object.fromEntries([...acc.payments].filter(([, g]) => g.length > 0).map(([y, g]) => [String(y), paymentGroups(g, owner)]));
+    return Object.keys(years).length ? [[key, years]] : [];
+  })),
+};
+const paymentsFile = path.resolve('public/data/fund-payments.json');
+const paymentsJson = JSON.stringify(paymentsOut);
+fs.writeFileSync(paymentsFile, paymentsJson);
+fs.writeFileSync(`${paymentsFile}.gz`, gzipSync(paymentsJson, { level: 9 }));
+console.log(JSON.stringify({ fundPayments: Object.keys(paymentsOut.funds).length, sizeKB: Math.round(paymentsJson.length / 1024) }));
 
 const out: FundsFile = {
   metadata: {

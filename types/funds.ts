@@ -90,3 +90,34 @@ export interface FundsFile {
   metadata: { generatedAt: string; sheetYears: number[]; source: string; notes: string[] };
   funds: Fund[];
 }
+
+/** 基金シートの支出先の1グループ（A・B…のブロック）。グループ間のつながりは基金シートに記載が無い */
+export interface FundPaymentGroup {
+  /** 表示記号（A・B…） */
+  code: string;
+  name: string;
+  /** 府省の記載した概要（長いものは切り詰め） */
+  overview: string | null;
+  /** グループの支払額の合計（円）。負の値が混ざる記載は null */
+  total: number | null;
+  /** 支払先がすべて基金の保有法人自身（国からの交付を受ける段階・基金の管理）。基金から外へ出た支払いではない */
+  self: boolean;
+  payees: FundPayee[];
+}
+
+export interface FundPayee {
+  name: string;
+  corporateNumber: string | null;
+  /** 支払額（円）。負の値が混ざる記載は null */
+  amount: number | null;
+  /** 契約方式のコード（subsidy・others など） */
+  method: string | null;
+  /** 「その他」にまとめられた行 */
+  others: boolean;
+}
+
+export interface FundPaymentsFile {
+  metadata: { generatedAt: string; sheetYears: number[]; source: string; notes: string[] };
+  /** 基金の key（lineage_id）→ シート年度 → 支出先のグループ */
+  funds: Record<string, Record<string, FundPaymentGroup[]>>;
+}

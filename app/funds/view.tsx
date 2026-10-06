@@ -18,6 +18,7 @@ import {
   type FundSignal,
 } from '@/app/lib/funds';
 import type { Fund, FundsFile } from '@/types/funds';
+import { FundPayments } from './fund-payments';
 
 type SortKey = 'balance' | 'expense' | 'years' | 'returned' | 'adminRate' | 'ownership' | 'endDate' | 'name';
 const SORTS: { key: SortKey; label: string }[] = [
@@ -258,6 +259,7 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
       <ul className="m-0 list-none space-y-0.5 p-0">{f.compositions.map((c, i) => <li key={i} className="flex justify-between gap-2">
         <span className="text-mirai-text-subtle">{c.fiscalYear ?? '—'}年度 {budgetLabel(c.budget)}</span><span className="tabular-nums">{yen(c.amount)}</span></li>)}</ul>
     </>}
+    <FundPayments fundKey={f.key} />
     {f.relatedProjects.length > 0 && <>
       <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">造成元・関連の事業</h3>
       <ul className="m-0 list-none space-y-1 p-0">{f.relatedProjects.map(p => <li key={p.pid}>
