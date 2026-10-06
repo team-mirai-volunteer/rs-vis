@@ -1,11 +1,15 @@
 import baseV1 from './fiscal-share-base-v1.json';
+import baseV2 from './fiscal-share-base-v2.json';
 import type { FiscalForm } from './fiscal-space-form';
 import { decodeScenarioDetailed, encodeScenario, FISCAL_MODEL_VERSION } from './fiscal-space-url';
 
-// This snapshot is part of the wire format. Never regenerate v1 when defaults change.
+// These snapshots are part of the wire format. Never regenerate one when defaults change; add a new version instead.
 // A stored model version still passes through the normal migration and validation.
+// v2 (2026-10-06): 消費税の標準税率・軽減税率の分割と健保割合の追加で、v1 との差分が既定のリンクでも長くなったため。
+const BASES: Record<string, unknown> = { s1: baseV1, s2: baseV2 };
+const CURRENT = 's2';
 type Change = [string[], unknown] | [string[]]; // Missing value means deletion; null remains a value.
-const PREFIX = '#scenario=s1.';
+const PREFIX = /^#scenario=(s\d+)\./;
 const LIMIT = 50_000;
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const unsafe = (key: string) => ['__proto__', 'prototype', 'constructor'].includes(key);
@@ -18,9 +22,9 @@ function changes(base: unknown, value: unknown, path: string[] = []): Change[] {
   return [[path, value]];
 }
 
-function applyChanges(value: unknown) {
+function applyChanges(base: unknown, value: unknown) {
   if (!Array.isArray(value) || value.length > 2000) throw new Error('Invalid shared changes');
-  const form = structuredClone(baseV1) as Record<string, unknown>;
+  const form = structuredClone(base) as Record<string, unknown>;
   for (const change of value) {
     if (!Array.isArray(change) || change.length < 1 || change.length > 2 || !Array.isArray(change[0])) throw new Error('Invalid shared change');
     const path = change[0];
@@ -58,19 +62,22 @@ async function readBounded(stream: ReadableStream<Uint8Array>) {
 /** Keep all settings, but transmit only changes from a frozen baseline, compressed locally. */
 export async function encodeSharedScenario(form: FiscalForm): Promise<string> {
   const canonical = JSON.parse(decodeURIComponent(encodeScenario(form).slice(10))).form;
-  const json = JSON.stringify([FISCAL_MODEL_VERSION, changes(baseV1, canonical)]);
+  const json = JSON.stringify([FISCAL_MODEL_VERSION, changes(BASES[CURRENT], canonical)]);
   const bytes = await readBounded(new Blob([json]).stream().pipeThrough(new CompressionStream('gzip')));
-  return PREFIX + btoa(Array.from(bytes, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `#scenario=${CURRENT}.` + btoa(Array.from(bytes, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export async function decodeSharedScenario(hash: string): Promise<ReturnType<typeof decodeScenarioDetailed>> {
-  if (!hash.startsWith(PREFIX)) return decodeScenarioDetailed(hash);
+  const prefix = PREFIX.exec(hash);
+  if (!prefix) return decodeScenarioDetailed(hash);
+  const base = Object.hasOwn(BASES, prefix[1]) ? BASES[prefix[1]] : undefined;
+  if (!base) throw new Error('Unsupported shared format');
   if (hash.length > LIMIT) throw new Error('Shared URL too long');
-  const encoded = hash.slice(PREFIX.length);
+  const encoded = hash.slice(prefix[0].length);
   if (!/^[A-Za-z0-9_-]+$/.test(encoded) || encoded.length % 4 === 1) throw new Error('Invalid shared encoding');
   const bytes = Uint8Array.from(atob(encoded.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
   const unpacked = await readBounded(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')));
   const payload: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(unpacked));
   if (!Array.isArray(payload) || payload.length !== 2 || typeof payload[0] !== 'string') throw new Error('Invalid shared payload');
-  return decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: payload[0], form: applyChanges(payload[1]) })));
+  return decodeScenarioDetailed('#scenario=' + encodeURIComponent(JSON.stringify({ version: payload[0], form: applyChanges(base, payload[1]) })));
 }

@@ -84,7 +84,17 @@ export const CONSUMPTION_TAX_CUT: ResponseProfile = {
   longRate: [.02, .08, .09, .12, .14], employment: [.02, .01, .01, .01, .01],
   labourForce: [0, 0, 0, 0, 0], hours: [0, 0, 0, 0, 0],
 };
-export const consumptionTaxLimit = (p: ModelParameters) => p.consumptionTax.revenuePerPoint * p.consumptionTax.baseRate * 100;
+export const CONSUMPTION_TAX_IDS = ['consumption-tax', 'consumption-tax-reduced'] as const;
+export const isConsumptionTax = (id: string) => (CONSUMPTION_TAX_IDS as readonly string[]).includes(id);
+/** 標準税率と軽減税率の換算。価格転嫁率と表⑤から分離する直接効果は共通 */
+export const consumptionTaxParams = (id: string, p: ModelParameters) =>
+  id === 'consumption-tax-reduced' ? { ...p.consumptionTax, ...p.reducedConsumptionTax } : p.consumptionTax;
+/** 表⑤（消費税率1ポイント引下げ）は全品目の実験。マクロ反応は全品目1ポイント相当の減収額で円換算する */
+export const allItemsRevenuePerPoint = (p: ModelParameters) => p.consumptionTax.revenuePerPoint + p.reducedConsumptionTax.revenuePerPoint;
+export const consumptionTaxLimit = (p: ModelParameters, id = 'consumption-tax') => {
+  const c = consumptionTaxParams(id, p);
+  return c.revenuePerPoint * c.baseRate * 100;
+};
 
 export function responseKind(policy: Policy): ResponseKind {
   return policy.channel === 'tax' || policy.id === 'cash' ? 'household' : 'government';
@@ -126,7 +136,8 @@ export function stepResponse(values: number[], year: number): number {
  * Finite-duration effects are a linear on/off approximation, not the source's
  * separately estimated one-year experiment. Negative withdrawal effects are kept. */
 export function calibratedResponse(initial: EconomyState, policy: Policy, year: number, p: ModelParameters) {
-  const taxExperiment = policy.id === 'consumption-tax' && p.referenceModel === 'ef2026';
+  const taxExperiment = isConsumptionTax(policy.id) && p.referenceModel === 'ef2026';
+  const tax = consumptionTaxParams(policy.id, p);
   const profile = taxExperiment ? CONSUMPTION_TAX_CUT : policyProfile(policy, p);
   const oneYearGovernment = p.referenceModel === 'ef2026' && responseKind(policy) === 'government' && policy.kind !== 'permanent' && policy.duration === 1;
   const result = { gdp: 0, exports: 0, imports: 0, prices: 0, deflator: 0, employment: 0, labourForce: 0, hours: 0, exchangeRate: 0, longRate: 0 };
@@ -139,8 +150,8 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
         const response = oneYearGovernment
           ? (GOVERNMENT_ONE_YEAR[key][age - 1] ?? 0)
           : stepResponse(profile[key], age) - stepResponse(profile[key], age - 1);
-        // Table 5 is per tax-rate point; others are per 1% GDP fiscal cost.
-        const amount = taxExperiment ? realCost * (initial.macro.nominalGdp / initial.macro.realGdp) / p.consumptionTax.revenuePerPoint / 100 : realCost / initial.macro.realGdp;
+        // Table 5 is per all-items tax-rate point; scale by yen so a reduced-rate cut is not treated as a full point.
+        const amount = taxExperiment ? realCost * (initial.macro.nominalGdp / initial.macro.realGdp) / allItemsRevenuePerPoint(p) / 100 : realCost / initial.macro.realGdp;
         result[key] += amount * response;
       }
     }
@@ -152,11 +163,13 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
   // Split out a constant mechanical tax price level before any gap sensitivity.
   // This decomposition is a scenario, not separately identified by table 5.
   const active = policy.kind === 'permanent' || year <= policy.duration;
-  const taxPoints = policy.id === 'consumption-tax' && active ? policy.annualCost / p.consumptionTax.revenuePerPoint : 0;
+  // Own statutory points drive the direct price effect; all-items-equivalent points undo table 5's own direct part.
+  const taxPoints = isConsumptionTax(policy.id) && active ? policy.annualCost / tax.revenuePerPoint : 0;
+  const equivalentPoints = isConsumptionTax(policy.id) && active ? policy.annualCost / allItemsRevenuePerPoint(p) : 0;
   const taxPriceFactor = taxExperiment ? (initial.macro.nominalGdp / initial.macro.realGdp) / baselinePrice * (1 + p.baselineInflation + p.inflationPersistence ** year * (initial.macro.inflation - p.baselineInflation)) : 1;
   if (taxExperiment) {
-    result.prices += taxPoints / 100 * p.consumptionTax.referenceDirectCpi * taxPriceFactor;
-    result.deflator += taxPoints / 100 * p.consumptionTax.referenceDirectDeflator * taxPriceFactor;
+    result.prices += equivalentPoints / 100 * p.consumptionTax.referenceDirectCpi * taxPriceFactor;
+    result.deflator += equivalentPoints / 100 * p.consumptionTax.referenceDirectDeflator * taxPriceFactor;
   }
   const tail = macroTailFactor(year, REFERENCES[p.referenceModel].years, p.macroTailYears);
   for (const key of Object.keys(result) as (keyof ResponseProfile)[]) result[key] *= tail;
@@ -164,8 +177,8 @@ export function calibratedResponse(initial: EconomyState, policy: Policy, year: 
   result.imports *= initial.external.imports / (initial.macro.nominalGdp / initial.macro.realGdp);
   result.exports *= initial.external.exports / (initial.macro.nominalGdp / initial.macro.realGdp);
   return { ...result,
-    directTaxPrices: -taxPoints / 100 / (1 + p.consumptionTax.baseRate) * p.consumptionTax.cpiShare * p.consumptionTax.passThrough * taxPriceFactor,
-    directTaxDeflator: -taxPoints / 100 * p.consumptionTax.referenceDirectDeflator * p.consumptionTax.passThrough * taxPriceFactor,
+    directTaxPrices: -taxPoints / 100 / (1 + tax.baseRate) * tax.cpiShare * tax.passThrough * taxPriceFactor,
+    directTaxDeflator: -equivalentPoints / 100 * p.consumptionTax.referenceDirectDeflator * p.consumptionTax.passThrough * taxPriceFactor,
   };
 }
 

@@ -11,7 +11,7 @@ export const RESOURCE_SECTORS = Object.keys(reference.sectorWorkers) as Sector[]
 export const RESOURCE_REFERENCE = reference;
 type Profile = keyof typeof reference.profiles;
 const profiles: Record<string, Profile> = {
-  'income-tax': 'household', 'resident-tax': 'household', 'consumption-tax': 'household',
+  'income-tax': 'household', 'resident-tax': 'household', 'consumption-tax': 'household', 'consumption-tax-reduced': 'household',
   'social-insurance': 'household', cash: 'household', defence: 'government',
   'public-investment': 'public-investment', healthcare: 'healthcare', childcare: 'childcare',
   education: 'education', rd: 'rd', grid: 'grid', generation: 'generation', semiconductors: 'semiconductors',
@@ -20,6 +20,7 @@ export const RESOURCE_PROFILE_NOTES: Record<string, string> = {
   'income-tax': '家計の消費構成。軽減額のうち消費へ回る割合を別途仮定。',
   'resident-tax': '家計の消費構成。軽減額のうち消費へ回る割合を別途仮定。',
   'consumption-tax': '家計の消費構成。税率変更による品目別の差は未推計。',
+  'consumption-tax-reduced': '家計の消費構成。飲食料品に偏る品目別の差は未推計。',
   'social-insurance': '本人・事業主の軽減とも家計消費へ回る代理仮定。賃金転嫁・法人投資の内訳は未同定。',
   cash: '家計の消費構成。給付のうち消費へ回る割合を別途仮定。',
   defence: '一般政府消費の構成を代理使用。防衛装備の固有構成は未推計。',

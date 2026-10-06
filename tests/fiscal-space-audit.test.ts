@@ -53,7 +53,8 @@ test('15 trillion example: versioned absolute bounds and reserve amounts, not ju
 
 test('UI and engine share yen conversion and consumption-tax cap', () => {
   assert.equal(policyCostYen('rd', 1.5, PARAMETERS), 1_500_000_000_000);
-  assert.equal(policyCostYen('consumption-tax', 100, PARAMETERS), 35_000_000_000_000);
+  assert.equal(policyCostYen('consumption-tax', 100, PARAMETERS), 29_000_000_000_000);
+  assert.equal(policyCostYen('consumption-tax-reduced', 100, PARAMETERS), 4_800_000_000_000);
   const form = defaults();
   form.calibration.consumptionTax = { ...form.calibration.consumptionTax, revenuePerPoint: 2e12, baseRate: .08 };
   Object.assign(form.amounts, { 'consumption-tax': 100, rd: 1.5 });

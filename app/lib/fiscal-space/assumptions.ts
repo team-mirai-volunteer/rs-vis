@@ -20,7 +20,11 @@ export const PARAMETERS: ModelParameters = {
   productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
   // 構造的失業率2.5%は日本のNAIRU推定幅（約2.3〜2.7%）の中央付近を置いた仮定。推定値ではない。
   structuralUnemployment: .025, inflationRule: 'peak',
-  consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
+  // 標準税率品目だけの1ポイント＝全品目3.5兆円から軽減税率品目0.6兆円を除いた値、CPI比率も全品目85%から軽減税率品目22%を除いた値。
+  consumptionTax: { revenuePerPoint: 2.9e12, cpiShare: .63, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
+  // 軽減税率品目（飲食料品）：財務省試算として報じられた「税率ゼロで年4.8兆円の減収」を8ポイントで割った値。
+  // CPI比率22%は家計調査2024（総世帯のうち勤労者世帯・十分位平均）の消費支出に占める軽減税率品目の割合。
+  reducedConsumptionTax: { revenuePerPoint: .6e12, cpiShare: .22, baseRate: .08 },
   electricity: { ...ELECTRICITY_BASELINE },
   referenceModel: 'ef2026', multiplierScale: 1,
   insurance: { ...INSURANCE_DEFAULTS }, macroTailYears: 5,
@@ -84,7 +88,8 @@ const policy = (id: string, name: string, overrides: Partial<Policy>): Policy =>
 export const POLICIES: Policy[] = [
   policy('income-tax', '所得税減税', { channel: 'tax', kind: 'permanent' }),
   policy('resident-tax', '住民税減税', { channel: 'tax', kind: 'permanent' }),
-  policy('consumption-tax', '消費税減税', { channel: 'tax', kind: 'permanent' }),
+  policy('consumption-tax', '消費税減税（標準税率）', { channel: 'tax', kind: 'permanent' }),
+  policy('consumption-tax-reduced', '消費税減税（軽減税率）', { channel: 'tax', kind: 'permanent' }),
   policy('social-insurance', '社会保険料の軽減', { channel: 'tax', kind: 'permanent' }),
   policy('cash', '現金給付', {}),
   policy('public-investment', '公共投資', { kind: 'growth', sector: 'construction' }),

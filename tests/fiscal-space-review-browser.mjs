@@ -55,10 +55,10 @@ try {
   await expect.poll(() => long.locator('tbody').innerText()).not.toEqual(lowRate);
   const taxDetails = page.getByText(/^ほかの.*政策を追加する$/);
   await taxDetails.click();
-  await page.getByLabel('消費税減税・数値で入力', { exact: true }).fill('35');
-  await expect(page.getByTestId('annual-total')).toHaveText('50.0兆円');
+  await page.getByLabel('消費税減税（標準税率）・数値で入力', { exact: true }).fill('29');
+  await expect(page.getByTestId('annual-total')).toHaveText('44.0兆円');
   await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
-  await page.getByLabel('消費税1ポイントの減収額・数値で入力', { exact: true }).fill('1');
+  await page.getByLabel('消費税（標準税率）1ポイントの減収額・数値で入力', { exact: true }).fill('1');
   await expect(page.getByTestId('annual-total')).toHaveText('25.0兆円');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();

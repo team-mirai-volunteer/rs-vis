@@ -1,5 +1,5 @@
 import type { ModelParameters, SourceValue } from '@/types/fiscal-space';
-import { consumptionTaxLimit } from './calibration';
+import { consumptionTaxLimit, isConsumptionTax } from './calibration';
 
 /** ILO financing, FY2024 actual; Table 6, published 2026-07-29. Yen. */
 export const SOCIAL_INSURANCE_REVENUE = {
@@ -45,7 +45,7 @@ export function personalTaxRevenue(id: string) {
 
 export const policyReliefLimit = (id: string, p: ModelParameters): number =>
   id === 'social-insurance' ? socialInsuranceLimit(p)
-    : id === 'consumption-tax' ? consumptionTaxLimit(p) : personalTaxRevenue(id)?.amount ?? Infinity;
+    : isConsumptionTax(id) ? consumptionTaxLimit(p, id) : personalTaxRevenue(id)?.amount ?? Infinity;
 
 export function personalTaxRevenueRecords(): SourceValue[] {
   return Object.entries(PERSONAL_TAX_REVENUE).map(([id, source]) => ({

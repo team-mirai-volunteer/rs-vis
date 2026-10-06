@@ -4,7 +4,6 @@ import { decodeSharedScenario } from '@/client/lib/fiscal-space-share';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { policyCostYen, policyInputLimitYen, totalPolicyCostYen } from '@/client/lib/fiscal-space-amounts';
-import { consumptionTaxFor, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
 import { CalculationOverview } from '@/client/components/fiscal-space/CalculationOverview';
 import { defaults, type FiscalForm } from '@/client/lib/fiscal-space-form';
 import { ShareScenario } from '@/client/components/fiscal-space/ShareScenario';
@@ -17,7 +16,6 @@ import { ResourceEstimation, ResourceSettings } from '@/client/components/fiscal
 import { Demographics, DemographicSettings } from '@/client/components/fiscal-space/Demographics';
 import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
 import { CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
-import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
@@ -117,9 +115,7 @@ export default function FiscalSpacePage() {
     inputs: (v: FiscalForm['inputs']) => setForm(f => ({ ...f, inputs: v, capacity: { ...f.capacity, mode: 'manual' } })), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
     calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: f.horizon === EXTENDED_HORIZON ? f.horizon : Math.min(f.horizon, REFERENCES[v.referenceModel].years),
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
-    // A different target changes yen per point, so the old amount would mean a different rate; restart from no cut.
-    consumptionTarget: (t: ConsumptionTaxTarget) => setForm(f => ({ ...f, calibration: { ...f.calibration, consumptionTax: consumptionTaxFor(t, f.calibration.consumptionTax) },
-      amounts: { ...f.amounts, 'consumption-tax': 0 } })),
+    insuranceSplit: (amount: number, healthShare: number) => setForm(f => ({ ...f, insuranceHealthShare: healthShare, amounts: { ...f.amounts, 'social-insurance': amount } })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
     demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
@@ -138,6 +134,8 @@ export default function FiscalSpacePage() {
   const result = completed?.result;
   const calculationForm = completed?.form;
   const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
+  // 減税の入力上限（兆円）。税収・保険料収入を限度とし、上限の無い支出系は100兆円
+  const policyMax = useMemo(() => Object.fromEntries(POLICIES.map(policy => { const limit = policyInputLimitYen(policy.id, form.calibration); return [policy.id, Number.isFinite(limit) ? limit / TRILLION : 100]; })), [form.calibration]);
   const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
   const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : result.estimate.status === 'empty-mix' ? '参考上限：未計算（政策の配分を入力してください）' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
@@ -183,9 +181,7 @@ export default function FiscalSpacePage() {
           onClose={() => setControlsOpen(false)}
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} stresses={form.stresses} onStress={change.stress}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
-          consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
-          consumptionTax={form.calibration.consumptionTax} onConsumptionTaxTarget={change.consumptionTarget}
-          socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
+          policyMax={policyMax} calibration={form.calibration} healthShare={form.insuranceHealthShare} onInsuranceSplit={change.insuranceSplit}
           additionalSettings={Object.entries(DETAIL_SETTINGS).filter(([key]) => key !== 'poverty' && key !== 'childcare').map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
           policies={policies} onPowerSettings={openPowerSettings} onCashSettings={openCashSettings} onChildcareSettings={openChildcareSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
           horizon={form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}

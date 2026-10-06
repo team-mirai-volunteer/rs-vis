@@ -9,7 +9,7 @@ import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 import { STRESSES, type StressId, type StressSelection } from '@/app/lib/fiscal-space/stress-envelope';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
-import { amountFromRate, consumptionTaxTarget, FOOD_TAX, rateFromAmount, type ConsumptionTaxTarget } from '@/client/lib/fiscal-space-food-tax';
+import { amountToInstrument, instrumentsFor, instrumentToAmount } from '@/client/lib/fiscal-space-instruments';
 import type { ModelParameters } from '@/types/fiscal-space';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
@@ -34,29 +34,49 @@ export function RangeField({ label, value, min, max, step = 1, unit, onChange }:
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full" />
   </div>;
 }
-const TARGET_LABELS: Record<ConsumptionTaxTarget, string> = { all: '全品目', food: '食料品のみ（軽減税率）' };
-function ConsumptionTaxTargetField({ value, amount, max, onTarget, onAmount }: {
-  value: ModelParameters['consumptionTax']; amount: number; max: number;
-  onTarget: (t: ConsumptionTaxTarget) => void; onAmount: (id: string, n: number) => void;
+/**
+ * 減税を制度の言葉（税率・控除額・保険料率）で入力する欄。値は年間減収額（兆円）と相互に換算し、保存するのは兆円だけ。
+ * 社会保険料は健保と厚生年金の2つの欄で1つの年額を作るので、健保に当たる割合（healthShare）を別に持つ。
+ */
+function InstrumentFields({ policyId, amount, max, calibration, healthShare, onAmount, onInsuranceSplit }: {
+  policyId: string; amount: number; max: number; calibration: ModelParameters; healthShare: number;
+  onAmount: (id: string, n: number) => void; onInsuranceSplit: (amount: number, healthShare: number) => void;
 }) {
-  const target = consumptionTaxTarget(value);
-  const rate = rateFromAmount(Math.min(amount, max), value);
-  return <div className="space-y-2">
-    <fieldset className="flex flex-wrap gap-x-3 gap-y-1 text-xs"><legend className="sr-only">消費税減税の対象</legend>
-      {(Object.keys(TARGET_LABELS) as ConsumptionTaxTarget[]).map(t => <label key={t} className="flex items-center gap-1">
-        <input type="radio" name="consumption-tax-target" checked={target === t} onChange={() => onTarget(t)} />{TARGET_LABELS[t]}</label>)}
-    </fieldset>
-    {target === 'food' && <>
-      <RangeField label="食料品の消費税率" value={Number((rate * 100).toFixed(2))} min={0} max={value.baseRate * 100} step={.5} unit="%"
-        onChange={n => onAmount('consumption-tax', Number(amountFromRate(n / 100, value).toFixed(4)))} />
-      <p className="text-xs leading-relaxed text-mirai-text-subtle">現行{value.baseRate * 100}%から{Number((rate * 100).toFixed(2))}%へ：減収 {money(Math.min(amount, max) * 1e12, 1)}／年。
-        税率1ポイント＝{money(value.revenuePerPoint, 1)}で換算（<a className="underline" href={FOOD_TAX.sourceUrl} target="_blank" rel="noreferrer">財務省試算として報じられた、税率ゼロで年4.8兆円</a>を8で割った値）。外食・酒類は標準税率のままです。</p>
-    </>}
+  const instruments = instrumentsFor(policyId, calibration);
+  if (!instruments.length) return null;
+  const capped = Math.min(amount, max);
+  const round = (n: number) => Number(n.toFixed(4));
+  const shares = instruments.length === 2 ? [healthShare, 1 - healthShare] : [1];
+  return <div className="space-y-2 rounded-lg bg-mirai-surface p-2">
+    {instruments.map((i, k) => {
+      const own = capped * shares[k];
+      const other = capped - own;
+      const room = Math.max(0, max - other);
+      const value = amountToInstrument(i, own);
+      // 目盛りを刻み（0.1ポイント・1万円）の倍数にそろえる。下限から刻むと 8% が 8.03% のようにずれる
+      const grid = (n: number, up: boolean) => (up ? Math.ceil : Math.floor)(n / i.step - 1e-9) * i.step;
+      const [min, top] = i.mode === 'rate' ? [grid(Math.max(0, (i.current ?? 0) - room * 1e12 / i.yenPerUnit), true), i.current ?? 0] : [0, grid(room * 1e12 / i.yenPerUnit, false)];
+      const per = i.unit === '万円' ? { label: '10万円', yen: i.yenPerUnit * 10 } : { label: '1ポイント', yen: i.yenPerUnit };
+      const change = (v: number) => {
+        const next = Math.min(room, instrumentToAmount(i, v));
+        if (instruments.length === 2) {
+          const total = next + other;
+          onInsuranceSplit(round(total), total > 0 ? (k === 0 ? next : other) / total : healthShare);
+        } else onAmount(policyId, round(next));
+      };
+      return <div key={i.key} className="space-y-1">
+        <RangeField label={i.label} value={Number(value.toFixed(2))} min={Number(min.toFixed(2))} max={Number(top.toFixed(2))} step={i.step} unit={i.unit} onChange={change} />
+        <p className="text-xs leading-relaxed text-mirai-text-subtle">
+          {i.mode === 'rate' ? `現行${i.current}%から${Number(value.toFixed(2))}%へ` : `${Number(value.toFixed(2))}${i.unit}`}：減収 {money(own * 1e12, 1)}／年（{per.label}＝{money(per.yen, 2)}）。{i.note}
+          <a className="ml-1 underline" href={i.sourceUrl} target="_blank" rel="noreferrer">{i.sourceLabel}</a>
+        </p>
+      </div>;
+    })}
   </div>;
 }
-const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, consumptionTax, onConsumptionTaxTarget, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
-  policy: Policy; amount: number; consumptionTaxMax: number; socialInsuranceMax: number;
-  consumptionTax?: ModelParameters['consumptionTax']; onConsumptionTaxTarget?: (t: ConsumptionTaxTarget) => void;
+const PolicyControl = memo(function PolicyControl({ policy, amount, policyMax, calibration, healthShare, onInsuranceSplit, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
+  policy: Policy; amount: number; policyMax: Record<string, number>; calibration: ModelParameters; healthShare: number;
+  onInsuranceSplit: (amount: number, healthShare: number) => void;
   onPowerSettings: () => void;
   onCashSettings: () => void;
   onChildcareSettings: () => void;
@@ -65,11 +85,10 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   onPolicyDuration: (id: string, duration: number) => void;
 }) {
   const revenue = personalTaxRevenue(policy.id);
-  const max = policy.id === 'consumption-tax' ? consumptionTaxMax : policy.id === 'social-insurance' ? socialInsuranceMax : revenue ? Math.floor(revenue.amount / 1e11) / 10 : 100;
+  const max = policyMax[policy.id] ?? 100;
   return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
     <RangeField label={policy.name} value={Math.min(amount, max)} min={0} max={max} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
-    {policy.id === 'consumption-tax' && consumptionTax && onConsumptionTaxTarget &&
-      <ConsumptionTaxTargetField value={consumptionTax} amount={amount} max={max} onTarget={onConsumptionTaxTarget} onAmount={onAmount} />}
+    <InstrumentFields policyId={policy.id} amount={amount} max={max} calibration={calibration} healthShare={healthShare} onAmount={onAmount} onInsuranceSplit={onInsuranceSplit} />
     {policy.id === 'cash' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onCashSettings}>給付対象を設定</Button>}
     {policy.id === 'childcare' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onChildcareSettings}>現金給付の割合を設定</Button>}
     {policy.id === 'generation' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onPowerSettings}>電源構成・稼働時期を設定</Button>}
@@ -84,18 +103,18 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
       <summary className="cursor-pointer font-medium">入力上限・計算の前提</summary>
       <div className="mt-2 space-y-2">
     {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・税収・労働反応の条件」で変更できます。</p>}
-    {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(socialInsuranceMax * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
+    {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(max * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
     {revenue && <p className="text-xs leading-relaxed text-mirai-text-subtle">入力上限：{money(max * 1e12, 1)}／年。<a className="underline" href={revenue.sourceUrl} target="_blank" rel="noreferrer">2024年度の{revenue.label}の税収</a>を限度とし、0.1兆円単位で切り下げます。{'municipalSourceUrl' in revenue && <><a className="underline" href={revenue.municipalSourceUrl} target="_blank" rel="noreferrer">市町村分の出典</a>。</>}{revenue.scope}評価期間中はこの基準額を固定します。税額を超える分は「現金給付」に入力してください。</p>}
     {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
       </div>
     </details>}
   </div>;
 });
-export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, consumptionTax, onConsumptionTaxTarget, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
+export function Controls({ policyMax, calibration, healthShare, onInsuranceSplit, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
   structuralUnemployment, headline, onClose, stresses, onStress,
   onPowerSettings, onCashSettings, onChildcareSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
-  consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[];
-  consumptionTax?: ModelParameters['consumptionTax']; onConsumptionTaxTarget?: (t: ConsumptionTaxTarget) => void; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
+  policyMax: Record<string, number>; calibration: ModelParameters; healthShare: number; onInsuranceSplit: (amount: number, healthShare: number) => void; policies: Policy[];
+  amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
   gap: number; inflation: number; construction: number; firmCapacity: number;
@@ -111,7 +130,7 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, consumpti
   onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
-  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} consumptionTax={consumptionTax} onConsumptionTaxTarget={onConsumptionTaxTarget} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
+  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} policyMax={policyMax} calibration={calibration} healthShare={healthShare} onInsuranceSplit={onInsuranceSplit} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
   const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);

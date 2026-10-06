@@ -18,7 +18,7 @@ test('compact sharing keeps all settings and stays short for custom optimization
     const hash = await encodeSharedScenario(form);
     assert(hash.length < 1500, `Unexpectedly long URL: ${hash.length}`);
     assert(hash.length < encodeScenario(form).length / 5);
-    assert.match(hash, /^#scenario=s1\.[A-Za-z0-9_-]+$/);
+    assert.match(hash, /^#scenario=s2\.[A-Za-z0-9_-]+$/);
     assert.deepEqual((await decodeSharedScenario(hash)).form, form);
     assert.deepEqual((await decodeSharedScenario(encodeScenario(form))).form, form);
   }
@@ -49,7 +49,7 @@ test('compressed changes still undergo model migration and full input validation
     [FISCAL_MODEL_VERSION, [[[], {}]]], [FISCAL_MODEL_VERSION, 'invalid'],
     [FISCAL_MODEL_VERSION, [[['dataset'], 'x'.repeat(60_000)]]],
   ]) await assert.rejects(decodeSharedScenario(packed(payload)));
-  for (const hash of ['#scenario=s1.bad!', '#scenario=s1.A', '#scenario=s2.abc', '#scenario=invalid'])
+  for (const hash of ['#scenario=s1.bad!', '#scenario=s1.A', '#scenario=s2.abc', '#scenario=s9.H4sIAAAAAAAA', '#scenario=invalid'])
     await assert.rejects(decodeSharedScenario(hash));
   const valid = await encodeSharedScenario(defaults());
   await assert.rejects(decodeSharedScenario(valid.slice(0, -5)));
