@@ -59,7 +59,7 @@ export function UnifiedFilterFields({
         <div className="flex flex-col gap-1">
           <label className="flex cursor-pointer items-center gap-1.5">
             <input type="checkbox" checked={filter.showNonRs} onChange={() => set({ showNonRs: !filter.showNonRs })} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-            <span>非事業支出・予算との対応未確認のノードを出す（繰入・国債費・地方財政移転・予備費・人件費）</span>
+            <span>非事業支出・未突合のノードを出す（繰入・国債費・地方財政移転・予備費・人件費）</span>
           </label>
           <label className="flex cursor-pointer items-center gap-1.5">
             <input

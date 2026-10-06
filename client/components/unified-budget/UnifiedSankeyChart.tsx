@@ -465,7 +465,7 @@ export function UnifiedSankeyChart({
       } : {})}>
       <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
         <span className="truncate text-xs text-mirai-text-secondary">{others?.label ?? item.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算の対応未確認' : formatBudgetFromYen(item.value)}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
       </Button>
     </div>
   );
@@ -757,7 +757,7 @@ export function UnifiedSankeyChart({
                         <>
                           {text}
                           {truncated && <Ellipsis fontPx={fontPx} />}
-                          {` (${details?.budgetUnmatched ? '予算の対応未確認' : formatBudgetFromYen(node.value)})`}
+                          {` (${details?.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(node.value)})`}
                         </>
                       );
                     })()}
@@ -844,7 +844,7 @@ export function UnifiedSankeyChart({
                         )}
                       </div>
                     )}
-                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{selectedDetails.budgetUnmatched ? '予算額の対応未確認' : formatBudgetFromYen(selectedPanelNode.value)}</div>
+                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{selectedDetails.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(selectedPanelNode.value)}</div>
                     {!selectedDetails.budgetUnmatched && <div className="hidden text-[11px] text-mirai-text-muted sm:block">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>}
                     {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
                   </div>
@@ -1163,10 +1163,10 @@ function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
       )}
       <div className="font-semibold text-mirai-text">{node.name}</div>
       {d?.accountType && <div className="text-xs text-mirai-text-subtle">会計区分：{ACCOUNT_TYPE_LABELS[d.accountType]}</div>}
-      <div className="text-lg font-bold text-mirai-text">{d?.budgetUnmatched ? '予算額の対応未確認' : formatBudgetFromYen(node.value)}</div>
+      <div className="text-lg font-bold text-mirai-text">{d?.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(node.value)}</div>
       {d?.column === 'revenue' && <div className="mt-1 text-xs text-mirai-text-subtle">{revenueAmountLabel(d)}。個別事業への充当額を示すものではありません。</div>}
       {d?.revenueKind === 'internal-transfer' && <div className="mt-1 text-xs text-mirai-text-subtle">会計・勘定間の受入（国全体の単純合計では重複）</div>}
-      {d?.budgetUnmatched && <div className="mt-1 text-xs">予算側の事業との対応関係を確認できていません。0円予算を意味しません。</div>}
+      {d?.budgetUnmatched && <div className="mt-1 text-xs">予算側の事業と未突合です。0円予算を意味しません。</div>}
       {!d?.budgetUnmatched && d?.column === 'program' && d.spendingFlow !== undefined && d.spendingFlow > node.value && <div className="mt-1 text-xs">支出フロー：{formatBudgetFromYen(d.spendingFlow)}。選択した予算基準との差には補正・前年度繰越等が含まれ得ます。帯の太さは支出も収める描画用の値です。</div>}
       {d?.aggregated && <div className="mt-1 text-xs text-mirai-text-subtle">表示数から溢れた {d.aggregatedCount} 件をまとめたもの</div>}
       {d?.column === 'program' && (!d.kind || d.kind === 'rs') && d.rsMinistry && <div className="mt-1 text-xs text-mirai-text-subtle">{d.rsMinistry}（{amountLabel}）</div>}

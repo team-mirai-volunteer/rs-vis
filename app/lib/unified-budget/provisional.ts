@@ -33,5 +33,5 @@ export function withProvisionalSpending(budget: UnifiedGraph, execution: Unified
   return { nodes, edges, metadata: { ...budget.metadata, hasSpending: true, rsSheetYear: execution.metadata.rsSheetYear,
     apiCoverage: { ...execution.metadata.apiCoverage, unmatchedBudgetProjects: unmatched }, counts,
     notes: [...budget.metadata.notes, '左側の予算額・MOF接続は選択した予算基準を保持。右側は2026年度RSシートの2025年度支出先を予算事業IDで接続。',
-      `予算事業との対応関係を確認できていない${unmatched}件は予算額不明と表示し、MOFからの接続を作らない。`] } };
+      `予算事業と未突合の${unmatched}件は予算額不明と表示し、MOFからの接続を作らない。`] } };
 }
