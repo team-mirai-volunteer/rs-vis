@@ -93,6 +93,8 @@ export default function FundsView() {
       <FundsHelp />
     </AppHeader>
     <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
+      {/* 詳細は他の画面（サンキー図・バブルチャート）と同じく左に開く */}
+      {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)} />}
       <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
         <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
           <h1 className="text-base font-bold">基金</h1>
@@ -142,7 +144,6 @@ export default function FundsView() {
             </table>}
         </div>
       </section>
-      {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)} />}
     </main>
   </div>;
 }
