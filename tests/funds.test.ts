@@ -8,7 +8,7 @@ const year = (over: Partial<FundYear>): FundYear => ({ sheetYear: 2026, balance:
 const fund = (over: Partial<Fund>, y: Partial<FundYear> = {}): Fund => ({ key: 'k', name: '基金', ministry: 'A省', owner: '株式会社テスト', ownerForm: null,
   sheetNumber: 1, operationForms: [], businessForms: [], createdYear: 2020, endDate: '2030-03-31', newApplicationEndDate: '2029-03-31', necessity: null,
   ownershipBasis: null, inspection: { noRecentResult: false, ceasedOperations: false, lostPurpose: false, ownershipFarAboveOne: false, unlikelyToBeUsed: false },
-  inspectionNote: null, overviewUrl: null, compositions: [], relatedPids: ['12'], years: [year(y)], ...over });
+  inspectionNote: null, overviewUrl: null, compositions: [], relatedPids: ['12'], relatedProjects: [], years: [year(y)], ...over });
 
 test('残高が支出の何年分かと、10年分以上の判定', () => {
   assert.equal(spendingYears(year({})), 10);

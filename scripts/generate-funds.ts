@@ -18,10 +18,16 @@ const text = (v: unknown) => (typeof v === 'string' && v.trim() && v.trim() !== 
 
 /** RSシートの id → 予算事業ID（先頭ゼロなし）。造成の経緯が指すレビューシートの引き当てに使う */
 const pidByRsId = new Map<string, string>();
+/** 予算事業ID → 事業名と、その事業が載っている最新のシート年度（終わった事業は古い年度にしか無い） */
+const projectByPid = new Map<string, { name: string; sheetYear: number }>();
 for (const y of SHEET_YEARS) {
   const file = path.resolve(`data/rs-api/${y}/projects.json`);
   if (!fs.existsSync(file)) continue;
-  for (const p of JSON.parse(fs.readFileSync(file, 'utf8')) as Raw[]) pidByRsId.set(p.id, String(Number(p.project_number)));
+  for (const p of JSON.parse(fs.readFileSync(file, 'utf8')) as Raw[]) {
+    const pid = String(Number(p.project_number));
+    pidByRsId.set(p.id, pid);
+    projectByPid.set(pid, { name: p.name, sheetYear: y });
+  }
 }
 
 type Acc = { latest: Raw; detail: Raw | null; years: FundYear[]; related: Set<string>; compositions: Map<string, FundComposition> };
@@ -101,6 +107,10 @@ for (const [key, acc] of byKey) {
     overviewUrl: text(acc.detail?.overview_url),
     compositions: [...acc.compositions.values()].sort((x, y) => (x.fiscalYear ?? 0) - (y.fiscalYear ?? 0)),
     relatedPids: [...acc.related].sort((x, y) => Number(x) - Number(y)),
+    relatedProjects: [...acc.related].sort((x, y) => Number(x) - Number(y)).flatMap(pid => {
+      const info = projectByPid.get(pid);
+      return info ? [{ pid, name: info.name, sheetYear: info.sheetYear }] : [];
+    }),
     years: acc.years.sort((x, y) => x.sheetYear - y.sheetYear),
   });
 }

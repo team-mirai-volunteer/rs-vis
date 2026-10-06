@@ -11,7 +11,7 @@ import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
 import { HeaderHelp } from '@/client/components/HeaderHelp';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
-import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
+import { unifiedProjectUrlForSheet } from '@/app/lib/unified-budget/links';
 import {
   BUSINESS_FORM_LABELS, FUND_SIGNALS, FUND_SIGNAL_DESCRIPTIONS, FUND_SIGNAL_LABELS, FUND_SIGNAL_SHORT, INSPECTION_LABELS, OPERATION_FORM_LABELS,
   OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, latestYear, spendingYears,
@@ -87,34 +87,51 @@ export default function FundsView() {
   }, [rows, signal, ministry, query, sort]);
   const selected = rows.find(r => r.f.key === selectedKey) ?? null;
   const totalBalance = filtered.reduce((s, r) => s + (latestYear(r.f).balance ?? 0), 0);
+  const summary = useMemo(() => rows.reduce((acc, r) => { const y = latestYear(r.f);
+    return { balance: acc.balance + (y.balance ?? 0), expense: acc.expense + (y.expense ?? 0), returned: acc.returned + (y.returned ?? 0) }; },
+  { balance: 0, expense: 0, returned: 0 }), [rows]);
 
   return <div className="flex h-dvh flex-col bg-background text-mirai-text">
     <AppHeader current="/funds">
       <FundsHelp />
     </AppHeader>
+    {/* 見出しと全体の集計は評価一覧と同じ帯（白・下罫線）に置き、操作と表はその下の背景の上に並べる */}
+    <div className="shrink-0 border-b border-mirai-border bg-card px-3 py-3 sm:px-4">
+      <h1 className="text-lg font-bold text-mirai-text">基金の残高と収支</h1>
+      <p className="mt-1 text-sm text-mirai-text-muted">
+        <span className="mr-3 inline-block">{rows.length.toLocaleString()}基金</span>
+        <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">残高</span> 計{formatBudgetFromYen(summary.balance)}</span>
+        <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">前年度支出</span> 計{formatBudgetFromYen(summary.expense)}</span>
+        <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">国庫返納</span> 計{formatBudgetFromYen(summary.returned)}</span>
+        <span className="inline-block text-xs">RSシステムの基金シート（{data?.metadata.sheetYears.join('・')}年版）・府省の記載どおり</span>
+      </p>
+    </div>
     <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
       {/* 詳細は他の画面（サンキー図・バブルチャート）と同じく左に開く */}
       {selected && <FundDetail fund={selected.f} signals={selected.signals} onClose={() => setSelectedKey(null)} />}
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-        <div className="rounded-xl border border-mirai-border bg-card p-3 shadow-soft">
-          <h1 className="text-base font-bold">基金</h1>
-          <p className="mt-1 text-xs text-mirai-text-muted">RSシステムの基金シート（{data?.metadata.sheetYears.join('・')}年版）。金額・率は府省の記載どおりです。論点のボタンで絞り込めます（カーソルを合わせると説明）。</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <Button variant={signal === null ? 'default' : 'outline'} size="xs" onClick={() => setSignal(null)}>すべて {rows.length}</Button>
-            {FUND_SIGNALS.map(s => <Button key={s} variant={signal === s ? 'default' : 'outline'} size="xs" title={FUND_SIGNAL_DESCRIPTIONS[s]}
-              onClick={() => setSignal(signal === s ? null : s)}>{FUND_SIGNAL_LABELS[s]} {counts[s]?.length ?? 0}</Button>)}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="基金名・保有法人で検索" aria-label="基金名・保有法人で検索"
-              className="min-w-0 flex-1 rounded-md border border-mirai-border bg-card px-2.5 py-1.5" />
-            <select value={ministry} onChange={e => setMinistry(e.target.value)} aria-label="府省庁" className="rounded-md border border-mirai-border bg-card px-2 py-1.5">
-              <option value="">全府省庁</option>{ministries.map(m => <option key={m}>{m}</option>)}
-            </select>
-            <select value={sort.key} onChange={e => setSort({ key: e.target.value as SortKey, desc: e.target.value !== 'name' && e.target.value !== 'endDate' })} aria-label="並び順" className="rounded-md border border-mirai-border bg-card px-2 py-1.5">
-              {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}{s.key === 'name' || s.key === 'endDate' ? '（昇順）' : '（大きい順）'}</option>)}
-            </select>
-            <span className="tabular-nums text-mirai-text-muted">{filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
-          </div>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="基金名・保有法人で検索" aria-label="基金名・保有法人で検索"
+            className="min-w-[10rem] flex-1 rounded-md border border-mirai-border bg-card px-3 py-1.5 text-sm text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40" />
+          <select value={ministry} onChange={e => setMinistry(e.target.value)} aria-label="府省庁" className="rounded-md border border-mirai-border bg-card px-2 py-1.5 text-sm">
+            <option value="">全府省庁</option>{ministries.map(m => <option key={m}>{m}</option>)}
+          </select>
+          <select value={sort.key} onChange={e => setSort({ key: e.target.value as SortKey, desc: e.target.value !== 'name' && e.target.value !== 'endDate' })} aria-label="並び順" className="rounded-md border border-mirai-border bg-card px-2 py-1.5 text-sm">
+            {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}{s.key === 'name' || s.key === 'endDate' ? '（昇順）' : '（大きい順）'}</option>)}
+          </select>
+          <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
+        </div>
+        {/* 論点の絞り込み。切り替えなのでグラデ（主要操作用）は使わず、選択中はティールの面と枠で示す */}
+        <div role="group" aria-label="論点で絞り込む" className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-mirai-text-muted">論点</span>
+          {([null, ...FUND_SIGNALS] as (FundSignal | null)[]).map(s => {
+            const active = signal === s;
+            return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? FUND_SIGNAL_DESCRIPTIONS[s] : undefined}
+              onClick={() => setSignal(active || s === null ? null : s)}
+              className={`h-7 rounded-full px-2.5 text-xs font-medium ${active ? 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'border-mirai-border bg-card text-mirai-text-subtle'}`}>
+              {s ? FUND_SIGNAL_LABELS[s] : 'すべて'}<span className="ml-1 tabular-nums text-mirai-text-muted">{s ? counts[s]?.length ?? 0 : rows.length}</span>
+            </Button>;
+          })}
         </div>
         <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-soft">
           {data === undefined ? <p role="status" className="p-4 text-sm text-mirai-text-muted">読み込み中…</p>
@@ -150,7 +167,6 @@ export default function FundsView() {
 
 function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSignal[]; onClose: () => void }) {
   const latestSheet = latestYear(f).sheetYear;
-  const projects = [...new Set([...f.relatedPids, ...f.compositions.flatMap(c => (c.pid ? [c.pid] : []))])];
   return <aside aria-label={`${f.name} の詳細`} className="min-h-0 w-full shrink-0 overflow-y-auto rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:w-[440px]">
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
@@ -162,6 +178,12 @@ function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSi
     </div>
     {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={FUND_SIGNAL_DESCRIPTIONS[s]}
       className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{FUND_SIGNAL_LABELS[s]}</span>)}</div>}
+    {/* 要点の数字（最新の基金シート） */}
+    {(() => { const y = latestYear(f); const yrs = spendingYears(y); return <dl className="mt-3 grid grid-cols-2 gap-2">
+      {([['年度末の残高', yen(y.balance)], ['前年度の支出', yen(y.expense)], ['残高÷支出', yrs === null ? '—' : `${yrs >= 100 ? Math.round(yrs).toLocaleString() : yrs.toFixed(1)}年分`], ['国庫返納', y.returned ? yen(y.returned) : '—']] as [string, string][])
+        .map(([label, value]) => <div key={label} className="rounded-xl bg-mirai-surface px-3 py-2">
+          <dt className="text-[11px] text-mirai-text-muted">{label}</dt><dd className="text-base font-bold tabular-nums text-mirai-text">{value}</dd></div>)}
+    </dl>; })()}
     <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1">
       <div><dt className="text-mirai-text-muted">造成年度</dt><dd>{f.createdYear ?? '—'}</dd></div>
       <div><dt className="text-mirai-text-muted">終了予定</dt><dd>{f.endDate ?? '—'}</dd></div>
@@ -184,10 +206,11 @@ function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSi
       <ul className="m-0 list-none space-y-0.5 p-0">{f.compositions.map((c, i) => <li key={i} className="flex justify-between gap-2">
         <span className="text-mirai-text-subtle">{c.fiscalYear ?? '—'}年度 {budgetLabel(c.budget)}</span><span className="tabular-nums">{yen(c.amount)}</span></li>)}</ul>
     </>}
-    {projects.length > 0 && <>
+    {f.relatedProjects.length > 0 && <>
       <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">造成元・関連の事業</h3>
-      <ul className="m-0 list-none space-y-0.5 p-0">{projects.map(pid => <li key={pid}>
-        <Link href={unifiedProjectUrl(pid, Math.min(latestSheet, 2025))} className="text-primary underline underline-offset-4 hover:text-primary-accent">予算事業ID {pid} をサンキー図で見る</Link></li>)}</ul>
+      <ul className="m-0 list-none space-y-1 p-0">{f.relatedProjects.map(p => <li key={p.pid}>
+        <Link href={unifiedProjectUrlForSheet(p.pid, p.sheetYear)} className="text-primary underline underline-offset-4 hover:text-primary-accent">{p.name}</Link>
+        <span className="ml-1 text-[11px] text-mirai-text-muted">予算事業ID {p.pid}・{p.sheetYear - 1}年度まで</span></li>)}</ul>
     </>}
     {f.owner && <p className="mt-3"><Link href={`/budget-sankey?year=2024&frq=${encodeURIComponent(f.owner)}`} className="text-primary underline underline-offset-4 hover:text-primary-accent">保有法人「{f.owner}」への支出をサンキー図で見る</Link></p>}
     {f.necessity && <><h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">基金で行う必要性（府省の記載）</h3><p className="whitespace-pre-wrap leading-relaxed text-mirai-text-subtle">{f.necessity}</p></>}

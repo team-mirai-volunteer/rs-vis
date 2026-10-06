@@ -73,6 +73,8 @@ export interface Fund {
   compositions: FundComposition[];
   /** 造成元・関連の事業（予算事業ID） */
   relatedPids: string[];
+  /** 造成元・関連の事業の名前と、その事業が載っている最新のシート年度（サンキー図はその年度で開く） */
+  relatedProjects: { pid: string; name: string; sheetYear: number }[];
   /** シート年度の古い順 */
   years: FundYear[];
 }
