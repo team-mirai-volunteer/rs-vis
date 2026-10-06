@@ -36,6 +36,8 @@ export interface MOFLayoutLink<D = unknown> {
   /** 受け手側の帯の上端 */
   y1: number;
   width: number;
+  /** 入力の帯の推定の印（SankeyLink.inferred）をそのまま渡す */
+  inferred?: 'note' | 'amount+name' | 'reviewed';
 }
 
 export interface MOFSankeyLayout<D = unknown> {
@@ -310,7 +312,7 @@ export function computeMOFSankeyLayout<D>(
     const y1 = target.y + (inOffset.get(target.id) ?? 0);
     outOffset.set(source.id, (outOffset.get(source.id) ?? 0) + w);
     inOffset.set(target.id, (inOffset.get(target.id) ?? 0) + w);
-    links.push({ source, target, value: link.value, y0, y1, width: w });
+    links.push({ source, target, value: link.value, y0, y1, width: w, ...('inferred' in link && link.inferred ? { inferred: link.inferred as MOFLayoutLink['inferred'] } : {}) });
   }
 
   return { nodes, links, width, height, columnCount, contentHeight };

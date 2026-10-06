@@ -149,12 +149,20 @@ function collapsedByDefault(specialAccount: string): boolean {
  * 「他会計へ繰入」を最優先にするのは、国債費・交付税の大半が特会への繰入として計上されるため
  * （繰入として扱わないと純計が出せない）。
  */
+/** 金融取引（補填金・利子）、年金制度の間の資金移転、政党交付金 */
+const NON_PROGRAM_NAME = /償還差額補填金|交換差減補填金|預託金利子|支払利子|公債利子|借入金利子|共済組合連合会等交付金|政党交付金/;
+
 function classifyResidual(it: MOFKouMokuItem): UnifiedProgramKind {
   if (it.purposeCode === '6') return 'transfer';
   if (it.majorExpenseCode === '20') return 'debt';
   if (it.majorExpenseCode === '31' || it.majorExpenseCode === '32' || it.majorExpenseCode === '33') return 'local-transfer';
   if (it.majorExpenseCode === '98' || /^(107|108|109|110)$/.test(it.objectiveCode)) return 'reserve';
   if (it.purposeCode === '1' || it.purposeCode === '2') return 'personnel';
+  // 共済組合負担金・退職者給付金は使途別分類が補助費等でも、職員の人件費に準じる
+  if (/共済組合負担金|退職者給付金|退職手当/.test(it.subItemName)) return 'personnel';
+  // 目名で明らかに事業でない支出だけを「給付・金融取引など」にする。主要経費02（年金）・使途別分類9（その他）には
+  // 基礎年金給付費・保険給付費のようにRS事業に結びつく給付も含まれるので、コードでは決めない
+  if (NON_PROGRAM_NAME.test(it.subItemName)) return 'non-program';
   return 'unmatched';
 }
 
@@ -221,6 +229,7 @@ function main() {
       e.value += value;
       if (extra?.rawValue !== undefined) e.rawValue = (e.rawValue ?? 0) + extra.rawValue;
       if (extra?.isScaled) e.isScaled = true;
+      if (extra?.inferred && !e.inferred) e.inferred = extra.inferred;
     } else {
       edgeMap.set(k, { source, target, value, ...extra });
     }
@@ -360,14 +369,14 @@ function main() {
 
   // 4. 目 → 事業 / 事業区分
   console.log('\n[4/5] 目 → RS事業 / 非事業区分');
-  const linksByKouMoku = new Map<string, { pid: number; amount: number }[]>();
+  const linksByKouMoku = new Map<string, { pid: number; amount: number; inferred?: UnifiedEdge['inferred'] }[]>();
   // 補正基準では当初予算のままの目も残るので、当初・補正の両方のリンクを取り込む
   // （kouMokuKey は予算種別を含むので、目ごとに自分の種別のリンクだけが引ける）
   const linkBudgetTypes = BASIS_KEY === 'supplementary' ? new Set<string>([BASIS, '当初予算']) : new Set<string>([BASIS]);
   for (const l of linkage.links) {
     if (!linkBudgetTypes.has(l.mofBudgetType) || l.rsAmount <= 0) continue;
     const list = linksByKouMoku.get(l.kouMokuKey) ?? [];
-    list.push({ pid: l.projectId, amount: l.rsAmount });
+    list.push({ pid: l.projectId, amount: l.rsAmount, ...(l.inferred ? { inferred: l.inferred } : {}) });
     linksByKouMoku.set(l.kouMokuKey, list);
   }
   // 補正基準: 補正予算書の目額は「改予算額」（当初＋補正の総額）だが、RS 2-2 の補正行は補正増減分しか
@@ -379,12 +388,12 @@ function main() {
     [it.accountType, norm(it.ministry), norm(orgOf(it) ?? ''), norm(it.subAccount ?? ''), it.sectionCode, it.subItemCode, norm(it.subItemName)].join('|');
   let mergedInitialLinks = 0;
   if (BASIS_KEY === 'supplementary') {
-    const initialByIdentity = new Map<string, { pid: number; amount: number }[]>();
+    const initialByIdentity = new Map<string, { pid: number; amount: number; inferred?: UnifiedEdge['inferred'] }[]>();
     for (const l of linkage.links) {
       if (l.mofBudgetType !== '当初予算' || l.rsAmount <= 0) continue;
       const id = identityOfLink(l);
       const list = initialByIdentity.get(id) ?? [];
-      list.push({ pid: l.projectId, amount: l.rsAmount });
+      list.push({ pid: l.projectId, amount: l.rsAmount, ...(l.inferred ? { inferred: l.inferred } : {}) });
       initialByIdentity.set(id, list);
     }
     for (const it of items) {
@@ -393,9 +402,12 @@ function main() {
       const extra = initialByIdentity.get(identityOfItem(it));
       if (!extra) continue;
       const list = linksByKouMoku.get(it.key) ?? [];
-      const byPid = new Map<number, number>(list.map(x => [x.pid, x.amount]));
-      for (const x of extra) byPid.set(x.pid, (byPid.get(x.pid) ?? 0) + x.amount);
-      linksByKouMoku.set(it.key, [...byPid].map(([pid, amount]) => ({ pid, amount })));
+      const byPid = new Map<number, { amount: number; inferred?: UnifiedEdge['inferred'] }>(list.map(x => [x.pid, { amount: x.amount, inferred: x.inferred }]));
+      for (const x of extra) {
+        const cur = byPid.get(x.pid);
+        byPid.set(x.pid, { amount: (cur?.amount ?? 0) + x.amount, inferred: cur?.inferred ?? x.inferred });
+      }
+      linksByKouMoku.set(it.key, [...byPid].map(([pid, v]) => ({ pid, amount: v.amount, ...(v.inferred ? { inferred: v.inferred } : {}) })));
       mergedInitialLinks += extra.length;
     }
     console.log(`  補正目へ当初予算リンクを合流: ${mergedInitialLinks.toLocaleString()} 件`);
@@ -439,7 +451,7 @@ function main() {
     });
     return out;
   };
-  const byKind: Record<UnifiedProgramKind, number> = { rs: 0, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, unmatched: 0, outside: 0 };
+  const byKind: Record<UnifiedProgramKind, number> = { rs: 0, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, 'non-program': 0, unmatched: 0, outside: 0 };
   const linkedIn = new Map<number, number>(); // pid → 目からの流入合計
   let scaledDown = 0;
   let scaledEdges = 0;
@@ -455,7 +467,7 @@ function main() {
     for (const l of links) {
       const v = factor < 1 ? Math.floor(l.amount * factor) : l.amount;
       if (v <= 0) continue;
-      addEdge(kmId, programId(l.pid), v, factor < 1 ? { isScaled: true, rawValue: l.amount } : undefined);
+      addEdge(kmId, programId(l.pid), v, { ...(factor < 1 ? { isScaled: true, rawValue: l.amount } : {}), ...(l.inferred ? { inferred: l.inferred } : {}) });
       if (factor < 1) scaledEdges++;
       linkedIn.set(l.pid, (linkedIn.get(l.pid) ?? 0) + v);
       flowed += v;
@@ -504,7 +516,7 @@ function main() {
     });
     byKind.outside = outsideTotal;
   }
-  console.log(`  RS事業へ ${(byKind.rs / 1e12).toFixed(2)} 兆円 / 繰入 ${(byKind.transfer / 1e12).toFixed(2)} / 国債費 ${(byKind.debt / 1e12).toFixed(2)} / 地方財政移転 ${(byKind['local-transfer'] / 1e12).toFixed(2)} / 予備費 ${(byKind.reserve / 1e12).toFixed(2)} / 人件費 ${(byKind.personnel / 1e12).toFixed(2)} / 未突合 ${(byKind.unmatched / 1e12).toFixed(2)} 兆円`);
+  console.log(`  RS事業へ ${(byKind.rs / 1e12).toFixed(2)} 兆円 / 繰入 ${(byKind.transfer / 1e12).toFixed(2)} / 国債費 ${(byKind.debt / 1e12).toFixed(2)} / 地方財政移転 ${(byKind['local-transfer'] / 1e12).toFixed(2)} / 予備費 ${(byKind.reserve / 1e12).toFixed(2)} / 人件費等 ${(byKind.personnel / 1e12).toFixed(2)} / 給付・金融取引など ${(byKind['non-program'] / 1e12).toFixed(2)} / 未突合 ${(byKind.unmatched / 1e12).toFixed(2)} 兆円`);
   console.log(`  縮小: ${scaledEdges.toLocaleString()} エッジ / ${(scaledDown / 1e12).toFixed(3)} 兆円切り捨て、事業値を流入に合わせた事業: ${overLinked.toLocaleString()} 件、outside 流入: ${(outsideTotal / 1e12).toFixed(2)} 兆円`);
 
   // 5. 事業(支出)・支出先（sankey-svg から引き継ぎ）
@@ -600,8 +612,8 @@ function main() {
           : svgGraph
             ? `RS事業ノードの値は RS 2-1 の${UNIFIED_BASIS_RS_MEASURE[BASIS_KEY]}。目からの流入（${BASIS}）との差分は擬似ノード「${UNIFIED_PROGRAM_KIND_LABELS.outside}」からの流入`
             : `RS事業ノードの値は RSシート${SHEET_YEAR}の 2-2（予算年度${BUDGET_YEAR}行）の合計（繰越・予備費等を含む）。目からの流入との差分は擬似ノードからの流入`,
-        '目の残余（RS事業に流れなかった分）は 使途別分類6=他会計へ繰入 → 主要経費20=国債費 → 主要経費31/32/33=地方財政移転 → 主要経費98・目的別107〜110=予備費 → 使途別分類1/2=人件費・旅費 → それ以外=未突合 の順で区分する',
-        '「他会計へ繰入」は会計間の重複。純計 = 会計列合計 − 繰入',
+        '目の残余（RS事業に流れなかった分）は 使途別分類6=他会計へ繰入 → 主要経費20=国債費 → 主要経費31/32/33=地方財政移転 → 主要経費98・目的別107〜110=予備費 → 使途別分類1/2と共済組合負担金・退職者給付金=人件費等 → 目名が補填金・利子・共済組合連合会等交付金・政党交付金=給付・金融取引など（RS対象外と推定） → それ以外=未突合（対応づけ漏れの可能性） の順で区分する',
+        'RS 2-2 の項・目が空欄の行は、補足情報の項・目、金額と名前、確認済みの対応表（scripts/data/mof-rs-link-supplements.json）で目に結びつけた（inferred。推定の対応）',        '「他会計へ繰入」は会計間の重複。純計 = 会計列合計 − 繰入',
         '同一目に複数事業が付き合計が目額を超える場合は比例縮小し isScaled を付ける（rawValue が縮小前）',
         '政府関係機関はRS側に会計区分が無いためグラフに含めない（totals.agency に参考値）',
         '国債整理基金特別会計・交付税及び譲与税配付金特別会計は既定で折り畳む（collapsedAccounts）',

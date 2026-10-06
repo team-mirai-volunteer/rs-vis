@@ -72,7 +72,7 @@ export function toViewGraph(graph: UnifiedGraph, opts?: { keepZeroPrograms?: boo
   const ids = new Set(nodes.map(n => n.id));
   const links: SankeyLink[] = graph.edges
     .filter(e => ids.has(e.source) && ids.has(e.target))
-    .map(e => ({ source: e.source, target: e.target, value: e.value }));
+    .map(e => ({ source: e.source, target: e.target, value: e.value, ...(e.inferred ? { inferred: e.inferred } : {}) }));
   return { nodes, links };
 }
 

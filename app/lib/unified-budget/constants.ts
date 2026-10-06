@@ -28,6 +28,7 @@ export const UNIFIED_KIND_COLORS: Record<UnifiedProgramKind, string> = {
   'local-transfer': '#78716c',
   reserve: '#a8a29e',
   personnel: '#9ca3af',
+  'non-program': '#a1a1aa',
   unmatched: '#eab308',
   outside: '#cbd5e1',
 };

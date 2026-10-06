@@ -65,7 +65,7 @@ const graph: UnifiedGraph = { nodes, edges, metadata: {
   apiCoverage: coverage, budgetYear: sheetYear - 1, rsSheetYear: sheetYear, basis: 'execution', basisLabel: '執行実績（暫定）',
   rsMeasureLabel: '執行額', hasSpending: true, rsAmountKind: 'budget', basisBudgetType: '決算', eraLabel: '令和7年度', unit: 'yen', generatedAt: new Date().toISOString(),
   totals: { gross: total, net: total, transfer: 0, rsLinked: 0, rsProgram: total, outside: 0, scaledDown: 0,
-    byKind: { rs: total, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, unmatched: 0, outside: 0 }, agency: 0, overviewNet: null },
+    byKind: { rs: total, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, 'non-program': 0, unmatched: 0, outside: 0 }, agency: 0, overviewNet: null },
   counts, collapsedAccounts: [], notes: [
     'RS公開APIによる暫定取得。2026年度シートに載る2025年度執行実績。全政府の決算・純計ではない。',
     '事業列は執行額、事業(支出)列は確認できた直接支出先への金額合計。上位支出先の記載・丸め等により一致しない。',

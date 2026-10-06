@@ -774,6 +774,12 @@ export function UnifiedSankeyChart({
         contract={hovered.details?.column === 'recipient' && !hovered.details.aggregated && contractSheetYear !== null
           ? { year: contractSheetYear, pids: contractPidsOf(hovered.id) } : undefined} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} contractSheetYear={contractSheetYear} />}
+      {/* 要求額の年度は、予算書（成立した当初予算）とRS（翌年度要求額）という基準の違う額をつないでいる。図の近くに常に出す */}
+      {rsAmountKind === 'request' && (
+        <div data-testid={testId('unified-basis-notice')} className="pointer-events-none absolute bottom-2 left-2 z-10 max-w-md rounded border border-mirai-border bg-card/90 px-2 py-1 text-[11px] leading-relaxed text-mirai-text-subtle">
+          {budgetYear}年度は、予算書の当初予算と、{rsSheetYear}年版レビューシートの翌年度要求額をつないでいます。成立した予算どうしの一致ではありません。
+        </div>
+      )}
 
       {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
       <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-[2px] sm:left-auto sm:right-3">
@@ -1127,7 +1133,10 @@ function NodeFacts({ details }: { details: UnifiedViewDetails }) {
         会計の表示額は{details.revenueBasis === 'settlement' ? '支出済歳出額' : '歳出予算額'}です。歳入と歳出が異なる場合も、金額を合わせる補正はしていません。帯の太さは両方を収めるための値です。
       </p>}
       {details.kind === 'unmatched' && (
-        <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
+        <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費等・給付や金融取引のいずれにも当たらない目の残余です。事業費・補助・委託・施設などで、本来はRS事業に結びつくはずの対応づけ漏れの可能性があります（要精査）。</p>
+      )}
+      {details.kind === 'non-program' && (
+        <p className="mt-2 text-[11px] text-mirai-text-muted">補填金・利子などの金融取引、年金制度の間の資金移転（共済組合連合会等交付金）、政党交付金など、目の名前から事業ではないと判断した支出です。制度上レビューシートの対象外と推定しています。</p>
       )}
     </div>
   );
@@ -1176,6 +1185,8 @@ function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
   );
 }
 
+const INFERRED_LABELS = { note: '補足情報に書かれた項・目', 'amount+name': '金額と名前の一致', reviewed: '候補を確認した対応表' } as const;
+
 function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number; contractSheetYear: number | null }) {
   // 事業 → 支出先の帯は「この事業がこの支出先に何を払ったか」と 1 対 1 なので、契約の概要を添える
   const src = link.source.details;
@@ -1189,6 +1200,7 @@ function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayout
       </div>
       {accountTypes.length > 0 && <div className="text-xs text-mirai-text-subtle">会計区分：{accountTypes.map(type => ACCOUNT_TYPE_LABELS[type]).join(' → ')}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
+      {link.inferred && <div className="mt-1 text-xs text-stance-neutral">推定の対応：レビューシートの項・目が空欄のため、{INFERRED_LABELS[link.inferred]}で予算書の目に結びつけています。</div>}
       {contractPid !== undefined && contractSheetYear !== null && (
         <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={contractSheetYear} name={link.target.name} pids={[contractPid]} />
       )}

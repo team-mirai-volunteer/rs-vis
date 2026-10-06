@@ -424,7 +424,7 @@ function UnifiedBudgetSankeyContent() {
       } / RSシート${metadata.rsSheetYear}`
     : `${metadata.budgetYear}年度 ${metadata.basisBudgetType} / 純計 ${formatBudgetFromYen(metadata.totals.net)}（総計 ${formatBudgetFromYen(metadata.totals.gross)}・繰入 ${formatBudgetFromYen(metadata.totals.transfer)}） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
     metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''
-  } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
+  } / 給付・金融取引など ${formatBudgetFromYen(metadata.totals.byKind['non-program'] ?? 0)} / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
   const settingsPanel = (placement: 'top-right' | 'top-auto') => (
     <UnifiedSettings
