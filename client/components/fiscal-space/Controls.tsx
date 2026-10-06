@@ -21,16 +21,18 @@ function usePersistedOpen(key: string) {
   return [open, change] as const;
 }
 
-export function RangeField({ label, value, min, max, step = 1, unit, onChange }: {
+export function RangeField({ label, value, min, max, step = 1, unit, onChange, compact = false }: {
   label: string; value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
+  /** 政策の中に入れ子で置く小さい欄。ラベルと入力を1行に収める */
+  compact?: boolean;
 }) {
   const id = useId();
   const [empty, setEmpty] = useState(false);
   const clamp = (n: number) => Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8));
-  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="min-w-0 text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
+  return <div className={compact ? 'space-y-1' : 'space-y-2'}><div className="flex items-center justify-between gap-2"><label htmlFor={id} className={`min-w-0 font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
     <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={empty ? '' : Number(value.toFixed(6))}
       onBlur={() => setEmpty(false)} onChange={e => { setEmpty(e.target.value === ''); const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
-      className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>
+      className={`${compact ? 'w-14' : 'w-20'} rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} />{unit}</span></div>
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full" />
   </div>;
 }
@@ -56,7 +58,7 @@ function InstrumentFields({ policyId, amount, max, calibration, healthShare, onA
       // 目盛りを刻み（0.1ポイント・1万円）の倍数にそろえる。下限から刻むと 8% が 8.03% のようにずれる
       const grid = (n: number, up: boolean) => (up ? Math.ceil : Math.floor)(n / i.step - 1e-9) * i.step;
       const [min, top] = i.mode === 'rate' ? [grid(Math.max(0, (i.current ?? 0) - room * 1e12 / i.yenPerUnit), true), i.current ?? 0] : [0, grid(room * 1e12 / i.yenPerUnit, false)];
-      const per = i.unit === '万円' ? { label: '10万円', yen: i.yenPerUnit * 10 } : { label: '1ポイント', yen: i.yenPerUnit };
+      const per = i.unit === '万円' ? { label: '10万円', yen: i.yenPerUnit * 10 } : { label: '1%', yen: i.yenPerUnit };
       const change = (v: number) => {
         const next = Math.min(room, instrumentToAmount(i, v));
         if (instruments.length === 2) {
@@ -65,11 +67,11 @@ function InstrumentFields({ policyId, amount, max, calibration, healthShare, onA
         } else onAmount(policyId, round(next));
       };
       return <div key={i.key} className="space-y-1">
-        <RangeField label={i.label} value={Number(value.toFixed(2))} min={Number(min.toFixed(2))} max={Number(top.toFixed(2))} step={i.step} unit={i.unit} onChange={change} />
-        <p className="text-xs leading-relaxed text-mirai-text-subtle">
-          {i.mode === 'rate' ? `現行${i.current}%から${Number(value.toFixed(2))}%へ` : `${Number(value.toFixed(2))}${i.unit}`}：減収 {money(own * 1e12, 1)}／年（{per.label}＝{money(per.yen, 2)}）。{i.note}
-          <a className="ml-1 underline" href={i.sourceUrl} target="_blank" rel="noreferrer">{i.sourceLabel}</a>
-        </p>
+        <RangeField compact label={i.label} value={Number(value.toFixed(2))} min={Number(min.toFixed(2))} max={Number(top.toFixed(2))} step={i.step} unit={i.unit} onChange={change} />
+        <p className="text-xs tabular-nums text-mirai-text-subtle">{i.mode === 'rate' ? `${i.current}%→${Number(value.toFixed(2))}%` : `${Number(value.toFixed(2))}${i.unit}`}・減収 {money(own * 1e12, 1)}／年</p>
+        <details className="text-xs text-mirai-text-subtle"><summary className="cursor-pointer">換算の根拠</summary>
+          <p className="mt-1 leading-relaxed">{per.label}＝{money(per.yen, 2)}。{i.note}<a className="ml-1 underline" href={i.sourceUrl} target="_blank" rel="noreferrer">{i.sourceLabel}</a></p>
+        </details>
       </div>;
     })}
   </div>;

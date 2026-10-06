@@ -39,32 +39,32 @@ export function instrumentsFor(policyId: string, p: ModelParameters): Instrument
       sourceUrl: 'https://www.mof.go.jp/tax_information/qanda022.html', sourceLabel: '財務省「消費税の使途」',
     }];
     case 'consumption-tax-reduced': return [{
-      key: 'reduced-rate', label: '軽減税率（飲食料品・定期購読新聞）', mode: 'rate', unit: '%', current: p.reducedConsumptionTax.baseRate * 100, step: .1,
+      key: 'reduced-rate', label: '軽減税率', mode: 'rate', unit: '%', current: p.reducedConsumptionTax.baseRate * 100, step: .1,
       yenPerUnit: p.reducedConsumptionTax.revenuePerPoint,
-      note: '1ポイントの減収額は、財務省試算として報じられた「飲食料品の税率ゼロで年約5兆円」を8で割った値です。外食・酒類は標準税率のままです。',
+      note: '飲食料品・定期購読新聞の税率です。1ポイントの減収額は、財務省試算として報じられた「飲食料品の税率ゼロで年約5兆円」を8で割った値です。外食・酒類は標準税率のままです。',
       sourceUrl: 'https://www.dir.co.jp/report/research/economics/japan/20260120_025533.html', sourceLabel: '大和総研（食料品の消費税ゼロの減収試算）',
     }];
     case 'resident-tax': return [{
-      key: 'resident-rate', label: '個人住民税所得割の税率', mode: 'rate', unit: '%', current: 10, step: .1,
+      key: 'resident-rate', label: '所得割の税率', mode: 'rate', unit: '%', current: 10, step: .1,
       yenPerUnit: PERSONAL_TAX_REVENUE['resident-tax'].amount / 10,
-      note: '標準税率10%（道府県4%・市町村6%）を一律に下げる場合です。1ポイントの減収額は入力上限と同じ2024年度の所得割収入を10で割った値で、定額減税で押し下げられた年のため、2026年度見込み（約14.5兆円）で換算すると1ポイント約1.45兆円になります。',
+      note: '個人住民税所得割の標準税率10%（道府県4%・市町村6%）を一律に下げる場合です。1ポイントの減収額は入力上限と同じ2024年度の所得割収入を10で割った値で、定額減税で押し下げられた年のため、2026年度見込み（約14.5兆円）で換算すると1ポイント約1.45兆円になります。',
       sourceUrl: 'https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/pdf/ichiran06_r08/ichiran06_r08_01.pdf', sourceLabel: '総務省「地方税に関する参考計数資料」',
     }];
     case 'income-tax': return [{
-      key: 'basic-allowance', label: '基礎控除の引上げ（所得税）', mode: 'amount', unit: '万円', step: 1,
+      key: 'basic-allowance', label: '基礎控除の引上げ', mode: 'amount', unit: '万円', step: 1,
       yenPerUnit: BASIC_ALLOWANCE_YEN_PER_MAN,
-      note: '「103万円の壁」の議論の中心です。10万円の引上げで約0.44兆円の減収として線形換算します。住民税の基礎控除（43万円）は変わらないため、住民税の軽減は住民税減税に入力してください。所得制限や低所得層だけの上乗せにすると減収は小さくなります（令和7年度改正は約0.55兆円）。',
+      note: '所得税の基礎控除です。「103万円の壁」の議論の中心です。10万円の引上げで約0.44兆円の減収として線形換算します。住民税の基礎控除（43万円）は変わらないため、住民税の軽減は住民税減税に入力してください。所得制限や低所得層だけの上乗せにすると減収は小さくなります（令和7年度改正は約0.55兆円）。',
       sourceUrl: 'https://www.dir.co.jp/report/research/law-research/tax/20241204_024777.pdf', sourceLabel: '大和総研（基礎控除178万円案の減収試算）',
     }];
     case 'social-insurance': return [{
-      key: 'health-rate', label: '健康保険料率の引下げ（労使合計）', mode: 'amount', unit: 'ポイント', step: .1,
+      key: 'health-rate', label: '健保料率の引下げ', mode: 'amount', unit: '%', step: .1,
       yenPerUnit: HEALTH_INSURANCE_YEN_PER_POINT,
-      note: '協会けんぽ（平均10.0%）と健康保険組合（平均9.3%）の料率を同じ幅だけ下げる場合です。共済組合・国民健康保険・介護保険料は含みません。',
+      note: '健康保険料率（労使合計）の引下げ幅です。協会けんぽ（平均10.0%）と健康保険組合（平均9.3%）の料率を同じ幅だけ下げる場合です。共済組合・国民健康保険・介護保険料は含みません。',
       sourceUrl: 'https://www.kyoukaikenpo.or.jp/assets/r7kessangaiyou_1.pdf', sourceLabel: '協会けんぽ決算・健保連決算見込み',
     }, {
-      key: 'pension-rate', label: '厚生年金保険料率の引下げ（労使合計）', mode: 'amount', unit: 'ポイント', step: .1,
+      key: 'pension-rate', label: '厚生年金料率の引下げ', mode: 'amount', unit: '%', step: .1,
       yenPerUnit: PENSION_INSURANCE_YEN_PER_POINT,
-      note: '現行18.3%を下げる場合です。共済組合（公務員等）の分は含みません。本人・事業主の負担割合は「乗数・税収・労働反応の条件」の配分に従います。',
+      note: '厚生年金保険料率（労使合計、現行18.3%）の引下げ幅です。共済組合（公務員等）の分は含みません。本人・事業主の負担割合は「乗数・税収・労働反応の条件」の配分に従います。',
       sourceUrl: 'https://www.mhlw.go.jp/content/12501000/001728152.pdf', sourceLabel: '厚生労働省 年金特別会計の決算',
     }];
     default: return [];
