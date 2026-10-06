@@ -122,7 +122,7 @@ function assignColumns<D>(
     }
     if (!changed) break;
   }
-  // 出口の無いノードは最終列に寄せる（実支出などが中途半端な列に残らないように）
+  // 出口の無いノードは最終列に寄せる（繰入を除く歳出予算などが中途半端な列に残らないように）
   if (column.size === 0) return column;
   const maxColumn = Math.max(...column.values());
   for (const node of nodes) {

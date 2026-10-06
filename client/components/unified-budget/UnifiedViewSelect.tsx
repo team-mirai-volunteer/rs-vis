@@ -116,7 +116,7 @@ export function UnifiedColumnToggles({
           );
         })}
       </div>
-      <p className="text-[11px] text-mirai-text-muted">歳入は当初予算に収録。歳入を表示すると、接続先の会計も表示します。</p>
+      <p className="text-[11px] text-mirai-text-muted">歳入は当初・補正後・決算の基準で収録（府省庁別の基準には無し）。歳入を表示すると、接続先の会計も表示します。</p>
     </div>
   );
 }

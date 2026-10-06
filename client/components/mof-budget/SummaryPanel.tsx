@@ -88,7 +88,7 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
                 label="うち他会計へ繰入"
                 value={`${yen(generalAccount.transferOut)}（${pct(generalAccount.transferOut, generalAccount.expenditure)}）`}
               />
-              <Row label="実支出" value={yen(generalAccount.net)} />
+              <Row label="他会計への繰入を除く歳出予算" value={yen(generalAccount.net)} />
             </tbody>
           </table>
         </div>
@@ -103,7 +103,7 @@ export function SummaryPanel({ summary }: { summary: MOFBudgetOverviewData['summ
                 label="うち他会計へ繰入"
                 value={`${yen(specialAccounts.transferOut)}（${pct(specialAccounts.transferOut, specialAccounts.expenditure)}）`}
               />
-              <Row label="実支出" value={yen(specialAccounts.net)} />
+              <Row label="他会計への繰入を除く歳出予算" value={yen(specialAccounts.net)} />
             </tbody>
           </table>
         </div>

@@ -140,7 +140,7 @@ export default function FiscalSpacePage() {
   const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
   const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
-  const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
+  const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : result.estimate.status === 'empty-mix' ? '参考上限：未計算（政策の配分を入力してください）' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
   return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-11 [&_summary]:py-2">
     <AppHeader current="/fiscal-space">
       <Button variant="outline" size="sm" className="border-mirai-border" onClick={() => { setDialogOpen(true); dataDialog.current?.showModal(); }}>

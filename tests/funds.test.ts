@@ -15,6 +15,7 @@ test('残高が支出の何年分かと、10年分以上の判定', () => {
   assert.deepEqual(fundSignals(fund({})), ['tenYears']);
   assert.equal(spendingYears(year({ expense: 0 })), null);
   assert.deepEqual(fundSignals(fund({}, { expense: 0 })), ['noSpending']);
+  assert.deepEqual(fundSignals(fund({}, { expense: null })), ['noSpendingRecord'], '支出額の記載なしはゼロと区別する');
 });
 
 test('新規受付・終了予定の後の残高は、残高の時点（シート年度の4月1日）で判定する', () => {

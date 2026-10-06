@@ -535,13 +535,18 @@ export function UnifiedSankeyChart({
   const amountLabel = rsAmountKind === 'request' ? '要求額' : '予算額';
   /** 執行年度（支出先まで繋がる年度）か。事業(支出)ノードがあれば執行年度 */
   const isExecutionYear = useMemo(() => nodes.some(n => n.details.column === 'program-spending'), [nodes]);
+  /** 歳入列の測定量。歳入は選んだ基準のデータが無い年度は当初予算に戻るので、ノードが持つ実際の基準で表示する */
+  const revenueMeasure = useMemo(() => {
+    const basis = nodes.find(n => n.details.column === 'revenue')?.details.revenueBasis;
+    return basis === 'settlement' ? '決算（収納済額）' : basis === 'supplementary' ? '補正後予算' : '当初予算';
+  }, [nodes]);
   /**
    * 列見出し。事業〜支出先は「何年度の・何の額か」で混乱しやすいので年度と測定量を添える
-   * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は MOF の当初予算
+   * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は選んだ基準（当初・補正後・決算など）の MOF の額
    */
   const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
     const base = columnLabels?.[column] ?? UNIFIED_COLUMN_LABELS[column];
-    if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: '当初予算・会計間受入含む' };
+    if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: `${revenueMeasure}・会計間受入含む` };
     if (column === 'program') {
       const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
       return { label: `${base}_${budgetYear}`, measure: programSortLabel ? `${measure}・${programSortLabel}` : measure };

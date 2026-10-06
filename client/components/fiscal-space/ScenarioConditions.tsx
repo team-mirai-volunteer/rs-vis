@@ -45,8 +45,8 @@ export function InputOverview({ total, estimate, horizon, incomplete, projection
       <div className="min-w-0 space-y-2">
         <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
           <div><h3 className="text-sm">設定した追加予算</h3><p className="text-xl font-bold tabular-nums">{money(total)} / 年</p></div>
-          <div><h3 className="text-sm">同じ配分の参考上限（ストレス耐性・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
-            {estimate.status !== 'unevaluated' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
+          <div><h3 className="text-sm">同じ配分の参考上限（ストレス耐性・条件付き）</h3><p data-testid="recommended-envelope" className="text-xl font-bold tabular-nums">{estimate.status === 'unevaluated' ? '算出不可：負荷が未評価' : estimate.status === 'empty-mix' ? '未計算：政策の配分を入力してください' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
+            {estimate.status !== 'unevaluated' && estimate.status !== 'empty-mix' && <p className="text-xs tabular-nums" data-testid="theoretical-maximum-overview">ストレスなしの探索額 {money(estimate.theoreticalMaximum, 1)}</p>}</div>
         </div>
         {estimate.status !== 'unevaluated' && total > estimate.recommendedEnvelope && <p className="text-xs">設定した追加予算は、ストレス耐性の参考上限を{money(total - estimate.recommendedEnvelope, 1)}上回ります。</p>}
         <p className="text-sm">評価期間：<strong>{horizon}年間</strong>{horizon > 5 && <span className="ml-2 text-xs text-mirai-text-subtle">公表期間（5年）を超える延長計算。公表期間後は設定した期間（初期設定は5年）で公表反応を段階的に解消し、別途設定した長期供給効果を反映します。解消年数を0に設定した場合は公表反応の末尾を据え置きます。</span>}</p>

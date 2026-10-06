@@ -324,9 +324,9 @@ function accountFlows(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLi
     });
   }
 
-  // 一般会計の実支出
+  // 一般会計の繰入を除く歳出予算
   nodes.push(
-    node('net-general', '一般会計の実支出', g.expenditure.net, {
+    node('net-general', '一般会計の歳出予算（繰入を除く）', g.expenditure.net, {
       nodeType: 'net-expenditure',
       accountKind: 'general',
       breakdown: g.expenditure.byPurpose.filter(p => p.name !== '他会計へ繰入'),
@@ -375,9 +375,9 @@ function accountFlows(data: MOFBudgetOverview): { nodes: Node[]; links: SankeyLi
     });
   }
 
-  // 特別会計の実支出
+  // 特別会計の繰入を除く歳出予算
   nodes.push(
-    node('net-special', '特別会計の実支出', s.expenditure.net, {
+    node('net-special', '特別会計の歳出予算（繰入を除く）', s.expenditure.net, {
       nodeType: 'net-expenditure',
       accountKind: 'special',
       breakdown: s.expenditure.byPurpose.filter(p => p.name !== '他会計へ繰入'),

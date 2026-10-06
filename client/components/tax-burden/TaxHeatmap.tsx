@@ -3,7 +3,7 @@
 import type { Denominator, TaxItem } from '@/types/tax-burden';
 import { HEATMAP_AGES } from '@/app/lib/tax-burden/simulate-lifecycle';
 import { TAX_ITEMS } from '@/app/lib/tax-burden/households';
-import { availableTaxItems, BENEFIT_PARTS, cellRate, DENOMINATOR_LABEL, type HeatmapGrid } from '@/app/lib/tax-burden/heatmap-items';
+import { availableTaxItems, BENEFIT_PARTS, cellRate, DENOMINATOR_LABEL, netBurdenLabel, type HeatmapGrid } from '@/app/lib/tax-burden/heatmap-items';
 
 const shortLabel = (item: TaxItem) => TAX_ITEMS.find(t => t.id === item)!.label.replace('（差し引き）', '');
 
@@ -28,7 +28,7 @@ function Grid({ grid, item, compact, hasConsumption, denominator }: { grid: Heat
     const { lo, hi } = scales[String(Math.sign(v))];
     return hi > lo ? 0.15 + 0.85 * (Math.abs(v) - lo) / (hi - lo) : 1;
   };
-  const label = TAX_ITEMS.find(t => t.id === item)!.label;
+  const label = item === 'net' ? netBurdenLabel(grid, hasConsumption, denominator) : TAX_ITEMS.find(t => t.id === item)!.label;
   const ages = compact ? HEATMAP_AGES.filter((_, i) => i % 2 === 0 || i === HEATMAP_AGES.length - 1) : HEATMAP_AGES;
   const rows = compact ? grid.filter((_, i) => i % 2 === 1 || i === grid.length - 1) : grid;
   return <div className={compact ? 'rounded-xl border border-mirai-border bg-card p-3' : ''}>
@@ -58,7 +58,7 @@ function Grid({ grid, item, compact, hasConsumption, denominator }: { grid: Heat
 
 export function TaxHeatmap({ grid, hasConsumption, reformed, denominator }: { grid: HeatmapGrid; hasConsumption: boolean; reformed: boolean; denominator: Denominator }) {
   const item: TaxItem = 'net';
-  const label = TAX_ITEMS.find(t => t.id === item)!.label;
+  const label = netBurdenLabel(grid, hasConsumption, denominator);
   const available = availableTaxItems(grid, hasConsumption, denominator);
   const items = available.filter(t => t.id !== 'net');
   const paying = BENEFIT_PARTS.filter(id => available.some(t => t.id === id)).map(shortLabel);

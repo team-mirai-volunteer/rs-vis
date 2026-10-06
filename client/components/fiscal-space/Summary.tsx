@@ -23,7 +23,7 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
   return <section id="fiscal-envelope" aria-label="財政余力の探索結果" className="scroll-mt-20 space-y-3">
     <Card><CardContent className="space-y-4 pt-5">
       <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限（選んだストレスに耐える額）</h2>
-      <p className="text-3xl font-bold tabular-nums" data-testid="recommended-envelope-summary">{money(estimate.recommendedEnvelope, 1)} / 年</p>
+      <p className="text-3xl font-bold tabular-nums" data-testid="recommended-envelope-summary">{estimate.status === 'empty-mix' ? '未計算：政策の配分を入力してください' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
       <p className="text-sm">条件付きの参考値で、推奨額でも財政の上限でもありません。ストレスなしの探索額は <span data-testid="theoretical-maximum">{money(estimate.theoreticalMaximum, 1)}</span>（実質的な控除 {percent(estimate.reserveRule.share, 0)}。控除率は入力ではなく結果）。評価期間{horizon}年間{riskAudit.extrapolatedYears > 0 && `（うち${riskAudit.extrapolatedYears}年は公表期間外の延長計算）`}。</p>
       {estimate.stress && estimate.stress.length > 0 && <div className="overflow-x-auto" role="region" aria-label="ストレス別の参考上限" tabIndex={0} data-testid="stress-table"><table className="w-full min-w-[460px] text-right text-sm tabular-nums">
         <caption className="text-left text-xs">各ストレスを同じ配分に載せて再探索した額。チェックした条件の最小値を参考上限にします（「予算を制約する条件」で選択）。{estimate.stress.some(s => s.selected) ? '' : '現在は未選択のため、ストレスなしの探索額を表示しています。'}ストレスの大きさは仮定ですが、「何に耐えるか」として読める条件です。</caption>

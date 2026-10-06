@@ -6,13 +6,14 @@
 import type { Fund, FundYear } from '@/types/funds';
 import { normalizeRecipientName } from '@/app/lib/recipient-key';
 
-export type FundSignal = 'newApplicationClosed' | 'pastEnd' | 'tenYears' | 'noSpending' | 'returned' | 'ownershipOverOne' | 'inspection';
+export type FundSignal = 'newApplicationClosed' | 'pastEnd' | 'tenYears' | 'noSpending' | 'noSpendingRecord' | 'returned' | 'ownershipOverOne' | 'inspection';
 
 export const FUND_SIGNAL_LABELS: Record<FundSignal, string> = {
   newApplicationClosed: '新規受付の終了後も残高',
   pastEnd: '終了予定日の後も残高',
   tenYears: '残高が支出の10年分以上',
   noSpending: '残高はあるが支出ゼロ',
+  noSpendingRecord: '残高はあるが支出額の記載なし',
   returned: '国庫返納あり',
   ownershipOverOne: '保有割合が100%超',
   inspection: '低執行の点検に該当',
@@ -22,7 +23,8 @@ export const FUND_SIGNAL_DESCRIPTIONS: Record<FundSignal, string> = {
   newApplicationClosed: '新しい申請の受付を終えた時点（基金シートの新規受付終了日）を過ぎているのに、年度初めの残高がある基金。',
   pastEnd: '基金シートの終了予定日を過ぎているのに、年度初めの残高がある基金。',
   tenYears: '年度初めの残高が、前年度の支出の10年分以上ある基金。造成したばかりで支出が立ち上がっていない基金も含まれる。',
-  noSpending: '年度初めの残高があるのに、前年度の支出がゼロか記載がない基金。',
+  noSpending: '年度初めの残高があるのに、前年度の支出がゼロと記載された基金。',
+  noSpendingRecord: '年度初めの残高があるのに、前年度の支出額が基金シートに記載されていない（または読み取れない値の）基金。支出がゼロだったとは限らない。',
   returned: '前年度に国庫へ返納した額がある基金（使わない分を国に返したもの）。',
   ownershipOverOne: '保有割合（基金残高 ÷ 今後の事業に必要な額）が100%を超える基金。必要額より多く持っている。',
   inspection: '基金シートの「低執行の基金の点検」で、実績が無い・事業を終えた・目的を失った・保有割合が1を大きく超える・使われる見込みが無い、のいずれかに該当すると府省が記載した基金。',
@@ -48,7 +50,8 @@ export function fundSignals(f: Fund): FundSignal[] {
   if (hasBalance && f.endDate && f.endDate < asOf) out.push('pastEnd');
   const years = spendingYears(y);
   if (years !== null && years >= 10) out.push('tenYears');
-  if (hasBalance && !(y.expense !== null && y.expense > 0)) out.push('noSpending');
+  if (hasBalance && y.expense === 0) out.push('noSpending');
+  if (hasBalance && y.expense === null) out.push('noSpendingRecord');
   if ((y.returned ?? 0) > 0) out.push('returned');
   if (y.ownership !== null && y.ownership > 1) out.push('ownershipOverOne');
   if (Object.values(f.inspection).some(Boolean)) out.push('inspection');
@@ -77,7 +80,7 @@ export const budgetLabel = (b: string | null) => (b ? BUDGET_LABELS[b] ?? b : '�
 
 /** 表の論点バッジ用の短い表記 */
 export const FUND_SIGNAL_SHORT: Record<FundSignal, string> = {
-  newApplicationClosed: '受付終了後', pastEnd: '終了予定後', tenYears: '10年分超', noSpending: '支出ゼロ',
+  newApplicationClosed: '受付終了後', pastEnd: '終了予定後', tenYears: '10年分超', noSpending: '支出ゼロ', noSpendingRecord: '支出記載なし',
   returned: '国庫返納', ownershipOverOne: '保有100%超', inspection: '点検該当',
 };
 

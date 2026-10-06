@@ -123,7 +123,7 @@ export default function TaxBurdenPage() {
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
                   { label: reformed ? '改革案の純負担率' : '選択世帯の純負担率', value: rateText(state.includeConsumption ? selected.netRateWithConsumption : selected.netRate), note: selected.netRate === null ? '年収0円では率を計算しません' : `${household.label}・${(state.income / 10000).toLocaleString('ja-JP')}万円` },
-                  { label: '年間の純負担額', value: yen(selected.netBurden + (state.includeConsumption ? selected.consumptionTax : 0)), note: state.includeConsumption ? '税・本人保険料・消費税推計 − 現金給付' : '税・本人保険料 − 現金給付' },
+                  { label: '年間の純負担額', value: yen(selected.netBurden + (state.includeConsumption ? selected.consumptionTax : 0)), note: `税・本人保険料${state.includeConsumption ? '・消費税推計' : ''}${selected.corporateTax > 0 ? '・法人税の転嫁推計' : ''} − 現金給付` },
                   { label: reformed ? '基準制度からの家計の改善額' : '年間の現金給付', value: yen(reformed ? (before.netBurden + before.consumptionTax) - (selected.netBurden + selected.consumptionTax) : selected.benefits), note: reformed ? '＋は手取りが増える方向' : '児童手当・児童扶養手当' },
                 ].map(item => <Card key={item.label}><CardContent className="pt-5"><p className="text-xs text-mirai-text-secondary">{item.label}</p><p className="mt-2 font-lexend text-2xl font-medium tabular-nums text-primary-accent">{item.value}</p><p className="mt-2 text-xs text-mirai-text-secondary">{item.note}</p></CardContent></Card>)}
               </div>
