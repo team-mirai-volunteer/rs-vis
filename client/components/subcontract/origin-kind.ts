@@ -8,7 +8,7 @@ export function originKindLabel(kind: BlockOriginKind): string {
     case 'subcontract': return '再委託';
     case 'separate-origin-strong':
     case 'separate-origin-broad':
-      return '接続未確認';
+      return '別財源';
   }
 }
 

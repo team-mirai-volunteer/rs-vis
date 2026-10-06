@@ -93,7 +93,7 @@ function defaultSortDir(key: SortKey): SortDir {
 const PAGE_SIZE = 50;
 const COLUMN_WIDTH_STORAGE_KEY = 'subcontracts-column-widths';
 const COLUMN_LABELS = ['PID', '事業名', '省庁', '担当組織', '会計区分', '予算額', '執行額', '直接支出合計', '支出額合計',
-  '支出額合計 − 直接支出合計', '執行額 − 直接支出合計', 'ブロック', '直接支出', '再委託', '間接経費', '接続未確認', '支出先', '階層', '分岐', '最大分岐', '合流', '最大合流', '構造'];
+  '支出額合計 − 直接支出合計', '執行額 − 直接支出合計', 'ブロック', '直接支出', '再委託', '間接経費', '別財源', '支出先', '階層', '分岐', '最大分岐', '合流', '最大合流', '構造'];
 const DEFAULT_COL_WIDTHS = [
   56,    // PID
   280,   // 事業名
@@ -110,7 +110,7 @@ const DEFAULT_COL_WIDTHS = [
   88,    // 直接支出
   76,    // 再委託
   88,    // 間接経費
-  76,    // 接続未確認の起点
+  76,    // 別財源
   76,    // 支出先
   64,    // 階層
   64,    // 分岐
@@ -186,7 +186,7 @@ function SubcontractsPageInner() {
   // 会計区分（'一般会計' | '特別会計' | '一般・特別' | '区分なし'）の複数選択
   const [selectedAccountCategories, setSelectedAccountCategories] = useState<string[]>(() => searchParams.getAll('fac'));
   // 構造（'別財源あり' | '合流あり' | '制度フローのみ'）の複数選択（OR）
-  const [selectedStructures, setSelectedStructures] = useState<string[]>(() => searchParams.getAll('fst').map(s => (s === '別財源あり' ? '接続未確認の起点あり' : s))); // 旧ラベルのリンクも読む
+  const [selectedStructures, setSelectedStructures] = useState<string[]>(() => searchParams.getAll('fst'));
   // 名称・組織テキストフィルタ
   const [filterProjectName, setFilterProjectName] = useState(() => searchParams.get('fnp') ?? '');
   const [filterBureau, setFilterBureau] = useState(() => searchParams.get('fbu') ?? '');
@@ -365,7 +365,7 @@ function SubcontractsPageInner() {
       // 構造（複数選択 OR）
       if (selectedStructures.length > 0) {
         const matchAny =
-          (selectedStructures.includes('接続未確認の起点あり') && g.hasSeparateOrigin) ||
+          (selectedStructures.includes('別財源あり') && g.hasSeparateOrigin) ||
           (selectedStructures.includes('合流あり') && g.hasMerge) ||
           (selectedStructures.includes('制度フローのみ') && g.isInstitutionalFlowOnly);
         if (!matchAny) return false;
@@ -683,7 +683,7 @@ function SubcontractsPageInner() {
             {/* 構造 */}
             <FilterRow label="構造">
               <MultiSelectDropdown
-                options={['接続未確認の起点あり', '合流あり', '制度フローのみ']}
+                options={['別財源あり', '合流あり', '制度フローのみ']}
                 selected={selectedStructures}
                 onChange={setSelectedStructures}
                 allLabel="すべて"
@@ -716,13 +716,13 @@ function SubcontractsPageInner() {
                   <SortHeader sort="execution" title="実際に執行された額の合計（レビューシート 2-1）" columnIndex={6} align="right">執行額</SortHeader>
                   <SortHeader sort="directExpenseTotal" title="事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません" columnIndex={7} align="right">直接支出合計</SortHeader>
                   <SortHeader sort="totalExpense" title="全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります" columnIndex={8} align="right">支出額合計</SortHeader>
-                  <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・接続未確認の起点など下流ブロック分）">支出額合計 − 直接支出合計</SortHeader>
+                  <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）">支出額合計 − 直接支出合計</SortHeader>
                   <SortHeader sort="executionMinusDirect" columnIndex={10} align="right" title="執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり">執行額 − 直接支出合計</SortHeader>
                   <SortHeader sort="totalBlockCount" title="ブロック（同じ役割の支出先のまとまり。A・B・C…）の数" columnIndex={11} align="right">ブロック</SortHeader>
                   <SortHeader sort="directBlockCount" title="事業（国）から直接支払っているブロックの数" columnIndex={12} align="right">直接支出</SortHeader>
                   <SortHeader sort="subcontractBlockCount" title="他のブロックから再委託・再々委託を受けているブロックの数" columnIndex={13} align="right">再委託</SortHeader>
                   <SortHeader sort="indirectCostCount" title="国自らが支出する間接経費（職員旅費・事務費など）の記載件数" columnIndex={14} align="right">間接経費</SortHeader>
-                  <SortHeader sort="separateOriginCount" title="事業から直接も再委託でもつながりを確認できない起点ブロックの数（別の財源・負担金などから出ている可能性があるが、財源データで確かめたものではない）" columnIndex={15} align="right">別財源</SortHeader>
+                  <SortHeader sort="separateOriginCount" title="別財源のブロック数。事業から直接も再委託でもつながりを確認できない起点ブロック（接続未確認の財源。財源データで確かめたものではない）" columnIndex={15} align="right">別財源</SortHeader>
                   <SortHeader sort="totalRecipientCount" title="全ブロックに記載された支出先の数" columnIndex={16} align="right">支出先</SortHeader>
                   <SortHeader sort="maxDepth" title="再委託の最も深い段数（直接支出だけなら1）" columnIndex={17} align="right">階層</SortHeader>
                   <SortHeader sort="branchingBlockCount" title="1つのブロックから2つ以上のブロックへ再委託している「分岐元」の数" columnIndex={18} align="right">分岐</SortHeader>

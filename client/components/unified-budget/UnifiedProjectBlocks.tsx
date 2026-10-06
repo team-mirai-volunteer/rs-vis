@@ -69,7 +69,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
       </span>
       <span className="flex flex-wrap items-center gap-1.5 text-[11px] text-mirai-text-muted">
         <TagChip kind={block.originKind === 'direct' ? 'direct' : block.originKind === 'subcontract' ? 'subcontract' : 'separate-origin'}>
-          {block.originKind === 'direct' ? '直接' : block.originKind === 'subcontract' ? '再委託' : '接続未確認'}
+          {block.originKind === 'direct' ? '直接' : block.originKind === 'subcontract' ? '再委託' : '別財源'}
         </TagChip>
         {block.othersCount
           ? <span title={othersTitle(block.othersCount)}>支出先 {block.recipients.length.toLocaleString()}件記載（その他を含め全{block.othersCount.t.toLocaleString()}件）</span>
@@ -91,7 +91,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
     <div className="flex flex-wrap items-center gap-1.5 border-b border-border py-2 text-[11px] text-mirai-text-muted">
       <TagChip kind="direct">直接 {direct}</TagChip>
       {subcontract > 0 && <TagChip kind="subcontract">再委託 {subcontract}</TagChip>}
-      {separate > 0 && <TagChip kind="separate-origin">接続未確認 {separate}</TagChip>}
+      {separate > 0 && <TagChip kind="separate-origin">別財源 {separate}</TagChip>}
       <span>階層 {graph.maxDepth}</span>
       {provisional
         ? <span className="ml-auto">RS公開APIからの暫定取得</span>

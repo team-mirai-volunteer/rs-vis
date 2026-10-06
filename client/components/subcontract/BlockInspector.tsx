@@ -92,7 +92,7 @@ export function BlockInspector({
             <FlowLine key={`in-${i}`} label="受入元" otherId={f.sourceBlock} note={f.origin === 'direct' ? '事業（直接支出）' : undefined} />
           ))}
           {outgoing.map((f, i) => (
-            <FlowLine key={`out-${i}`} label={f.origin === 'separate-origin' ? '接続未確認の起点へ' : '再委託先'} otherId={f.targetBlock} />
+            <FlowLine key={`out-${i}`} label={f.origin === 'separate-origin' ? '別財源へ' : '再委託先'} otherId={f.targetBlock} />
           ))}
         </div>
       )}
