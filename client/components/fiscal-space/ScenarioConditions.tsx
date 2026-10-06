@@ -96,12 +96,13 @@ function ThreePoints({ estimate, projection, baseline, horizon }: { estimate: Fi
   return <div data-testid="three-points">
     <div className="mt-3 overflow-x-auto" role="region" aria-label="制約が最も厳しくなる年・GDP効果ピーク年・最終年の比較" tabIndex={0}>
       <table className="w-full min-w-[620px] text-right text-sm tabular-nums [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-        <caption className="mb-1 text-left text-xs">枠は最も厳しい年、結果は最終年で決まるため、三時点を並べています。CPIは判定用（総合と消費税直接効果を除く値の大きい方）。下段の小さい値は政策なし経路との差（ポイント）。国民負担率はGDP比で、国民所得比ではありません。</caption>
-        <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">CPI</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th><th scope="col">国民負担率（GDP比）</th></tr></thead>
+        <caption className="mb-1 text-left text-xs">枠は最も厳しい年、結果は最終年で決まるため、三時点を並べています。CPI（判定用）は総合と消費税直接効果を除く値の大きい方で、消費税減税による一度きりの値下がりはCPI総合にだけ表れます。下段の小さい値は政策なし経路との差（ポイント）。国民負担率はGDP比で、国民所得比ではありません。</caption>
+        <thead><tr><th scope="col" className="text-left">時点</th><th scope="col">年</th><th scope="col">CPI（判定用）</th><th scope="col">CPI総合</th><th scope="col">実質GDP効果</th><th scope="col">失業率</th><th scope="col">債務/GDP</th><th scope="col">国民負担率（GDP比）</th></tr></thead>
         <tbody>{rows.map(({ key, label, note, index }) => { const s = steps[index], b = baseline.steps[index]; return <tr key={key} className="border-t border-mirai-border" data-point={key}>
           <th scope="row" className="py-1 pr-3 text-left font-medium">{label}<span className="block text-xs font-normal text-mirai-text-subtle">{note}</span></th>
           <td>{s.state.year}</td>
           {cell(percent(constraintInflation(s)), constraintInflation(s) - constraintInflation(b))}
+          {cell(percent(s.state.macro.inflation), s.state.macro.inflation - b.state.macro.inflation)}
           <td>{money(gdpEffect(index))}</td>
           {cell(percent(unemploymentRate(s)), unemploymentRate(s) - unemploymentRate(b))}
           {cell(percent(s.metrics.grossDebtGdp, 1), s.metrics.grossDebtGdp - b.metrics.grossDebtGdp)}
