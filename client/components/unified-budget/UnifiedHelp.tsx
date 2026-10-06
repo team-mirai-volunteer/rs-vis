@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { HeaderHelp } from '@/client/components/HeaderHelp';
-import { AXIS_META } from '@/client/components/quality/score-meta';
+import { AI_EVALUATION_NATURE, AI_EVALUATION_TITLE, AXIS_META } from '@/client/components/quality/score-meta';
 import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
 
 /** プロンプトを書き出してあるシート年度。無い年度は最新の版を案内する */
@@ -56,11 +56,11 @@ export function UnifiedHelp({ sheetYear }: { sheetYear: number }) {
         <ul className="m-0 list-disc space-y-1 pl-4 text-mirai-text-subtle">
           <li>会計〜目：財務省の予算書（当初・補正・決算）。事業〜支出先：行政事業レビューシート（RSシステム）。</li>
           <li>RSシートの年度は「評価した事業の前年度の執行」を載せます（例：2025年版シート＝2024年度の執行）。</li>
-          <li>金額はすべて1円単位です。直接の支出と再委託は同じお金を二重に数えることがあるため、合算に注意してください。</li>
+          <li>金額は円換算して集計し、画面では億円・兆円などに丸めて表示します。直接の支出と再委託は同じお金を二重に数えることがあるため、合算に注意してください。</li>
           <li>契約方式・所在地は RS公開API、法人の説明は Wikipedia・Wikidata（法人番号で一致したもの）から補っています。</li>
         </ul>
-        <h2 className="mb-2 mt-4 text-[13px] font-bold">政策評価スコア（AI評価）について</h2>
-        <p className="text-mirai-text-subtle">レビューシートの記載をもとに、事業の評価・見直しに必要な材料がどれだけそろっているかを5つの観点で点数化したものです。事業そのものの良し悪しを断定するものではなく、気になる事業を探すためのスクリーニングの目安です。</p>
+        <h2 className="mb-2 mt-4 text-[13px] font-bold">政策評価スコア（{AI_EVALUATION_TITLE}）について</h2>
+        <p className="text-mirai-text-subtle">{AI_EVALUATION_NATURE}5つの観点で点数化しています。事業の良し悪しを断定するものではなく、詳しく確認したい事業を探すためのスクリーニングの目安です。</p>
         <ul className="m-0 mt-2 list-none space-y-1 p-0">
           {AXIS_META.map(axis => <li key={axis.key} className="flex gap-2" title={axis.desc}>
             <span className="w-20 shrink-0 font-bold text-mirai-text">{axis.label}</span>

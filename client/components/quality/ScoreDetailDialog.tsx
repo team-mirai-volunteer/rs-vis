@@ -462,8 +462,8 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">費用対内容</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.proportionalityScore}</span>:
-                  金額が活動の規模に見合い、金が受益者に届いているか。支出先・再委託の実データを判定材料にするため、
-                  所管庁の作文では動かしにくい軸として最も重く置いている
+                  金額が活動の規模に見合い、資金が受益者に届く経路を確認できるか。事業概要に加え支出先・金額・再委託の記録を重視し、
+                  記録で裏付けを確かめられる軸として最も重く置いている
                   <div className="tabular-nums text-mirai-text-muted">
                     {policy?.budgetProportionality != null
                       ? `${fmtRaw(policy.budgetProportionality)}/10 → ${policy.proportionalityScore}点`
@@ -474,7 +474,7 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">代替困難性</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.necessityScore}</span>:
-                  廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に「そもそも要るのか」を問う
+                  廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に、公的支援の必要性と代替手段を問う
                   <div className="tabular-nums text-mirai-text-muted">
                     {policy?.necessity != null ? `${fmtRaw(policy.necessity)}/10 → ${policy.necessityScore}点` : "未評価"}
                   </div>
@@ -554,8 +554,8 @@ ${a.desc}`}>
                 )}
               </div>
               <div className="mt-1 text-[11px] leading-4 text-mirai-text-muted">
-                費用対内容と代替困難性を厚くしているのは、この2軸だけが所管庁の作文が支配できない証拠
-                （支出先の実績・予算執行）に基づくためです。よく書けた事業計画だけで上位に来ないようにしています。
+                費用対内容と代替困難性を厚くしているのは、この2軸が事業概要の記述だけでなく、支出先・金額・再委託の記録
+                （支出先の実績・予算執行）でも裏付けを確かめられるためです。よく書けた事業計画だけで上位に来ないようにしています。
               </div>
             </div>
 

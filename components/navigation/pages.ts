@@ -8,7 +8,7 @@
 export const PAGES = [
   { href: '/budget-sankey', label: 'サンキー図', navLabel: 'サンキー図', prototype: false, description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れを 1 本のサンキーで追う。「RSのみ」で省庁 → 事業 → 支出先だけにも絞れる', primary: true },
   { href: '/project-bubble', label: 'バブルチャート', navLabel: 'バブルチャート', prototype: false, description: '5,000 超の事業を内容の近さで配置し、予算規模やAI評価を切り替えて比較する', primary: true },
-  { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '事業ごとの政策評価・執行透明性スコアを一覧で見る', primary: true },
+  { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '公開資料に基づく独自基準のAI評価（試行）と執行透明性を、事業ごとに一覧で見る', primary: true },
   { href: '/subcontracts', label: '委託構造', navLabel: '委託構造', prototype: false, description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true },
   { href: '/funds', label: '基金（試作）', navLabel: '基金', prototype: true, description: '基金シートから、残高・支出・国庫返納・終了予定・府省の点検結果を見て、残高が過大な基金などを探す', primary: true },
   { href: '/tax-expenditures', label: '租税特別措置(試作)', navLabel: '租税特別措置', prototype: true, description: '法人税の租税特別措置の適用実態と、関連するRS事業を調べる', primary: true },

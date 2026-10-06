@@ -59,7 +59,7 @@ export function describeProject(ctx: InterviewProjectContext): string {
   if (ministry) lines.push(`- 府省庁: ${ministry}${ctx.detail?.bureau ? ` / ${ctx.detail.bureau}` : ''}`);
   if (ctx.budget != null) lines.push(`- 歳出予算現額: ${yen(ctx.budget)}`);
   if (ctx.execution != null) lines.push(`- 執行額: ${yen(ctx.execution)}`);
-  if (ctx.score != null) lines.push(`- 政策評価の総合点: ${ctx.score}/100（AIによる報告書の形式品質評価。事業の良し悪しそのものではない）`);
+  if (ctx.score != null) lines.push(`- 政策評価の総合点: ${ctx.score}/100（本サイト独自の基準によるAI評価・試行。記載の充実度に加え政策上の判断を含むが、政府の公式評価でも結論でもない）`);
   const d = ctx.detail;
   if (d) {
     if (d.category) lines.push(`- 事業区分: ${d.category}${d.startYear ? `（${d.startYear}年度開始）` : ''}`);

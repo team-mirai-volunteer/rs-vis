@@ -20,7 +20,7 @@ import { useQualityLocation } from '@/client/hooks/useQualityLocation';
 import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
 import { scoreBand, scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
-  AXIS_META, COL_DESC, UNUSED_TREND_META, COL_WIDTHS,
+  AI_EVALUATION_NATURE, AXIS_META, COL_DESC, UNUSED_TREND_META, COL_WIDTHS,
   RECOMMENDATION_LABELS, IMPROVEMENT_ACTION_LABELS,
   RecommendationBadge, ActionBadge, PersistentUnusedMark,
   type PolicyMetric, type SortField, type SortDir,
@@ -468,7 +468,7 @@ export default function QualityPage() {
       {mode === 'section' && (
         <>
           <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-mirai-border bg-card px-3 py-2">
-            <h1 className="text-sm font-bold text-mirai-text">項別 政策評価</h1>
+            <h1 className="text-sm font-bold text-mirai-text">項別 AI評価（独自基準・試行）</h1>
             <details className="text-xs text-mirai-text-muted">
               <summary className="cursor-pointer">集計方法</summary>
               <p className="mt-1 max-w-3xl leading-relaxed">
@@ -486,9 +486,10 @@ export default function QualityPage() {
         <div>
           <div className="mb-1">
             <h1 className="min-w-0 text-lg font-bold text-mirai-text">
-              事業別 政策評価・執行透明性スコア
+              事業別 AI評価（独自基準・試行）・執行透明性スコア
               {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">2026年度は要求ベース（採点はシート2025・予算額は翌年度要求額・執行額なし）</span>}
             </h1>
+            <p className="mt-0.5 text-xs leading-relaxed text-mirai-text-muted">{AI_EVALUATION_NATURE}評価基準と判定方法はヘッダーの「説明」にあります。</p>
           </div>
           <p className="hidden text-sm text-mirai-text-muted mt-1 sm:block">
             {(() => {
@@ -793,12 +794,13 @@ ${a.desc}` })),
         {/* 指標の説明。フローに置くと展開したぶん表が押し下げられるので、絶対配置で表の上に重ねる */}
         {policyByPid && showGuide && (
         <p className="absolute left-4 right-4 top-full z-20 -mt-1 rounded-xl border border-mirai-border bg-card px-4 py-3 shadow-soft text-[11px] leading-5 text-mirai-text-subtle">
-        <span className="font-bold">政策評価</span>は「誰のどんな課題を、どの活動で、どう改善するか」がどれだけ明確に説明され、
-        その成果を検証できる状態かどうか。
+        <span className="font-bold">政策評価</span>は{AI_EVALUATION_NATURE}
+        成果設計・検証可能性（課題・活動・成果の道筋が説明され、検証できる状態か）に加え、費用対内容・代替困難性（公的支援の必要性と代替手段）を判定します。
         <span className="font-bold">執行透明性</span>は支出先が特定できるか・使途を説明できるか（支出先の明確さ55＋使途の説明45）。
         「収支の一致」は9割の事業が満点でほぼ定数だったため加重平均から外し、不一致（60点未満）だけをフラグとして拾っています。
         <span className="font-bold">総合点</span>は政策評価と執行透明性を統合した値です。
         推奨は絶対点ではなく<span className="font-bold">母集団内の順位帯</span>で切っています（総合点は中央に強く偏るため、絶対値では下位帯が空になる）。
+        下位にあることは、廃止が妥当であることを意味しません。
         「<span className="font-bold">縮小</span>」は事業の優劣ではなく<span className="font-bold">不用額</span>（予算と執行の乖離）に基づく計上額の見直しで、総合点には影響しません
         — 不用額の返納は適切な行動であり、減点すると使い切りを誘発するためです。
         単年度の不用は入札差金でも生じるため、縮小は<span className="font-bold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
