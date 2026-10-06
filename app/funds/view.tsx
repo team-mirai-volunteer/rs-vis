@@ -166,7 +166,7 @@ export default function FundsView() {
                 {filtered.map(({ f, signals }) => { const y = latestYear(f); const yrs = spendingYears(y); return <tr key={f.key} data-fund={f.key}
                   aria-selected={selectedKey === f.key}
                   onClick={() => setSelectedKey(f.key)} className={`cursor-pointer hover:bg-mirai-surface-teal/60 ${selectedKey === f.key ? 'bg-mirai-surface-teal/60' : ''}`}>
-                  <td className="max-w-[300px] px-2 py-1.5"><div className="truncate font-medium" title={f.name}>{f.name}</div><div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
+                  <td className="max-w-[260px] px-2 py-1.5 min-[1700px]:max-w-[300px]"><div className="truncate font-medium" title={f.name}>{f.name}</div><div className="truncate text-[11px] text-mirai-text-muted" title={`${f.owner} · ${f.ministry}`}>{f.owner} · {f.ministry}</div></td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yen(y.balance)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{yen(y.expense)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yrs === null ? '—' : `${yrs >= 100 ? Math.round(yrs).toLocaleString() : yrs.toFixed(1)}年分`}</td>
@@ -200,7 +200,7 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
 }) {
   const latestSheet = latestYear(f).sheetYear;
   return <aside aria-label={`${f.name} の詳細`}
-    className="fixed inset-0 z-50 overflow-y-auto bg-card p-4 text-xs lg:static lg:z-auto lg:min-h-0 lg:w-[440px] lg:shrink-0 lg:rounded-xl lg:border lg:border-mirai-border lg:shadow-soft">
+    className="fixed inset-0 z-50 overflow-y-auto bg-card p-4 text-xs lg:static lg:z-auto lg:min-h-0 lg:w-[380px] lg:shrink-0 min-[1700px]:w-[440px] lg:rounded-xl lg:border lg:border-mirai-border lg:shadow-soft">
     {/* 前後の基金へ（↑↓キーでも移れる） */}
     <div className="mb-2 flex items-center gap-1 border-b border-border pb-2">
       <Button variant="outline" size="xs" onClick={onPrev} disabled={!onPrev} aria-label="前の基金" className="border-mirai-border"><ChevronUp className="size-3.5" />前</Button>
@@ -292,7 +292,7 @@ function LongText({ title, text }: { title: string; text: string }) {
 function FundsOverview({ rows, signal, onSignal }: {
   rows: { f: Fund; signals: FundSignal[] }[]; signal: FundSignal | null; onSignal: (s: FundSignal | null) => void;
 }) {
-  return <aside aria-label="論点の概要" className="hidden min-h-0 w-[440px] shrink-0 overflow-y-auto rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:block">
+  return <aside aria-label="論点の概要" className="hidden min-h-0 w-[380px] shrink-0 overflow-y-auto min-[1700px]:w-[440px] rounded-xl border border-mirai-border bg-card p-4 text-xs shadow-soft lg:block">
     <h2 className="text-sm font-bold">論点ごとの基金</h2>
     <p className="mt-1 leading-relaxed text-mirai-text-muted">表の行を選ぶと、ここにその基金の詳細が出ます（↑↓キーで前後の基金に移れます）。論点を選ぶと表を絞り込みます。</p>
     <ul className="m-0 mt-3 list-none space-y-1 p-0">
