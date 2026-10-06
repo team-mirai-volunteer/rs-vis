@@ -14,7 +14,7 @@ export const FUND_SIGNAL_LABELS: Record<FundSignal, string> = {
   tenYears: '残高が支出の10年分以上',
   noSpending: '残高はあるが支出ゼロ',
   returned: '国庫返納あり',
-  ownershipOverOne: '保有割合が1超',
+  ownershipOverOne: '保有割合が100%超',
   inspection: '低執行の点検に該当',
 };
 
@@ -24,7 +24,7 @@ export const FUND_SIGNAL_DESCRIPTIONS: Record<FundSignal, string> = {
   tenYears: '年度初めの残高が、前年度の支出の10年分以上ある基金。造成したばかりで支出が立ち上がっていない基金も含まれる。',
   noSpending: '年度初めの残高があるのに、前年度の支出がゼロか記載がない基金。',
   returned: '前年度に国庫へ返納した額がある基金（使わない分を国に返したもの）。',
-  ownershipOverOne: '保有割合（基金残高 ÷ 今後の事業に必要な額）が1を超える基金。必要額より多く持っている。',
+  ownershipOverOne: '保有割合（基金残高 ÷ 今後の事業に必要な額）が100%を超える基金。必要額より多く持っている。',
   inspection: '基金シートの「低執行の基金の点検」で、実績が無い・事業を終えた・目的を失った・保有割合が1を大きく超える・使われる見込みが無い、のいずれかに該当すると府省が記載した基金。',
 };
 
@@ -59,7 +59,7 @@ export const INSPECTION_LABELS: Record<keyof Fund['inspection'], string> = {
   noRecentResult: '直近の実績が無い',
   ceasedOperations: '事業を終えている',
   lostPurpose: '目的を失っている',
-  ownershipFarAboveOne: '保有割合が1を大きく超える',
+  ownershipFarAboveOne: '保有割合が100%を大きく超える',
   unlikelyToBeUsed: '使われる見込みが無い',
 };
 
@@ -78,7 +78,7 @@ export const budgetLabel = (b: string | null) => (b ? BUDGET_LABELS[b] ?? b : '�
 /** 表の論点バッジ用の短い表記 */
 export const FUND_SIGNAL_SHORT: Record<FundSignal, string> = {
   newApplicationClosed: '受付終了後', pastEnd: '終了予定後', tenYears: '10年分超', noSpending: '支出ゼロ',
-  returned: '国庫返納', ownershipOverOne: '保有>1', inspection: '点検該当',
+  returned: '国庫返納', ownershipOverOne: '保有100%超', inspection: '点検該当',
 };
 
 /** 基金の運営の形態（基金シートの区分） */
@@ -99,3 +99,19 @@ export const OWNER_FORM_LABELS: Record<string, string> = {
   'authorized-corporation': '認可法人', 'specified-nonprofit-corporation': '特定非営利活動法人', others: 'その他',
 };
 export const formLabels = (codes: readonly string[], labels: Record<string, string>) => codes.map(c => labels[c] ?? c);
+
+/** 保有割合（比率）を%で表す。1.00 → 100% */
+export const ownershipPercent = (v: number | null) => (v === null ? '—' : `${(v * 100).toFixed(0)}%`);
+
+/** 基金一覧の列の説明（見出しにカーソルを合わせると出す） */
+export const FUND_COLUMN_DESCRIPTIONS: Record<string, string> = {
+  name: '基金の名前、基金を保有する法人（基金保有法人）、所管の府省。',
+  balance: '最新の基金シートに記載された年度末の基金残高（翌年度の初めの残高）。',
+  expense: '最新の基金シートに記載された前年度の支出の合計（事業費＋管理費）。',
+  years: '年度末の残高が、前年度の支出の何年分にあたるか。造成したばかりで支出が立ち上がっていない基金は大きく出る。',
+  returned: '前年度に、使わない分として国庫へ返納した額。',
+  adminRate: '前年度の支出に占める管理費（基金の運営にかかった費用）の割合。',
+  ownership: '保有割合。基金残高 ÷ 今後の事業に必要な額（府省の算定）。100%を超えると必要額より多く持っていることになる。',
+  endDate: '基金シートに記載された基金の終了予定日。',
+  signals: '確かめる手がかりとして当てはまる論点。カーソルを合わせると各論点の説明が出る。',
+};

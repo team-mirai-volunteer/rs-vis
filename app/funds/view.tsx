@@ -14,7 +14,7 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { unifiedProjectUrlForSheet } from '@/app/lib/unified-budget/links';
 import {
   BUSINESS_FORM_LABELS, FUND_SIGNALS, FUND_SIGNAL_DESCRIPTIONS, FUND_SIGNAL_LABELS, FUND_SIGNAL_SHORT, INSPECTION_LABELS, OPERATION_FORM_LABELS,
-  OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, latestYear, spendingYears,
+  FUND_COLUMN_DESCRIPTIONS, OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, latestYear, ownershipPercent, spendingYears,
   type FundSignal,
 } from '@/app/lib/funds';
 import type { Fund, FundsFile } from '@/types/funds';
@@ -139,7 +139,7 @@ export default function FundsView() {
             : <table className="w-full min-w-[880px] text-xs">
               <thead className="sticky top-0 z-10 bg-mirai-surface text-mirai-text-muted">
                 <tr>{[['基金・保有法人・府省', 'name'], ['残高', 'balance'], ['前年度支出', 'expense'], ['残高÷支出', 'years'], ['国庫返納', 'returned'], ['管理費率', 'adminRate'], ['保有割合', 'ownership'], ['終了予定', 'endDate'], ['論点', null]].map(([label, key]) =>
-                  <th key={label} className={`whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' && key !== 'endDate' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : ''}`}
+                  <th key={label} title={FUND_COLUMN_DESCRIPTIONS[key ?? 'signals']} className={`whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' && key !== 'endDate' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : 'cursor-help'}`}
                     onClick={key ? () => setSort(s => ({ key: key as SortKey, desc: s.key === key ? !s.desc : key !== 'name' && key !== 'endDate' })) : undefined}>
                     {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
               </thead>
@@ -152,7 +152,7 @@ export default function FundsView() {
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{yrs === null ? '—' : `${yrs >= 100 ? Math.round(yrs).toLocaleString() : yrs.toFixed(1)}年分`}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{y.returned ? yen(y.returned) : '—'}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{pct(y.adminRate)}</td>
-                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{y.ownership === null ? '—' : y.ownership.toFixed(2)}</td>
+                  <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{ownershipPercent(y.ownership)}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-mirai-text-subtle">{f.endDate ?? '—'}</td>
                   <td className="px-2 py-1.5"><div className="flex min-w-[9rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={`${FUND_SIGNAL_LABELS[s]}：${FUND_SIGNAL_DESCRIPTIONS[s]}`}
                     className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{FUND_SIGNAL_SHORT[s]}</span>)}</div></td>
@@ -196,7 +196,7 @@ function FundDetail({ fund: f, signals, onClose }: { fund: Fund; signals: FundSi
       <thead className="text-mirai-text-muted"><tr><th className="w-[30%] text-left font-normal" />{f.years.map(y => <th key={y.sheetYear} className="text-right font-normal">{fyLabel(y.sheetYear)}</th>)}</tr></thead>
       <tbody className="divide-y divide-border tabular-nums">
         {([['年度末の残高', y => yen(y.balance)], ['国からの交付', y => yen(y.granted)], ['支出', y => yen(y.expense)], ['うち管理費', y => yen(y.adminExpense)],
-          ['管理費率', y => pct(y.adminRate)], ['国庫返納', y => yen(y.returned)], ['乖離率', y => pct(y.divergence)], ['保有割合', y => (y.ownership === null ? '—' : y.ownership.toFixed(2))]] as [string, (y: Fund['years'][number]) => string][])
+          ['管理費率', y => pct(y.adminRate)], ['国庫返納', y => yen(y.returned)], ['乖離率', y => pct(y.divergence)], ['保有割合', y => ownershipPercent(y.ownership)]] as [string, (y: Fund['years'][number]) => string][])
           .map(([label, fmt]) => <tr key={label}><td className="py-1 text-mirai-text-muted">{label}</td>{f.years.map(y => <td key={y.sheetYear} className="py-1 text-right">{fmt(y)}</td>)}</tr>)}
       </tbody>
     </table>
