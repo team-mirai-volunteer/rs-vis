@@ -8,7 +8,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${process.env.BASE_URL || 'http://127.0.0.1:3000'}/tax-expenditures`);
-  await expect(page.getByRole('heading', { name: '法人税の特例は、どの制度でどれだけ使われている？', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '税優遇は、どこに届いている？', exact: true })).toBeVisible();
   await expect(page.getByRole('status')).toContainText('79 / 79');
   const switchView = async name => page.getByRole('navigation', { name: '租税特別措置の表示切替' }).getByRole('button', { name, exact: true }).click();
   await page.screenshot({ path: 'test-results/tax-expenditures/design-desktop.png' });
