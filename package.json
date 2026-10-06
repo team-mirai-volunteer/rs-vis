@@ -54,6 +54,7 @@
     "generate-sankey-svg-2025": "tsx scripts/generate-sankey-svg-data.ts 2025",
     "fetch-rs-funds": "node scripts/fetch-rs-api.mjs 2024 --sheet KS && node scripts/fetch-rs-api.mjs 2025 --sheet KS && node scripts/fetch-rs-api.mjs 2026 --sheet KS",
     "generate-funds": "npx tsx scripts/generate-funds.ts",
+    "generate-budget-execution-audit": "python scripts/generate-budget-execution-audit.py",
     "generate-recipient-external": "npx tsx scripts/generate-recipient-external.ts",
     "generate-contract-methods": "npx tsx scripts/generate-contract-methods.ts 2024 && npx tsx scripts/generate-contract-methods.ts 2025",
     "generate-others-counts": "npx tsx scripts/generate-others-counts.ts 2024 && npx tsx scripts/generate-others-counts.ts 2025",

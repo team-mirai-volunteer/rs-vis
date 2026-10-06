@@ -25,6 +25,7 @@ import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 import { ProjectFunds } from './ProjectFunds';
+import { ProjectBudgetExecutionAudit } from './ProjectBudgetExecutionAudit';
 
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
@@ -101,6 +102,8 @@ export function UnifiedProjectSections({
         detailLoading={scoreLoading}
       />
 
+      {/* 政府側の調査は AI評価の直後に置き、見比べられるようにする */}
+      {!isProvisional && <ProjectBudgetExecutionAudit pid={pid} scaleFont={scaleFont} />}
       {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} />}
 
       <ProjectOverviewSection
