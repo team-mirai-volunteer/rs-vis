@@ -179,9 +179,9 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-primary-accent">
               <Link href={rsViewUrl(`/subcontracts/${item.pid}`, sourceYear)} className="hover:underline">
-                委託構造ブラウザで見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗
+                委託構造ブラウザで見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}）`} ↗
               </Link>
-              <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗</Link>
+              <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}）`} ↗</Link>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
               <span className="tabular-nums bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
@@ -646,7 +646,7 @@ ${a.desc}`}>
 
           {recipientTab !== 'recipients' && (
             <div className="px-6 py-2">
-              {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の実績です。{year}年度の要求額・委託構造ではありません。</p>}
+              {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の値です。{fiscalYearLabel(year)}額・委託構造ではありません。</p>}
               <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} tab={recipientTab}
                 onSelectBlock={blockId => { setBlockFilter(blockId); setRecipientTab('recipients'); }} />
             </div>

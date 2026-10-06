@@ -1,7 +1,7 @@
 'use client';
 
 import { QualityHelp } from '@/client/components/quality/QualityHelp';
-import { fiscalYear, fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
+import { fiscalYear, fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -473,7 +473,7 @@ export default function QualityPage() {
               <summary className="cursor-pointer">集計方法</summary>
               <p className="mt-1 max-w-3xl leading-relaxed">
                 配下の RS事業の評価を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名から評価内訳・推奨の分布・配下事業を確認できます。
-                {isRequestYear && '2026年度は要求ベース（採点はシート2025）です。'}
+                {isRequestYear && '2026年度要求額ベースです（AI評価の対象は2024年度実績・2025年版レビューシート）。'}
               </p>
             </details>
           </div>
@@ -487,9 +487,9 @@ export default function QualityPage() {
           <div className="mb-1">
             <h1 className="min-w-0 text-lg font-bold text-mirai-text">
               事業別 AI評価（独自基準・試行）・執行透明性スコア
-              {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">2026年度は要求ベース（採点はシート2025・予算額は翌年度要求額・執行額なし）</span>}
+              {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">金額は2026年度要求額（執行額なし）。AI評価の対象は2024年度実績（2025年版レビューシート）</span>}
             </h1>
-            <p className="mt-0.5 text-xs leading-relaxed text-mirai-text-muted">{AI_EVALUATION_NATURE}評価基準と判定方法はヘッダーの「説明」にあります。</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-mirai-text-muted">{!isRequestYear && `AI評価の対象：${fiscalYearLabel(year)}（${rsSheetLabel(year)}）。`}{AI_EVALUATION_NATURE}評価基準と判定方法はヘッダーの「説明」にあります。</p>
           </div>
           <p className="hidden text-sm text-mirai-text-muted mt-1 sm:block">
             {(() => {

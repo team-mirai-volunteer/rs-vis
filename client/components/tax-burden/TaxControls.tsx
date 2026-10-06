@@ -119,7 +119,7 @@ export function TaxControls({ state, setState, hasConsumption, hasOecd, incidenc
     </CardHeader>
     <CardContent className="space-y-4">
       {!policy && <>
-        <label className="block space-y-2 text-sm"><span>制度モデル</span><select className={inputClass} value="2025" disabled aria-label="制度モデル"><option value="2025">2025年版（試作）</option></select></label>
+        <label className="block space-y-2 text-sm"><span>制度モデル</span><select className={inputClass} value="2025" disabled aria-label="制度モデル"><option value="2025">2025年の制度に基づく試算</option></select></label>
         <label className="block space-y-2 text-sm"><span>家族構成</span><select className={inputClass} value={state.household} onChange={e => set('household', e.target.value as TaxState['household'])}>
           {HOUSEHOLDS.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
         </select></label>

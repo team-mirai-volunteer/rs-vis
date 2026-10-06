@@ -241,7 +241,7 @@ function FundDetail({ fund: f, signals, onClose, onPrev, onNext, position }: {
           .map(([label, fmt]) => <tr key={label}><td className="py-1 text-mirai-text-muted">{label}</td>{f.years.map(y => <td key={y.sheetYear} className="py-1 text-right">{fmt(y)}</td>)}</tr>)}
       </tbody>
     </table>
-    <p className="mt-1 text-[10px] text-mirai-text-muted">年度は実績の年度（{f.years[0].sheetYear}〜{latestSheet}年版の基金シートの「前年度」の値）。残高はその年度の末の値です。</p>
+    <p className="mt-1 text-[10px] text-mirai-text-muted">年度は実績の年度です（{f.years[0].sheetYear}〜{latestSheet}年版基金シートに記載された「前年度」の値）。残高はその年度の末の値です。</p>
     {f.compositions.length > 0 && <>
       <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">造成の経緯（国費の投入）</h3>
       <ul className="m-0 list-none space-y-0.5 p-0">{f.compositions.map((c, i) => <li key={i} className="flex justify-between gap-2">

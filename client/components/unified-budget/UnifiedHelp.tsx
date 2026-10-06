@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { HeaderHelp } from '@/client/components/HeaderHelp';
 import { AI_EVALUATION_NATURE, AI_EVALUATION_TITLE, AXIS_META } from '@/client/components/quality/score-meta';
-import { fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
+import { fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
 /** プロンプトを書き出してあるシート年度。無い年度は最新の版を案内する */
 const PROMPT_YEARS = [2025, 2024];
@@ -31,7 +31,7 @@ export function PromptText({ sheetYear }: { sheetYear: number }) {
   const model = /^# 採点モデル: (.+)$/m.exec(text)?.[1];
   return <>
     {model && <p className="mt-2 text-mirai-text-secondary"><span className="font-bold">採点モデル</span>　{model}</p>}
-    <p className="mt-2 text-mirai-text-muted">{year}年版レビューシート（{fiscalYearLabel(year)}）の採点に使った全文です。</p>
+    <p className="mt-2 text-mirai-text-muted">{rsSheetLabel(year)}（{fiscalYearLabel(year)}）の採点に使った全文です。</p>
     {/* リンクは文の途中で折り返さないよう、独立した行に置く */}
     <p className="mt-1"><a href={`/policy-evaluation/prompt-${year}.txt`} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-primary underline underline-offset-4 hover:text-primary-accent">テキストで開く ↗</a></p>
     <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-mirai-surface p-2 text-[11px] leading-relaxed text-mirai-text-secondary">{text}</pre>
@@ -55,7 +55,7 @@ export function UnifiedHelp({ sheetYear }: { sheetYear: number }) {
         <h2 className="mb-2 mt-4 text-[13px] font-bold">データについて</h2>
         <ul className="m-0 list-disc space-y-1 pl-4 text-mirai-text-subtle">
           <li>会計〜目：財務省の予算書（当初・補正・決算）。事業〜支出先：行政事業レビューシート（RSシステム）。</li>
-          <li>RSシートの年度は「評価した事業の前年度の執行」を載せます（例：2025年版シート＝2024年度の執行）。</li>
+          <li>RSシートの年度は「評価した事業の前年度の執行」を載せます（例：2025年版レビューシート＝2024年度実績）。</li>
           <li>金額は円換算して集計し、画面では億円・兆円などに丸めて表示します。直接の支出と再委託は同じお金を二重に数えることがあるため、合算に注意してください。</li>
           <li>契約方式・所在地は RS公開API、法人の説明は Wikipedia・Wikidata（法人番号で一致したもの）から補っています。</li>
         </ul>

@@ -11,8 +11,14 @@ export function sheetYearFromParams(params: Pick<URLSearchParams, 'get'>, legacy
   return legacy === '2024' || legacy === '2025' || (allowRequest && legacy === '2026') ? legacy : '2025';
 }
 
+/** 画面の主表示（docs/年度表記ルール.md）。実績は「YYYY年度実績」、2026 は翌年度要求額なので「2026年度要求」 */
 export function fiscalYearLabel(sheetYear: string | number): string {
-  return `${fiscalYear(sheetYear)}年度${Number(sheetYear) === 2026 ? '（要求）' : ''}`;
+  return `${fiscalYear(sheetYear)}年度${Number(sheetYear) === 2026 ? '要求' : '実績'}`;
+}
+
+/** 補足に出す資料の版。2026 は 2025年版シートの要求額を指す */
+export function rsSheetLabel(sheetYear: string | number): string {
+  return `${Number(sheetYear) === 2026 ? 2025 : Number(sheetYear)}年版レビューシート`;
 }
 
 export function rsViewUrl(path: string, sheetYear: string | number): string {

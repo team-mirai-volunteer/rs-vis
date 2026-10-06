@@ -68,7 +68,7 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
 
   if (error) return <div className="py-3 text-xs" role="alert">予算の推移を取得できませんでした。<Button variant="link" className="ml-2 text-xs font-medium text-primary-accent" onClick={() => setAttempt(value => value + 1)}>再試行する</Button></div>;
   if (!data) return <p role="status" className="py-3 text-xs text-mirai-text-muted">予算の推移を読み込み中…</p>;
-  if (data.points.length === 0) return <p className="py-3 text-xs text-mirai-text-muted">2025年版にこの事業の予算推移の記載はありません。</p>;
+  if (data.points.length === 0) return <p className="py-3 text-xs text-mirai-text-muted">2025年版レビューシートにこの事業の予算推移の記載はありません。</p>;
 
   const firstYear = data.points[0].fiscalYear;
   const lastYear = data.points[data.points.length - 1].fiscalYear;
@@ -90,7 +90,7 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
       <div className="flex flex-wrap gap-x-2.5 text-[10px] text-mirai-text-secondary">
         {series.map(item => <span key={item.key} className="inline-flex items-center gap-1"><span aria-hidden="true" className="inline-block w-3 border-t-2" style={{ borderColor: item.color, borderStyle: item.dash ? 'dashed' : 'solid' }} />{item.label}</span>)}
       </div>
-      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] text-mirai-text-muted hover:underline" title={`RS ${data.sheetYear}年版の訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
+      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] text-mirai-text-muted hover:underline" title={`${data.sheetYear}年版レビューシートの訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
     </div>
     <div ref={chartRef} className="relative mt-1" onMouseLeave={() => setActiveYear(null)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setActiveYear(null); } }}>
     <svg width={width} height={CHART_H} viewBox={`0 0 ${width} ${CHART_H}`} className="block" role="group" aria-label={`${firstYear}〜${lastYear}年度の予算・執行額。グラフに触れると金額を表示します。`}>
