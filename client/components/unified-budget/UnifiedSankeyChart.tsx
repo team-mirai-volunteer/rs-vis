@@ -966,7 +966,7 @@ export function UnifiedSankeyChart({
 
               {tabs.length > 0 && (
                 <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', hasOverview && 'border-t border-border')}>
-                  <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-2 sm:flex sm:overflow-x-auto">
+                  <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-1 sm:flex sm:overflow-x-auto">
                     {tabs.map(({ id, label, count }) => (
                       <Button
                         key={id}
