@@ -90,7 +90,9 @@ const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld
 export default function LandingPage() {
   const featured = INSIGHTS.filter(i => i.featured);
   const rest = INSIGHTS.filter(i => !i.featured);
-  const scripted = DIET_QUESTIONS.filter(q => q.script).length;
+  // 台本つきを先に、残りをその後に（配列の相対順は保つ）
+  const questions = [...DIET_QUESTIONS].sort((a, b) => Number(!!b.script) - Number(!!a.script));
+  const scripted = questions.filter(q => q.script).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
@@ -233,7 +235,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">For the Diet</p>
-              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{DIET_QUESTIONS.length - scripted}本）</h2>
+              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付け、参考人への確認・大臣への問い・取る約束・切り返し・翌年の検証に分けています。
               </p>
@@ -250,7 +252,7 @@ export default function LandingPage() {
             </ol>
 
             <ol className="mt-6 space-y-3">
-              {DIET_QUESTIONS.map((q, index) => (
+              {questions.map((q, index) => (
                 <li key={q.theme}>
                   <details className="group rounded-2xl border border-mirai-border bg-card shadow-xs transition-colors hover:border-primary open:border-primary">
                     <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
