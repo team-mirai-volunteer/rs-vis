@@ -25,6 +25,7 @@ import { UnifiedSearch } from './UnifiedSearch';
 import type { ReactNode } from 'react';
 import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
+import { autoLabelFontPx, LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
@@ -872,8 +873,8 @@ export function UnifiedSankeyChart({
                   )}
                   {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える。各項目の途中では折り返さない（「予算事業」「ID 7」に割れないように） */}
                   {(selectedDetails.rsMinistry || selectedDetails.projectId !== undefined) && (
-                    <span className="flex flex-wrap gap-x-2 whitespace-nowrap text-[11px] text-mirai-text-muted">
-                      {selectedDetails.rsMinistry && <span>{selectedDetails.rsMinistry}</span>}
+                    <span className="flex min-w-0 flex-nowrap gap-x-2 whitespace-nowrap text-[11px] text-mirai-text-muted">
+                      {selectedDetails.rsMinistry && <span className="min-w-0 truncate" title={selectedDetails.rsMinistry}>{selectedDetails.rsMinistry}</span>}
                       {selectedDetails.projectId !== undefined && <span>予算事業ID {selectedDetails.projectId}</span>}
                       {isIndividualProject && headerYears !== null && <span title="継続年数（対象年度 − 開始年度 ＋ 1。評価一覧と同じ定義）">継続{headerYears}年</span>}
                     </span>
@@ -895,10 +896,11 @@ export function UnifiedSankeyChart({
               {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）は PC で 48%、縦 1000px 以上（フル HD）では 60% まで。
                   フル HD で、意見を閉じた状態なら基金と外部の検査の1行があってもスクロールなしで収まる高さ。超える分は中でスクロール */}
               {/* スマホでも畳まずに出す（開くボタンを探させない）。高さは 35% までで、超える分は中でスクロール */}
-              {/* 画面の高さに応じて上段の文字と図を縮める（1080px を 1 とし、最小 0.8）。利用者の文字サイズ設定（fontPx）はこの上に掛かる */}
+              {/* 上段の高さの配分は画面の高さで決める（フル HD では 60% で、意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない）。
+                  文字の縮小はラベル文字サイズと同じ規則（画面が小さいときだけ。フル HD では 1 のまま） */}
               <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{
-                maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 1000 ? '60%' : viewport.height >= 800 ? '50%' : '52%',
-                zoom: viewport.width < 640 ? 1 : Math.min(1, Math.max(0.8, viewport.height / 1080)),
+                maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '52%' : '55%',
+                zoom: viewport.width < 640 ? 1 : autoLabelFontPx(viewport.width, viewport.height + 72) / LABEL_FONT_PX_FULL_HD,
               }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}

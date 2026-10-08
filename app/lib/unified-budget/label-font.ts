@@ -10,11 +10,11 @@
 export const LABEL_FONT_PX_FULL_HD = 13;
 /** 自動で縮める下限。これより小さいと和文が読みにくい */
 export const LABEL_FONT_PX_AUTO_MIN = 10;
-/** 基準の表示領域（ブラウザのツールバーを除いたフル HD の内側） */
-const BASE_WIDTH = 1900;
-const BASE_HEIGHT = 1000;
+/** 基準の表示領域。フル HD のブラウザの内側（ツールバー・タブを除くと 1900×900 前後）で 13px のままになる値 */
+const BASE_WIDTH = 1800;
+const BASE_HEIGHT = 880;
 
-/** ブラウザの内側の幅・高さから、ラベル文字サイズの既定値（整数 px）を返す */
+/** ブラウザの内側の幅・高さから、ラベル文字サイズの既定値（整数 px）を返す。フル HD 以上では 13 のまま */
 export function autoLabelFontPx(innerWidth: number, innerHeight: number): number {
   if (!(innerWidth > 0) || !(innerHeight > 0)) return LABEL_FONT_PX_FULL_HD;
   const ratio = Math.min(innerWidth / BASE_WIDTH, innerHeight / BASE_HEIGHT, 1);

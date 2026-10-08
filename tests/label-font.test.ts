@@ -4,12 +4,13 @@ import { autoLabelFontPx, LABEL_FONT_PX_AUTO_MIN, LABEL_FONT_PX_FULL_HD } from '
 
 test('フル HD 以上では既定の 13px', () => {
   assert.equal(autoLabelFontPx(1920, 1000), LABEL_FONT_PX_FULL_HD);
+  assert.equal(autoLabelFontPx(1920, 900), LABEL_FONT_PX_FULL_HD, 'フル HD の実際のブラウザ（内側 1920×900 前後）でも 13 のまま');
   assert.equal(autoLabelFontPx(2560, 1300), LABEL_FONT_PX_FULL_HD, '大きい画面でも 13 より大きくしない');
 });
 
 test('ノート PC では高さ・幅の比で縮め、下限は 10px', () => {
-  assert.equal(autoLabelFontPx(1440, 820), 10, '1440×900（内側 820）: 幅の比 0.758 × 13 = 9.9 → 10');
-  assert.equal(autoLabelFontPx(1700, 900), 12, '1700×900: 高さの比 0.9 × 13 = 11.7 → 12');
+  assert.equal(autoLabelFontPx(1440, 820), 10, '1440×900（内側 820）: 幅の比 0.8 × 13 = 10.4 → 10');
+  assert.equal(autoLabelFontPx(1600, 800), 12, '1600×800: 高さの比 0.91 × 13 = 11.8 → 12');
 });
 
 test('小さい画面は下限で止める', () => {
