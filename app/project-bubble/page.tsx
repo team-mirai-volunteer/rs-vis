@@ -26,7 +26,7 @@ import type {
   ProjectMapSpendingRecipient, ProjectMapSpendingResponse,
 } from '@/types/project-map';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
-import { useClampedTooltipTop } from '@/client/hooks/useClampedTooltipTop';
+import { useFloatPosition } from '@/client/hooks/useFloatPosition';
 import { useProjectSortMetrics } from '@/client/hooks/useProjectSortMetrics';
 import type { ProjectSortMetric } from '@/app/lib/project-sort-metrics';
 
@@ -938,18 +938,16 @@ function Tooltip({
   /** 大きさがブロック差額のときだけ渡す。null = 算出不可・未取得 */
   blockDiff?: ProjectSortMetric | null;
 }) {
-  // 常にカーソルの右に出し、右端では内側に寄せる（左右を入れ替えない）。下端では高さぶん上に寄せる。
-  // 重なり順は左右のフロート列（z-30〜40）より上なので、パネルに重なってももぐらない
+  // カーソルの右に出し、右端に収まらなければ左に出す。狭い画面で左右とも収まらないときは、
+  // 端に寄せたうえでカーソルの下（か上）に出し、見ている丸をカードで隠さない。
+  // 重なり順は左右のフロート列（z-30）より上なので、パネルに重なってももぐらない
   const ref = useRef<HTMLDivElement>(null);
-  const top = useClampedTooltipTop(ref, y - 60);
+  const { left, top } = useFloatPosition(ref, x, y, -60);
   return (
     <div
       ref={ref}
       className="pointer-events-none absolute z-50 w-72 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
-      style={{
-        left: `min(${x + 14}px, calc(100% - ${288 + 8}px))`,
-        top,
-      }}
+      style={{ left, top }}
     >
       <div className="flex items-start gap-1.5">
         <span
@@ -1186,19 +1184,16 @@ function RecipientTooltip({
   /** RS シート年度。契約の概要（何に支払ったか）を引く */
   year: string;
 }) {
-  // 事業のツールチップと同じく、常にカーソルの右（右端では内側に寄せ、下端では上に寄せる）
+  // 事業のツールチップと同じ置き方（右 → 左 → 下 → 上の順でカーソルを隠さない）
   const ref = useRef<HTMLDivElement>(null);
-  const top = useClampedTooltipTop(ref, y - 40);
+  const { left, top } = useFloatPosition(ref, x, y, -40);
   // パネルの行ホバー（座標なし）ではツールチップを出さない。図上の強調だけで足りる
   if (x < 0) return null;
   return (
     <div
       ref={ref}
       className="pointer-events-none absolute z-50 w-64 rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
-      style={{
-        left: `min(${x + 14}px, calc(100% - ${256 + 8}px))`,
-        top,
-      }}
+      style={{ left, top }}
     >
       <div className="flex items-start gap-1.5">
         <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
