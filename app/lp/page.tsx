@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRight,
   ArrowUpRight,
+  ChartScatter,
   ChevronDown,
   ClipboardCheck,
   Gavel,
@@ -10,6 +12,8 @@ import {
   MessageSquareText,
   Network,
   PiggyBank,
+  ReceiptJapaneseYen,
+  Scale,
   Search,
   ShieldAlert,
   Timer,
@@ -19,11 +23,10 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
-import { PRODUCT_NAME } from '@/components/navigation/pages';
+import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { DIET_QUESTIONS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
 
 const TITLE = '国の予算は、ここまで見える。';
@@ -58,11 +61,29 @@ const INSIGHT_ICONS: Partial<Record<Insight['id'], LucideIcon>> = {
   'long-running': Landmark,
 };
 
+/** 主要ビューのアイコン（トップページと同じ対応） */
+const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
+  '/budget-sankey': Workflow,
+  '/project-bubble': ChartScatter,
+  '/quality': ClipboardCheck,
+  '/subcontracts': Network,
+  '/funds': PiggyBank,
+  '/tax-expenditures': ReceiptJapaneseYen,
+  '/tax-burden': Scale,
+  '/fiscal-space': Landmark,
+};
+
+/** Hero に載せるサンキー図の実画面（所管 → 事業 → 支出先、2024年度決算）。public/lp/sankey-preview.jpg */
+const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld=all&fnrs=0';
+
 /**
- * LP（ランディングページ）。サイトの各ビューから得られた示唆を数字で示し、
- * 国会質問・取材・市民の調査への使い方に誘導する。ツール本体は各ビューに任せる。
+ * LP（ランディングページ）。価値の説明と実画面 → 代表的な発見3件（残りは展開）→ 使い方 → 国会質問の例 → 想定読者・ビュー → 出典、の順。
+ * ツール本体は各ビューに任せる。数字と文言は insights.ts に集約。
  */
 export default function LandingPage() {
+  const featured = INSIGHTS.filter(i => i.featured);
+  const rest = INSIGHTS.filter(i => !i.featured);
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
       <AppHeader current="/" />
@@ -70,35 +91,69 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl rounded-3xl bg-mirai-gradient p-6 sm:p-10 lg:p-14">
-            <p className="mb-3 text-xs font-bold tracking-normal">チームみらい {PRODUCT_NAME}</p>
-            <h1 className="max-w-3xl text-3xl/10 font-bold tracking-normal sm:text-4xl/[3rem]">{TITLE}</h1>
-            <p className="mt-4 max-w-2xl text-[15px] leading-relaxed font-medium">
-              5,794事業・9.9万の支出先・354基金・外部の検査結果を、ひとつながりのデータにしました。
-              「誰に、いくら、どんな契約で」が1本の線で追えます。見つかった論点は、そのまま国会質問の材料になります。
-            </p>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-              <Button asChild size="lg">
-                <Link href="/budget-sankey">
-                  サンキー図を見る <ArrowRight />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="#questions">国会質問の例を読む</Link>
-              </Button>
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-mirai-gradient">
+            <div className="p-6 sm:p-10 lg:p-14 lg:pb-8">
+              <p className="mb-3 text-xs font-bold tracking-normal">チームみらい {PRODUCT_NAME}</p>
+              <h1 className="max-w-3xl text-3xl/10 font-bold tracking-normal sm:text-4xl/[3rem]">{TITLE}</h1>
+              <p className="mt-4 max-w-2xl text-[15px] leading-relaxed font-medium">
+                省庁から事業へ、事業から支出先へ。国の予算がどこへ流れたかを、1本の図で追えます。
+                5,794事業・9.9万の支出先・328基金・外部の検査結果まで、公開データをひとつながりにしました。
+              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mirai-text-subtle">
+                議員・政策秘書の質問づくり、記者・研究者の調査、気になる事業や企業を調べたい市民のために。
+              </p>
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+                <Button asChild size="lg">
+                  <Link href={PREVIEW_HREF}>
+                    予算の流れを見てみる <ArrowRight />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/quality">
+                    <Search /> 気になる事業・企業を調べる
+                  </Link>
+                </Button>
+              </div>
             </div>
 
-            <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {HERO_STATS.map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-black/10 bg-card/70 px-4 py-3">
-                  <dd className="font-lexend text-2xl font-medium tracking-normal text-mirai-text">
-                    {stat.value}
-                    <span className="ml-1 font-sans text-sm font-bold">{stat.unit}</span>
-                  </dd>
-                  <dt className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">{stat.label}</dt>
+            {/* 実画面 */}
+            <div className="px-4 pb-4 sm:px-8 sm:pb-8 lg:px-14 lg:pb-10">
+              <Link href={PREVIEW_HREF} className="group block overflow-hidden rounded-2xl border border-black/10 bg-card shadow-xs">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-mirai-border px-4 py-2 text-xs font-bold">
+                  <span className="text-mirai-text-muted">サンキー図（2024年度決算）</span>
+                  <span className="flex items-center gap-1">
+                    省庁 <ArrowRight className="size-3" aria-hidden="true" /> 事業 <ArrowRight className="size-3" aria-hidden="true" /> 支出先
+                  </span>
+                  <span className="ml-auto flex items-center gap-1 text-primary-accent">
+                    クリックして開く <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                  </span>
                 </div>
-              ))}
-            </dl>
+                <div className="relative aspect-[1200/470] w-full">
+                  <Image
+                    src="/lp/sankey-preview.jpg"
+                    alt="サンキー図の画面。左に省庁、中央に事業、右に支出先が並び、金額の太さで流れが結ばれている"
+                    fill
+                    sizes="(min-width: 1152px) 1040px, 100vw"
+                    className="object-cover object-left-top"
+                    priority
+                  />
+                  <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-card/90 px-2.5 py-0.5 text-xs font-bold shadow-xs sm:left-4 sm:top-3">① 省庁</span>
+                  <span className="pointer-events-none absolute left-[41%] top-2 rounded-full bg-card/90 px-2.5 py-0.5 text-xs font-bold shadow-xs sm:top-3">② 事業</span>
+                  <span className="pointer-events-none absolute right-2 top-2 rounded-full bg-card/90 px-2.5 py-0.5 text-xs font-bold shadow-xs sm:right-4 sm:top-3">③ 支出先</span>
+                </div>
+              </Link>
+              <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {HERO_STATS.map(stat => (
+                  <div key={stat.label} className="rounded-2xl border border-black/10 bg-card/70 px-4 py-3">
+                    <dd className="font-lexend text-2xl font-medium tracking-normal text-mirai-text">
+                      {stat.value}
+                      <span className="ml-1 font-sans text-sm font-bold">{stat.unit}</span>
+                    </dd>
+                    <dt className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">{stat.label}</dt>
+                  </div>
+                ))}
+              </dl>
+            </div>
           </div>
         </section>
 
@@ -107,30 +162,44 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">Insights</p>
-              <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきた8つのこと</h2>
+              <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                どれも各府省が自ら公表した数字の集計です。読み方の注意を添えているので、断定ではなく「確かめに行く入口」として使ってください。
+                各府省が自ら公表した数字の集計です。見出しは観測した事実で、解釈と読み方の注意を本文に書いています。まず代表的な3件、続けて残りの5件。
               </p>
             </div>
 
-            <ol className="grid gap-4 lg:grid-cols-2">
-              {INSIGHTS.map((insight, index) => (
+            <ol className="grid gap-4 lg:grid-cols-3">
+              {featured.map((insight, index) => (
                 <li key={insight.id}>
                   <InsightCard insight={insight} index={index + 1} />
                 </li>
               ))}
             </ol>
+
+            <details className="group">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-card px-5 py-2.5 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
+                残りの{rest.length}件を見る
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol className="mt-4 grid gap-4 lg:grid-cols-2" start={featured.length + 1}>
+                {rest.map((insight, index) => (
+                  <li key={insight.id}>
+                    <InsightCard insight={insight} index={featured.length + index + 1} />
+                  </li>
+                ))}
+              </ol>
+            </details>
           </div>
         </section>
 
-        {/* How to use in the Diet */}
-        <section aria-labelledby="diet-heading" className="px-4 py-10 sm:px-6 lg:px-8">
+        {/* How to use */}
+        <section id="howto" aria-labelledby="howto-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
             <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">For the Diet</p>
-              <h2 id="diet-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問に、3ステップで使う</h2>
+              <p className="text-sm font-bold text-primary-accent">How to</p>
+              <h2 id="howto-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">3ステップで、根拠つきの問いにする</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                数字はすべて公開データから再現できます。質問の根拠として示すときは、画面の共有URLをそのまま添えてください。
+                数字はすべて公開データから再現できます。質問や記事の根拠として示すときは、画面の共有URLをそのまま添えてください。
               </p>
             </div>
 
@@ -148,59 +217,70 @@ export default function LandingPage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
 
-            <div id="questions" className="mt-8">
-              <h3 className="text-lg font-bold tracking-normal">質問の例（10件）</h3>
-              <p className="mt-1 text-sm leading-relaxed text-mirai-text-subtle">
-                本問は「このサイトで分かっていること」を述べたうえで、公開データでは分からないことを問う形にしています。自明に見える問いでも、政府に数字で答えさせる価値があるものは残しています。テーマを開くと、再質問・問う価値・読み方の注意が出ます。
+        {/* Diet questions */}
+        <section id="questions" aria-labelledby="questions-heading" className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-2xl">
+              <p className="text-sm font-bold text-primary-accent">For the Diet</p>
+              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の例（10件）</h2>
+              <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
+                「このサイトで分かっていること」を述べたうえで、公開データでは分からないことを問う形にしています。自明に見える問いでも、政府に数字で答えさせる価値があるものは残しています。
               </p>
-              <ol className="mt-3 space-y-3">
-                {DIET_QUESTIONS.map((q, index) => (
-                  <li key={q.theme}>
-                    <details className="group rounded-2xl border border-mirai-border bg-background open:bg-card">
-                      <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
-                        <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <Badge variant="light" className="rounded-full">{q.theme}</Badge>
-                            <span className="text-xs text-mirai-text-muted">{q.target}</span>
-                          </span>
-                          <span className="mt-2 block text-xs font-bold text-primary-accent">このサイトで分かっていること</span>
-                          <ul className="mt-1 space-y-1 text-sm leading-relaxed text-mirai-text-subtle">
-                            {q.known.map(k => (
-                              <li key={k} className="flex gap-2">
-                                <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                                <span>{k}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          <span className="mt-2 block text-xs font-bold text-primary-accent">分からないので問う</span>
-                          <span className="mt-1 block text-sm leading-relaxed font-medium">{q.question}</span>
-                        </span>
-                        <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
-                      </summary>
-                      <div className="space-y-3 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
-                        <p>
-                          <span className="font-bold text-primary-accent">再質問：</span>
-                          {q.followUp}
-                        </p>
-                        <p>
-                          <span className="font-bold text-primary-accent">問う価値：</span>
-                          {q.why}
-                        </p>
-                        <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
-                          <span className="font-bold">読み方の注意：</span>
-                          {q.caveat}
-                        </p>
-                        <Link href={q.href} className="inline-flex items-center gap-1 font-bold text-primary-accent hover:underline">
-                          {q.linkLabel} <ArrowUpRight className="size-4" aria-hidden="true" />
-                        </Link>
-                      </div>
-                    </details>
-                  </li>
-                ))}
-              </ol>
             </div>
+            <ol className="mt-4 space-y-3">
+              {DIET_QUESTIONS.map((q, index) => (
+                <li key={q.theme}>
+                  <details className="group rounded-2xl border border-mirai-border bg-background open:bg-card">
+                    <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                      <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <Badge variant="light" className="rounded-full">{q.theme}</Badge>
+                          <span className="text-xs text-mirai-text-muted">{q.target}</span>
+                        </span>
+                        <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.summary}</span>
+                      </span>
+                      <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                    </summary>
+                    <div className="space-y-3 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">このサイトで分かっていること</p>
+                        <ul className="mt-1 space-y-1 text-mirai-text-subtle">
+                          {q.known.map(k => (
+                            <li key={k} className="flex gap-2">
+                              <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                              <span>{k}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">分からないので問う</p>
+                        <p className="mt-1 font-medium">{q.question}</p>
+                      </div>
+                      <p>
+                        <span className="font-bold text-primary-accent">再質問：</span>
+                        {q.followUp}
+                      </p>
+                      <p>
+                        <span className="font-bold text-primary-accent">問う価値：</span>
+                        {q.why}
+                      </p>
+                      <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
+                        <span className="font-bold">読み方の注意：</span>
+                        {q.caveat}
+                      </p>
+                      <Link href={q.href} className="inline-flex items-center gap-1 font-bold text-primary-accent hover:underline">
+                        {q.linkLabel} <ArrowUpRight className="size-4" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </details>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 
@@ -230,25 +310,29 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl space-y-4">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">Views</p>
-              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、8つの見方で</h2>
+              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{PRIMARY_PAGES.length}つの見方で</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {VIEWS.map(view => (
-                <Link
-                  key={view.href}
-                  href={view.href}
-                  className="group flex flex-col gap-2 rounded-2xl border border-mirai-border bg-card p-5 transition-colors hover:border-primary"
-                >
-                  <span className="flex items-center gap-2">
-                    <view.icon className="size-5 text-primary-accent" aria-hidden="true" />
-                    <span className="text-base font-bold">{view.label}</span>
-                  </span>
-                  <span className="flex-1 text-sm leading-relaxed text-mirai-text-subtle">{view.description}</span>
-                  <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent">
-                    開く <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                  </span>
-                </Link>
-              ))}
+              {PRIMARY_PAGES.map(page => {
+                const Icon = PAGE_ICONS[page.href] ?? Workflow;
+                return (
+                  <Link
+                    key={page.href}
+                    href={page.href}
+                    className="group flex flex-col gap-2 rounded-2xl border border-mirai-border bg-card p-5 transition-colors hover:border-primary"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className="size-5 shrink-0 text-primary-accent" aria-hidden="true" />
+                      <span className="text-base font-bold">{page.navLabel}</span>
+                      {page.prototype && <Badge variant="muted">試作</Badge>}
+                    </span>
+                    <span className="flex-1 text-sm leading-relaxed text-mirai-text-subtle">{page.description}</span>
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent">
+                      開く <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -264,7 +348,7 @@ export default function LandingPage() {
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">金額は府省の記載どおり。</span>
-                このサイトでは検証していません。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金の残高は2026年版基金シートの年度初め残高です。
+                このサイトでは検証していません。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">AI評価はスクリーニング。</span>
@@ -277,8 +361,8 @@ export default function LandingPage() {
             </ul>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/budget-sankey">
-                  サンキー図を見る <ArrowRight />
+                <Link href={PREVIEW_HREF}>
+                  予算の流れを見てみる <ArrowRight />
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
@@ -305,20 +389,13 @@ export default function LandingPage() {
 const STEPS = [
   { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
   { icon: ClipboardCheck, title: '根拠を固める', body: '事業の詳細で支出先・契約方式・落札率・5年の予算執行推移・検査院と予算執行調査の指摘を確かめ、共有URLを控える。' },
-  { icon: MessageSquareText, title: '質問する', body: '「数字（出典）→ 制度上の理由があるか → 改善の目標と期限」の順で問う。サポーターからの意見も同じ事業IDに集まる。' },
-] as const;
-
-const VIEWS = [
-  { href: '/budget-sankey', icon: Workflow, label: 'サンキー図', description: '会計 → 所管 → 項 → 目 → 事業 → 支出先を1本の流れで。' },
-  { href: '/quality', icon: ClipboardCheck, label: '評価一覧', description: 'AI評価・執行率・契約方式・外部の検査結果を事業ごとに。' },
-  { href: '/subcontracts', icon: Network, label: '委託構造', description: '再委託・再補助の段階と、合流する別財源。' },
-  { href: '/funds', icon: PiggyBank, label: '基金', description: '残高・支出・国庫返納・終了予定で論点ごとに絞り込む。' },
+  { icon: MessageSquareText, title: '問う', body: '「分かっている数字（出典）→ 公開データでは分からないこと → 改善の目標と期限」の順で問う。サポーターからの意見も同じ事業IDに集まる。' },
 ] as const;
 
 function InsightCard({ insight, index }: { insight: Insight; index: number }) {
   const Icon = INSIGHT_ICONS[insight.id] ?? Workflow;
   return (
-    <article className={cn('flex h-full flex-col gap-4 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6')}>
+    <article className="flex h-full flex-col gap-4 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
           <Icon className="size-5" aria-hidden="true" />
@@ -331,18 +408,24 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
       </div>
       <h3 className="text-lg/7 font-bold tracking-normal">{insight.title}</h3>
       <p className="text-[15px] leading-relaxed">{insight.body}</p>
-      <ul className="space-y-1.5 text-sm leading-relaxed text-mirai-text-subtle">
-        {insight.points.map(point => (
-          <li key={point} className="flex gap-2">
-            <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
-            <span>{point}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
-        <span className="font-bold">読み方の注意：</span>
-        {insight.caveat}
-      </p>
+      <details className="group/more text-sm leading-relaxed text-mirai-text-subtle">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-bold text-primary-accent [&::-webkit-details-marker]:hidden">
+          内訳と読み方の注意
+          <ChevronDown className="size-4 transition-transform group-open/more:rotate-180" aria-hidden="true" />
+        </summary>
+        <ul className="mt-2 space-y-1.5">
+          {insight.points.map(point => (
+            <li key={point} className="flex gap-2">
+              <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
+          <span className="font-bold">読み方の注意：</span>
+          {insight.caveat}
+        </p>
+      </details>
       <div className="mt-auto flex flex-col gap-2 border-t border-mirai-border pt-4">
         <p className="text-xs text-mirai-text-muted">{insight.source}</p>
         <Link href={insight.href} className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent hover:underline">
