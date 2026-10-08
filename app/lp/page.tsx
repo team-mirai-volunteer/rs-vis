@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -51,7 +52,13 @@ export const metadata: Metadata = {
     images: [{ url: new URL('/og/home.png', SITE_URL).href, width: 1200, height: 630, alt: `${TITLE} — チームみらい ${PRODUCT_NAME}` }],
   },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [new URL('/og/home.png', SITE_URL).href] },
+  // 試案のため検索エンジンに載せない（dev のプレビューでのみ公開）
+  robots: { index: false, follow: false },
 };
+
+/** 集計日とデータの版。数字を更新したら insights.ts と一緒に変える */
+const DATA_ASOF = '2026-10-08';
+const DATA_VERSIONS = '2025年版レビューシート（2024年度実績）・2026年版基金シート（2025年度末残高）・RS公開API 2024〜2026年版の契約方式・財務省 租税特別措置の適用実態（2024年度）';
 
 /** 示唆カードの先頭アイコン。未登録は Workflow にフォールバック */
 const INSIGHT_ICONS: Partial<Record<Insight['id'], LucideIcon>> = {
@@ -88,6 +95,8 @@ const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld
  * ツール本体は各ビューに任せる。数字と文言は insights.ts に集約。
  */
 export default function LandingPage() {
+  // dev ブランチのプレビューとローカルでのみ公開する。本番（main）では 404
+  if (process.env.VERCEL_ENV === 'production') notFound();
   const featured = INSIGHTS.filter(i => i.featured);
   const rest = INSIGHTS.filter(i => !i.featured);
   // 台本つきを先に、残りをその後に（配列の相対順は保つ）
@@ -174,7 +183,7 @@ export default function LandingPage() {
               <p className="text-sm font-bold text-primary-accent">Insights</p>
               <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                各府省が自ら公表した数字の集計です。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
+                各府省が自ら公表した数字の集計です（集計日 {DATA_ASOF}）。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
               </p>
             </div>
 
@@ -238,6 +247,10 @@ export default function LandingPage() {
               <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体はチームみらいの実際の質疑の型（政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する）に揃えています。
+              </p>
+              <p className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm leading-relaxed">
+                <span className="font-bold">これは試案です。</span>
+                公開データの集計から組み立てた質問の例であり、チームみらいの議員が実際に行う質問の予定や、党の公式見解を示すものではありません。数字は{DATA_ASOF}時点の集計（{DATA_VERSIONS}）で、各カードの「読み方の注意」に前提を書いています。
               </p>
             </div>
 
@@ -405,15 +418,18 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
             <h2 id="data-heading" className="text-2xl/8 font-bold tracking-normal">データについて</h2>
             <ul className="mt-4 grid gap-3 text-sm leading-relaxed text-mirai-text-subtle md:grid-cols-2">
-              <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">出典。</span>
-                <SourceLink href="https://rssystem.go.jp/">行政事業レビューシステム</SourceLink>（レビューシート・基金シート・セグメントシート・公開API）、
-                <SourceLink href="https://www.bb.mof.go.jp/">財務省 予算書・決算書データベース</SourceLink>、
-                <SourceLink href="https://report.jbaudit.go.jp/">会計検査院 決算検査報告</SourceLink>、
-                <SourceLink href="https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/">財務省 予算執行調査</SourceLink>、
-                <SourceLink href="https://www.mof.go.jp/tax_policy/reference/stm_report/">租税特別措置の適用実態調査</SourceLink>、
-                <SourceLink href="https://www.e-stat.go.jp/">家計調査（e-Stat）</SourceLink>。
-                各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。
+              <li className="rounded-xl bg-mirai-surface p-4 md:col-span-2">
+                <span className="font-bold text-mirai-text">出典と利用条件。</span>
+                各データは次の公開元から取得し、出典を明記して加工しています。集計日は{DATA_ASOF}、対象は{DATA_VERSIONS}。
+                <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {SOURCES.map(src => (
+                    <li key={src.name} className="flex flex-col">
+                      <SourceLink href={src.href}>{src.name}</SourceLink>
+                      <span className="text-xs text-mirai-text-muted">{src.terms}</span>
+                    </li>
+                  ))}
+                </ul>
+                <span className="mt-2 block text-xs text-mirai-text-muted">各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。</span>
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">金額は府省の記載どおり。</span>
@@ -446,14 +462,25 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <p className="font-bold">チームみらい</p>
           <p className="mt-1 text-white/80">
-            データは行政事業レビューシステム（RS）と財務省 予算書・決算書データベースの公開データを加工したものです。
-            AI による評価はスクリーニングであり、結論ではありません。
+            出典：行政事業レビュー見える化サイト（内閣官房）、財務省 予算書・決算書データベース ほか。公開データを当サイトで編集・加工しています（公共データ利用規約 PDL1.0）。
+            AI による評価はスクリーニングであり、結論ではありません。このページは試案で、チームみらいの公式見解や質問の予定を示すものではありません。
           </p>
         </div>
       </footer>
     </div>
   );
 }
+
+/** 出典と利用条件。利用規約は公開元の表示に従う（確認日 2026-10-08） */
+const SOURCES = [
+  { name: '行政事業レビュー見える化サイト（RSシステム）', href: 'https://rssystem.go.jp/terms', terms: 'レビューシート・基金シート・セグメントシート・公開API。公共データ利用規約（PDL1.0）。出典「行政事業レビュー見える化サイト」を明記し、編集・加工した旨を表示' },
+  { name: '財務省 予算書・決算書データベース', href: 'https://www.bb.mof.go.jp/', terms: '政府標準利用規約（第2.0版）。出典を明記し、編集・加工した旨を表示' },
+  { name: '会計検査院 検査報告データベース', href: 'https://report.jbaudit.go.jp/', terms: '政府標準利用規約（PDL1.0相当）。出典「会計検査院Webサイト」、加工時は明記' },
+  { name: '財務省 予算執行調査', href: 'https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/', terms: '政府標準利用規約（PDL1.0相当）。出典を明記' },
+  { name: '財務省 租税特別措置の適用実態調査', href: 'https://www.mof.go.jp/tax_policy/reference/stm_report/', terms: '政府標準利用規約。原表Excelの行番号と原本のハッシュを保持' },
+  { name: '総務省 家計調査（e-Stat）', href: 'https://www.e-stat.go.jp/', terms: '政府統計の総合窓口の利用規約。出典を明記' },
+  { name: '国税庁 法人番号公表サイト／Wikidata／Wikipedia', href: 'https://www.houjin-bangou.nta.go.jp/', terms: '法人番号は公表情報。Wikidata は CC0、Wikipedia の冒頭文は CC BY-SA 4.0 で出典とリンクを表示' },
+] as const;
 
 const STEPS = [
   { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
