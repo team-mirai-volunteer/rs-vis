@@ -50,7 +50,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
       <div className={cn(!bare && 'shrink-0 border-b border-border px-3.5 pb-2.5 pt-2')} data-testid="project-comments-disabled">
         <div className="flex items-center gap-2">
           <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(13) }}>みんなの意見</span>
-          <span className="text-mirai-text-placeholder" style={{ fontSize: META_PX }}>この環境では無効（Supabase 未設定）</span>
+          <span className="whitespace-nowrap text-mirai-text-placeholder" style={{ fontSize: META_PX }} title="コメント機能に必要な Supabase の接続情報がこの環境に無いため">この環境では無効</span>
           <span className="flex-1" />
           <Button variant="default" size="xs" disabled title="この環境では事業コメント機能が無効です" style={{ fontSize: META_PX }}>
             意見を伝える
