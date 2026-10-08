@@ -103,9 +103,6 @@ export function UnifiedProjectSections({
         detailLoading={scoreLoading}
       />
 
-      {/* 政府・検査機関による調査は件数だけを AI評価の直後に出し、全文は政策評価の詳細（ScoreDetailDialog）に置く */}
-      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} />}
-      {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} />}
       {!isProvisional && <ProjectAgencySegments pid={pid} rsSheetYear={rsSheetYear} scaleFont={scaleFont} />}
 
       <ProjectOverviewSection
@@ -124,6 +121,9 @@ export function UnifiedProjectSections({
       <div className="border-t border-border px-4">
         <ProjectBudgetHistory key={pid} pid={pid} />
       </div>
+      {/* 推移の下に、外部の検査と関連する基金を件数だけの1行で。全文は政策評価の詳細（ScoreDetailDialog）と基金一覧に置く */}
+      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} padding="px-4 py-2" />}
+      {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} padding="px-4 py-2" />}
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
     </div>

@@ -41,7 +41,8 @@ import { withProvisionalSpending } from '@/app/lib/unified-budget/provisional';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
-import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
+import { UnifiedSankeyChart } from '@/client/components/unified-budget/UnifiedSankeyChart';
+import { autoLabelFontPx, LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
 import { UnifiedHelp } from '@/client/components/unified-budget/UnifiedHelp';
 import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
@@ -218,7 +219,18 @@ function UnifiedBudgetSankeyContent() {
   const [programSort, setProgramSort] = useState<UnifiedProgramSort>(() => parseProgramSort(searchParams.get('sort')));
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
-  const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
+  /** 利用者が明示した文字サイズ（URL の fs）。null は自動（画面の大きさから決める） */
+  const [fontPxOverride, setFontPxOverride] = useState<number | null>(() => Number(searchParams.get('fs')) || null);
+  const [autoFontPx, setAutoFontPx] = useState(LABEL_FONT_PX_FULL_HD);
+  useEffect(() => {
+    const update = () => setAutoFontPx(autoLabelFontPx(window.innerWidth, window.innerHeight));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  const fontPx = fontPxOverride ?? autoFontPx;
+  // 自動の値に戻したときは明示をやめる（URL にも載せない）
+  const setFontPx = useCallback((value: number) => setFontPxOverride(value === autoFontPx ? null : value), [autoFontPx]);
   const [flowScale, setFlowScale] = useState(() => parseFlowScale(searchParams.get('th')));
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
@@ -365,14 +377,14 @@ function UnifiedBudgetSankeyContent() {
     if (programSort !== 'amount') params.set('sort', SORT_KEY[programSort]);
     if (selectedId) params.set('sel', selectedId);
     if (focusRelated) params.set('fr', '1');
-    if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
+    if (fontPxOverride !== null) params.set('fs', String(fontPxOverride));
     if (flowScale !== FLOW_SCALE_DEFAULT) params.set('th', String(Number((flowScale * FLOW_SCALE_BASE).toFixed(8))));
     params.set('ld', labelDensity);
     serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, programSort, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, programSort, selectedId, focusRelated, fontPxOverride, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -388,7 +400,7 @@ function UnifiedBudgetSankeyContent() {
       setProgramSort(parseProgramSort(params.get('sort')));
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
-      setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
+      setFontPxOverride(Number(params.get('fs')) || null);
       setFlowScale(parseFlowScale(params.get('th')));
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
@@ -431,7 +443,7 @@ function UnifiedBudgetSankeyContent() {
       placement={placement}
       fontPx={fontPx}
       onFontPxChange={setFontPx}
-      defaultFontPx={LABEL_FONT_PX_DEFAULT}
+      defaultFontPx={autoFontPx}
       flowScale={flowScale}
       onFlowScaleChange={setFlowScale}
       labelDensity={labelDensity}

@@ -14,7 +14,7 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { unifiedProjectUrlForSheet } from '@/app/lib/unified-budget/links';
 import {
   BUSINESS_FORM_LABELS, FUND_SIGNALS, FUND_SIGNAL_DESCRIPTIONS, FUND_SIGNAL_LABELS, FUND_SIGNAL_SHORT, INSPECTION_LABELS, OPERATION_FORM_LABELS,
-  FUND_COLUMN_DESCRIPTIONS, OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, latestYear, ownershipPercent, spendingYears,
+  FUND_COLUMN_DESCRIPTIONS, OWNER_FORM_LABELS, budgetLabel, formLabels, fundSignals, fundsOfProject, latestYear, ownershipPercent, spendingYears,
   type FundSignal,
 } from '@/app/lib/funds';
 import type { Fund, FundsFile } from '@/types/funds';
@@ -55,12 +55,16 @@ export default function FundsView() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   // 既定は最新のシート年度に載っている基金だけ。以前の年度だけに載っている基金（終了・未提出）を足すと年度の違う数字が混ざる
   const [includeOlder, setIncludeOlder] = useState(false);
+  /** 事業の詳細パネルから来たとき（?pid=）、その事業が造成元・関連の基金だけに絞る */
+  const [pidFilter, setPidFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/funds').then(r => (r.ok ? r.json() : null)).then(setData).catch(() => setData(null));
     const p = new URLSearchParams(window.location.search);
     setSelectedKey(p.get('fund'));
     setIncludeOlder(p.get('older') === '1');
+    const pid = p.get('pid');
+    if (pid && /^\d{1,12}$/.test(pid)) setPidFilter(String(Number(pid)));
     const s = p.get('signal');
     if (s && (FUND_SIGNALS as string[]).includes(s)) setSignal(s as FundSignal);
   }, []);
@@ -71,13 +75,15 @@ export default function FundsView() {
     if (selectedKey) p.set('fund', selectedKey);
     if (signal) p.set('signal', signal);
     if (includeOlder) p.set('older', '1');
+    if (pidFilter) p.set('pid', pidFilter);
     window.history.replaceState(null, '', `/funds${p.toString() ? `?${p}` : ''}`);
-  }, [selectedKey, signal, includeOlder, data]);
+  }, [selectedKey, signal, includeOlder, pidFilter, data]);
 
   const currentYear = useMemo(() => Math.max(0, ...(data?.funds ?? []).map(f => latestYear(f).sheetYear)), [data]);
   const olderCount = useMemo(() => (data?.funds ?? []).filter(f => latestYear(f).sheetYear < currentYear).length, [data, currentYear]);
-  const rows = useMemo(() => (data?.funds ?? []).filter(f => includeOlder || latestYear(f).sheetYear === currentYear)
-    .map(f => ({ f, signals: fundSignals(f) })), [data, includeOlder, currentYear]);
+  const rows = useMemo(() => (pidFilter ? fundsOfProject(data?.funds ?? [], pidFilter) : data?.funds ?? [])
+    .filter(f => includeOlder || pidFilter || latestYear(f).sheetYear === currentYear)
+    .map(f => ({ f, signals: fundSignals(f) })), [data, includeOlder, pidFilter, currentYear]);
   const ministries = useMemo(() => [...new Set(rows.map(r => r.f.ministry))].filter(Boolean).sort(), [rows]);
   const counts = useMemo(() => Object.fromEntries(FUND_SIGNALS.map(s => [s, rows.filter(r => r.signals.includes(s))])) as Record<FundSignal, typeof rows>, [rows]);
   const filtered = useMemo(() => {
@@ -149,6 +155,8 @@ export default function FundsView() {
           <label className="flex items-center gap-1 text-mirai-text-subtle" title="最新のシート年度に載っていない基金（終了した・シートが出ていないもの）。残高や支出は、その基金が最後に載った年度の値です">
             <input type="checkbox" checked={includeOlder} onChange={e => setIncludeOlder(e.target.checked)} />以前の年度だけに載っている基金も表示（{olderCount}件）
           </label>
+          {pidFilter && <Button variant="outline" size="xs" onClick={() => setPidFilter(null)} className="h-7 rounded-full border-primary bg-mirai-surface-teal px-2 text-xs font-medium text-primary-accent" title="事業の詳細パネルから開いた絞り込みを解除する">
+            予算事業ID {pidFilter} に関連する基金だけ <X className="size-3" /></Button>}
           <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
         </div>
         {/* 論点の絞り込み。切り替えなのでグラデ（主要操作用）は使わず、選択中はティールの面と枠で示す */}

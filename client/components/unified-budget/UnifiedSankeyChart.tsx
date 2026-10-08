@@ -892,9 +892,14 @@ export function UnifiedSankeyChart({
               </div>
 
               {hasOverview && <>
-              {/* 上段（事業概要・評価・推移）は PC で 48% まで。フル HD のブラウザ（表示領域 900px 前後）で、意見を閉じた状態ならスクロールなしで収まる高さ。残りを下段の予算・ブロック・支出先タブに確保する */}
+              {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）は PC で 48%、縦 1000px 以上（フル HD）では 60% まで。
+                  フル HD で、意見を閉じた状態なら基金と外部の検査の1行があってもスクロールなしで収まる高さ。超える分は中でスクロール */}
               {/* スマホでも畳まずに出す（開くボタンを探させない）。高さは 35% までで、超える分は中でスクロール */}
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : '48%' }}>
+              {/* 画面の高さに応じて上段の文字と図を縮める（1080px を 1 とし、最小 0.8）。利用者の文字サイズ設定（fontPx）はこの上に掛かる */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{
+                maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 1000 ? '60%' : viewport.height >= 800 ? '50%' : '52%',
+                zoom: viewport.width < 640 ? 1 : Math.min(1, Math.max(0.8, viewport.height / 1080)),
+              }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
                 {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&
