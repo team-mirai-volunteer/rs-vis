@@ -626,12 +626,13 @@ export default function ProjectMapPage() {
       </div>
 
       {/* ── 左フロート列: 絞り込み（最上段）＋ 表示切替。幅を絞って中央を図に明け渡す。
-             sm 未満ではボトムシート（全幅・高さ 55vh）にして、左上のボタンで開閉する ── */}
+             lg 未満（1024px）ではボトムシート（全幅）にして、左上のボタンで開閉する。
+             sm〜lg で左右に出すと左の列（360px）と右の凡例（288px）で図の大半を占めて重なるため、タブレットも畳む ── */}
       <div
         className={cn(
           'pointer-events-none absolute z-30 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto',
           'inset-x-3 bottom-3 max-h-[calc(100dvh-var(--app-header-h)-24px)]',
-          'sm:bottom-auto sm:left-3 sm:right-auto sm:top-3 sm:flex sm:max-h-[calc(100%-24px)] sm:w-[360px]',
+          'lg:bottom-auto lg:left-3 lg:right-auto lg:top-3 lg:flex lg:max-h-[calc(100%-24px)] lg:w-[360px]',
           selected || lockedRecipient ? 'xl:grid xl:w-[660px] xl:grid-cols-[268px_384px] xl:items-start xl:overflow-visible' : 'xl:w-[268px]',
           mobilePanelOpen || selected || lockedRecipient ? 'flex' : 'hidden'
         )}
@@ -641,7 +642,7 @@ export default function ProjectMapPage() {
       <div className="contents xl:col-start-1 xl:flex xl:min-w-0 xl:flex-col xl:gap-2">
       {/* 絞り込み。見出しは置かず、検索を先頭にする */}
       {data && !loading && (
-          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-sm:hidden")}>
+          <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-lg:hidden")}>
             <div className="flex flex-col gap-1.5">
               <input
                 type="search"
@@ -692,7 +693,7 @@ export default function ProjectMapPage() {
       )}
 
       {/* 表示切替（色・大きさ）。sm 未満で事業・支出先の詳細を開いたときは、絞り込みと同じく詳細だけを出す */}
-      <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-sm:hidden")}>
+      <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-lg:hidden")}>
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2 text-xs">
           <span className="text-mirai-text-subtle">色</span>
           <select
@@ -799,7 +800,7 @@ export default function ProjectMapPage() {
 
       {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
       {/* 詳細のシート（z-30）やホバーカード（z-50）より下に置く。シートが上まで伸びたときはボタンが隠れてよい（シートの × で閉じる） */}
-      <div className="absolute left-3 top-3 z-20 sm:hidden">
+      <div className="absolute left-3 top-3 z-20 lg:hidden">
         <Button
           variant="outline"
           size="icon"
@@ -812,9 +813,9 @@ export default function ProjectMapPage() {
         </Button>
       </div>
 
-      {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない ── */}
+      {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない。lg 未満でシートを開いている間も隠す（シートと重なるため） ── */}
       {data && !loading && isSpending && (
-        <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <SpendingControls
             data={spendData}
             shown={visibleRecipients.length}
@@ -854,7 +855,7 @@ export default function ProjectMapPage() {
       )}
 
       {data && !loading && !isSpending && (
-        <aside className="pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex">
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <Legend
             entries={legend}
             mode={colorMode}
@@ -868,7 +869,7 @@ export default function ProjectMapPage() {
 
       {/* ── 表ビュー（図と同じ内容の、色に依存しない読み方）。下から重ねる ── */}
       {data && !loading && showTable && (
-        <div className="absolute inset-x-3 bottom-3 z-30 sm:right-[308px]">
+        <div className="absolute inset-x-3 bottom-3 z-30 lg:right-[308px]">
           <TableView
             points={filtered}
             clusterById={clusterById}
