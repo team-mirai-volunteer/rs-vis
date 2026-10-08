@@ -84,6 +84,7 @@ const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld
 export default function LandingPage() {
   const featured = INSIGHTS.filter(i => i.featured);
   const rest = INSIGHTS.filter(i => !i.featured);
+  const scripted = DIET_QUESTIONS.filter(q => q.script).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
@@ -165,7 +166,7 @@ export default function LandingPage() {
               <p className="text-sm font-bold text-primary-accent">Insights</p>
               <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                各府省が自ら公表した数字の集計です。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な3件、続けて残りの5件。
+                各府省が自ら公表した数字の集計です。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
               </p>
             </div>
 
@@ -226,7 +227,7 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">For the Diet</p>
-              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき5本＋5本）</h2>
+              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{DIET_QUESTIONS.length - scripted}本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付け、参考人への確認・大臣への問い・取る約束・切り返し・翌年の検証に分けています。
               </p>
