@@ -16,6 +16,7 @@ import {
   Scale,
   Search,
   ShieldAlert,
+  Target,
   Timer,
   TrendingUp,
   Users,
@@ -58,7 +59,7 @@ const INSIGHT_ICONS: Partial<Record<Insight['id'], LucideIcon>> = {
   subcontract: Network,
   audit: ClipboardCheck,
   'defense-growth': TrendingUp,
-  'long-running': Landmark,
+  outcomes: Target,
 };
 
 /** 主要ビューのアイコン（トップページと同じ対応） */
@@ -164,7 +165,7 @@ export default function LandingPage() {
               <p className="text-sm font-bold text-primary-accent">Insights</p>
               <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                各府省が自ら公表した数字の集計です。見出しは観測した事実で、解釈と読み方の注意を本文に書いています。まず代表的な3件、続けて残りの5件。
+                各府省が自ら公表した数字の集計です。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な3件、続けて残りの5件。
               </p>
             </div>
 
@@ -344,7 +345,13 @@ export default function LandingPage() {
             <ul className="mt-4 grid gap-3 text-sm leading-relaxed text-mirai-text-subtle md:grid-cols-2">
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">出典。</span>
-                行政事業レビューシステム（レビューシート・基金シート・セグメントシート・公開API）、財務省 予算書・決算書データベース、会計検査院 決算検査報告、財務省 予算執行調査、租税特別措置の適用実態調査、家計調査。各画面に取得日と原本のハッシュを記録しています。
+                <SourceLink href="https://rssystem.go.jp/">行政事業レビューシステム</SourceLink>（レビューシート・基金シート・セグメントシート・公開API）、
+                <SourceLink href="https://www.bb.mof.go.jp/">財務省 予算書・決算書データベース</SourceLink>、
+                <SourceLink href="https://report.jbaudit.go.jp/">会計検査院 決算検査報告</SourceLink>、
+                <SourceLink href="https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/">財務省 予算執行調査</SourceLink>、
+                <SourceLink href="https://www.mof.go.jp/tax_policy/reference/stm_report/">租税特別措置の適用実態調査</SourceLink>、
+                <SourceLink href="https://www.e-stat.go.jp/">家計調査（e-Stat）</SourceLink>。
+                各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">金額は府省の記載どおり。</span>
@@ -356,7 +363,7 @@ export default function LandingPage() {
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">対象は国の予算の約27%。</span>
-                国債費・地方交付税・年金給付・財政投融資は行政事業レビューの対象外で、サンキー図では「RS対象外」として別に示しています。
+                分母は2023年度の財務省予算書の歳出総額555.5兆円（一般会計と特別会計の合計。会計間の繰入れを重複して含む）、分子は同年度の行政事業レビュー対象事業の歳出予算現額151.1兆円です。冒頭の147.6兆円は2024年度の対象事業の予算現額です。国債費・地方交付税・年金給付・財政投融資はレビューの対象外で、サンキー図では「RS対象外」として別に示しています。
               </li>
             </ul>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -407,24 +414,21 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
         <p className="mt-1 text-xs font-medium text-mirai-text-subtle">{insight.figureNote}</p>
       </div>
       <h3 className="text-lg/7 font-bold tracking-normal">{insight.title}</h3>
-      <p className="text-[15px] leading-relaxed">{insight.body}</p>
-      <details className="group/more text-sm leading-relaxed text-mirai-text-subtle">
+      <FactList label="分かった事実" items={insight.facts.slice(0, 2)} />
+      <details className="group/more text-sm leading-relaxed">
         <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-bold text-primary-accent [&::-webkit-details-marker]:hidden">
-          内訳と読み方の注意
+          続きと、まだ分からないこと
           <ChevronDown className="size-4 transition-transform group-open/more:rotate-180" aria-hidden="true" />
         </summary>
-        <ul className="mt-2 space-y-1.5">
-          {insight.points.map(point => (
-            <li key={point} className="flex gap-2">
-              <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
-              <span>{point}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
-          <span className="font-bold">読み方の注意：</span>
-          {insight.caveat}
-        </p>
+        <div className="mt-3 space-y-3">
+          {insight.facts.length > 2 && <FactList items={insight.facts.slice(2)} />}
+          <FactList label="まだ分からないこと" items={insight.unknown} tone="unknown" />
+          <FactList label="確認する事項" items={insight.check} tone="check" />
+          <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
+            <span className="font-bold">読み方の注意：</span>
+            {insight.caveat}
+          </p>
+        </div>
       </details>
       <div className="mt-auto flex flex-col gap-2 border-t border-mirai-border pt-4">
         <p className="text-xs text-mirai-text-muted">{insight.source}</p>
@@ -433,5 +437,30 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
         </Link>
       </div>
     </article>
+  );
+}
+
+function FactList({ label, items, tone = 'fact' }: { label?: string; items: string[]; tone?: 'fact' | 'unknown' | 'check' }) {
+  const dot = tone === 'fact' ? 'bg-primary' : tone === 'unknown' ? 'bg-mirai-border-light' : 'bg-primary-accent';
+  return (
+    <div className="text-sm leading-relaxed text-mirai-text-subtle">
+      {label && <p className="text-xs font-bold text-primary-accent">{label}</p>}
+      <ul className="mt-1 space-y-1.5">
+        {items.map(item => (
+          <li key={item} className="flex gap-2">
+            <span aria-hidden="true" className={`mt-2.5 size-1.5 shrink-0 rounded-full ${dot}`} />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="font-bold text-primary-accent underline underline-offset-2 hover:opacity-90">
+      {children}
+    </a>
   );
 }
