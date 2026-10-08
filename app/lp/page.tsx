@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   ArrowRight,
   ArrowUpRight,
+  ChevronDown,
   ClipboardCheck,
   Gavel,
   Landmark,
@@ -83,7 +84,7 @@ export default function LandingPage() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="#insights">分かったことを読む</Link>
+                <Link href="#questions">国会質問の例を読む</Link>
               </Button>
             </div>
 
@@ -148,19 +149,47 @@ export default function LandingPage() {
               ))}
             </ol>
 
-            <div className="mt-8">
-              <h3 className="text-lg font-bold tracking-normal">質問の例</h3>
-              <ul className="mt-3 divide-y divide-mirai-border rounded-2xl border border-mirai-border">
-                {DIET_QUESTIONS.map(q => (
-                  <li key={q.theme} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:gap-4">
-                    <Badge variant="light" className="shrink-0 rounded-full">{q.theme}</Badge>
-                    <p className="flex-1 text-sm leading-relaxed font-medium">{q.question}</p>
-                    <Link href={q.href} className="inline-flex shrink-0 items-center gap-1 text-sm font-bold text-primary-accent hover:underline">
-                      根拠を見る <ArrowUpRight className="size-4" aria-hidden="true" />
-                    </Link>
+            <div id="questions" className="mt-8">
+              <h3 className="text-lg font-bold tracking-normal">質問の例（10件）</h3>
+              <p className="mt-1 text-sm leading-relaxed text-mirai-text-subtle">
+                テーマを開くと、根拠の数字・本問・再質問・読み方の注意が出ます。文言はそのまま使っても、所管委員会に合わせて切り出しても構いません。
+              </p>
+              <ol className="mt-3 space-y-3">
+                {DIET_QUESTIONS.map((q, index) => (
+                  <li key={q.theme}>
+                    <details className="group rounded-2xl border border-mirai-border bg-background open:bg-card">
+                      <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
+                        <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <Badge variant="light" className="rounded-full">{q.theme}</Badge>
+                            <span className="text-xs text-mirai-text-muted">{q.target}</span>
+                          </span>
+                          <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.question}</span>
+                        </span>
+                        <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                      </summary>
+                      <div className="space-y-3 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
+                        <p>
+                          <span className="font-bold text-primary-accent">根拠：</span>
+                          {q.basis}
+                        </p>
+                        <p>
+                          <span className="font-bold text-primary-accent">再質問：</span>
+                          {q.followUp}
+                        </p>
+                        <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
+                          <span className="font-bold">読み方の注意：</span>
+                          {q.caveat}
+                        </p>
+                        <Link href={q.href} className="inline-flex items-center gap-1 font-bold text-primary-accent hover:underline">
+                          {q.linkLabel} <ArrowUpRight className="size-4" aria-hidden="true" />
+                        </Link>
+                      </div>
+                    </details>
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
           </div>
         </section>
