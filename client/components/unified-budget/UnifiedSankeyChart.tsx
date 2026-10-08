@@ -894,7 +894,7 @@ export function UnifiedSankeyChart({
               {hasOverview && <>
               {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）の高さの配分は画面の高さで決める。フル HD では 60% で、
                   意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない。文字の大きさはラベル文字サイズ（fontPx）に連動して各セクションが決める */}
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : '58%' }}>
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : '60%' }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
                 {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&
