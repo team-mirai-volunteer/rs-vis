@@ -88,8 +88,9 @@ for (const width of [1440, 390]) {
     await expect(page).toHaveURL(/\/lp$/);
     await page.locator('#investigation-case').getByRole('link', { name: '事業者の年度別の記載を開く' }).click();
     await expect(page).toHaveURL(/\/vendors\?.*vendor=1020001071491/);
-    const vendor = page.locator('aside').filter({ hasText: '富士通株式会社' });
-    const projectRecord = vendor.locator('li').filter({ hasText: 'ハローワークシステム運営費' });
+    const vendor = page.getByRole('complementary', { name: '富士通株式会社 の詳細', exact: true });
+    // 支出先プロフィール内の同名事業ではなく、直下の1者応札リストを検証する。
+    const projectRecord = vendor.locator(':scope > ul > li').filter({ hasText: 'ハローワークシステム運営費' });
     await expect(projectRecord).toHaveCount(1);
     await expect(projectRecord).toContainText('2023年度・2025年度に1者応札');
     await page.goBack();
