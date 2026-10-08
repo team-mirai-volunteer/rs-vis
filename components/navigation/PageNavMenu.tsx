@@ -56,7 +56,7 @@ export function PageNavMenu({
         <>
           {/* メニュー外クリックで閉じる */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <nav aria-label="全ページ" className="absolute right-0 top-11 z-50 max-h-[calc(100dvh-5rem)] w-64 overflow-y-auto rounded-xl border border-mirai-border bg-card p-1.5 text-sm shadow-soft">
+          <nav aria-label="全ページ" className="absolute right-0 top-11 z-50 max-h-[calc(100dvh-5rem)] w-[calc(100vw-3rem)] overflow-y-auto rounded-xl sm:w-56 lg:w-64 2xl:w-72 border border-mirai-border bg-card p-1.5 text-sm shadow-soft">
             <MenuLink href="/" label="トップ" isCurrent={current === '/'} onSelect={() => setOpen(false)} />
             {MENU_GROUPS.map(group => (
               <div key={group.heading} className="mt-1 border-t border-border pt-1">
