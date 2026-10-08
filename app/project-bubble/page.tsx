@@ -798,7 +798,8 @@ export default function ProjectMapPage() {
       </div>
 
       {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
-      <div className="absolute left-3 top-3 z-30 sm:hidden">
+      {/* 詳細のシート（z-30）やホバーカード（z-50）より下に置く。シートが上まで伸びたときはボタンが隠れてよい（シートの × で閉じる） */}
+      <div className="absolute left-3 top-3 z-20 sm:hidden">
         <Button
           variant="outline"
           size="icon"
