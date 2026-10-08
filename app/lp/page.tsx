@@ -28,7 +28,7 @@ import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DIET_QUESTIONS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
+import { DIET_PRINCIPLES, DIET_QUESTIONS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
@@ -226,47 +226,81 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">For the Diet</p>
-              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の例（10件）</h2>
+              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき5本＋5本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                「このサイトで分かっていること」を述べたうえで、公開データでは分からないことを問う形にしています。自明に見える問いでも、政府に数字で答えさせる価値があるものは残しています。
+                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付け、参考人への確認・大臣への問い・取る約束・切り返し・翌年の検証に分けています。
               </p>
             </div>
-            <ol className="mt-4 space-y-3">
+
+            <ol className="mt-5 grid gap-3 md:grid-cols-3">
+              {DIET_PRINCIPLES.map((pr, index) => (
+                <li key={pr.title} className="rounded-2xl bg-mirai-surface-teal p-4">
+                  <p className="text-xs font-bold text-primary-accent">原則 {index + 1}</p>
+                  <h3 className="mt-0.5 text-sm font-bold">{pr.title}</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">{pr.body}</p>
+                </li>
+              ))}
+            </ol>
+
+            <ol className="mt-6 space-y-3">
               {DIET_QUESTIONS.map((q, index) => (
                 <li key={q.theme}>
                   <details className="group rounded-2xl border border-mirai-border bg-background open:bg-card">
                     <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2">
+                        <span className="flex flex-wrap items-center gap-1.5">
                           <Badge variant="light" className="rounded-full">{q.theme}</Badge>
-                          <span className="text-xs text-mirai-text-muted">{q.target}</span>
+                          {q.script && <Badge variant="default" className="rounded-full">台本つき</Badge>}
+                          {q.purpose.map(tag => <Badge key={tag} variant="muted" className="rounded-full">{tag}</Badge>)}
+                          {q.answerer.map(tag => <Badge key={tag} variant="dark" className="rounded-full">{tag}</Badge>)}
                         </span>
                         <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.summary}</span>
+                        <span className="mt-1 block text-xs text-mirai-text-muted">{q.committee}</span>
                       </span>
                       <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
-                    <div className="space-y-3 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
+                    <div className="space-y-4 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
+                      <QuestionBlock label="このサイトで分かっていること（通告・事前レクで固める数字）" items={q.known} tone="fact" />
+                      <QuestionBlock label="参考人への事実確認" items={q.official} tone="check" />
                       <div>
-                        <p className="text-xs font-bold text-primary-accent">このサイトで分かっていること</p>
-                        <ul className="mt-1 space-y-1 text-mirai-text-subtle">
-                          {q.known.map(k => (
-                            <li key={k} className="flex gap-2">
-                              <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                              <span>{k}</span>
-                            </li>
+                        <p className="text-xs font-bold text-primary-accent">大臣への問い</p>
+                        <p className="mt-1 rounded-xl border-l-4 border-primary bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.minister}</p>
+                      </div>
+                      {q.promise && (
+                        <div>
+                          <p className="text-xs font-bold text-primary-accent">大臣に取る約束</p>
+                          <p className="mt-1 rounded-xl border-l-4 border-primary-accent bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.promise}</p>
+                        </div>
+                      )}
+                      {q.written && (
+                        <p>
+                          <span className="font-bold text-primary-accent">質問主意書で求める数表：</span>
+                          {q.written}
+                        </p>
+                      )}
+                      {q.committeeAction && (
+                        <p>
+                          <span className="font-bold text-primary-accent">委員会として：</span>
+                          {q.committeeAction}
+                        </p>
+                      )}
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">逃げ答弁への切り返し</p>
+                        <dl className="mt-1 space-y-1.5">
+                          {q.rebuttals.map(r => (
+                            <div key={r.reply} className="grid gap-0.5 rounded-xl bg-mirai-surface px-3 py-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-3">
+                              <dt className="text-mirai-text-subtle">「{r.reply}」</dt>
+                              <dd className="font-medium">→ {r.counter}</dd>
+                            </div>
                           ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-primary-accent">分からないので問う</p>
-                        <p className="mt-1 font-medium">{q.question}</p>
+                        </dl>
                       </div>
                       <p>
-                        <span className="font-bold text-primary-accent">再質問：</span>
-                        {q.followUp}
+                        <span className="font-bold text-primary-accent">翌年の検証：</span>
+                        {q.verify}
                       </p>
-                      <p>
+                      <p className="text-mirai-text-subtle">
                         <span className="font-bold text-primary-accent">問う価値：</span>
                         {q.why}
                       </p>
@@ -396,7 +430,7 @@ export default function LandingPage() {
 const STEPS = [
   { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
   { icon: ClipboardCheck, title: '根拠を固める', body: '事業の詳細で支出先・契約方式・落札率・5年の予算執行推移・検査院と予算執行調査の指摘を確かめ、共有URLを控える。' },
-  { icon: MessageSquareText, title: '問う', body: '「分かっている数字（出典）→ 公開データでは分からないこと → 改善の目標と期限」の順で問う。サポーターからの意見も同じ事業IDに集まる。' },
+  { icon: MessageSquareText, title: '問う', body: '参考人には数字を、大臣には判断を聞く。一覧は質問主意書に回し、約束は金額・件数・期限で取って翌年この画面で確かめる。' },
 ] as const;
 
 function InsightCard({ insight, index }: { insight: Insight; index: number }) {
@@ -463,4 +497,8 @@ function SourceLink({ href, children }: { href: string; children: React.ReactNod
       {children}
     </a>
   );
+}
+
+function QuestionBlock({ label, items, tone }: { label: string; items: string[]; tone: 'fact' | 'unknown' | 'check' }) {
+  return <FactList label={label} items={items} tone={tone} />;
 }
