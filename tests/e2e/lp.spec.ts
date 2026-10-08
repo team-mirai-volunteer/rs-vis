@@ -81,8 +81,9 @@ for (const width of [1440, 390]) {
 
     await support.getByRole('link', { name: '学校施設整備の事業詳細を開く' }).click();
     await expect(page).toHaveURL(/\/quality\?fiscalYear=2024&detail=1527$/);
-    const detail = page.getByRole('dialog', { name: /公立学校施設整備費の詳細/ });
+    const detail = page.getByRole('dialog', { name: '公立学校施設整備費 の詳細', exact: true });
     await expect(detail).toBeVisible();
+    await expect(detail.getByText('PID 1527', { exact: true })).toBeVisible();
     await page.goBack();
     await expect(page).toHaveURL(/\/lp$/);
     await page.locator('#investigation-case').getByRole('link', { name: '事業者の年度別の記載を開く' }).click();
