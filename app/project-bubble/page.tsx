@@ -691,7 +691,8 @@ export default function ProjectMapPage() {
           </div>
       )}
 
-      <div className="shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft">
+      {/* 表示切替（色・大きさ）。sm 未満で事業・支出先の詳細を開いたときは、絞り込みと同じく詳細だけを出す */}
+      <div className={cn("shrink-0 rounded-xl border border-mirai-border bg-card shadow-soft", (selected || lockedRecipient) && !mobilePanelOpen && "max-sm:hidden")}>
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 px-3 py-2 text-xs">
           <span className="text-mirai-text-subtle">色</span>
           <select
