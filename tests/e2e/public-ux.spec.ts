@@ -82,16 +82,27 @@ test('mobile quality shows the evaluation and opens details without horizontal s
 });
 
 test('budget flow uses the space below navigation and starts with all labels', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/budget-sankey?year=2024');
   await expect(page.getByText('左から右へ、お金の流れをたどれます。', { exact: false })).toHaveCount(0);
   await expect(page).toHaveURL(/ld=all/);
   await expect(page.getByTestId('unified-canvas')).toBeVisible();
-  await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: 'すべてのノードラベルを表示' })).toBeChecked();
-  await expect(page.getByRole('button', { name: '基準フォントサイズ編集を開始' })).toHaveText('13');
-  await page.keyboard.press('Escape');
-  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const { viewport, fontPx } of [
+    { viewport: { width: 1280, height: 720 }, fontPx: '10' },
+    { viewport: { width: 1920, height: 900 }, fontPx: '13' },
+    { viewport: { width: 1440, height: 1000 }, fontPx: '11' },
+    { viewport: { width: 390, height: 844 }, fontPx: '10' },
+  ]) {
     await page.setViewportSize(viewport);
+    await expect(page.getByTestId('unified-label').first()).toHaveAttribute('font-size', fontPx);
+    if (viewport.width < 640) await page.getByRole('button', { name: '表示数と表示設定', exact: true }).click();
+    await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'すべてのノードラベルを表示' })).toBeChecked();
+    await expect(page.getByRole('button', { name: '基準フォントサイズ編集を開始' })).toHaveText(fontPx);
+    await expect(page.getByRole('slider', { name: '基準フォントサイズ', exact: true })).toHaveValue(fontPx);
+    await expect(page).toHaveURL(url => !url.searchParams.has('fs'));
+    await page.keyboard.press('Escape');
+    if (viewport.width < 640) await page.getByRole('button', { name: '表示数と表示設定', exact: true }).click();
     const chartTop = await page.getByTestId('unified-canvas').evaluate(el => {
       const container = el.closest('div.fixed')!;
       const headerHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-header-h'));

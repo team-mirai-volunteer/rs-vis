@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 test('thickness changes amounts independently of font size and survives sharing and reset', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/budget-sankey?year=2024');
   const nodes = page.getByTestId('unified-node').locator('rect');
   await expect(nodes.first()).toBeVisible();
   await expect(page.locator('[data-testid="unified-node"][data-column="revenue"]').first()).toBeVisible();
+  const label = page.getByTestId('unified-label').first();
+  await expect(label).toHaveAttribute('font-size', '10');
   const geometry = () => nodes.evaluateAll(rs => rs.map(r => ({ height: Number(r.getAttribute('height')), width: r.getAttribute('width') })));
   const before = await geometry();
   await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
@@ -26,15 +29,45 @@ test('thickness changes amounts independently of font size and survives sharing 
     if (r.height > 1) expect(after[i].height).toBeCloseTo(r.height * 2, 6);
     expect(after[i].width).toBe(r.width);
   });
-  await expect(page.getByTestId('unified-label').first()).toHaveAttribute('font-size', '13');
+  await expect(label).toHaveAttribute('font-size', '10');
   await page.reload();
   await expect(nodes.first()).toBeVisible();
+  await expect(label).toHaveAttribute('font-size', '10');
   expect(await geometry()).toEqual(after);
   await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
   await expect(slider).toHaveValue('2');
   await page.getByRole('button', { name: '帯・ノードの太さを既定値に戻す', exact: true }).click();
   await expect(slider).toHaveValue('1');
   expect(await geometry()).toEqual(before);
+  await expect(label).toHaveAttribute('font-size', '10');
+});
+
+test('shared font size overrides responsive defaults until reset', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 900 });
+  // Even an explicit size equal to this screen's default must stay fixed when shared.
+  await page.goto('/budget-sankey?year=2024&fs=13');
+  const label = page.getByTestId('unified-label').first();
+  await expect(label).toHaveAttribute('font-size', '13');
+  await expect(page).toHaveURL(url => url.searchParams.get('fs') === '13');
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await expect(label).toHaveAttribute('font-size', '13');
+  await page.reload();
+  await expect(label).toHaveAttribute('font-size', '13');
+  await page.getByRole('button', { name: '表示設定を開く', exact: true }).click();
+  const fontSlider = page.getByRole('slider', { name: '基準フォントサイズ', exact: true });
+  await expect(fontSlider).toHaveValue('13');
+  await page.getByRole('button', { name: '既定値に戻す', exact: true }).click();
+  await expect(fontSlider).toHaveValue('10');
+  await expect(label).toHaveAttribute('font-size', '10');
+  await expect(page).toHaveURL(url => !url.searchParams.has('fs'));
+  await page.keyboard.press('Escape');
+
+  await page.reload();
+  await expect(label).toHaveAttribute('font-size', '10');
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await expect(label).toHaveAttribute('font-size', '13');
+  await expect(page).toHaveURL(url => !url.searchParams.has('fs'));
 });
 
 test('mobile pinch scales both axes around the two-finger midpoint', async ({ browser, baseURL }) => {
