@@ -42,6 +42,8 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
   const handlingId = useId();
 
   const META_PX = scaleFont(11);
+  /** ボタンの大きさも文字サイズ（画面の大きさ）に連動させる。フル HD（fontPx 13）で従来の高さ 28px、小さい画面（11）で 24px */
+  const BUTTON_STYLE = { fontSize: META_PX, height: scaleFont(24), paddingLeft: scaleFont(9), paddingRight: scaleFont(9) } as const;
 
   if (!enabled || state.comments === null) {
     // 本番では機能無効の環境で何も描かない。開発サーバーでは全体のレイアウトを把握できるよう見出しだけ残す
@@ -52,7 +54,7 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
           <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(13) }}>みんなの意見</span>
           <span className="whitespace-nowrap text-mirai-text-placeholder" style={{ fontSize: META_PX }} title="コメント機能に必要な Supabase の接続情報がこの環境に無いため">この環境では無効</span>
           <span className="flex-1" />
-          <Button variant="default" size="xs" disabled title="この環境では事業コメント機能が無効です" style={{ fontSize: META_PX }}>
+          <Button variant="default" size="xs" disabled title="この環境では事業コメント機能が無効です" className="h-auto" style={BUTTON_STYLE}>
             意見を伝える
           </Button>
         </div>
@@ -100,7 +102,8 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
             size="xs"
             onClick={() => setOpen(true)}
             aria-describedby={handlingId}
-            style={{ fontSize: META_PX }}
+            className="h-auto"
+            style={BUTTON_STYLE}
           >
             意見を伝える
           </Button>
