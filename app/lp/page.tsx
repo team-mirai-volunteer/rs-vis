@@ -89,7 +89,7 @@ export default function LandingPage() {
 
             <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {HERO_STATS.map(stat => (
-                <div key={stat.label} className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3">
+                <div key={stat.label} className="rounded-2xl border border-black/10 bg-card/70 px-4 py-3">
                   <dd className="font-lexend text-2xl font-medium tracking-normal text-mirai-text">
                     {stat.value}
                     <span className="ml-1 font-sans text-sm font-bold">{stat.unit}</span>
@@ -136,7 +136,7 @@ export default function LandingPage() {
             <ol className="mt-6 grid gap-4 md:grid-cols-3">
               {STEPS.map((step, index) => (
                 <li key={step.title} className="flex gap-3 rounded-2xl bg-mirai-surface-teal p-5">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-primary-accent">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card text-primary-accent">
                     <step.icon className="size-5" aria-hidden="true" />
                   </span>
                   <div>
