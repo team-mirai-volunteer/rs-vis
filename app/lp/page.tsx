@@ -237,7 +237,7 @@ export default function LandingPage() {
               <p className="text-sm font-bold text-primary-accent">For the Diet</p>
               <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付け、参考人への確認・大臣への問い・取る約束・切り返し・翌年の検証に分けています。
+                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体はチームみらいの実際の質疑の型（政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する）に揃えています。
               </p>
             </div>
 
@@ -270,40 +270,35 @@ export default function LandingPage() {
                       <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="space-y-4 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">冒頭</p>
+                        <p className="mt-1">{q.opening}</p>
+                        <p className="mt-1 text-mirai-text-subtle">{q.acknowledge}</p>
+                      </div>
                       <QuestionBlock label="このサイトで分かっていること（通告・事前レクで固める数字）" items={q.known} tone="fact" />
-                      <QuestionBlock label="参考人への事実確認" items={q.official} tone="check" />
+                      <QuestionBlock label="参考人への事実確認（数字と、なぜそうなっているか）" items={q.official} tone="check" />
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">答弁を受けての受け止めと提案</p>
+                        <p className="mt-1 rounded-xl bg-mirai-surface px-3 py-2">{q.response}</p>
+                      </div>
                       <div>
                         <p className="text-xs font-bold text-primary-accent">大臣への問い</p>
                         <p className="mt-1 rounded-xl border-l-4 border-primary bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.minister}</p>
                       </div>
-                      {q.promise && (
-                        <div>
-                          <p className="text-xs font-bold text-primary-accent">大臣に取る約束</p>
-                          <p className="mt-1 rounded-xl border-l-4 border-primary-accent bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.promise}</p>
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">大臣へのお願い（期限・形式つき）</p>
+                        <p className="mt-1 rounded-xl border-l-4 border-primary-accent bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.promise}</p>
+                      </div>
+                      {(q.written || q.committeeAction) && (
+                        <div className="space-y-1 text-mirai-text-subtle">
+                          <p className="text-xs font-bold text-primary-accent">文書・委員会で取る数表（提案。党として主意書・検査要請は未使用）</p>
+                          {q.written && <p>質問主意書で求める数表：{q.written}</p>}
+                          {q.committeeAction && <p>委員会として：{q.committeeAction}</p>}
                         </div>
                       )}
-                      {q.written && (
-                        <p>
-                          <span className="font-bold text-primary-accent">質問主意書で求める数表：</span>
-                          {q.written}
-                        </p>
-                      )}
-                      {q.committeeAction && (
-                        <p>
-                          <span className="font-bold text-primary-accent">委員会として：</span>
-                          {q.committeeAction}
-                        </p>
-                      )}
                       <div>
-                        <p className="text-xs font-bold text-primary-accent">逃げ答弁への切り返し</p>
-                        <dl className="mt-1 space-y-1.5">
-                          {q.rebuttals.map(r => (
-                            <div key={r.reply} className="grid gap-0.5 rounded-xl bg-mirai-surface px-3 py-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] sm:gap-3">
-                              <dt className="text-mirai-text-subtle">「{r.reply}」</dt>
-                              <dd className="font-medium">→ {r.counter}</dd>
-                            </div>
-                          ))}
-                        </dl>
+                        <p className="text-xs font-bold text-primary-accent">締め</p>
+                        <p className="mt-1">{q.closing}</p>
                       </div>
                       <p>
                         <span className="font-bold text-primary-accent">翌年の検証：</span>
