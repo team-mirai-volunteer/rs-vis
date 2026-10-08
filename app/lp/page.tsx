@@ -31,7 +31,7 @@ import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DIET_PRINCIPLES, DIET_QUESTIONS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
+import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
@@ -251,9 +251,29 @@ export default function LandingPage() {
               ))}
             </ol>
 
+            <div className="mt-6">
+              <h3 className="text-base font-bold">質疑1回分の束（3本ずつ）</h3>
+              <p className="mt-1 text-sm leading-relaxed text-mirai-text-subtle">1回の質疑は15〜30分で3〜6問です。委員会と答弁者が同じ問いを3本ずつ束ねました。残りは所管委員会で単独に使います。</p>
+              <ol className="mt-3 grid gap-3 md:grid-cols-3">
+                {DIET_SETS.map(set => (
+                  <li key={set.name} className="rounded-2xl border border-mirai-border bg-card p-4">
+                    <p className="text-sm font-bold">{set.name}</p>
+                    <p className="text-xs text-mirai-text-muted">{set.target}</p>
+                    <ol className="mt-2 space-y-1 text-sm">
+                      {set.themes.map(theme => {
+                        const n = questions.findIndex(x => x.theme === theme) + 1;
+                        return <li key={theme}><a href={`#q-${n}`} className="font-bold text-primary-accent hover:underline">Q{n} {theme}</a></li>;
+                      })}
+                    </ol>
+                    <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{set.note}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
             <ol className="mt-6 space-y-3">
               {questions.map((q, index) => (
-                <li key={q.theme}>
+                <li key={q.theme} id={`q-${index + 1}`} className="scroll-mt-24">
                   <details className="group rounded-2xl border border-mirai-border bg-card shadow-xs transition-colors hover:border-primary open:border-primary">
                     <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
@@ -299,6 +319,10 @@ export default function LandingPage() {
                       <div>
                         <p className="text-xs font-bold text-primary-accent">締め</p>
                         <p className="mt-1">{q.closing}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-primary-accent">仕組みの提案（こう作ればできる）</p>
+                        <p className="mt-1 rounded-xl border-l-4 border-mirai-border bg-mirai-surface px-3 py-2">{q.techProposal}</p>
                       </div>
                       <p>
                         <span className="font-bold text-primary-accent">翌年の検証：</span>
