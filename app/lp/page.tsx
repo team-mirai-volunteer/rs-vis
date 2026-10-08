@@ -152,7 +152,7 @@ export default function LandingPage() {
             <div id="questions" className="mt-8">
               <h3 className="text-lg font-bold tracking-normal">質問の例（10件）</h3>
               <p className="mt-1 text-sm leading-relaxed text-mirai-text-subtle">
-                テーマを開くと、根拠の数字・本問・再質問・読み方の注意が出ます。文言はそのまま使っても、所管委員会に合わせて切り出しても構いません。
+                本問は「このサイトで分かっていること」を述べたうえで、公開データでは分からないことを問う形にしています。自明に見える問いでも、政府に数字で答えさせる価値があるものは残しています。テーマを開くと、再質問・問う価値・読み方の注意が出ます。
               </p>
               <ol className="mt-3 space-y-3">
                 {DIET_QUESTIONS.map((q, index) => (
@@ -165,18 +165,28 @@ export default function LandingPage() {
                             <Badge variant="light" className="rounded-full">{q.theme}</Badge>
                             <span className="text-xs text-mirai-text-muted">{q.target}</span>
                           </span>
-                          <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.question}</span>
+                          <span className="mt-2 block text-xs font-bold text-primary-accent">このサイトで分かっていること</span>
+                          <ul className="mt-1 space-y-1 text-sm leading-relaxed text-mirai-text-subtle">
+                            {q.known.map(k => (
+                              <li key={k} className="flex gap-2">
+                                <span aria-hidden="true" className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                                <span>{k}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <span className="mt-2 block text-xs font-bold text-primary-accent">分からないので問う</span>
+                          <span className="mt-1 block text-sm leading-relaxed font-medium">{q.question}</span>
                         </span>
                         <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                       </summary>
                       <div className="space-y-3 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
                         <p>
-                          <span className="font-bold text-primary-accent">根拠：</span>
-                          {q.basis}
-                        </p>
-                        <p>
                           <span className="font-bold text-primary-accent">再質問：</span>
                           {q.followUp}
+                        </p>
+                        <p>
+                          <span className="font-bold text-primary-accent">問う価値：</span>
+                          {q.why}
                         </p>
                         <p className="rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
                           <span className="font-bold">読み方の注意：</span>
