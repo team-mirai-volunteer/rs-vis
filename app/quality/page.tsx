@@ -720,8 +720,8 @@ ${a.desc}` })),
                   {([
                     { key: 'budgetAmount', label: '予算', desc: COL_DESC.予算額 },
                     { key: 'execAmount', label: '執行', desc: COL_DESC.執行額 },
-                    { key: 'spendTotal', label: '延べ', desc: COL_DESC.支出先合計 },
-                    { key: 'spendNetTotal', label: '再委託除く', desc: COL_DESC.実質支出額 },
+                    { key: 'spendTotal', label: '支出先', desc: COL_DESC.支出先合計 },
+                    { key: 'spendNetTotal', label: '実質', desc: COL_DESC.実質支出額 },
                   ] as const).map(({ key, label, desc }) => (
                     <div key={key} className="flex items-center shrink-0" title={desc}>
                       <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
@@ -821,7 +821,7 @@ ${a.desc}` })),
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">
-            <option value="spendNetTotal">再委託を除く支出額</option><option value="budgetAmount">予算額</option><option value="overallScore">総合点</option><option value="recommendation">推奨</option><option value="name">事業名</option><option value="pid">PID</option>
+            <option value="spendNetTotal">実質支出額</option><option value="budgetAmount">予算額</option><option value="overallScore">総合点</option><option value="recommendation">推奨</option><option value="name">事業名</option><option value="pid">PID</option>
           </select>
           <Button variant="outline" size="xs" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}>{sortDir === 'asc' ? '昇順' : '降順'}</Button>
         </div>
@@ -883,10 +883,10 @@ ${a.desc}`}
                   執行額<SortIcon field="execAmount" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.支出先合計} onClick={() => handleSort('spendTotal')}>
-                  支出先延べ合計<SortIcon field="spendTotal" />
+                  支出先合計<SortIcon field="spendTotal" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.実質支出額} onClick={() => handleSort('spendNetTotal')}>
-                  再委託を除く支出額<SortIcon field="spendNetTotal" />
+                  実質支出額<SortIcon field="spendNetTotal" />
                 </th>
                 <th className="px-2 py-2 text-right cursor-pointer whitespace-nowrap" title={COL_DESC.再委託階層} onClick={() => handleSort('redelegationDepth')}>
                   再委託階層<SortIcon field="redelegationDepth" />
@@ -1032,7 +1032,7 @@ ${a.desc}`}
                                   {UNUSED_TREND_META[policy.unusedTrend].label}
                                 </div>
                               )}
-                              <div>再委託を除く支出額: {formatAmount(item.spendNetTotal)}</div>
+                              <div>実質支出額: {formatAmount(item.spendNetTotal)}</div>
                             </div>
                           </div>
                           <div>

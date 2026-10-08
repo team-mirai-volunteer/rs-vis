@@ -525,7 +525,7 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">収支の一致</span>（機械計算・
                   <span className="text-status-warn">執行透明性には不算入</span>）:
-                  執行額と再委託を除く支出額が一致しているか。実測で9割の事業が満点になりほぼ定数だったため、
+                  執行額と実質支出額が一致しているか。実測で9割の事業が満点になりほぼ定数だったため、
                   加重平均から外して「不一致フラグ」（60点未満）として判定ルールが直接見る形に降格した。
                   <div className="tabular-nums text-mirai-text-muted">
                     執行 {formatAmount(item.execAmount ?? 0)} vs 再委託を除く支出 {formatAmount(item.spendNetTotal)}
@@ -692,7 +692,7 @@ ${a.desc}`}>
                       { label: '委託チェーン', align: 'left', sort: 'chain' as const, title: '委託チェーン（A→B→C）でソート' },
                       { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）。支出先名の横の OK・未登録などのバッジにカーソルを合わせると判定の意味を表示' },
                       { label: '金額', align: 'right', sort: 'a2' as const, title: '個別支出額（CSVの「金額」列）' },
-                      { label: '支出比', align: 'right', sort: 'pct' as const, title: '再委託を除く支出額に対する割合' },
+                      { label: '支出比', align: 'right', sort: 'pct' as const, title: '実質支出額に対する割合' },
                       { label: '契約方式', align: 'left', sort: null, title: '入札・随意契約などの契約方式と応札・応募者数（RS公開APIから突き合わせ。補助金等は「契約以外」）。バッジにカーソルを合わせると補足・落札率を表示' },
                       { label: '役割', align: 'left', sort: null, title: '事業を行う上での役割（ブロック単位）' },
                       { label: '契約概要', align: 'left', sort: null, title: undefined },
