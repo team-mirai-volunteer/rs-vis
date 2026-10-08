@@ -30,6 +30,8 @@ const yen = (v: number) => (v > 0 ? formatBudgetFromYen(v) : '—');
 const pct = (v: number | null, digits = 0) => (v === null ? '—' : `${v.toFixed(digits)}%`);
 /** 詳細パネルの支出先説明は 2024年度実績（2025年版シート）の支出先インデックスで引く */
 const PROFILE_SHEET_YEAR = 2025;
+/** 表は1ページずつ描画する（1万行を一度に出すと初回が重い） */
+const PAGE_SIZE = 100;
 
 export default function VendorsView() {
   const [data, setData] = useState<ListResponse | null | undefined>(undefined);
@@ -41,6 +43,7 @@ export default function VendorsView() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** 一覧の下限未満も含めたサーバー検索の結果（検索ボタンを押したときだけ） */
   const [searched, setSearched] = useState<{ q: string; rows: VendorRow[]; limit: number } | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetch('/api/vendors').then(r => (r.ok ? r.json() : null)).then(setData).catch(() => setData(null));
@@ -79,6 +82,13 @@ export default function VendorsView() {
   }, [rows, signal, kind, ministry, query, sort]);
   const selectedIndex = filtered.findIndex(r => r.v.key === selectedKey);
   const selected = selectedKey ? filtered[selectedIndex] ?? rows.find(r => r.v.key === selectedKey) ?? null : null;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // 絞り込み・並べ替えを変えたら1ページ目へ
+  useEffect(() => { setPage(1); }, [signal, kind, ministry, query, sort, searched]);
+  // 選んだ行（URLの vendor や ↑↓の移動）があるページを開く
+  useEffect(() => { if (selectedIndex >= 0) setPage(Math.floor(selectedIndex / PAGE_SIZE) + 1); }, [selectedIndex]);
 
   useEffect(() => {
     if (!selectedKey) return;
@@ -161,7 +171,7 @@ export default function VendorsView() {
                     {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map(({ v, signals }) => { const t = v.total; return <tr key={v.key} data-vendor={v.key} aria-selected={selectedKey === v.key}
+                {pageItems.map(({ v, signals }) => { const t = v.total; return <tr key={v.key} data-vendor={v.key} aria-selected={selectedKey === v.key}
                   onClick={() => setSelectedKey(v.key)} className={`cursor-pointer hover:bg-mirai-surface-teal/60 ${selectedKey === v.key ? 'bg-mirai-surface-teal/60' : ''}`}>
                   <td className="max-w-[280px] px-2 py-1.5 min-[1700px]:max-w-[340px]">
                     <div className="truncate font-medium" title={v.name}>{v.name}</div>
@@ -180,6 +190,16 @@ export default function VendorsView() {
               </tbody>
             </table>}
         </div>
+        {data && filtered.length > PAGE_SIZE && <nav aria-label="ページ" className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="tabular-nums text-mirai-text-muted">{((currentPage - 1) * PAGE_SIZE + 1).toLocaleString()}〜{Math.min(currentPage * PAGE_SIZE, filtered.length).toLocaleString()} / {filtered.length.toLocaleString()}事業者</span>
+          <span className="flex items-center gap-1">
+            <Button variant="outline" size="xs" className="border-mirai-border" disabled={currentPage <= 1} onClick={() => setPage(1)}>最初</Button>
+            <Button variant="outline" size="xs" className="border-mirai-border" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>前の{PAGE_SIZE}件</Button>
+            <span className="px-1 tabular-nums text-mirai-text-muted">{currentPage} / {totalPages}</span>
+            <Button variant="outline" size="xs" className="border-mirai-border" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>次の{PAGE_SIZE}件</Button>
+            <Button variant="outline" size="xs" className="border-mirai-border" disabled={currentPage >= totalPages} onClick={() => setPage(totalPages)}>最後</Button>
+          </span>
+        </nav>}
       </section>
       {!selected && <VendorsOverview rows={rows} signal={signal} onSignal={setSignal} />}
       {selected && <VendorDetail vendorKey={selected.v.key} row={selected.v} signals={selected.signals} onClose={() => setSelectedKey(null)}
