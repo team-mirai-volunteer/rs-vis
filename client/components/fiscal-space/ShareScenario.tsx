@@ -35,7 +35,7 @@ export function ShareScenario({ form, onPreset, onOptimizationSettings, error, r
       <Button variant="outline" size="sm" onClick={() => onPreset({
         ...Object.fromEntries(Object.keys(form.amounts).map(id => [id, 0])),
         'social-insurance': 15,
-      })}>例：社会保険料減税だけで15兆円</Button>
+      })}>例：社会保険料の軽減だけで15兆円</Button>
       <Button variant="outline" size="sm" aria-haspopup="dialog" onClick={onOptimizationSettings}>価値の重み・自動最適化</Button>
       <span data-testid="model-version">モデル {FISCAL_MODEL_VERSION}{calculatedOn && `・計算日 ${calculatedOn}`}</span>
     </div>

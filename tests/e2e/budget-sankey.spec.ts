@@ -73,7 +73,7 @@ for (const basis of ['initial', 'ministry']) {
     await expect(page.getByTestId('unified-label').filter({ hasText: 'マイキー' }).filter({ hasText: '9.38億円' })).toBeVisible();
     await panel.getByRole('tab', { name: /^支出先/ }).click();
     await expect(panel.getByRole('tabpanel').getByRole('button').first()).toBeVisible();
-    await page.getByLabel('ノードを検索').fill('マイキー');
+    await page.getByLabel('事業や支出先を検索').fill('マイキー');
     await expect(searchResults(page).filter({ hasText: 'マイキー' }).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -184,7 +184,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await openPage(page);
     const sidePanel = page.getByTestId('unified-side-panel');
 
-    await page.getByLabel('ノードを検索').fill('基礎年金');
+    await page.getByLabel('事業や支出先を検索').fill('基礎年金');
     const results = searchResults(page);
     await expect(results.first()).toBeVisible({ timeout: 10_000 });
     expect(await results.count()).toBeGreaterThan(1);
@@ -201,7 +201,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(sidePanel).toBeVisible();
     await expect(sidePanel.locator('.font-semibold').first()).toContainText(chosenName.slice(0, 6));
     // 検索欄は選択後に空に戻る
-    await expect(page.getByLabel('ノードを検索')).toHaveValue('');
+    await expect(page.getByLabel('事業や支出先を検索')).toHaveValue('');
   });
 
   test('RS project side panel shows sections in order and 選択を解除 closes it', async ({ page }) => {
@@ -238,7 +238,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(sidePanel.getByRole('tabpanel').getByText('会計', { exact: true }).first()).toBeVisible();
 
     // 政策評価は 6 軸（総合点 + 5 軸）で出る
-    for (const axis of ['総合点', '成果設計', '検証可能性', '執行透明性', '費用対内容', '必要性']) {
+    for (const axis of ['総合点', '成果設計', '検証可能性', '執行透明性', '費用対内容', '代替困難性']) {
       await expect(sidePanel.getByText(axis, { exact: true }).first()).toBeVisible();
     }
     await expect(sidePanel.getByText('図には出ていません')).toHaveCount(0);
@@ -280,7 +280,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
   test('項 side panel shows the weighted-average policy evaluation block', async ({ page }) => {
     await openPage(page);
 
-    await page.getByLabel('ノードを検索').fill('基礎年金');
+    await page.getByLabel('事業や支出先を検索').fill('基礎年金');
     const sectionResult = searchResults(page).filter({ has: page.locator('span.text-\\[10px\\]', { hasText: /^項$/ }) }).first();
     await expect(sectionResult).toBeVisible({ timeout: 10_000 });
     await sectionResult.click();
@@ -456,7 +456,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
   test('filter button applies the current node search and clear resets it', async ({ page }) => {
     await openPage(page, 'year=2024');
-    const search = page.getByLabel('ノードを検索');
+    const search = page.getByLabel('事業や支出先を検索');
     await search.fill('  マイキー  ');
     await page.getByLabel('絞り込みを開く').click();
     await expect(page.getByLabel('名前で絞り込み')).toHaveValue('マイキー');
@@ -502,7 +502,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
     const api = await (await request.get('/api/recipient-contracts?year=2025&name=' + encodeURIComponent('個人A') + '&pids=1335')).json();
     expect(api.entries[0].contracts).toContain('在クロアチア日本国大使公邸の不動産購入');
     await openPage(page);
-    await page.getByLabel('ノードを検索').fill('個人A');
+    await page.getByLabel('事業や支出先を検索').fill('個人A');
     await searchResults(page).filter({ hasText: /^支出先個人A[0-9]/ }).first().click();
     const node = page.locator('[data-column="recipient"]').filter({ hasText: /^個人A \(/ }).first();
     const box = (await node.locator('rect').first().boundingBox())!;
@@ -537,7 +537,7 @@ test.describe('budget-sankey (統合ビュー)', () => {
 
   test('with a recipient selected, hovering a project row shows what that project paid it for', async ({ page }) => {
     await openPage(page);
-    await page.getByLabel('ノードを検索').fill('個人A');
+    await page.getByLabel('事業や支出先を検索').fill('個人A');
     await searchResults(page).filter({ hasText: /^支出先個人A[0-9]/ }).first().click();
     const panel = page.getByTestId('unified-side-panel');
     await panel.getByRole('tab', { name: /^事業\(支出\)/ }).click();

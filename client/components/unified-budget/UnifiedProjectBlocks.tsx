@@ -10,6 +10,7 @@ import { blockBalance } from '@/app/lib/subcontracts/block-balance';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import type { RsApiDetail } from '@/types/rs-api';
+import { othersTitle } from '@/app/lib/others-count';
 
 type ProjectBlocks = SubcontractGraph & { budgetSummary?: BudgetSummary; budgetBreakdown?: BudgetBreakdownItem[] };
 const cache = new Map<string, ProjectBlocks | null>();
@@ -70,7 +71,9 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
         <TagChip kind={block.originKind === 'direct' ? 'direct' : block.originKind === 'subcontract' ? 'subcontract' : 'separate-origin'}>
           {block.originKind === 'direct' ? '直接' : block.originKind === 'subcontract' ? '再委託' : '別財源'}
         </TagChip>
-        <span>支出先 {block.recipients.length.toLocaleString()}件</span>
+        {block.othersCount
+          ? <span title={othersTitle(block.othersCount)}>支出先 {block.recipients.length.toLocaleString()}件記載（その他を含め全{block.othersCount.t.toLocaleString()}件）</span>
+          : <span>支出先 {block.recipients.length.toLocaleString()}件</span>}
         {balanceBadge(block, children.length > 0)}
       </span>
       <BlockSources graph={availableGraph} blockId={block.blockId} />
@@ -98,6 +101,7 @@ export function UnifiedProjectBlocks({ graph, year, onSelect, provisional = fals
   </>;
 }
 
+/** ブロックで絞り込んだ支出先の見出し（行は呼び出し側が普段の支出先一覧と同じ形で並べる） */
 export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: SubcontractGraph; block: BlockNode; onClear: () => void }) {
   return <>
     <div className="flex items-start justify-between gap-2 border-b border-border py-2 text-xs">
@@ -107,13 +111,16 @@ export function UnifiedBlockRecipients({ graph, block, onClear }: { graph: Subco
     <BlockSources graph={graph} blockId={block.blockId} />
     <BlockBalance graph={graph} block={block} />
     {block.recipients.length === 0 && <p className="py-2 text-xs text-mirai-text-muted">このブロックに支出先の記載はありません。</p>}
-    {block.recipients.map((recipient, index) => <div key={`${recipient.name}-${index}`} className="border-b border-border px-1 py-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 text-xs text-mirai-text-secondary">{recipient.name}</span>
-        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{yen(recipient.amount)}</span>
-      </div>
-      {recipient.corporateNumber && <div className="mt-1 text-[11px] text-mirai-text-muted">法人番号 {recipient.corporateNumber}</div>}
-      {recipient.contractSummaries.map((summary, i) => <p key={i} className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">{summary}</p>)}
-    </div>)}
   </>;
+}
+
+/**
+ * 事業に支出先が1件も記載されていないときの説明。新規・計画段階の事業や、他の事業の結果を受けて実施する事業では
+ * 業者も支出もまだ無いことがある（フィードバック: 「業者無し・支出無しの事業が計画されている」）
+ */
+export function NoRecipientsNote({ className = 'py-2 text-xs' }: { className?: string }) {
+  return <div className={`${className} space-y-1 text-mirai-text-muted`}>
+    <p>支出先の記載はありません。</p>
+    <p className="leading-relaxed">新規・計画段階の事業、他の事業の結果を受けて実施する事業、執行が翌年度に繰り越された事業などでは、レビューシートに支出先が記載されないことがあります。予算上の事情で、事業が不要という意味ではありません。</p>
+  </div>;
 }

@@ -6,6 +6,7 @@
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { readDataJson } from '@/app/lib/api/data-file';
 import { normalizeQuery } from '@/app/lib/search/project-search';
+import type { ContractMethodCode } from '@/app/lib/contract-method';
 
 // フィールド名は短縮形（JSONサイズ削減のため）
 // n=name, b=blockNo, s=status, c=cnFilled, cn=法人番号の実値(""=空欄), o=opaque
@@ -27,6 +28,15 @@ export interface RecipientRow {
   d: number;
   role: string;
   cc: string;
+  // 以下は RS公開APIの契約方式（contract-methods-loader が API 応答時に付与。元の JSON には無い）
+  // m=契約方式, mt=契約方式の補足, ap=応札・応募者数, br=落札率(%)
+  m?: ContractMethodCode;
+  mt?: string;
+  ap?: number;
+  br?: number;
+  // その他行にまとめられた件数（oc）とブロックの支出先の数（ot）。contract-methods-loader の withOthersCounts が付与
+  oc?: number;
+  ot?: number;
 }
 
 export type RecipientRowsByPid = Record<string, RecipientRow[]>;

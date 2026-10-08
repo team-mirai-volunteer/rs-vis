@@ -21,6 +21,16 @@ export function yearRate(y: LifecycleYear, denominator: Denominator, includeCons
   return (y.pensionAdjustedBurden - (includeConsumption ? 0 : y.consumptionTax)) / y.careerIncome;
 }
 
+/**
+ * Label of the net-burden panel for what yearRate actually adds up: pension receipts only count with 'career',
+ * and the consumption and corporate-tax estimates only when they are in the grid.
+ */
+export function netBurdenLabel(grid: HeatmapGrid, hasConsumption: boolean, denominator: Denominator): string {
+  const corporate = grid.some(r => r.cells.some(c => c.corporateTax !== 0));
+  const parts = ['税', '保険料', ...(hasConsumption ? ['消費税推計'] : []), ...(corporate ? ['法人税の転嫁'] : [])];
+  return `純負担（${parts.join('＋')}−給付${denominator === 'career' ? '−年金受給' : ''}）`;
+}
+
 /** Rates are relative to the chosen denominator; money received counts as negative. */
 export function cellRate(y: LifecycleYear, item: TaxItem, denominator: Denominator = 'career'): number | null {
   const base = denominator === 'career' ? y.careerIncome : y.income;

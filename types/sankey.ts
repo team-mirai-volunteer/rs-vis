@@ -17,6 +17,8 @@ export interface SankeyLink {
   source: string;
   target: string;
   value: number;
+  /** 予算書の目→RS事業の帯が、項・目の空欄を補足情報などで補った推定の対応を含む（統合サンキー） */
+  inferred?: 'note' | 'amount+name' | 'reviewed';
 }
 
 export interface SankeyData {

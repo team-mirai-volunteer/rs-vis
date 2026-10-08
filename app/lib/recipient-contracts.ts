@@ -5,6 +5,7 @@
  * 同じ表記でも事業が違えば別の相手になりうるので、必ず事業（pid）ごとに引き、事業名を添えて返す。
  */
 import type { SubcontractGraph } from '@/types/subcontract';
+import type { ContractLine } from '@/app/lib/contract-method';
 
 export interface RecipientContractEntry {
   pid: number;
@@ -13,6 +14,8 @@ export interface RecipientContractEntry {
   amount: number;
   /** 契約の概要（重複は除く・記載順） */
   contracts: string[];
+  /** 契約の概要に契約方式を添えた行（RS公開APIと突き合わせできたとき。無ければ contracts を使う） */
+  lines?: ContractLine[];
 }
 
 export interface RecipientContractsResponse {

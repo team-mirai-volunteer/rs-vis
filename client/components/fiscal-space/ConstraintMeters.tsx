@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { ConstraintResult } from '@/types/fiscal-space';
+import type { ConstraintResult, ProjectionStep } from '@/types/fiscal-space';
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 import { percent, points } from './format';
@@ -17,14 +17,32 @@ function barClass(r: ConstraintResult) {
   return r.utilization >= .8 ? 'bg-primary' : 'bg-primary/50';
 }
 
-export function ConstraintMeters({ constraints, baseline = [], sensitivity, latest, structuralUnemployment }: {
+/**
+ * 消費税減税は物価を一度だけ下げるが、判定用CPIはその値下がりを除いた値でも判定する（constraintInflation）。
+ * そのため判定用CPIだけを見ると「減税で物価が上がった」と読めるので、CPI総合が政策なしより下がる年があれば並べて示す。
+ */
+function headlineDip(steps: ProjectionStep[], baseline: ProjectionStep[]) {
+  let dip: { year: number; value: number; baseline: number } | null = null;
+  for (const s of steps) {
+    const b = baseline.find(x => x.state.year === s.state.year);
+    if (!b || s.state.year < 1) continue;
+    const gap = s.state.macro.inflation - b.state.macro.inflation;
+    if (gap < -.0005 && (!dip || gap < dip.value - dip.baseline)) dip = { year: s.state.year, value: s.state.macro.inflation, baseline: b.state.macro.inflation };
+  }
+  return dip;
+}
+
+export function ConstraintMeters({ constraints, baseline = [], sensitivity, latest, structuralUnemployment, steps = [], baselineSteps = [] }: {
   constraints: ConstraintResult[]; baseline?: ConstraintResult[];
+  /** 政策あり・なしの各年の経路。物価の行でCPI総合の一時的な値下がりを示すのに使う */
+  steps?: ProjectionStep[]; baselineSteps?: ProjectionStep[];
   sensitivity: { id: string; delta: number | null }[];
   latest: boolean; structuralUnemployment: number;
 }) {
   const [bySensitivity, setBySensitivity] = useState(false);
   const delta = (id: string) => sensitivity.find(s => s.id === id)?.delta ?? null;
   const incomplete = (r: ConstraintResult) => r.coverageComplete === false || r.status === 'unevaluated';
+  const dip = headlineDip(steps, baselineSteps);
   // Fixed definition order by default: rows must not move while a slider is being dragged.
   const rows = [...constraints].sort((a, b) => bySensitivity
     ? (delta(b.id) ?? -Infinity) - (delta(a.id) ?? -Infinity)
@@ -63,6 +81,9 @@ export function ConstraintMeters({ constraints, baseline = [], sensitivity, late
           {r.year === 0 && ' ピークは政策実施前です。将来の変化がないという意味ではありません。'}
           {over && ' バーは120%で止めています。実測値は右のテキストと読み上げ値を参照。'}
         </p>
+        {r.id === 'inflation' && dip && <p className="text-xs leading-relaxed text-mirai-text-subtle" data-testid="headline-cpi-dip">
+          CPI総合は年{dip.year}に{percent(dip.value)}（政策なし{percent(dip.baseline)}）まで下がります。消費税減税で食料品などの価格が一度だけ下がるためです。一度きりの値下がりは追加の財政余地にならないので、判定はこの値下がりを除いたCPIでも行い、需要が増える分だけ判定用CPIは政策なしより高くなります。
+        </p>}
         {['debt', 'interestGdp', 'gfn'].includes(r.id) && <FiscalVintageBadge latest={latest} projected={r.year > 0} />}
         {r.id === 'labour' && <p className="text-xs">構造的失業率{percent(structuralUnemployment, 1)}÷失業率。上限{r.threshold.toFixed(2)}は失業率が{percent(permittedUnemploymentFloor(structuralUnemployment, r.threshold), 2)}を下回らないという許容条件です。構造的失業率は推定値ではなく仮定で、「乗数・税収・労働反応の条件」で変更できます。</p>}
         {r.id === 'energy' && <p className="text-xs">数値が高いほど電力の余裕が少ない状態です。発電投資は稼働開始後に供給を増やします。バーは期間内で最も厳しい年の値なので、その後の改善は年ごとの表で確認してください。</p>}

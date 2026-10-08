@@ -1,3 +1,5 @@
+import type { OthersCount } from '@/app/lib/others-count';
+
 export interface RecipientExpense {
   category: string;
   purpose: string;
@@ -32,6 +34,8 @@ export interface BlockNode {
   hasExpenses: boolean;
   role?: string;
   recipients: BlockRecipient[];
+  /** 「その他」行にまとめられた件数（RS公開APIの支出先の数から算出。app/lib/others-count.ts）。分からなければ無し */
+  othersCount?: OthersCount;
 }
 
 export type FlowOrigin =

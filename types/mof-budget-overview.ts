@@ -20,13 +20,13 @@ export interface MOFAmountGroup {
   amount: number;
 }
 
-/** 歳出の内訳。他会計への繰入と、それ以外の実支出に分ける */
+/** 歳出の内訳。他会計への繰入と、それ以外（繰入を除く歳出予算）に分ける */
 export interface MOFExpenditureBreakdown {
   /** 歳出合計（円） */
   total: number;
   /** 他会計へ繰入（使途別分類コード = 6）。会計をまたぐと二重計上になる分 */
   transferOut: number;
-  /** 繰入を除いた実支出（円） */
+  /** 繰入を除いた歳出予算（円） */
   net: number;
   /** 繰入の宛先別内訳（目名ベース） */
   transfersByDestination: MOFAmountGroup[];
@@ -158,7 +158,7 @@ export type MOFBudgetNodeType =
   | 'account'
   /** 他会計へ繰入。会計をまたぐと二重計上になる分 */
   | 'transfer'
-  /** 繰入を除いた実支出 */
+  /** 繰入を除いた歳出予算 */
   | 'net-expenditure'
   /** 歳入が歳出を上回る差額（積立等） */
   | 'surplus';

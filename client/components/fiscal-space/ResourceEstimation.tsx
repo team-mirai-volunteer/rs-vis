@@ -29,7 +29,7 @@ export function ResourceEstimation({ result, value }: {
       <p className="text-xs">既存の需要見通しに追加政策の負荷だけを加えます。計画済み投資を追加政策にも入力すると重複するため、純追加分を入力してください。半導体以外の稼働後追加電力は既定0の仮定で、必要なら「政策別の人員・電力負荷」で上書きできます。発電の確実供給は別途設定した電源条件で計算します。</p>
       <p className="text-xs">出典：<a className="underline" target="_blank" rel="noreferrer" href={RESOURCE_REFERENCE.sources['io-2020-108.xlsx'].url}>全国産業連関表（2020年・2025年訂正版）</a>／<a className="underline" target="_blank" rel="noreferrer" href={RESOURCE_REFERENCE.sources['employment-2020-108.xlsx'].url}>同年雇用表</a>／<a className="underline" target="_blank" rel="noreferrer" href={RESOURCE_REFERENCE.sources['occto-2026.pdf'].url}>OCCTO 2026年度供給計画・別紙2</a>。電力は融通前の供給力を使う厳しめの仮定で、公表の供給信頼度評価とは異なります。</p>
       <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="産業別の追加人員概算"><table className="w-full min-w-[500px] text-right text-sm">
-        <caption className="text-left">追加予算による区分別の期間内最大負荷</caption>
+        <caption className="text-left">追加の財政措置による区分別の期間内最大負荷</caption>
         <thead><tr>{['区分', '初期利用率（仮定）', '追加利用率', '追加人員相当'].map(h => <th scope="col" key={h} className="py-2">{h}</th>)}</tr></thead>
         <tbody>{RESOURCE_SECTORS.map(s => {
           const extra = Math.max(...paths.map(p => p.sectorDemand[s]));
@@ -38,7 +38,7 @@ export function ResourceEstimation({ result, value }: {
         })}</tbody>
       </table></div>
       {power && <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="地域別の電力需給概算"><table className="w-full min-w-[480px] text-right text-sm">
-        <caption className="text-left">電力制約が最も厳しい{power.referenceYear}年度（追加予算を反映）</caption>
+        <caption className="text-left">電力制約が最も厳しい{power.referenceYear}年度（追加の財政措置を反映）</caption>
         <thead><tr>{['地域・断面', '需要GW', '供給GW（融通前）', '利用率'].map(h => <th scope="col" key={h} className="py-2">{h}</th>)}</tr></thead>
         <tbody>{power.rows.map(r => <tr key={`${r.region}-${r.season}`} className="border-t border-mirai-border"><th scope="row" className="py-2 text-left">{r.region}・{r.season}</th><td>{r.demandGw.toFixed(2)}</td><td>{r.supplyGw.toFixed(2)}</td><td>{percent(r.utilization)}</td></tr>)}</tbody>
       </table><p className="mt-2 text-xs">沖縄の2026・2027年度は、公表表の注記に従い最小予備率断面を使用します。全国集計もこの指定断面を含み、厳密な同時刻合計ではありません。</p></div>}

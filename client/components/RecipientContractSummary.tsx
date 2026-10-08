@@ -6,11 +6,13 @@
  * 表示はホバーだけ（クリックはそれぞれの図の選択操作に使うので、固定表示は持たない）。
  */
 import { useRecipientContracts } from '@/client/hooks/useRecipientContracts';
+import { ContractMethodBadge } from '@/client/components/quality/ContractMethodBadge';
+import type { ContractLine } from '@/app/lib/contract-method';
 
 /** 出す契約の行数。残りは「ほか○件」にまとめる */
 const MAX_LINES = 3;
 
-export function RecipientContractSummary({ year, name, pids, contracts, className }: {
+export function RecipientContractSummary({ year, name, pids, contracts, lines: localLines, className }: {
   /** RS シート年度。null なら出さない（暫定データなど再委託構造が無いとき） */
   year: number | string | null;
   name: string;
@@ -18,16 +20,20 @@ export function RecipientContractSummary({ year, name, pids, contracts, classNam
   pids: readonly (string | number)[];
   /** 手元に契約の概要があるとき（1事業の再委託構造を読み込み済みなど）。渡すと API を呼ばない */
   contracts?: readonly string[];
+  /** contracts と一緒に渡す、手元の「概要＋契約方式」の行。あれば contracts より優先 */
+  lines?: readonly ContractLine[];
   className?: string;
 }) {
   const fetched = useRecipientContracts(contracts ? null : year, name, pids);
   const data = contracts
-    ? { name, entries: contracts.length > 0 ? [{ pid: Number(pids[0] ?? 0), projectName: '', amount: 0, contracts: [...contracts] }] : [] }
+    ? { name, entries: contracts.length > 0 || localLines?.length ? [{ pid: Number(pids[0] ?? 0), projectName: '', amount: 0, contracts: [...contracts], lines: localLines?.length ? [...localLines] : undefined }] : [] }
     : fetched;
   if (data === undefined) return <p className={`text-[11px] text-mirai-text-muted ${className ?? ''}`}>契約の内容を読み込み中…</p>;
   if (!data) return null;
   const multiProject = data.entries.length > 1;
-  const lines = data.entries.flatMap(entry => entry.contracts.map(contract => ({ pid: entry.pid, projectName: entry.projectName, contract })));
+  // 契約方式が分かる事業は「概要＋方式」の行、分からなければ概要だけ
+  const lines = data.entries.flatMap(entry => (entry.lines ?? entry.contracts.map(text => ({ text }) as ContractLine))
+    .map(line => ({ pid: entry.pid, projectName: entry.projectName, line })));
   if (lines.length === 0) return null;
   const shown = lines.slice(0, MAX_LINES);
   const restLines = lines.length - shown.length;
@@ -36,10 +42,12 @@ export function RecipientContractSummary({ year, name, pids, contracts, classNam
     <div className={`text-[11px] leading-relaxed ${className ?? ''}`}>
       <p className="font-bold text-mirai-text-muted">主な契約</p>
       <ul className="m-0 list-none p-0">
-        {shown.map(line => (
-          <li key={`${line.pid}-${line.contract}`} className="text-mirai-text-secondary">
-            {multiProject && <span className="text-mirai-text-muted">{line.projectName}：</span>}
-            {line.contract}
+        {shown.map(({ pid, projectName, line }) => (
+          <li key={`${pid}-${line.text}-${line.m ?? ''}`} className="text-mirai-text-secondary">
+            {multiProject && <span className="text-mirai-text-muted">{projectName}：</span>}
+            {/* 方式は概要の頭に置く。後ろに付けると、長い概要のとき方式だけが次の行に送られる */}
+            {line.m && <span className="mr-1 inline-flex max-w-full align-middle"><ContractMethodBadge method={line.m} text={line.mt} applicants={line.ap} /></span>}
+            {line.text}
           </li>
         ))}
       </ul>

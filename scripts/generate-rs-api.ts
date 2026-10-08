@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { apiDetail, executionGraph, knownAmount } from './rs-api-adapter';
+import { apiContractMethod } from '../app/lib/contract-method';
 import type { RsApiCoverage, RsApiDetail, RsApiGroup, RsApiEdge, RsApiProject } from '../types/rs-api';
 import { UNIFIED_COLUMNS, type UnifiedGraph } from '../types/unified-budget';
 
@@ -32,10 +33,16 @@ for (const p of projects) {
   const d = apiDetail(p, groups?.data, edges?.data, groups?.fetchedAt ?? null);
   // Retain only fields used by the provisional detail view (raw API envelopes stay under data/rs-api).
   d.groups = d.groups.map(g => ({ id: g.id, project_id: g.project_id, display_code: g.display_code, name: g.name,
-    overview: g.overview, total_amount: knownAmount(g.total_amount, g.negative_total_amount_count),
+    overview: g.overview, payment_count: g.payment_count ?? null, total_amount: knownAmount(g.total_amount, g.negative_total_amount_count),
     payments: g.payments.map(p => ({ id: p.id, name: p.name, corporate_number: p.corporate_number, is_others: p.is_others, type: p.type,
       total_contract_amount: knownAmount(p.total_contract_amount, p.negative_total_contract_amount_count),
-      contracts: p.contracts.map(c => ({ overview: c.overview, amount: knownAmount(c.amount), amount_breakdown: c.amount_breakdown })) })) }));
+      contracts: p.contracts.map(c => {
+        // 契約方式は正規化済みの値だけ残す（埋め草の補足・範囲外の落札率は落とす）
+        const method = apiContractMethod(c);
+        return { overview: c.overview, amount: knownAmount(c.amount), amount_breakdown: c.amount_breakdown,
+          ...(method ? { contract_method: method.m, contract_method_description: method.mt ?? null,
+            number_of_applicants: method.ap ?? null, bid_rate: method.br ?? null } : {}) };
+      }) })) }));
   d.edges = d.edges.map(e => ({ source_node_id: e.source_node_id, target_node_id: e.target_node_id, is_connected_to_source_root: e.is_connected_to_source_root, label: e.label }));
   details[pid] = d;
 }
@@ -58,7 +65,7 @@ const graph: UnifiedGraph = { nodes, edges, metadata: {
   apiCoverage: coverage, budgetYear: sheetYear - 1, rsSheetYear: sheetYear, basis: 'execution', basisLabel: '執行実績（暫定）',
   rsMeasureLabel: '執行額', hasSpending: true, rsAmountKind: 'budget', basisBudgetType: '決算', eraLabel: '令和7年度', unit: 'yen', generatedAt: new Date().toISOString(),
   totals: { gross: total, net: total, transfer: 0, rsLinked: 0, rsProgram: total, outside: 0, scaledDown: 0,
-    byKind: { rs: total, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, unmatched: 0, outside: 0 }, agency: 0, overviewNet: null },
+    byKind: { rs: total, transfer: 0, debt: 0, 'local-transfer': 0, reserve: 0, personnel: 0, 'non-program': 0, unmatched: 0, outside: 0 }, agency: 0, overviewNet: null },
   counts, collapsedAccounts: [], notes: [
     'RS公開APIによる暫定取得。2026年度シートに載る2025年度執行実績。全政府の決算・純計ではない。',
     '事業列は執行額、事業(支出)列は確認できた直接支出先への金額合計。上位支出先の記載・丸め等により一致しない。',

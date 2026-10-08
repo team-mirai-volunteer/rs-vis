@@ -24,9 +24,17 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
+import { ProjectFunds } from './ProjectFunds';
+import { ProjectAgencySegments } from './ProjectAgencySegments';
+import { ProjectExternalReviewNote } from './ProjectExternalReviewNote';
 
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
+
+/** 事業概要（/api/project-details）。パネル見出しの継続年数とここで同じキャッシュを使う。pid が無ければ取得しない */
+export function useProjectDetail(pid: number | undefined, rsSheetYear: number | null): ProjectDetail | null | undefined {
+  return useCached(detailCache, pid === undefined || rsSheetYear === null ? null : `${rsSheetYear}-${pid}`, `/api/project-details/${pid}?year=${rsSheetYear}`, extractDetail);
+}
 
 const OVERVIEW_PREVIEW_HEIGHT = 72;
 
@@ -63,7 +71,7 @@ export function UnifiedProjectSections({
   const [scoreLoading, setScoreLoading] = useState(false);
 
   const policy = usePolicySummary(isProvisional ? null : year);
-  const sheetDetail = useCached(detailCache, isProvisional ? null : `${year}-${pid}`, `/api/project-details/${pid}?year=${year}`, extractDetail);
+  const sheetDetail = useProjectDetail(isProvisional ? undefined : pid, rsSheetYear);
   const detail = provisionalDetail ? rsApiToProjectDetail(provisionalDetail) : sheetDetail;
 
   const openScoreDialog = useCallback(() => {
@@ -95,6 +103,8 @@ export function UnifiedProjectSections({
         detailLoading={scoreLoading}
       />
 
+      {!isProvisional && <ProjectAgencySegments pid={pid} rsSheetYear={rsSheetYear} scaleFont={scaleFont} />}
+
       <ProjectOverviewSection
         detail={detail}
         projectName={projectName}
@@ -111,6 +121,9 @@ export function UnifiedProjectSections({
       <div className="border-t border-border px-4">
         <ProjectBudgetHistory key={pid} pid={pid} />
       </div>
+      {/* 推移の下に、外部の検査と関連する基金を件数だけの1行で。全文は政策評価の詳細（ScoreDetailDialog）と基金一覧に置く */}
+      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} padding="px-4 py-2" />}
+      {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} padding="px-4 py-2" />}
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
     </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { loadSankeyGraph } from '@/app/lib/api/sankey-graph-loader';
-import { buildProjectMapSpending } from '@/app/lib/project-map-spending';
+import { buildProjectMapSpending, crossYearAnchors, withAnchors } from '@/app/lib/project-map-spending';
 import type { ProjectMapFile, ProjectMapSpendingResponse } from '@/types/project-map';
 import { tryReadDataJson as readDataJson } from '@/app/lib/api/data-file';
 
@@ -14,16 +14,35 @@ import { tryReadDataJson as readDataJson } from '@/app/lib/api/data-file';
  */
 
 const cache = new Map<string, ProjectMapSpendingResponse>();
+const rawCache = new Map<string, { map: ProjectMapFile; data: ProjectMapSpendingResponse }>();
 
 class MapNotGenerated extends Error {}
 
+function loadRaw(year: string) {
+  const cached = rawCache.get(year);
+  if (cached) return cached;
+  const map = readDataJson<ProjectMapFile>(`project-map-${year}.json`);
+  if (!map) return null;
+  const pids = new Set(map.points.map(p => String(p.pid)));
+  const raw = { map, data: buildProjectMapSpending(loadSankeyGraph(year), pids, Number(year)) };
+  rawCache.set(year, raw);
+  return raw;
+}
+
+/**
+ * 年度をまとめて配置したマップ（params.jointYears）では、支出先の位置も全年度の支払いから決めて
+ * 年度を切り替えても動かないようにする（事業は同じ座標なので、重心も同じ座標系で取れる）
+ */
 function loadData(year: string): ProjectMapSpendingResponse {
   const cached = cache.get(year);
   if (cached) return cached;
-  const map = readDataJson<ProjectMapFile>(`project-map-${year}.json`);
-  if (!map) throw new MapNotGenerated();
-  const pids = new Set(map.points.map(p => String(p.pid)));
-  const result = buildProjectMapSpending(loadSankeyGraph(year), pids, Number(year));
+  const own = loadRaw(year);
+  if (!own) throw new MapNotGenerated();
+  const years = (own.map.params.jointYears ?? [Number(year)]).map(String);
+  const all = years.map(y => (y === year ? own : loadRaw(y))).filter((r): r is NonNullable<typeof r> => r !== null);
+  const coords = new Map<string, { x: number; y: number }>();
+  for (const r of all) for (const p of r.map.points) if (!coords.has(String(p.pid))) coords.set(String(p.pid), { x: p.x, y: p.y });
+  const result = withAnchors(own.data, crossYearAnchors(all.map(r => r.data), coords));
   cache.set(year, result);
   return result;
 }

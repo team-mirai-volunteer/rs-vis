@@ -154,7 +154,7 @@ export function demographicRecords(d: DemographicAssumptions, baseYear: number):
       uncertaintyNote: '家族関係支出のGDP比が1ポイント増えたときの合計特殊出生率の変化。OECD諸国のパネル推計に幅があり、日本の因果推定値ではない。0で経路を無効化できる。追加出生は15年後以降に労働力へ入る。' },
     { key: 'demographics.fertilityIncomeElasticity', value: d.fertilityIncomeElasticity, unit: '無次元（弾力性）', referenceYear: 'シナリオ設定',
       sourceName: d.fertilityIncomeElasticity === 0 ? '未同定の効果は加算しない設定' : 'モデル仮定（Fenge & Scheubel 2014 の歴史データからの換算）', sourceUrl: d.fertilityIncomeElasticity === 0 ? null : 'https://www.ecb.europa.eu/pub/pdf/scpwps/ecbwp1734.pdf', status: 'assumption',
-      uncertaintyNote: '社会保険料減税による本人の手取り1%増が合計特殊出生率を何%変えるか。初期値0.2は、ビスマルク年金導入期のドイツ州別データで被保険者1人当たり拠出能力1マルク増が婚姻出生率を千人当たり0.4上げた係数を弾力性に換算した桁の仮定で、現代日本の因果推定値ではない。同論文の第二の経路（年金の内部収益率）は別建てにしていない。賦課方式の内部収益率は賃金総額の成長率に等しく（同論文式12）、このモデルでは労働力人口指数と成長経路がそれを担うため、所得効果だけを係数に置く。0で経路を無効化できる。' },
+      uncertaintyNote: '社会保険料の軽減による本人の手取り1%増が合計特殊出生率を何%変えるか。初期値0.2は、ビスマルク年金導入期のドイツ州別データで被保険者1人当たり拠出能力1マルク増が婚姻出生率を千人当たり0.4上げた係数を弾力性に換算した桁の仮定で、現代日本の因果推定値ではない。同論文の第二の経路（年金の内部収益率）は別建てにしていない。賦課方式の内部収益率は賃金総額の成長率に等しく（同論文式12）、このモデルでは労働力人口指数と成長経路がそれを担うため、所得効果だけを係数に置く。0で経路を無効化できる。' },
   ];
   return rows;
 }

@@ -19,13 +19,13 @@ try {
   const y = await page.getByRole('region', { name: '政策の操作パネル' }).evaluate(el => el.getBoundingClientRect().top + scrollY);
   assert(y < 600, `Policy controls begin at ${y}px`);
   await expect(page.getByTestId('input-overview')).toContainText('0.00兆円');
-  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
+  await page.getByRole('button', { name: '例：社会保険料の軽減だけで15兆円' }).click();
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円');
   await expect(page.getByTestId('input-overview').getByRole('link', { name: '配分を拡大した場合の参考上限・生産能力を見る' })).toHaveAttribute('href', '#fiscal-envelope');
   await expect(page.getByRole('meter', { name: '産業別能力の閾値利用率' })).toHaveCount(0);
   await expect(page.getByRole('meter', { name: '電力供給能力の閾値利用率' })).toHaveCount(0);
   await page.screenshot({ path: 'test-results/fiscal-space/review-desktop.png' });
-  for (const name of ['社会保険料減税', '研究開発', '送電網投資', '防衛', '子育て']) await page.getByLabel(`${name}・数値で入力`, { exact: true }).fill('0');
+  for (const name of ['社会保険料の軽減', '研究開発', '送電網投資', '防衛', '子育て']) await page.getByLabel(`${name}・数値で入力`, { exact: true }).fill('0');
   await page.getByLabel('公共投資・数値で入力', { exact: true }).fill('10');
   const conditions = page.getByText('経済状態・評価条件を変える', { exact: true });
   await conditions.click();
@@ -39,7 +39,7 @@ try {
   await expect(result).toContainText('借換・新発金利');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
+  await page.getByRole('button', { name: '例：社会保険料の軽減だけで15兆円' }).click();
   const models = page.getByRole('region', { name: '参考上限の感度' });
   await expect(models.locator('tbody tr')).toHaveCount(3);
   await page.locator('details').filter({ has: page.getByText('詳細な条件', { exact: true }) }).evaluate(el => { el.open = true; });
@@ -55,14 +55,15 @@ try {
   await expect.poll(() => long.locator('tbody').innerText()).not.toEqual(lowRate);
   const taxDetails = page.getByText(/^ほかの.*政策を追加する$/);
   await taxDetails.click();
-  await page.getByLabel('消費税減税・数値で入力', { exact: true }).fill('35');
-  await expect(page.getByTestId('annual-total')).toHaveText('50.0兆円');
+  await page.getByLabel('消費税減税・数値で入力', { exact: true }).fill('29');
+  await expect(page.getByTestId('annual-total')).toHaveText('44.0兆円');
   await page.getByRole('button', { name: '乗数・税収・労働反応の条件', exact: true }).click();
-  await page.getByLabel('消費税1ポイントの減収額・数値で入力', { exact: true }).fill('1');
-  await expect(page.getByTestId('annual-total')).toHaveText('25.0兆円');
+  await page.getByLabel('消費税（標準税率）1ポイントの減収額・数値で入力', { exact: true }).fill('1');
+  // 標準税率の上限が10兆円に下がり、軽減税率4.8兆円はそのまま
+  await expect(page.getByTestId('annual-total')).toHaveText('29.8兆円');
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '初期条件に戻す' }).click();
-  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
+  await page.getByRole('button', { name: '例：社会保険料の軽減だけで15兆円' }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => scrollTo(0, 0));
   await page.getByRole('button', { name: /^政策を調整/ }).click();

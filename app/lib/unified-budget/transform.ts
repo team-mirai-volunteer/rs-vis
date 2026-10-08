@@ -25,11 +25,28 @@ import {
   aggregateId,
   type UnifiedFilterContext,
   type UnifiedOffset,
+  type UnifiedProgramRanking,
   type UnifiedTopN,
   type UnifiedViewFilter,
   type UnifiedViewGraph,
   type UnifiedViewNode,
 } from '@/types/unified-budget-view';
+
+/**
+ * 事業の並べ替え（ranking が無ければ金額の大きい順）。
+ * 値のある事業を先に、値の無い事業を後ろに置き、同値・値無しどうしは金額の大きい順
+ */
+function compareByRanking(ranking: UnifiedProgramRanking | undefined, a: UnifiedViewNode, b: UnifiedViewNode): number {
+  if (ranking) {
+    const va = a.details.projectId !== undefined ? ranking.values.get(a.details.projectId) : undefined;
+    const vb = b.details.projectId !== undefined ? ranking.values.get(b.details.projectId) : undefined;
+    if (va !== undefined && vb !== undefined) {
+      if (va !== vb) return ranking.order === 'asc' ? va - vb : vb - va;
+    } else if (va !== undefined) return -1;
+    else if (vb !== undefined) return 1;
+  }
+  return b.value - a.value;
+}
 
 const COLUMN_INDEX = new Map<UnifiedColumn, number>(UNIFIED_COLUMNS.map((c, i) => [c, i]));
 export const columnIndex = (c: UnifiedColumn) => COLUMN_INDEX.get(c) ?? 0;
@@ -55,7 +72,7 @@ export function toViewGraph(graph: UnifiedGraph, opts?: { keepZeroPrograms?: boo
   const ids = new Set(nodes.map(n => n.id));
   const links: SankeyLink[] = graph.edges
     .filter(e => ids.has(e.source) && ids.has(e.target))
-    .map(e => ({ source: e.source, target: e.target, value: e.value }));
+    .map(e => ({ source: e.source, target: e.target, value: e.value, ...(e.inferred ? { inferred: e.inferred } : {}) }));
   return { nodes, links };
 }
 
@@ -514,8 +531,9 @@ export function collapseColumns(view: UnifiedViewGraph, visible: UnifiedColumn[]
  * 事業区分ノード（np-*）と擬似ノードは常に残す。事業(支出) は事業（program）と同じ事業IDの集合に揃える
  * （上下の列で同じ事業が出るように。/sankey-svg と同じ）。
  * 集約ノードへ向かう辺・集約ノードから出る辺は同じ相手ごとに合流させる。
+ * ranking を渡すと、事業列は金額ではなくその並べ替えキーの上位N件を残す（総合点の低い順など）。
  */
-export function applyTopN(view: UnifiedViewGraph, topN: UnifiedTopN, offset: UnifiedOffset): UnifiedViewGraph {
+export function applyTopN(view: UnifiedViewGraph, topN: UnifiedTopN, offset: UnifiedOffset, ranking?: UnifiedProgramRanking): UnifiedViewGraph {
   let nodes = view.nodes;
   let links = view.links;
   const keptProjectIds = new Set<number>();
@@ -533,7 +551,7 @@ export function applyTopN(view: UnifiedViewGraph, topN: UnifiedTopN, offset: Uni
     if (col === 'program-spending') {
       keep = new Set(candidates.filter(n => n.details.projectId !== undefined && keptProjectIds.has(n.details.projectId)).map(n => n.id));
     } else {
-      const sorted = [...candidates].sort((a, b) => b.value - a.value);
+      const sorted = [...candidates].sort(col === 'program' ? (a, b) => compareByRanking(ranking, a, b) : (a, b) => b.value - a.value);
       const start = Math.max(0, Math.min(offset[col] ?? 0, Math.max(0, sorted.length - limit)));
       keep = new Set(sorted.slice(start, start + limit).map(n => n.id));
       if (col === 'program') for (const id of keep) {
@@ -591,8 +609,9 @@ export const isAggregateId = (id: string) => id.startsWith(AGGREGATE_ID_PREFIX);
  *   （読者が見たいのは個々の事業で、区分ノードは「残り」の説明だから）
  * - 集約ノード（「N項」など）は各列の最下段
  * - 事業(支出) は事業と同じ事業IDの並びに揃え、事業→事業(支出) の帯が平行に流れるようにする
+ * - ranking を渡すと、事業列の RS事業はその並べ替えキーの順（値の無い事業は後ろ、区分・集約ノードより前）
  */
-export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
+export function sortForDisplay(view: UnifiedViewGraph, ranking?: UnifiedProgramRanking): UnifiedViewGraph {
   const rank = (n: UnifiedViewNode): number => {
     if (n.details.aggregated) return 2;
     if (n.details.standalone) return 1;
@@ -600,11 +619,13 @@ export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
     return 0;
   };
   const byValue = (a: UnifiedViewNode, b: UnifiedViewNode) => rank(a) - rank(b) || b.value - a.value || a.id.localeCompare(b.id);
+  const byProgram = (a: UnifiedViewNode, b: UnifiedViewNode) =>
+    rank(a) - rank(b) || (rank(a) === 0 ? compareByRanking(ranking, a, b) : b.value - a.value) || a.id.localeCompare(b.id);
 
   const programOrder = new Map<number, number>();
   view.nodes
     .filter(n => n.details.column === 'program')
-    .sort(byValue)
+    .sort(byProgram)
     .forEach((n, i) => {
       if (n.details.projectId !== undefined) programOrder.set(n.details.projectId, i);
     });
@@ -621,7 +642,7 @@ export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
   };
 
   const nodes = UNIFIED_COLUMNS.flatMap(col =>
-    view.nodes.filter(n => n.details.column === col).sort(col === 'program-spending' ? bySpending : byValue)
+    view.nodes.filter(n => n.details.column === col).sort(col === 'program-spending' ? bySpending : col === 'program' ? byProgram : byValue)
   );
   // 列に属さないノードは無いはずだが、落とさないよう末尾に付ける
   const placed = new Set(nodes.map(n => n.id));
@@ -635,9 +656,10 @@ export function sortForDisplay(view: UnifiedViewGraph): UnifiedViewGraph {
  * 止まらないようにする）。
  * - 対象は applyTopN が TopN の候補として扱うノード（集約・区分・擬似ノードは常に出るので対象外）
  * - 事業(支出) は事業と同じ事業IDの窓に従うので、事業列の位置を動かす
+ * - 事業列の順位は applyTopN と同じ ranking で数える
  * - 動かす必要が無い（既に窓内）・対象外なら null
  */
-export function offsetToReveal(view: UnifiedViewGraph, topN: UnifiedTopN, offset: UnifiedOffset, nodeId: string): Partial<UnifiedOffset> | null {
+export function offsetToReveal(view: UnifiedViewGraph, topN: UnifiedTopN, offset: UnifiedOffset, nodeId: string, ranking?: UnifiedProgramRanking): Partial<UnifiedOffset> | null {
   const node = view.nodes.find(n => n.id === nodeId);
   if (!node) return null;
   let target = node;
@@ -654,7 +676,7 @@ export function offsetToReveal(view: UnifiedViewGraph, topN: UnifiedTopN, offset
   if (limit <= 0) return null;
   const candidates = view.nodes
     .filter(n => n.details.column === column && !n.details.standalone && !(n.details.kind && n.details.kind !== 'rs'))
-    .sort((a, b) => b.value - a.value);
+    .sort(column === 'program' ? (a, b) => compareByRanking(ranking, a, b) : (a, b) => b.value - a.value);
   if (candidates.length <= limit) return null;
   const rank = candidates.findIndex(n => n.id === target.id);
   if (rank < 0) return null;

@@ -9,6 +9,8 @@ import { THRESHOLD_BOUNDS } from '@/client/lib/fiscal-space-ranges';
 import { permittedUnemploymentFloor } from '@/app/lib/fiscal-space/assumptions';
 import { STRESSES, type StressId, type StressSelection } from '@/app/lib/fiscal-space/stress-envelope';
 import { EXTENDED_HORIZON } from '@/client/lib/fiscal-space-engine';
+import { amountToInstrument, instrumentsFor, instrumentToAmount } from '@/client/lib/fiscal-space-instruments';
+import type { ModelParameters } from '@/types/fiscal-space';
 
 const DETAILS_KEY = 'fiscal-space:advanced-open';
 const CONDITIONS_KEY = 'fiscal-space:constraint-conditions-open';
@@ -19,21 +21,68 @@ function usePersistedOpen(key: string) {
   return [open, change] as const;
 }
 
-export function RangeField({ label, value, min, max, step = 1, unit, onChange }: {
+export function RangeField({ label, value, min, max, step = 1, unit, onChange, compact = false }: {
   label: string; value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void;
+  /** 政策の中に入れ子で置く小さい欄。ラベルと入力を1行に収める */
+  compact?: boolean;
 }) {
   const id = useId();
   const [empty, setEmpty] = useState(false);
   const clamp = (n: number) => Number(Math.max(min, Math.min(max, min + Math.round((n - min) / step) * step)).toFixed(8));
-  return <div className="space-y-2"><div className="flex items-center justify-between gap-2"><label htmlFor={id} className="min-w-0 text-sm font-medium">{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
+  return <div className={compact ? 'space-y-1' : 'space-y-2'}><div className="flex items-center justify-between gap-2"><label htmlFor={id} className={`min-w-0 font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{label}</label><span className="flex shrink-0 items-center gap-1 text-xs tabular-nums">
     <input aria-label={`${label}・数値で入力`} type="number" min={min} max={max} step={step} value={empty ? '' : Number(value.toFixed(6))}
       onBlur={() => setEmpty(false)} onChange={e => { setEmpty(e.target.value === ''); const n = e.target.valueAsNumber; if (Number.isFinite(n)) onChange(clamp(n)); }}
-      className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" />{unit}</span></div>
+      className={`${compact ? 'w-14' : 'w-20'} rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} />{unit}</span></div>
     <input id={id} type="range" min={min} max={max} step={step} value={value} onChange={e => { setEmpty(false); onChange(e.target.valueAsNumber); }} className="policy-range w-full" />
   </div>;
 }
-const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionTaxMax, socialInsuranceMax, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
-  policy: Policy; amount: number; consumptionTaxMax: number; socialInsuranceMax: number;
+/**
+ * 減税を制度の言葉（税率・控除額・保険料率）で入力する欄。値は年間減収額（兆円）と相互に換算し、保存するのは兆円だけ。
+ * 社会保険料は健保と厚生年金の2つの欄で1つの年額を作るので、健保に当たる割合（healthShare）を別に持つ。
+ */
+function InstrumentFields({ policyId, amount, max, calibration, healthShare, onAmount, onInsuranceSplit, bare = false }: {
+  policyId: string; amount: number; max: number; calibration: ModelParameters; healthShare: number;
+  onAmount: (id: string, n: number) => void; onInsuranceSplit: (amount: number, healthShare: number) => void;
+  /** 消費税のように2つの政策の欄を1つの枠に並べるときは、外側で枠を描く */
+  bare?: boolean;
+}) {
+  const instruments = instrumentsFor(policyId, calibration);
+  if (!instruments.length) return null;
+  const capped = Math.min(amount, max);
+  const round = (n: number) => Number(n.toFixed(4));
+  const shares = instruments.length === 2 ? [healthShare, 1 - healthShare] : [1];
+  return <div className={bare ? 'space-y-2' : 'space-y-2 rounded-lg bg-mirai-surface p-2'}>
+    {instruments.map((i, k) => {
+      const own = capped * shares[k];
+      const other = capped - own;
+      const room = Math.max(0, max - other);
+      const value = amountToInstrument(i, own);
+      // 目盛りを刻み（0.1ポイント・1万円）の倍数にそろえる。下限から刻むと 8% が 8.03% のようにずれる
+      const grid = (n: number, up: boolean) => (up ? Math.ceil : Math.floor)(n / i.step - 1e-9) * i.step;
+      const [min, top] = i.mode === 'rate' ? [grid(Math.max(0, (i.current ?? 0) - room * 1e12 / i.yenPerUnit), true), i.current ?? 0] : [0, grid(room * 1e12 / i.yenPerUnit, false)];
+      const per = i.unit === '万円' ? { label: '10万円', yen: i.yenPerUnit * 10 } : { label: '1%', yen: i.yenPerUnit };
+      const change = (v: number) => {
+        const next = Math.min(room, instrumentToAmount(i, v));
+        if (instruments.length === 2) {
+          const total = next + other;
+          onInsuranceSplit(round(total), total > 0 ? (k === 0 ? next : other) / total : healthShare);
+        } else onAmount(policyId, round(next));
+      };
+      return <div key={i.key} className="space-y-1">
+        <RangeField compact label={i.label} value={Number(value.toFixed(2))} min={Number(min.toFixed(2))} max={Number(top.toFixed(2))} step={i.step} unit={i.unit} onChange={change} />
+        <p className="text-xs tabular-nums text-mirai-text-subtle">{i.mode === 'rate' ? `${i.current}%→${Number(value.toFixed(2))}%` : `${Number(value.toFixed(2))}${i.unit}`}・減収 {money(own * 1e12, 1)}／年</p>
+        <details className="text-xs text-mirai-text-subtle"><summary className="cursor-pointer">換算の根拠</summary>
+          <p className="mt-1 leading-relaxed">{per.label}＝{money(per.yen, 2)}。{i.note}<a className="ml-1 underline" href={i.sourceUrl} target="_blank" rel="noreferrer">{i.sourceLabel}</a></p>
+        </details>
+      </div>;
+    })}
+  </div>;
+}
+const PolicyControl = memo(function PolicyControl({ policy, amount, partner, policyMax, calibration, healthShare, onInsuranceSplit, onPowerSettings, onCashSettings, onChildcareSettings, onAmount, onPolicyKind, onPolicyDuration }: {
+  policy: Policy; amount: number; policyMax: Record<string, number>; calibration: ModelParameters; healthShare: number;
+  /** 同じ枠で一緒に入力する政策（消費税の標準税率に対する軽減税率） */
+  partner?: { policy: Policy; amount: number };
+  onInsuranceSplit: (amount: number, healthShare: number) => void;
   onPowerSettings: () => void;
   onCashSettings: () => void;
   onChildcareSettings: () => void;
@@ -42,34 +91,51 @@ const PolicyControl = memo(function PolicyControl({ policy, amount, consumptionT
   onPolicyDuration: (id: string, duration: number) => void;
 }) {
   const revenue = personalTaxRevenue(policy.id);
-  const max = policy.id === 'consumption-tax' ? consumptionTaxMax : policy.id === 'social-insurance' ? socialInsuranceMax : revenue ? Math.floor(revenue.amount / 1e11) / 10 : 100;
+  const max = policyMax[policy.id] ?? 100;
+  const partnerMax = partner ? policyMax[partner.policy.id] ?? 100 : 0;
+  const total = Math.min(amount, max) + (partner ? Math.min(partner.amount, partnerMax) : 0);
+  // 合計の兆円を直接入れたときは、いまの両者の比を保って配る。両方0なら同じポイント数だけ下げる比（1ポイントの減収額の比）
+  const changeTotal = (n: number) => {
+    if (!partner) return onAmount(policy.id, n);
+    const ratio = total > 0 ? Math.min(partner.amount, partnerMax) / total
+      : calibration.reducedConsumptionTax.revenuePerPoint / (calibration.reducedConsumptionTax.revenuePerPoint + calibration.consumptionTax.revenuePerPoint);
+    const second = Number(Math.min(n * ratio, partnerMax).toFixed(4));
+    onAmount(partner.policy.id, second);
+    onAmount(policy.id, Number(Math.min(n - second, max).toFixed(4)));
+  };
+  const name = partner ? '消費税減税' : policy.name;
+  const kind = (k: PolicyKind) => { onPolicyKind(policy.id, k); if (partner) onPolicyKind(partner.policy.id, k); };
+  const duration = (n: number) => { onPolicyDuration(policy.id, n); if (partner) onPolicyDuration(partner.policy.id, n); };
+  const fields = (id: string, a: number, m: number, bare = false) => <InstrumentFields policyId={id} amount={a} max={m} calibration={calibration} healthShare={healthShare} onAmount={onAmount} onInsuranceSplit={onInsuranceSplit} bare={bare} />;
   return <div key={policy.id} className="space-y-2 rounded-xl border border-mirai-border p-3">
-    <RangeField label={policy.name} value={Math.min(amount, max)} min={0} max={max} step={.1} unit="兆円/年" onChange={n => onAmount(policy.id, n)} />
+    <RangeField label={name} value={total} min={0} max={max + partnerMax} step={.1} unit="兆円/年" onChange={changeTotal} />
+    {partner ? <div className="space-y-3 rounded-lg bg-mirai-surface p-2">{fields(policy.id, amount, max, true)}{fields(partner.policy.id, partner.amount, partnerMax, true)}</div> : fields(policy.id, amount, max)}
     {policy.id === 'cash' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onCashSettings}>給付対象を設定</Button>}
     {policy.id === 'childcare' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onChildcareSettings}>現金給付の割合を設定</Button>}
     {policy.id === 'generation' && <Button variant="link" aria-haspopup="dialog" className="h-auto whitespace-normal text-left text-sm font-medium text-primary-accent" onClick={onPowerSettings}>電源構成・稼働時期を設定</Button>}
-    <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${policy.name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => onPolicyKind(policy.id, e.target.value as PolicyKind)}>
+    <label className="block space-y-1 text-xs"><span>継続方法</span><select aria-label={`${name}・継続方法`} className={fieldClass} value={policy.kind} onChange={e => kind(e.target.value as PolicyKind)}>
       {Object.entries(KIND_LABELS).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
     </select></label>
     {policy.kind === 'permanent' ? <p className="text-xs text-mirai-text-subtle">評価期間中、毎年継続します。</p> :
       <label className="flex items-center justify-between gap-2 text-xs"><span>支出期間</span><span className="flex items-center gap-1">
-        <input aria-label={`${policy.name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
-          onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) onPolicyDuration(policy.id, Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
+        <input aria-label={`${name}・支出期間・数値で入力`} className="w-20 rounded-lg border border-mirai-border bg-card px-2 py-1 text-right tabular-nums" type="number" min={1} max={10} step={1} value={policy.duration}
+          onChange={e => { const n = e.target.valueAsNumber; if (Number.isFinite(n)) duration(Math.max(1, Math.min(10, Math.round(n)))); }} />年</span></label>}
     {(policy.id === 'social-insurance' || revenue) && <details className="text-xs text-mirai-text-subtle">
       <summary className="cursor-pointer font-medium">入力上限・計算の前提</summary>
       <div className="mt-2 space-y-2">
     {policy.id === 'social-insurance' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">本人・事業主の双方を軽減します。この政策の年額を両者に分け、配分と就労反応は「乗数・税収・労働反応の条件」で変更できます。</p>}
-    {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(socialInsuranceMax * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
+    {policy.id === 'social-insurance' && <p className="text-xs leading-relaxed text-mirai-text-subtle">現在の配分での入力上限：{money(max * 1e12, 1)}／年（0.1兆円単位で切下げ）。<a className="underline" href={SOCIAL_INSURANCE_REVENUE.sourceUrl} target="_blank" rel="noreferrer">2024年度の保険料収入</a>は計{money(SOCIAL_INSURANCE_REVENUE.total)}、本人{money(SOCIAL_INSURANCE_REVENUE.insured)}・事業主{money(SOCIAL_INSURANCE_REVENUE.employer)}。各側の収入を超えない額を上限とし、評価期間中はこの収入基準を固定します。</p>}
     {revenue && <p className="text-xs leading-relaxed text-mirai-text-subtle">入力上限：{money(max * 1e12, 1)}／年。<a className="underline" href={revenue.sourceUrl} target="_blank" rel="noreferrer">2024年度の{revenue.label}の税収</a>を限度とし、0.1兆円単位で切り下げます。{'municipalSourceUrl' in revenue && <><a className="underline" href={revenue.municipalSourceUrl} target="_blank" rel="noreferrer">市町村分の出典</a>。</>}{revenue.scope}評価期間中はこの基準額を固定します。税額を超える分は「現金給付」に入力してください。</p>}
     {policy.id === 'resident-tax' && <p className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">個人住民税の所得に比例する軽減を仮定。入力は年間減収額です。所得税減税の乗数・就労反応を代用し、地方を含む一般政府の税収減として計上します。均等割・徴収時期・自治体別の財政は未推計です。</p>}
       </div>
     </details>}
   </div>;
 });
-export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
+export function Controls({ policyMax, calibration, healthShare, onInsuranceSplit, policies, amounts, total, horizon, maxHorizon = 5, rateShock, energyShock, thresholds, definitions, gap, inflation, construction, firmCapacity,
   structuralUnemployment, headline, onClose, stresses, onStress,
   onPowerSettings, onCashSettings, onChildcareSettings, onCalibrationSettings, onSupplySettings, additionalSettings, onAmount, onPolicyKind, onPolicyDuration, onHorizon, onRateShock, onEnergyShock, onThreshold, onGap, onInflation, onConstruction, onFirmCapacity, onReset }: {
-  consumptionTaxMax?: number; socialInsuranceMax: number; policies: Policy[]; amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
+  policyMax: Record<string, number>; calibration: ModelParameters; healthShare: number; onInsuranceSplit: (amount: number, healthShare: number) => void; policies: Policy[];
+  amounts: Record<string, number>; total: number; horizon: number; maxHorizon?: number;
   rateShock: number; energyShock: number; thresholds: Thresholds; definitions: ConstraintDefinition[];
   stresses: StressSelection; onStress: (id: StressId, on: boolean) => void;
   gap: number; inflation: number; construction: number; firmCapacity: number;
@@ -85,7 +151,9 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
   onThreshold: (id: keyof Thresholds, n: number) => void;
   onGap: (n: number) => void; onInflation: (n: number) => void; onConstruction: (n: number) => void; onFirmCapacity: (n: number) => void; onReset: () => void;
 }) {
-  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} consumptionTaxMax={consumptionTaxMax} socialInsuranceMax={socialInsuranceMax} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
+  // 消費税の標準税率と軽減税率は1つの枠で入力する（計算上は直接の物価効果が違うので別の政策のまま）
+  const reduced = policies.find(p => p.id === 'consumption-tax-reduced');
+  const policyField = (policy: Policy) => <PolicyControl key={policy.id} policy={policy} amount={amounts[policy.id] ?? 0} partner={policy.id === 'consumption-tax' && reduced ? { policy: reduced, amount: amounts[reduced.id] ?? 0 } : undefined} policyMax={policyMax} calibration={calibration} healthShare={healthShare} onInsuranceSplit={onInsuranceSplit} onPowerSettings={onPowerSettings} onCashSettings={onCashSettings} onChildcareSettings={onChildcareSettings} onAmount={onAmount} onPolicyKind={onPolicyKind} onPolicyDuration={onPolicyDuration} />;
   const economyDialog = useRef<HTMLDialogElement>(null);
   const economyTitle = useId();
   const [advancedOpen, setAdvancedOpen] = usePersistedOpen(DETAILS_KEY);
@@ -134,10 +202,10 @@ export function Controls({ consumptionTaxMax = 35, socialInsuranceMax, policies,
           </fieldset>
         </div>
       </details>
-      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加予算（年額）</p><output data-testid="annual-total" aria-label="追加予算（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
+      <div className="rounded-xl bg-primary/10 p-3"><p className="text-sm font-medium">追加の財政措置（年額）</p><output data-testid="annual-total" aria-label="追加の財政措置（年額）" className="mt-1 block text-2xl font-bold tabular-nums">{money(total * 1e12, 1)}</output><p className="mt-1 text-xs text-mirai-text-subtle">減税・社会保険料軽減と追加支出の年額合計。実際の年別費用は継続方法・期間に従います。</p></div>
       <Button variant="outline" className="w-full" onClick={onReset}>初期条件に戻す</Button>
       <div className="space-y-4">
-        {[...policies.filter(p => p.id === 'social-insurance'), ...policies.filter(p => p.id !== 'social-insurance')].map(policyField)}
+        {[...policies.filter(p => p.id === 'social-insurance'), ...policies.filter(p => p.id !== 'social-insurance' && p.id !== 'consumption-tax-reduced')].map(policyField)}
         {total === 0 && <p role="status" className="text-sm">政策の追加額は0円です。金額を入力すると、その構成の条件付き参考額を計算します。</p>}
       </div>
       <details className="border-t border-mirai-border pt-4" open={advancedOpen} onToggle={e => setAdvancedOpen((e.target as HTMLDetailsElement).open)}>

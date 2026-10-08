@@ -68,7 +68,7 @@ export function createOptimizationEvaluator(form: FiscalForm) {
     const violations: string[] = [];
     let penalty = 0;
     const add = (label: string, amount = 1) => { violations.push(label); penalty += Math.max(1e-9, amount); };
-    if (total < settings.minBudget - 1e-8 || total > settings.maxBudget + 1e-8) add('追加予算の範囲', Math.abs(total - Math.max(settings.minBudget, Math.min(settings.maxBudget, total))));
+    if (total < settings.minBudget - 1e-8 || total > settings.maxBudget + 1e-8) add('追加の財政措置の範囲', Math.abs(total - Math.max(settings.minBudget, Math.min(settings.maxBudget, total))));
     for (const policy of POLICIES) {
       const amount = amounts[policy.id] ?? 0;
       if (!Number.isFinite(amount) || amount < 0 || amount > 100 || amount * TRILLION > policyInputLimitYen(policy.id, p) + 1)
@@ -111,7 +111,7 @@ export function optimizeFiscalPolicy(form: FiscalForm, progress?: (p: Optimizati
   const { evaluate, baseline, horizon } = createOptimizationEvaluator(form);
   const fixed = Object.fromEntries(POLICIES.map(p => [p.id, settings.eligible[p.id] ? 0 : form.amounts[p.id] ?? 0]));
   const fixedTotal = Object.values(fixed).reduce((a, b) => a + b, 0);
-  if (fixedTotal > settings.maxBudget + 1e-8) throw new Error('固定した政策の合計が追加予算の上限を超えています。');
+  if (fixedTotal > settings.maxBudget + 1e-8) throw new Error('固定した政策の合計が追加の財政措置の上限を超えています。');
   const caps = Object.fromEntries(eligible.map(id => [id, Math.floor(Math.min(100, policyInputLimitYen(id, form.calibration) / TRILLION) * 10 + 1e-8) / 10]));
   const maximum = Math.min(settings.maxBudget, fixedTotal + Object.values(caps).reduce((a, b) => a + b, 0));
   if (maximum < settings.minBudget - 1e-8) throw new Error('探索対象の政策上限では、指定した予算の下限に届きません。');

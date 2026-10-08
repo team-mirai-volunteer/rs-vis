@@ -56,7 +56,6 @@ test('2025 budget can switch to provisional execution on mobile', async ({ page 
   await expect(page).toHaveURL(/b=initial.*view=provisional/);
   await page.goto('/budget-sankey?year=2025&b=execution&sel=project-budget-22215');
   const panel = page.getByTestId('unified-side-panel');
-  await panel.getByRole('button', { name: '事業概要・評価 を見る' }).click();
   await expect(panel.getByText('この事業はまだ政策評価を実施していません（RS公開APIから暫定取得した新規事業）。')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

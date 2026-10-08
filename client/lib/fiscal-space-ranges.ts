@@ -22,7 +22,8 @@ const calibration: Record<string, Bounds> = {
   netLabourIncomeShare: [.2, .7], employerLabourCostShare: [.3, .9],
   energyPricePassThrough: [0, 1], energyDomesticPricePassThrough: [0, 1], expenditurePriceIndexation: [0, 1],
   capacityPriceSensitivity: [0, .02], capacityPressureStart: [.5, .95], referenceCapacityRatio: [1.01, 1.5],
-  'consumptionTax.revenuePerPoint': [1e12, 5e12], 'consumptionTax.cpiShare': [0, 1],
+  'consumptionTax.revenuePerPoint': [.3e12, 5e12], 'consumptionTax.cpiShare': [0, 1],
+  'reducedConsumptionTax.revenuePerPoint': [.1e12, 2e12], 'reducedConsumptionTax.cpiShare': [0, 1], 'reducedConsumptionTax.baseRate': [.05, .1], 'reducedConsumptionTax.passThrough': [0, 1],
   'consumptionTax.baseRate': [.08, .1], 'consumptionTax.passThrough': [0, 1], 'consumptionTax.referenceDirectCpi': [0, 1],
   'electricity.generationTwh': [1, 3000], 'electricity.thermalShare': [0, 1],
   'electricity.demandGrowth': [-.1, .1], 'electricity.peakGrowth': [-.1, .1],
@@ -60,7 +61,7 @@ const root: Record<string, Bounds> = {
   'resource.electricityPrice': [5, 50], 'resource.loadFactor': [.2, 1], 'resource.coincidence': [0, 1],
   'resource.operatingOutputRatio': [0, 2],
   gap: [-10, 3], inflation: [-3, 10], rateShock: [0, 300], energyShock: [0, 100],
-  construction: [70, 100], firmCapacity: [170, 250], corporateShare: [0, 1],
+  construction: [70, 100], firmCapacity: [170, 250], corporateShare: [0, 1], insuranceHealthShare: [0, 1],
   'longRun.years': [6, 100], 'longRun.realGrowth': [-.01, .03], 'longRun.inflation': [0, .05],
   'longRun.rate': [0, .06], 'longRun.realization': [0, 1],
 };

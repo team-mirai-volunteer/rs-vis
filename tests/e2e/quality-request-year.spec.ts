@@ -53,6 +53,6 @@ test('quality scores failure shows a visitor-facing message and retries in place
   await expect(alert).toBeVisible();
   await expect(page.locator('body')).not.toContainText('python3');
   await alert.getByRole('button', { name: '再読み込みする', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '事業別 AI評価（独自基準・試行）・執行透明性スコア' })).toBeVisible();
   expect(attempts).toBe(2);
 });

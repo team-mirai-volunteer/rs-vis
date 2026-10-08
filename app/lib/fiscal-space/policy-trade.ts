@@ -26,6 +26,7 @@ export const POLICY_TRADE_CHANNELS: Record<string, { exports: string; substituti
   'income-tax': { exports: '就労・人材供給を通じた競争力。直接の輸出支援ではない', substitution: '国産・輸入の購入比率と国内供給次第', imports: '手取り増による消費財・原材料需要', timing: '需要は早期、供給反応は税率設計次第' },
   'resident-tax': { exports: '本人の負担軽減による就労・人材供給を通じた競争力', substitution: '国産・輸入の購入比率と国内供給次第', imports: '手取り増による消費財・原材料需要。所得税減税の反応を代用', timing: '入力した減収年から軽減。課税・徴収時期の違いは未反映' },
   'social-insurance': { exports: '事業主負担減→雇用費用低下→輸出価格・生産能力', substitution: '国内生産費の低下が国産品の競争力を改善し得る', imports: '本人負担減による輸入需要、増産時の原材料', timing: '賃金転嫁と雇用調整の時間を要する' },
+  'consumption-tax-reduced': { exports: '飲食料品の輸出は免税のため直接の影響は小さい', substitution: '国産・輸入の飲食料品への課税をともに変更', imports: '食品輸入の増加が見込まれる', timing: '税率変更時に一度に反映' },
   'consumption-tax': { exports: '輸出免税・仕入税還付と仕入税負担を相殺して考える', substitution: '国内消費に対する国産品・輸入品への課税をともに変更', imports: '実質購買力の回復による輸入需要', timing: '価格転嫁・駆け込み反動と需要回復を分ける' },
   cash: { exports: '販路や生産設備への直接効果は限定的', substitution: '給付対象者の購入先と国内の供給余力次第', imports: '耐久財・食品等の購入増', timing: '給付・消費時に需要が発生' },
   'public-investment': { exports: '港湾・物流設備なら輸出費用を低下させ得る', substitution: '国内物流・生産基盤の改善。工事内容で異なる', imports: '建設機械・鉄鋼原料・燃料', timing: '建設時の需要と供用後の便益を分離' },

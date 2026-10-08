@@ -9,7 +9,7 @@ for (const width of [1440, 390]) {
     const menu = await page.getByRole('button', { name: 'ページ切替メニュー' }).elementHandle();
     await page.getByRole('button', { name: 'ページ切替メニュー' }).click();
     await page.getByRole('link', { name: '評価一覧', exact: true }).last().click();
-    await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '事業別 AI評価（独自基準・試行）・執行透明性スコア' })).toBeVisible();
     expect(await header!.evaluate(el => el.isConnected)).toBe(true);
     expect(await menu!.evaluate(el => el.isConnected)).toBe(true);
     await expect(page.getByRole('button', { name: 'ページ切替メニュー' })).toHaveAttribute('aria-expanded', 'false');
@@ -24,7 +24,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('thead th')).toHaveCount(23);
     expect(await header!.evaluate(el => el.isConnected)).toBe(true);
     await page.goBack();
-    await expect(page.getByRole('heading', { name: '事業別 政策評価・執行透明性スコア' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '事業別 AI評価（独自基準・試行）・執行透明性スコア' })).toBeVisible();
     expect(await header!.evaluate(el => el.isConnected)).toBe(true);
     await page.getByRole('link', { name: '行政事業レビュー可視化 トップ', exact: true }).click();
     await expect(page).toHaveURL(/\/$/);

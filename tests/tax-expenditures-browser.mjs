@@ -16,7 +16,7 @@ try {
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await switchView('妥当性を評価');
+  await switchView('AI評価と根拠を見る');
   const assessments = page.getByRole('region', { name: '租特の妥当性評価', exact: true });
   await expect(assessments).toBeVisible();
   await assessments.getByLabel('評価表の並び順').selectOption('verification');
@@ -77,7 +77,7 @@ try {
   await measure.locator('summary').click();
   await expect(measure.getByRole('cell', { name: '2,899,075', exact: true })).toBeVisible();
   await page.getByLabel('適用年度', { exact: true }).selectOption('2022');
-  await switchView('妥当性を評価');
+  await switchView('AI評価と根拠を見る');
   await expect(assessments).toContainText('金額は選択中の2022年度');
   await switchView('適用額を見る');
   await expect(chart.getByRole('button', { name: /企業版ふるさと納税/ })).toContainText('13.31 億円');

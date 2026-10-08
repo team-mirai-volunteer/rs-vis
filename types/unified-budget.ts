@@ -64,8 +64,10 @@ export const UNIFIED_COLUMN_LABELS: Record<UnifiedColumn, string> = {
  * - debt: 国債費（主要経費20）
  * - local-transfer: 地方交付税・地方特例交付金・地方譲与税（主要経費31/32/33）
  * - reserve: 予備費（主要経費98・目的別107〜110）
- * - personnel: 人件費・旅費（使途別分類1/2）
- * - unmatched: 上記のいずれでもなく RS事業も付かない残余（要精査。品質指標）
+ * - personnel: 人件費・旅費（使途別分類1/2）と、共済組合負担金・退職者給付金など人件費に準じる目（目名で判定）
+ * - non-program: 補填金・利子などの金融取引、年金制度の間の資金移転（共済組合連合会等交付金）、政党交付金。
+ *   目名で明らかに事業でないと分かる支出で、制度上レビューシートの対象外と推定
+ * - unmatched: 上記のいずれでもなく RS事業も付かない残余。事業費・補助・委託・施設など、対応づけ漏れの可能性（要精査。品質指標）
  * - outside: 擬似ノード。事業ノードの歳出予算現額と目からの流入の差分（補正・繰越・予備費等・未突合）
  */
 export type UnifiedProgramKind =
@@ -75,6 +77,7 @@ export type UnifiedProgramKind =
   | 'local-transfer'
   | 'reserve'
   | 'personnel'
+  | 'non-program'
   | 'unmatched'
   | 'outside';
 
@@ -84,8 +87,9 @@ export const UNIFIED_PROGRAM_KIND_LABELS: Record<UnifiedProgramKind, string> = {
   debt: '国債費',
   'local-transfer': '地方財政移転（交付税等）',
   reserve: '予備費',
-  personnel: '人件費・旅費',
-  unmatched: '未突合（RS事業なし・非事業でもない）',
+  personnel: '人件費・旅費等',
+  'non-program': '給付・金融取引など（RS対象外と推定）',
+  unmatched: '未突合（対応づけ漏れの可能性）',
   outside: '予算書外（補正・繰越・予備費等）／未突合分',
 };
 
@@ -165,6 +169,8 @@ export interface UnifiedEdge {
   rawValue?: number;
   /** 推定値（決算の按分など） */
   estimated?: boolean;
+  /** RS 2-2 の項・目が空欄の行を、補足情報・金額と名前・確認済みの対応表で結びつけた補完リンクを含む（推定の対応） */
+  inferred?: 'note' | 'amount+name' | 'reviewed';
 }
 
 /**

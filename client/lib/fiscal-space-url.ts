@@ -1,7 +1,7 @@
 import { defaults, type FiscalForm } from './fiscal-space-form';
 import { PARAMETERS, POLICIES } from '@/app/lib/fiscal-space/assumptions';
 import { EMPTY_PROJECT_BASIS, effectiveLoad } from '@/app/lib/fiscal-space/policy-load';
-import { powerCase } from '@/app/lib/fiscal-space/policy-trade';
+import { INDUSTRY_CASE, powerCase } from '@/app/lib/fiscal-space/policy-trade';
 import { validateScenarioNumber } from './fiscal-space-ranges';
 import { policyInputLimitYen } from './fiscal-space-amounts';
 import { RESOURCE_DEFAULTS, RESOURCE_REGIONS } from '@/app/lib/fiscal-space/resource-estimate';
@@ -17,7 +17,7 @@ import { validateEducation } from '@/app/lib/fiscal-space/education-response';
 /** What a restored link needed to become a current form. Shown to the viewer, never hidden. */
 export interface ScenarioRestore { sourceVersion: string; filled: string[]; clipped: string[] }
 
-export const FISCAL_MODEL_VERSION = '2026-09-24.5';
+export const FISCAL_MODEL_VERSION = '2026-10-06.2';
 const ids = POLICIES.map(p => p.id);
 const enums: Record<string, readonly string[]> = {
   aggregation: ['average', 'terminal'], direction: ['increase', 'decrease', 'target'],
@@ -68,6 +68,41 @@ function shape(value: unknown, template: unknown, path: string): void {
   }
 }
 
+/**
+ * 2026-10-06.1: 消費税減税を標準税率・軽減税率の2政策に分けた。旧リンクの意味（年額・対象品目）を変えないよう、
+ * 「食料品のみ」は軽減税率へ移し、全品目の減税は1ポイント当たりの減収額の比で両方に按分する。
+ */
+function migrateConsumptionTaxSplit(form: Record<string, unknown>, calibration: Record<string, unknown>, filled: string[]) {
+  if (Object.hasOwn(calibration, 'reducedConsumptionTax')) return;
+  const standard = calibration.consumptionTax as Record<string, number> | undefined;
+  const amounts = form.amounts as Record<string, number> | undefined;
+  if (!standard || !amounts) return;
+  const old = amounts['consumption-tax'] ?? 0;
+  let reduced = { ...PARAMETERS.reducedConsumptionTax };
+  if (standard.baseRate < .1) {
+    reduced = { revenuePerPoint: standard.revenuePerPoint, cpiShare: standard.cpiShare, baseRate: standard.baseRate, passThrough: PARAMETERS.reducedConsumptionTax.passThrough };
+    Object.assign(standard, { revenuePerPoint: PARAMETERS.consumptionTax.revenuePerPoint, cpiShare: PARAMETERS.consumptionTax.cpiShare, baseRate: PARAMETERS.consumptionTax.baseRate });
+    amounts['consumption-tax-reduced'] = old;
+    amounts['consumption-tax'] = 0;
+    if (old > 0) filled.push('消費税減税（旧「食料品のみ」）を軽減税率の減税へ移行');
+  } else {
+    const share = Math.min(.9, reduced.revenuePerPoint / standard.revenuePerPoint);
+    standard.revenuePerPoint *= 1 - share;
+    standard.cpiShare = Math.max(0, standard.cpiShare - reduced.cpiShare);
+    amounts['consumption-tax-reduced'] = old * share;
+    amounts['consumption-tax'] = old * (1 - share);
+    if (old > 0) filled.push(`消費税減税（旧 全品目）を標準税率${((1 - share) * 100).toFixed(0)}%・軽減税率${(share * 100).toFixed(0)}%に按分`);
+  }
+  calibration.reducedConsumptionTax = reduced;
+  // 新しい政策の設定。探索対象は旧消費税減税と同じにする（旧の全品目減税は軽減税率品目も含んでいた）
+  const settings = form.policySettings as Record<string, unknown> | undefined;
+  if (settings && !Object.hasOwn(settings, 'consumption-tax-reduced')) settings['consumption-tax-reduced'] = { kind: 'permanent', duration: 3 };
+  const trade = form.trade as { industry?: Record<string, unknown> } | undefined;
+  if (trade?.industry && !Object.hasOwn(trade.industry, 'consumption-tax-reduced')) trade.industry['consumption-tax-reduced'] = { ...INDUSTRY_CASE };
+  const eligible = (form.optimization as { eligible?: Record<string, boolean> } | undefined)?.eligible;
+  if (eligible && !Object.hasOwn(eligible, 'consumption-tax-reduced')) eligible['consumption-tax-reduced'] = eligible['consumption-tax'] ?? false;
+}
+
 /** Validate the entire input before submitting the model/search to the worker. */
 export function decodeScenario(hash: string): FiscalForm { return decodeScenarioDetailed(hash).form; }
 
@@ -75,7 +110,7 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
   if (!hash.startsWith('#scenario=') || hash.length > 50000) throw new Error('Invalid scenario URL');
   const payload: unknown = JSON.parse(decodeURIComponent(hash.slice(10)));
   const filled: string[] = [], clipped: string[] = [];
-  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-09-24.4', '2026-09-24.3', '2026-09-24.2', '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
+  if (!payload || typeof payload !== 'object' || !('version' in payload) || ![FISCAL_MODEL_VERSION, '2026-10-06.1', '2026-09-24.5', '2026-09-24.4', '2026-09-24.3', '2026-09-24.2', '2026-09-24.1', '2026-09-22.1', '2026-09-21.2', '2026-09-21.1', '2026-09-20.1', '2026-09-17.1', '2026-09-16.6', '2026-09-16.5', '2026-09-16.4', '2026-09-16.3', '2026-09-16.2', '2026-09-16.1', '2026-09-15.8', '2026-09-15.7', '2026-09-15.6', '2026-09-15.5', '2026-09-15.4', '2026-09-15.3', '2026-09-15.2'].includes(String(payload.version)) || !('form' in payload)) throw new Error('Unsupported model version');
   if (payload.version !== FISCAL_MODEL_VERSION && payload.form && typeof payload.form === 'object' && 'calibration' in payload.form) {
     if (!Object.hasOwn(payload.form, 'capacity')) {
       Object.assign(payload.form, { capacity: { ...CAPACITY_DEFAULTS } });
@@ -141,6 +176,11 @@ export function decodeScenarioDetailed(hash: string): { form: FiscalForm } & Sce
           filled.push(`thresholds.labour（旧上限${(old * 100).toFixed(1)}%を失業率下限へ換算）`);
         }
       }
+      migrateConsumptionTaxSplit(payload.form as Record<string, unknown>, calibration as Record<string, unknown>, filled);
+      if (!Object.hasOwn(payload.form, 'insuranceHealthShare')) Object.assign(payload.form, { insuranceHealthShare: .5 });
+      // 2026-10-06.2: 価格転嫁率を税率ごとに分けた。軽減税率の値が無いリンクは既定値で補う
+      const reducedTax = (calibration as Record<string, unknown>).reducedConsumptionTax as Record<string, number> | undefined;
+      if (reducedTax && !Object.hasOwn(reducedTax, 'passThrough')) reducedTax.passThrough = PARAMETERS.reducedConsumptionTax.passThrough;
       // Older links predate the policy electricity -> fuel import channel; keep their common path otherwise.
       const electricity = (calibration as Record<string, unknown>).electricity;
       if (electricity && typeof electricity === 'object' && !Object.hasOwn(electricity, 'marginalThermalShare')) {

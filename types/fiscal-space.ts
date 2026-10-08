@@ -97,7 +97,10 @@ export interface ModelParameters {
   structuralUnemployment: number;
   /** How the inflation constraint aggregates the horizon: single-year peak or horizon average. */
   inflationRule: 'peak' | 'average';
+  /** 標準税率（10%）品目。表⑤から分離する直接効果は軽減税率と共通 */
   consumptionTax: { revenuePerPoint: number; cpiShare: number; baseRate: number; passThrough: number; referenceDirectCpi: number; referenceDirectDeflator: number };
+  /** 軽減税率（8%：飲食料品・定期購読新聞）品目 */
+  reducedConsumptionTax: { revenuePerPoint: number; cpiShare: number; baseRate: number; passThrough: number };
   electricity: import('@/app/lib/fiscal-space/electricity-baseline').ElectricityBaselineCase;
   referenceModel: 'ef2026' | 'esri2022'; multiplierScale: number;
   insurance?: InsuranceAssumptions; macroTailYears?: number;

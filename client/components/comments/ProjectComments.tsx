@@ -39,8 +39,11 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
   /** 一覧を開いている事業。事業を切り替えたら自動で閉じる（pid が一致するときだけ開いている扱い） */
   const [listOpenFor, setListOpenFor] = useState<string | null>(null);
   const listId = useId();
+  const handlingId = useId();
 
   const META_PX = scaleFont(11);
+  /** ボタンの大きさも文字サイズ（画面の大きさ）に連動させる。フル HD（fontPx 13）で従来の高さ 28px、小さい画面（11）で 24px */
+  const BUTTON_STYLE = { fontSize: META_PX, height: scaleFont(24), paddingLeft: scaleFont(9), paddingRight: scaleFont(9) } as const;
 
   if (!enabled || state.comments === null) {
     // 本番では機能無効の環境で何も描かない。開発サーバーでは全体のレイアウトを把握できるよう見出しだけ残す
@@ -49,9 +52,9 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
       <div className={cn(!bare && 'shrink-0 border-b border-border px-3.5 pb-2.5 pt-2')} data-testid="project-comments-disabled">
         <div className="flex items-center gap-2">
           <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(13) }}>みんなの意見</span>
-          <span className="text-mirai-text-placeholder" style={{ fontSize: META_PX }}>この環境では無効（Supabase 未設定）</span>
+          <span className="whitespace-nowrap text-mirai-text-placeholder" style={{ fontSize: META_PX }} title="コメント機能に必要な Supabase の接続情報がこの環境に無いため">この環境では無効</span>
           <span className="flex-1" />
-          <Button variant="default" size="xs" disabled title="この環境では事業コメント機能が無効です" style={{ fontSize: META_PX }}>
+          <Button variant="default" size="xs" disabled title="この環境では事業コメント機能が無効です" className="h-auto" style={BUTTON_STYLE}>
             意見を伝える
           </Button>
         </div>
@@ -92,17 +95,27 @@ export function ProjectComments({ context, scaleFont = px => px, previewCount = 
           </>
         )}
         <span className="flex-1" />
-        <Button
-          variant="default"
-          size="xs"
-          onClick={() => setOpen(true)}
-          title={list.length === 0 && state.comments !== undefined && !state.error
-            ? 'まだ意見はありません。AIインタビューで最初の意見を伝える（匿名）'
-            : 'AIインタビューでこの事業への意見を伝える（匿名）'}
-          style={{ fontSize: META_PX }}
-        >
-          意見を伝える
-        </Button>
+        {/* 送った意見がどう扱われるかを、ボタンに乗せたとき（フォーカス時も）浮かせて出す */}
+        <span className="group relative">
+          <Button
+            variant="default"
+            size="xs"
+            onClick={() => setOpen(true)}
+            aria-describedby={handlingId}
+            className="h-auto"
+            style={BUTTON_STYLE}
+          >
+            意見を伝える
+          </Button>
+          <span id={handlingId} role="tooltip"
+            className="pointer-events-none invisible absolute right-0 top-full z-50 mt-1.5 w-64 rounded-xl border border-mirai-border bg-card p-3 text-left font-normal leading-relaxed text-mirai-text-secondary opacity-0 shadow-soft transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100"
+            style={{ fontSize: META_PX }}>
+            <span className="mb-1 block font-bold text-mirai-text">送った意見の扱い</span>
+            AIインタビューで聞き取った内容を整え、最後にあなたが確認してから<strong className="font-bold">匿名</strong>でこの欄に公開します。
+            集まった意見はブロードリスニング（多数の意見の分析）にかけ、重要な論点は国会での質問などに活かします。
+            {list.length === 0 && state.comments !== undefined && !state.error && <span className="mt-1 block text-mirai-text-muted">まだ意見はありません。最初の意見をどうぞ。</span>}
+          </span>
+        </span>
       </div>
 
       {state.error && <div role="alert" className="mt-1.5 text-destructive" style={{ fontSize: META_PX }}>{state.error} <Button variant="link" className="text-[length:inherit] font-medium text-current" onClick={() => void state.refresh()}>再読み込みする</Button></div>}

@@ -133,7 +133,7 @@ function ExplanationPanel() {
         </li>
         <li>
           <span className="font-semibold text-destructive">赤いノードは純計で控除する分</span>です。
-          会計から会計へ回すだけの金なので、単純合計では二重に数えられます。
+          会計間の資金移転なので、単純に合計すると同じお金を二重に数えることになります。
         </li>
         <li>
           <span className="font-semibold">一般会計 → 特別会計</span>の線が、

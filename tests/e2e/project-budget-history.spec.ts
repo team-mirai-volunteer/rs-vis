@@ -25,7 +25,6 @@ test('事業の推移セクションで2025年版の過年度値を表示し、�
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await expect(history.getByRole('link', { name: '出典' })).toHaveAttribute('href', 'https://rssystem.go.jp/download-csv/2025');
   await page.setViewportSize({ width: 390, height: 844 });
-  await panel.getByRole('button', { name: '事業概要・評価 を見る' }).click();
   await history.getByRole('button', { name: '2025年度の金額', exact: true }).click();
   await expect(page.getByRole('tooltip')).toContainText('未確定');
   expect(await history.evaluate(element => element.scrollWidth <= element.clientWidth)).toBeTruthy();

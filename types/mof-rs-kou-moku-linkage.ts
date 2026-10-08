@@ -61,6 +61,12 @@ export interface MofRsKouMokuLinkageRecord {
    * RS側からはどの目か判別できないため、この rsAmount は按分値（推定）。
    */
   ambiguous?: boolean;
+  /**
+   * RS 2-2 の項・目が空欄の行を、別の手がかりで目に結びつけた補完リンク（推定）。
+   * note: その行の補足情報に項名・目名の記載 / amount+name: 事業の空欄行の合計額と目の額がほぼ一致し名前も一致 /
+   * reviewed: 候補を確認して scripts/data/mof-rs-link-supplements.json に足したもの
+   */
+  inferred?: 'note' | 'amount+name' | 'reviewed';
 }
 
 /** 事業ごとのRS歳出予算項目の合計（突合範囲内・予算年度の行のみ） */

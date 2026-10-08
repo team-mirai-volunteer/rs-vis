@@ -52,6 +52,7 @@ export const SUPPLY_CASES: Record<string, { label: string; source: string; evide
 
 export const SUPPLY_UNAVAILABLE: Record<string, string> = {
   'consumption-tax': '税率・対象品目・価格転嫁と実質賃金への反応が必要',
+  'consumption-tax-reduced': '税率・対象品目・価格転嫁と実質賃金への反応が必要',
   cash: '所得効果・対象世帯・就労条件によって供給反応の符号が変わる',
   defence: '安全保障・抑止の便益を通常時GDPへ換算する根拠が未整備',
   healthcare: '治療・予防・復職支援の内訳と健康改善による就労効果が必要',

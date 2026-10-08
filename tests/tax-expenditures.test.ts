@@ -25,5 +25,8 @@ test('source rows are unique and all registered RS relations resolve to the stat
     assert.match(projects[String(m.rsProjectId)].purpose, /企業版ふるさと納税/);
     assert.match(projects[String(m.rsProjectId)].projectName, /普及促進/);
   }
-  assert.equal(PAGES[PAGES.findIndex(p => p.href === '/subcontracts') + 1].href, '/tax-expenditures');
+  // 試作のページ（基金・租税特別措置など）は、正式なページ（委託構造まで）の後ろに並ぶ
+  const subcontracts = PAGES.findIndex(p => p.href === '/subcontracts');
+  assert.ok(PAGES.findIndex(p => p.href === '/tax-expenditures') > subcontracts);
+  assert.ok(PAGES.slice(subcontracts + 1).filter(p => p.primary).every(p => p.prototype));
 });

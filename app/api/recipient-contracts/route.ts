@@ -8,6 +8,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { API_CACHE_CONTROL, SUPPORTED_YEARS, type SupportedYear } from '@/app/lib/api/api-notes';
 import { loadSubcontracts } from '@/app/lib/api/subcontracts-loader';
+import { withContractMethods } from '@/app/lib/api/contract-methods-loader';
+import { loadRecipientRows } from '@/app/lib/api/quality-recipients-loader';
+import { contractLines } from '@/app/lib/contract-method';
 import {
   RECIPIENT_CONTRACTS_MAX_PIDS,
   recipientContractsInProject,
@@ -31,12 +34,17 @@ export async function GET(req: NextRequest) {
   const data = loadSubcontracts(year as SupportedYear);
   if (!data) return NextResponse.json({ error: `Data file not found for year ${year}` }, { status: 404 });
 
+  const recipientRows = loadRecipientRows(year as SupportedYear);
   const entries: RecipientContractEntry[] = [];
   for (const pid of [...new Set(pids)].slice(0, RECIPIENT_CONTRACTS_MAX_PIDS)) {
     const graph = data[pid];
     if (!graph) continue;
     const entry = recipientContractsInProject(graph, name);
-    if (entry) entries.push(entry);
+    if (!entry) continue;
+    // 支出行（契約概要ごと）に契約方式を付け、概要の横に方式を出せるようにする
+    const rows = withContractMethods((recipientRows[pid] ?? []).filter(row => row.n.trim() === name), pid, year);
+    const lines = contractLines(rows.map(row => ({ text: row.cc, m: row.m, mt: row.mt, ap: row.ap })));
+    entries.push(lines.some(line => line.m) ? { ...entry, lines } : entry);
   }
   const body: RecipientContractsResponse = { name, entries };
   return NextResponse.json(body, { headers: { 'Cache-Control': API_CACHE_CONTROL } });

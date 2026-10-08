@@ -7,6 +7,7 @@
  */
 import { POLICY_CATEGORY_GROUPS, POLICY_CATEGORY_LABELS } from '@/app/lib/policy-evaluation';
 import type { ProjectMapPoint } from '@/types/project-map';
+import type { ProjectSortMetric } from '@/app/lib/project-sort-metrics';
 
 // ── 配色 ──
 //
@@ -56,7 +57,7 @@ export const RECOMMENDATION_COLORS: Record<string, string> = {
   縮小: STATUS.serious,
   他事業と統合: STATUS.serious,
   再設計: STATUS.serious,
-  '終了・廃止候補': STATUS.critical,
+  '見直し候補': STATUS.critical,
 };
 
 /** 政策分野グループ（7分類）。policyCategory の id からグループ id を引く */
@@ -67,21 +68,30 @@ const GROUP_BY_CATEGORY = new Map<string, { id: string; label: string }>(
 export type ColorMode = 'ministry' | 'policyGroup' | 'recommendation';
 
 export type SizeMetric =
-  | 'budget' | 'exec' | 'years' | 'uniform'
+  | 'budget' | 'exec' | 'years' | 'blockDiff' | 'blockDiffRatio' | 'uniform'
   | 'inverseScore' | 'inverseProp' | 'inverseNec';
 
+/** 選択肢の並び順でもある。事業そのものの規模（予算・執行・年数・差額）を先に、AI 評価から作る指標を後に置く */
 export const SIZE_METRIC_LABELS: Record<SizeMetric, string> = {
-  inverseScore: '総合点の逆数（低いほど大きい）',
-  inverseProp: '費用対内容の逆数（低いほど大きい）',
-  inverseNec: '必要性の逆数（低いほど大きい）',
   budget: '予算額',
   exec: '執行額',
   years: '継続年数',
+  blockDiff: 'ブロック差額',
+  blockDiffRatio: 'ブロック差額%',
+  inverseScore: '総合点の逆数（低いほど大きい）',
+  inverseProp: '費用対内容の逆数（低いほど大きい）',
+  inverseNec: '代替困難性の逆数（低いほど大きい）',
   uniform: '均一',
 };
 
 /** 「点数が低いほど大きい」系の指標。目盛りの文言と値の反転を共有する */
 const INVERSE_METRICS = new Set<SizeMetric>(['inverseScore', 'inverseProp', 'inverseNec']);
+
+/** /api/project-sort-metrics の値が要る指標（ブロック差額は事業マップの生成物に無く、別に取る） */
+export const BLOCK_DIFF_METRICS = new Set<SizeMetric>(['blockDiff', 'blockDiffRatio']);
+
+/** ブロック差額の説明（/budget-sankey の差額表示と同じ言い回し） */
+export const BLOCK_DIFF_NOTE = 'ブロック差額は、直下に再委託先を持つブロックの「ブロックの記載額 − 直下の再委託先の記載額」を事業ごとに合計したもの（%はその合計÷当該ブロックの記載額の合計）。記載額の差であり、実際の受取額や利益を示すものではありません。';
 
 export const COLOR_MODE_LABELS: Record<ColorMode, string> = {
   ministry: '府省庁',
@@ -131,7 +141,7 @@ export function buildLegend(
 
   if (mode === 'recommendation') {
     // 推奨判断は「継続寄り → 見直し寄り」の並びが意味を持つので件数順にしない
-    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '終了・廃止候補'];
+    const order = ['継続', '要改善', '条件付き継続', '縮小', '他事業と統合', '再設計', '見直し候補'];
     const entries: LegendEntry[] = [];
     for (const key of order) {
       const count = counts.get(key) ?? 0;
@@ -237,6 +247,8 @@ export function buildSizeScale(
   points: ProjectMapPoint[],
   metric: SizeMetric,
   maxR: number,
+  /** pid → 継続年数・ブロック差額。ブロック差額の指標で使う。無い事業は最小の点 */
+  metrics?: Record<string, ProjectSortMetric> | null,
 ): SizeScale {
   if (metric === 'uniform') {
     const r = Math.max(MIN_R, maxR * 0.28);
@@ -248,6 +260,8 @@ export function buildSizeScale(
       case 'budget': return p.budget > 0 ? p.budget : null;
       case 'exec': return p.exec > 0 ? p.exec : null;
       case 'years': return p.years;
+      case 'blockDiff': return metrics?.[p.pid]?.d ?? null;
+      case 'blockDiffRatio': return metrics?.[p.pid]?.r ?? null;
       // 低評価ほど大きく。これがこのビューの主眼で、
       // 「問題のある事業ほど画面上で目立つ」ようにするための反転
       case 'inverseScore': return p.score === null ? null : 100 - p.score;
@@ -290,6 +304,7 @@ export function buildSizeScale(
   // 目盛りは1行に収める必要があるので、単位を極限まで詰める（2.9億 / 150億 / 30兆）
   const fmtCompact = (v: number) => {
     if (metric === 'years') return `${Math.round(v)}年`;
+    if (metric === 'blockDiffRatio') return `${Math.round(v * 100)}%`;
     if (INVERSE_METRICS.has(metric)) return `${Math.round(100 - v)}点`;
     for (const [d, s] of [[1e12, '兆'], [1e8, '億'], [1e4, '万']] as const) {
       if (v >= d) {
@@ -342,8 +357,8 @@ export const SPENDING_COLORS = [
 ] as const;
 
 /** 支出先の菱形の半径（画面px）。段ごとに少しずつ大きくし、色と二重に符号化する */
-const SPENDING_MIN_R = 2.6;
-const SPENDING_R_STEP = 0.9;
+const SPENDING_MIN_R = 3;
+const SPENDING_R_STEP = 1.0;
 
 /** 金額 → 段（0 = 最も薄い） */
 export function spendingStep(amount: number): number {

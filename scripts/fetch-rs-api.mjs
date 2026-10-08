@@ -1,5 +1,7 @@
 /** Public RS snapshot, isolated from official CSVs. Resume cached responses by default.
- * node scripts/fetch-rs-api.mjs [2026] [--refresh] [--limit N]
+ * node scripts/fetch-rs-api.mjs [2026] [--refresh] [--limit N] [--sheet KS|SS]
+ * --sheet KS は基金シート。data/rs-api-ks/{年}/ に一覧・支払先に加えて詳細（造成元の事業・保有割合の根拠など）も取る
+ * --sheet SS はセグメントシート（独立行政法人の運営費交付金を法人内の事業区分まで示す）。data/rs-api-ss/{年}/ に詳細も取る
  * Failed endpoints remain missing, never represented as empty/zero data.
  */
 import fs from 'node:fs';
@@ -12,7 +14,10 @@ const refresh = process.argv.includes('--refresh');
 const limitAt = process.argv.indexOf('--limit');
 const limit = limitAt < 0 ? Infinity : Number(process.argv[limitAt + 1]);
 if (!(limit > 0)) throw Error('Invalid limit');
-const root = path.resolve(`data/rs-api/${year}`);
+const sheetAt = process.argv.indexOf('--sheet');
+const sheet = sheetAt < 0 ? 'RS' : process.argv[sheetAt + 1];
+if (!['RS', 'KS', 'SS'].includes(sheet)) throw Error('Invalid sheet type');
+const root = path.resolve(sheet === 'RS' ? `data/rs-api/${year}` : `data/rs-api-${sheet.toLowerCase()}/${year}`);
 fs.mkdirSync(root, { recursive: true });
 const delay = ms => new Promise(r => setTimeout(r, ms));
 function save(file, data) {
@@ -41,7 +46,7 @@ async function get(relative, file) {
 const projects = [];
 let expected = 0;
 for (let page = 1; ; page++) {
-  const { data } = await get(`projects/?sheet_type=RS&page=${page}&page_size=100&fiscal_year=${year}`, path.join(root, `list-${page}.json`));
+  const { data } = await get(`projects/?sheet_type=${sheet}&page=${page}&page_size=100&fiscal_year=${year}`, path.join(root, `list-${page}.json`));
   if (!Array.isArray(data.results)) throw Error('Unexpected project list');
   expected = data.count;
   projects.push(...data.results);
@@ -64,6 +69,11 @@ await Promise.all(Array.from({ length: 4 }, async () => {
         const result = await get(`projects/${p.id}/${endpoint}/`, path.join(root, p.id, `${endpoint}.json`));
         if (!Array.isArray(result.data)) throw Error(`Unexpected ${endpoint}`);
       }
+      // 基金シートは詳細も取る（造成元の事業 related_projects・保有割合の根拠・収支の見込み）
+      if (sheet === 'KS' || sheet === 'SS') {
+        const detail = await get(`projects/${p.id}/`, path.join(root, p.id, 'detail.json'));
+        if (detail.data?.id !== p.id) throw Error('Unexpected detail');
+      }
       complete++;
     } catch (error) {
       failures.push({ id: p.id, projectNumber: p.project_number, error: String(error) });
@@ -71,6 +81,6 @@ await Promise.all(Array.from({ length: 4 }, async () => {
     if ((complete + failures.length) % 100 === 0) console.log(`Payments ${complete + failures.length}/${targets.length}; failed ${failures.length}`);
   }
 }));
-const manifest = { source: 'rs-api', provisional: true, sheetYear: year, fiscalYear: year - 1, completedAt: new Date().toISOString(), listed: projects.length, attempted: targets.length, complete, failures };
+const manifest = { source: 'rs-api', sheetType: sheet, provisional: true, sheetYear: year, fiscalYear: year - 1, completedAt: new Date().toISOString(), listed: projects.length, attempted: targets.length, complete, failures };
 save(path.join(root, 'manifest.json'), manifest);
 console.log(JSON.stringify(manifest));

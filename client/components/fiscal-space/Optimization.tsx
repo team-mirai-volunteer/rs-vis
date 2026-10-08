@@ -51,7 +51,7 @@ export function Optimization({ form, onChange, onEvaluationChange, onApply }: {
       <p className="text-xs">同じ改善幅を達成したときの優先順位です。実際の点数への寄与は、各指標の変化量と下の「基準となる改善幅」で決まります。</p>
     </fieldset>
     <div className="grid gap-4 sm:grid-cols-3">
-      {(['minBudget', 'maxBudget'] as const).map((key, i) => <label key={key} className="text-sm">追加予算の{i === 0 ? '下限' : '上限'}（兆円／年）
+      {(['minBudget', 'maxBudget'] as const).map((key, i) => <label key={key} className="text-sm">追加の財政措置の{i === 0 ? '下限' : '上限'}（兆円／年）
         <input className={fieldClass} type="number" min={0} max={100} step={.1} value={settings[key]} onChange={e => { if (e.target.value !== '' && Number.isFinite(e.target.valueAsNumber)) setting(key, e.target.valueAsNumber); }} />
       </label>)}
       <label className="text-sm">評価する時点<select aria-label="評価する時点" className={fieldClass} value={`${horizon}:${settings.aggregation}`} onChange={e => {

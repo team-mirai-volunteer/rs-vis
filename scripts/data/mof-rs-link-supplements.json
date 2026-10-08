@@ -1,0 +1,106 @@
+{
+ "description": "レビューシート2-2の項・目が空欄の事業を予算書の目に結びつける補完リンクのうち、候補を確認して足したもの（reviewed）。補足情報（note）と金額・名前（amount+name）で決まるものは generate-mof-rs-kou-moku-linkage.ts が自動で結ぶ。候補は suggest-mof-rs-link-supplements.ts で出す",
+ "reviewedBy": "Claude（AI）が候補を確認して作成（2026-10-06）。人による確認は未実施",
+ "reviewed": [
+  {
+   "budgetYear": 2024,
+   "projectId": 1071,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "general|当初予算|外務省|外務本省||||006|16|政府開発援助独立行政法人国際交流基金運営費交付金",
+    "general|当初予算|外務省|外務本省||||006|16|独立行政法人国際交流基金運営費交付金"
+   ],
+   "note": "運営費交付金の2つの目の合計117億円がRSの額と一致"
+  },
+  {
+   "budgetYear": 2024,
+   "projectId": 3708,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "石油分35億円＋石油ガス分（事業5937）18億円が目の53億円と一致"
+  },
+  {
+   "budgetYear": 2024,
+   "projectId": 5937,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "石油分（事業3708）と同じ目"
+  },
+  {
+   "budgetYear": 2025,
+   "projectId": 3708,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "国有資産所在市町村交付金の石油分"
+  },
+  {
+   "budgetYear": 2025,
+   "projectId": 5937,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "国有資産所在市町村交付金の石油ガス分"
+  },
+  {
+   "budgetYear": 2026,
+   "projectId": 3708,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "国有資産所在市町村交付金の石油分"
+  },
+  {
+   "budgetYear": 2026,
+   "projectId": 5937,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "special|当初予算|内閣府、文部科学省、経済産業省及び環境省||エネルギー対策|エネルギー需給勘定||01|16|国有資産所在市町村交付金"
+   ],
+   "note": "国有資産所在市町村交付金の石油ガス分"
+  },
+  {
+   "budgetYear": 2025,
+   "projectId": 7333,
+   "mofBudgetType": "補正予算（第1号）",
+   "kouMokuKeys": [
+    "general|補正予算（第1号）|国土交通省|国土交通本省||||071|16|造船業再生支援基金補助金"
+   ],
+   "note": "造船業再生支援の基金補助金1200億円とRSの額が一致"
+  },
+  {
+   "budgetYear": 2025,
+   "projectId": 22118,
+   "mofBudgetType": "補正予算（第1号）",
+   "kouMokuKeys": [
+    "general|補正予算（第1号）|総務省|総務本省||||013|16|社会保障・税番号制度システム整備費補助金"
+   ],
+   "note": "番号制度システム整備費補助金159億円とRSの額が一致（戸籍の附票の改修）"
+  },
+  {
+   "budgetYear": 2026,
+   "projectId": 4117,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "general|当初予算|国土交通省|国土交通本省||||375|99|(防災・減災対策等強化事業推進費)"
+   ],
+   "note": "同名の目未定経費"
+  },
+  {
+   "budgetYear": 2026,
+   "projectId": 679,
+   "mofBudgetType": "当初予算",
+   "kouMokuKeys": [
+    "general|当初予算|総務省|総務本省||||007|16|地域経済循環創造事業交付金"
+   ],
+   "note": "同名の目。RSの額（16億円）は目の額（7億円）より大きく、比例縮小される"
+  }
+ ]
+}

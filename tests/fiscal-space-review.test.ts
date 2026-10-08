@@ -106,9 +106,11 @@ test('load coefficients constrain construction, while operating power survives s
 
 test('consumption-tax table uses percentage points, direct CPI is counted once and restoration raises headline inflation', () => {
   const s = initial();
-  const p = { ...flat, consumptionTax: { ...flat.consumptionTax, cpiShare: .78 * 1.1 } };
+  // 表⑤は全品目1ポイントの実験：標準税率と軽減税率を同時に1ポイント下げる。直接CPIが表⑤の0.78と一致するよう標準側にまとめる
+  const p = { ...flat, consumptionTax: { ...flat.consumptionTax, cpiShare: .78 * 1.1, passThrough: 1 }, reducedConsumptionTax: { ...flat.reducedConsumptionTax, cpiShare: 0, passThrough: 1 } };
   const q = policy('consumption-tax', { annualCost: p.consumptionTax.revenuePerPoint });
-  const path = simulate(s, [q], 5, p);
+  const reduced = policy('consumption-tax-reduced', { annualCost: p.reducedConsumptionTax.revenuePerPoint });
+  const path = simulate(s, [q, reduced], 5, p);
   let index = 1;
   path.steps.forEach((step, i) => {
     index *= 1 + step.state.macro.inflation;
@@ -116,13 +118,13 @@ test('consumption-tax table uses percentage points, direct CPI is counted once a
     near(step.demand.realOutput / s.macro.realGdp, CONSUMPTION_TAX_CUT.gdp[i] / 100);
     near(step.referenceRateEffect!, CONSUMPTION_TAX_CUT.longRate[i] / 100);
   });
-  const temporary = simulate(s, [{ ...q, kind: 'temporary', duration: 1 }], 3, p);
+  const temporary = simulate(s, [{ ...q, kind: 'temporary', duration: 1 }, { ...reduced, kind: 'temporary', duration: 1 }], 3, p);
   assert(temporary.steps[0].state.macro.inflation < temporary.steps[0].taxAdjustedInflation!);
   assert(temporary.steps[1].state.macro.inflation > temporary.steps[1].taxAdjustedInflation!);
   const inflation = evaluateConstraints(path.steps[0], { ...THRESHOLDS, inflation: .0001 }).find(x => x.id === 'inflation')!;
   assert.equal(inflation.status, 'violated');
   near(inflation.currentValue, path.steps[0].taxAdjustedInflation!);
-  const income = calibratedResponse(s, policy('income-tax', { annualCost: q.annualCost }), 1, p);
+  const income = calibratedResponse(s, policy('income-tax', { annualCost: q.annualCost + reduced.annualCost }), 1, p);
   assert.notEqual(income.gdp, path.steps[0].demand.realOutput);
 });
 

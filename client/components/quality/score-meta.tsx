@@ -14,6 +14,14 @@ import {
 } from '@/app/lib/policy-evaluation';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 
+/** AI評価の名称。評価の性格（独自基準・試行）が分かる名前を、一覧・説明・サイドパネルで共通に使う */
+export const AI_EVALUATION_TITLE = '公開資料に基づく独自基準のAI評価（試行）';
+
+/** 評価主体と判断基準。表の近くと説明パネルに同じ文を出す */
+export const AI_EVALUATION_NATURE = '本サイトが定めた独自の基準で、AIが行政事業レビューシートの公開記載を採点したものです。'
+  + '記載の充実度だけでなく、公的支援の必要性・費用と内容の見合い・資金が受益者に届く経路といった政策上の判断を含みます。'
+  + '政府の公式評価ではなく、人によるレビューも経ていません。';
+
 /** 一覧に出す政策評価の指標（品質軸の生値は詳細側に集約した） */
 export type PolicyMetric = 'overallScore' | 'designClarityScore' | 'evidenceScore'
   | 'executionTransparency' | 'proportionalityScore' | 'necessityScore';
@@ -51,19 +59,19 @@ export const AXIS_META: { key: PolicyMetric; label: string; weight: number; shor
   },
   {
     key: 'proportionalityScore', label: '費用対内容', weight: 35, short: '費用',
-    desc: `金額が活動の規模に見合っているか、金が実際に受益者へ届いているか。
+    desc: `金額が活動の規模に見合っているか、資金が受益者に届く経路を確認できるか。
 
-材料は支出先・再委託の実データです。所管庁の作文では動かしにくい軸なので、5軸で最も重く置いています。
+事業概要に加え、支出先・金額・再委託の記録を重視します。記録で裏付けを確かめられる軸なので、5軸で最も重く置いています。
 数量や単価が示されず金額に換算できない事業、支出が調査・助言業者に集中している事業は低くなります。
 金額の大小そのものではなく、根拠が示されているかで判定します。
 供給力を買う事業（半導体・エネルギー・食料など）は、件数ではなく獲得する生産能力・自給率・輸入代替額が数値で示されていればそれを分母に単価を見ます。重要性そのものは加点しません。
 予算額が0でも執行額があれば執行額で判定します。予算・執行ともに0の事業は判定対象外（未評価）です。`,
   },
   {
-    key: 'necessityScore', label: '必要性', weight: 20, short: '必要',
+    key: 'necessityScore', label: '代替困難性', weight: 20, short: '代替',
     desc: `この事業を廃止したら誰が具体的に困るか、その手当ては他の手段で代替できるか。
 
-設計の巧拙とは切り離して「そもそも要るのか」だけを問う軸です。
+設計の巧拙とは切り離して、公的支援の必要性と代替手段を問う軸です。
 よく書けた事業計画でも、困る主体を特定できず代替手段もあるなら低くなります。
 逆に説明が粗くても、廃止したときの不利益が具体的なら高くなります。
 困るのが国外主体（外国人・外国政府・国際機関など）だけで、国民に戻る便益が具体的に示されていない事業は中位以下にとどめます。
@@ -75,17 +83,19 @@ export const AXIS_META: { key: PolicyMetric; label: string; weight: number; shor
 export const COL_DESC: Record<string, string> = {
   総合点: `5軸の加重平均（0-100）。
 
-成果設計×15 ＋ 検証可能性×15 ＋ 執行透明性×15 ＋ 費用対内容×35 ＋ 必要性×20
+成果設計×15 ＋ 検証可能性×15 ＋ 執行透明性×15 ＋ 費用対内容×35 ＋ 代替困難性×20
 
 未評価の軸は、その重みごと除外して残りで再正規化します（0点扱いにはしません）。
 不用額は総合点に算入していません。返納は適切な行動であり、減点すると年度末の使い切りを誘発するためです。`,
 
-  推奨: `継続 / 要改善 / 条件付き継続 / 縮小 / 再設計 / 終了・廃止候補 のいずれか。
+  推奨: `継続 / 要改善 / 条件付き継続 / 縮小 / 再設計 / 見直し候補 のいずれか。
 
 総合点の絶対値ではなく、母集団内の順位帯で切っています。
 総合点は中央に強く偏るため、絶対値で閾値を置くと下位の帯が構造的に空になるからです。
-「縮小」だけは点数ではなく、2年連続の不用額から判定します。
+「見直し候補」は順位帯の最下位（下位5%）のうち、代替困難性・成果設計も母集団の下位にある事業です。
+「縮小」だけは点数ではなく、2年連続の不用額（不用率が上位帯かつ1億円以上）から判定します。
 
+順位帯は相対的な位置なので、下位にあることは廃止が妥当であることを意味しません。
 これは結論ではなく、人が精査すべき事業を絞り込むためのスクリーニング結果です。`,
 
   改善アクション: `次に打つ一手を1つだけ提示します。
@@ -100,15 +110,15 @@ export const COL_DESC: Record<string, string> = {
 
 歳出予算現額から執行額と翌年度繰越額を差し引いた残額が不用額です。不用額は総合点には影響しません。`,
 
-  支出先合計: `支出先データ（5-1）の金額を単純に合計したもの。
+  支出先合計: `支出先記載額の延べ合計。支出先データ（5-1）の金額を単純に合計したもの。
 
 国→A社 の支出と A社→B社 の再委託が同じ形式で並んでいるため、同じ金が二重に数えられています。
-実額を見るときは「実質支出額」を使ってください。`,
+国から出た額を見るときは「実質支出額」（再委託を除く）を使ってください。`,
 
-  実質支出額: `再委託を除いた、国から直接出た金額。
+  実質支出額: `再委託を除いた支出額。再委託分を重複計上せず、国から直接出た金額を数えます。
 
 支出ブロック関係（5-2）で、ルートブロック＝担当組織からの直接支出だけを合算しています。
-例）国→A社10億、A社→B社6億 のとき、支出先合計18億 に対して実質支出額は10億。
+例）国→A社10億、A社→B社6億 のとき、支出先合計16億 に対して実質支出額は10億。
 
 執行額とこの額の乖離が「収支の一致」の判定材料です。
 5-2 データが無い事業は再委託の情報自体が無いため、全額をルート扱いにしています。`,
@@ -175,7 +185,7 @@ export const COL_WIDTHS = [
   74,  // 検証可能性
   74,  // 執行透明性
   74,  // 費用対内容
-  58,  // 必要性
+  74,  // 代替困難性（5文字。検証可能性などと同じ幅）
   120, // 推奨（2年連続の不用マーカーを含む）
   112, // 改善アクション
   64,  // 継続年数
@@ -238,12 +248,16 @@ export function ActionBadge({ action }: { action: string }) {
   );
 }
 
-export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string }> = {
-  valid:   { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
-  gov:     { label: '行政機関', cls: 'bg-status-good-bg text-status-good-fg' },
-  supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent' },
+/**
+ * 支出先名の横のバッジ。desc はホバーで出す説明。判定は scripts/score-project-quality.py の
+ * 「支出先名の辞書 → 行政機関 → 補助辞書 → 法人番号の裏取り（国税庁データの公式名と一致）」の順
+ */
+export const STATUS_META: Record<RecipientRow['s'], { label: string; cls: string; desc: string }> = {
+  valid:   { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg', desc: '支出先名が正式な法人名として確認でき、法人番号も記載されています。' },
+  gov:     { label: '行政機関', cls: 'bg-status-good-bg text-status-good-fg', desc: '国の機関・地方公共団体などの行政機関として確認できた支出先です。' },
+  supp:    { label: '補助辞書', cls: 'bg-primary/10 text-primary-accent', desc: '表記ゆれ・略称の補助辞書で、実在の相手として確認できた支出先です。' },
   // 番号一致(houjin.db裏取り)も表示上は valid と同格の OK に統合（内部 s='cn' と cnVerifiedCount は集計用に保持）
-  cn:      { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg' },
-  invalid: { label: '不一致',  cls: 'bg-status-bad-bg text-status-bad-fg' },
-  unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle' },
+  cn:      { label: 'OK',      cls: 'bg-status-good-bg text-status-good-fg', desc: '記載された法人番号の公式名（国税庁の法人番号データ）が支出先名と一致しました。' },
+  invalid: { label: '不一致',  cls: 'bg-status-bad-bg text-status-bad-fg', desc: '支出先名が正式な法人名として確認できないか（「〇〇ほか」や略称など）、正式な名称なのに法人番号の記載がありません。' },
+  unknown: { label: '未登録',  cls: 'bg-mirai-surface text-mirai-text-subtle', desc: '支出先名の辞書に無く、法人番号からも特定できませんでした。任意団体・個人・海外の相手など、法人番号を持たない相手のことも多くあります。' },
 };

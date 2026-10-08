@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 for (const width of [1440, 900, 390]) {
   test(`bubble detail floats alongside controls or below the size legend (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto('/project-bubble');
+    await page.goto('/project-bubble?v=map');
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
     await canvas.click();
@@ -23,7 +23,6 @@ for (const width of [1440, 900, 390]) {
     await expect(panel).toBeVisible();
     await expect(page).toHaveURL(/pid=1503/);
     await expect(page.getByRole('dialog')).toHaveCount(0);
-    if (width < 640) await panel.getByRole('button', { name: '事業概要・評価 を見る' }).click();
     await expect(panel.getByText('検証可能性', { exact: true })).toBeVisible();
     const bounds = (await panel.boundingBox())!;
     const search = width >= 1280 ? (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())! : null;
@@ -60,7 +59,7 @@ for (const width of [1440, 900, 390]) {
 
 test('table selection and a shared URL open the same floating panel', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/project-bubble?tb=1');
+  await page.goto('/project-bubble?v=map&tb=1');
   await page.getByRole('button', { name: 'GIGAスクール構想', exact: true }).click();
   const panel = page.getByRole('region', { name: /GIGA.*の詳細/ });
   await expect(panel).toBeVisible();

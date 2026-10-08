@@ -20,7 +20,8 @@
   返すので、このファイルは pid・x・y・cluster しか持たない。同じ値を二重に持たない。
 
 実行:
-  OPENROUTER_API_KEY=... python3 scripts/generate-project-map.py --year 2025
+  OPENROUTER_API_KEY=... python3 scripts/generate-project-map.py --years 2025 2024
+  （年度をまとめて配置する。同じ事業は全年度で同じ座標。--year 2025 で単年度だけも可）
 
   埋め込みは本文のSHA256でキャッシュ（.cache/embeddings/）。
   座標だけ引き直したい場合（UMAPやクラスタ数の調整）は再実行してもAPIコストは掛からない。
@@ -48,6 +49,8 @@ API_URL = 'https://openrouter.ai/api/v1/embeddings'
 
 parser = argparse.ArgumentParser(description='事業の意味的2次元マップ生成')
 parser.add_argument('--year', type=int, default=2025)
+parser.add_argument('--years', type=int, nargs='+', default=None,
+                    help='複数年度をまとめて配置する（例: --years 2025 2024）。同じ事業は全年度で同じ座標になる。先頭ほど新しい年度として本文を優先')
 parser.add_argument('--model', default='google/gemini-embedding-001')
 parser.add_argument('--batch', type=int, default=32)
 parser.add_argument('--workers', type=int, default=4)
@@ -268,17 +271,28 @@ def label_clusters(rows, labels: np.ndarray, xy: np.ndarray, mat: np.ndarray, k:
     return clusters
 
 
+def union_rows(years):
+    """年度をまたいだ事業の和集合。同じ pid は先頭（新しい年度）の本文で配置する"""
+    by_pid, years_of = {}, {}
+    for year in years:
+        for r in build_rows(year):
+            years_of.setdefault(r['pid'], []).append(year)
+            by_pid.setdefault(r['pid'], r)
+    return list(by_pid.values()), years_of
+
+
 def main():
     api_key = os.environ.get('OPENROUTER_API_KEY')
     if not api_key:
         sys.exit('OPENROUTER_API_KEY が未設定です')
 
-    year = args.year
-    print(f'[1/4] 入力を組み立て（{year}年度）')
-    rows = build_rows(year)
+    # 複数年度は和集合で1回だけ配置し、年度を切り替えても同じ事業が同じ位置に来るようにする
+    years = args.years or [args.year]
+    print(f'[1/4] 入力を組み立て（{"・".join(map(str, years))}年度）')
+    rows, years_of = union_rows(years)
     if args.limit:
         rows = rows[:args.limit]
-    print(f'  対象事業 {len(rows)}件')
+    print(f'  対象事業 {len(rows)}件' + (f'（{len(years)}年度の和集合）' if len(years) > 1 else ''))
 
     print(f'[2/4] 埋め込み（{args.model}）')
     mat, cost = embed_all(rows, api_key)
@@ -304,42 +318,45 @@ def main():
     ari = adjusted_rand_score([r['category'] for r in rows], labels)
     print(f'  policyCategoryとの一致度 ARI={ari:.3f}')
 
+    # クラスタ名・位置も和集合で決め、全年度で共通にする（年度で名前や位置が入れ替わらない）
     clusters = label_clusters(rows, labels, xy, mat, args.clusters)
-
-    out = {
-        'year': year,
-        'model': args.model,
-        'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
-        'params': {
-            'neighbors': args.neighbors, 'minDist': args.min_dist,
-            'clusters': args.clusters, 'seed': args.seed, 'maxChars': args.max_chars,
-        },
-        'quality': {'kmeansAriVsPolicyCategory': round(float(ari), 4)},
-        'bounds': {
-            'minX': round(float(xy[:, 0].min()), 3), 'maxX': round(float(xy[:, 0].max()), 3),
-            'minY': round(float(xy[:, 1].min()), 3), 'maxY': round(float(xy[:, 1].max()), 3),
-        },
-        'clusters': clusters,
-        # 座標は小数3桁で十分（描画時にスケールするので精度は効かない）。
-        # 桁を落とすとgzipもよく効く
-        'points': [
-            {'pid': r['pid'], 'x': round(float(xy[i, 0]), 3),
-             'y': round(float(xy[i, 1]), 3), 'c': int(labels[i])}
-            for i, r in enumerate(rows)
-        ],
+    bounds = {
+        'minX': round(float(xy[:, 0].min()), 3), 'maxX': round(float(xy[:, 0].max()), 3),
+        'minY': round(float(xy[:, 1].min()), 3), 'maxY': round(float(xy[:, 1].max()), 3),
     }
 
-    path = DATA / f'project-map-{year}.json'
-    path.write_text(json.dumps(out, ensure_ascii=False), encoding='utf-8')
-    size_kb = path.stat().st_size / 1024
-    print(f'\n→ {path.relative_to(ROOT)} ({size_kb:.0f}KB, {len(out["points"])}点, {len(clusters)}クラスタ)')
+    for year in years:
+        out = {
+            'year': year,
+            'model': args.model,
+            'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%S%z'),
+            'params': {
+                'neighbors': args.neighbors, 'minDist': args.min_dist,
+                'clusters': args.clusters, 'seed': args.seed, 'maxChars': args.max_chars,
+                # 一緒に配置した年度。同じ pid はこれらの年度で同じ座標
+                'jointYears': years,
+            },
+            'quality': {'kmeansAriVsPolicyCategory': round(float(ari), 4)},
+            'bounds': bounds,
+            'clusters': clusters,
+            # 座標は小数3桁で十分（描画時にスケールするので精度は効かない）。
+            # 桁を落とすとgzipもよく効く
+            'points': [
+                {'pid': r['pid'], 'x': round(float(xy[i, 0]), 3),
+                 'y': round(float(xy[i, 1]), 3), 'c': int(labels[i])}
+                for i, r in enumerate(rows) if year in years_of[r['pid']]
+            ],
+        }
+        path = DATA / f'project-map-{year}.json'
+        path.write_text(json.dumps(out, ensure_ascii=False), encoding='utf-8')
+        size_kb = path.stat().st_size / 1024
+        print(f'\n→ {path.relative_to(ROOT)} ({size_kb:.0f}KB, {len(out["points"])}点, {len(clusters)}クラスタ)')
+        print(f'圧縮: gzip -9 -k -f public/data/project-map-{year}.json')
 
     print('\nクラスタ一覧:')
     for c in sorted(clusters, key=lambda c: -c['count']):
         print(f"  #{c['id']:2d} {c['count']:4d}件 {c['dominantCategory']:20s} "
               f"({c['categoryShare']:.0%}) {'/'.join(c['terms'][:4])}")
-
-    print(f'\n圧縮: gzip -9 -k -f public/data/project-map-{year}.json')
 
 
 if __name__ == '__main__':

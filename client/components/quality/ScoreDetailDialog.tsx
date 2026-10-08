@@ -8,9 +8,12 @@
  */
 
 import { fiscalYearLabel, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+import { ProjectBudgetExecutionAudit } from '@/client/components/unified-budget/ProjectBudgetExecutionAudit';
+import { ProjectAuditReport } from '@/client/components/unified-budget/ProjectAuditReport';
 import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
 import Link from 'next/link';
-import { ScoreProjectStructure } from './ScoreProjectStructure';
+import { NoRecipientsNote } from '@/client/components/unified-budget/UnifiedProjectBlocks';
+import { ScoreBlockFilterHeader, ScoreProjectStructure, type ScoreRecipientTab } from './ScoreProjectStructure';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,9 @@ import { useDialogFocus } from '@/client/hooks/useDialogFocus';
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import { ProjectDetailShare } from './ProjectDetailShare';
+import { ContractMethodBadge } from './ContractMethodBadge';
+import { PromptText } from '@/client/components/unified-budget/UnifiedHelp';
+import { isOthersRowName, othersLabel, othersTitle } from '@/app/lib/others-count';
 import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
@@ -31,7 +37,7 @@ import {
 /** ヘッダ下の「▼ 事業内容」等の開閉リンク。Button の link variant を 11px の細字に寄せる */
 const TOGGLE_LINK_CLS = 'text-[11px] font-normal no-underline hover:underline hover:text-primary-accent';
 
-const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, undefined, undefined];
+const COL_MAX_WIDTHS = [undefined, 70, 130, 60, 50, 160, undefined, undefined];
 
 export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, navigation }: {
   item: QualityScoreItem;
@@ -54,11 +60,14 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [recipientSortField, setRecipientSortField] = useState<'chain' | 'b' | 's' | 'c' | 'o' | 'a2' | 'pct'>('chain');
   const [recipientSortDir, setRecipientSortDir] = useState<'asc' | 'desc'>('asc');
   const [showAxisDetail, setShowAxisDetail] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
-  const [showStructure, setShowStructure] = useState(false);
+  // 支出先一覧のタブ（支出先・ブロック・予算内訳）と、ブロックでの絞り込み
+  const [recipientTab, setRecipientTab] = useState<ScoreRecipientTab>('recipients');
+  const [blockFilter, setBlockFilter] = useState<string | null>(null);
   // 法人番号列（index 2）は13桁＋gBizINFOアイコンが入るため 130 まで広げる（旧ダイアログと同じ）
-  const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 200, 200]);
+  const [colWidths, setColWidths] = useState<number[]>([200, 70, 130, 60, 50, 130, 200, 200]);
   const resizingCol = useRef<{ index: number; startX: number; startW: number } | null>(null);
 
   useEffect(() => {
@@ -86,12 +95,14 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
     setShowAxisDetail(false);
     setShowPolicy(true);
     setShowProjectInfo(true);
-    setShowStructure(false);
+    setRecipientTab('recipients');
+    setBlockFilter(null);
   }, [item.pid, year]);
 
   const displayedRecipients = useMemo(() => {
     if (!recipients) return [];
     let rows = recipients;
+    if (blockFilter) rows = rows.filter(r => r.b === blockFilter);
     if (recipientSearch.trim()) {
       const q = recipientSearch.trim().toLowerCase();
       rows = rows.filter(r => r.n.toLowerCase().includes(q));
@@ -124,7 +135,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
       }
       return recipientSortDir === 'desc' ? -cmp : cmp;
     });
-  }, [recipients, recipientSearch, recipientSortField, recipientSortDir, item.spendNetTotal]);
+  }, [recipients, blockFilter, recipientSearch, recipientSortField, recipientSortDir, item.spendNetTotal]);
 
   function handleRecipientSort(field: typeof recipientSortField) {
     if (recipientSortField === field) {
@@ -170,9 +181,9 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-primary-accent">
               <Link href={rsViewUrl(`/subcontracts/${item.pid}`, sourceYear)} className="hover:underline">
-                委託構造ブラウザで見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗
+                委託構造ブラウザで見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}）`} ↗
               </Link>
-              <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}実績）`} ↗</Link>
+              <Link href={unifiedProjectUrl(item.pid, sourceYear)} className="hover:underline">サンキー図で見る{!recipientsAvailable && `（${fiscalYearLabel(sourceYear)}）`} ↗</Link>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1 text-[10px] text-mirai-text-muted">
               <span className="tabular-nums bg-mirai-surface-light text-mirai-text-subtle px-1.5 py-0.5 rounded-md">PID {item.pid}</span>
@@ -217,7 +228,7 @@ ${a.desc}`}>
               <div className="flex flex-wrap gap-x-3">
                 <span><span className="text-mirai-text-muted">予算:</span><span className="tabular-nums">{formatAmount(item.budgetAmount)}</span></span>
                 <span><span className="text-mirai-text-muted">執行:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.execAmount ?? 0) : '未収録'}</span></span>
-                <span><span className="text-mirai-text-muted">実質支出:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
+                <span><span className="text-mirai-text-muted">再委託を除く支出:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
                 <span><span className="text-mirai-text-muted">乖離率:</span><span className="tabular-nums">{pct(item.gapRatio)}</span></span>
               </div>
               <div className="flex flex-wrap gap-x-3">
@@ -239,7 +250,7 @@ ${a.desc}`}>
               </div>
             </div>
           </div>
-          {/* 何を評価した結果なのかを先に読めるよう、事業内容 → 政策評価 → 計算根拠 の順に並べる */}
+          {/* 何を評価した結果なのかを先に読めるよう、事業内容 → 政策評価 の順に並べる。計算根拠の開閉は政策評価の直下に置く */}
           <div className="mt-1 flex items-center gap-4">
             <Button
               variant="link"
@@ -257,13 +268,6 @@ ${a.desc}`}>
                 {showPolicy ? '▲ 政策評価を閉じる' : '▼ 政策評価'}
               </Button>
             )}
-            <Button
-              variant="link"
-              onClick={() => setShowAxisDetail(d => !d)}
-              className={TOGGLE_LINK_CLS}
-            >
-              {showAxisDetail ? '▲ 計算根拠を閉じる' : '▼ スコア計算根拠'}
-            </Button>
           </div>
         </div>
 
@@ -275,18 +279,6 @@ ${a.desc}`}>
         <div className="flex-1 min-h-0 overflow-y-auto">
           {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
 
-          <section className="border-b border-mirai-border px-6 py-3" aria-label="予算・委託構造">
-            <Button variant="ghost" size="xs" aria-expanded={showStructure} aria-controls="score-project-structure"
-              onClick={() => setShowStructure(v => !v)} className="px-0 text-primary-accent">
-              {showStructure ? '▾' : '▸'} 予算内訳・ブロック・再委託構造
-            </Button>
-            <div id="score-project-structure">
-              {showStructure && <>
-                {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の実績です。{year}年度の要求額・委託構造ではありません。</p>}
-                <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} />
-              </>}
-            </div>
-          </section>
 
         {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料 */}
         {showProjectInfo && (
@@ -298,7 +290,7 @@ ${a.desc}`}>
               </div>
             )}
             {projectInfo === null && <div className="text-xs text-mirai-text-muted">事業内容データなし</div>}
-            {projectInfo && <ProjectDescription detail={projectInfo} />}
+            {projectInfo && <ProjectDescription detail={projectInfo} sheetYear={year} />}
           </div>
         )}
 
@@ -352,7 +344,7 @@ ${a.desc}`}>
                   <div>成果設計: {fmtRaw(policy.designClarity)}/10</div>
                   <div>検証可能性: {policy.evidenceReadiness != null ? `${fmtRaw(policy.evidenceReadiness)}/10` : '未評価'}</div>
                   <div>費用対内容: {policy.budgetProportionality != null ? `${fmtRaw(policy.budgetProportionality)}/10` : '未評価'}</div>
-                  <div>必要性: {policy.necessity != null ? `${fmtRaw(policy.necessity)}/10` : '未評価'}</div>
+                  <div>代替困難性: {policy.necessity != null ? `${fmtRaw(policy.necessity)}/10` : '未評価'}</div>
                 </div>
               </div>
               <div>
@@ -409,7 +401,7 @@ ${a.desc}`}>
                 { label: '成果設計', text: policy.findings.design },
                 { label: '検証可能性', text: policy.findings.evidence },
                 { label: '費用対内容', text: policy.findings.proportionality },
-                { label: '必要性', text: policy.findings.necessity },
+                { label: '代替困難性', text: policy.findings.necessity },
               ] as const).map(({ label, text }) => text ? (
                 <div key={label}>
                   <span className="font-bold text-mirai-text-secondary">{label}: </span>
@@ -427,9 +419,21 @@ ${a.desc}`}>
           </div>
         )}
 
+        {/* 政府・検査機関による調査（財務省 予算執行調査・会計検査院 決算検査報告）。AI評価のすぐ後に置き、見比べられるようにする */}
+        <ProjectBudgetExecutionAudit pid={Number(item.pid)} scaleFont={px => px} padding="px-6 py-2.5" />
+        <ProjectAuditReport pid={Number(item.pid)} scaleFont={px => px} padding="px-6 py-2.5" />
+
+        {/* スコア計算根拠の開閉。上部の切替列に置くと、開いた中身がずっと下に出て開いたことに気づけないので、中身の直上に置く */}
+        <section className="border-b border-mirai-border px-6 py-2" aria-label="スコア計算根拠">
+          <Button variant="ghost" size="xs" aria-expanded={showAxisDetail} aria-controls="score-axis-detail"
+            onClick={() => setShowAxisDetail(v => !v)} className="px-0 text-primary-accent">
+            {showAxisDetail ? '▾' : '▸'} スコア計算根拠
+          </Button>
+        </section>
+
         {/* Axis detail (collapsible) */}
         {showAxisDetail && (
-          <div className="border-b border-mirai-border divide-y divide-border">
+          <div id="score-axis-detail" className="border-b border-mirai-border divide-y divide-border">
             <div className="px-5 py-1.5 bg-mirai-surface-teal/60 text-[11px] text-mirai-text-muted">
               欠測した項目は重みごと除外して再正規化します（0点扱いにはしません）。
             </div>
@@ -464,8 +468,8 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">費用対内容</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.proportionalityScore}</span>:
-                  金額が活動の規模に見合い、金が受益者に届いているか。支出先・再委託の実データを判定材料にするため、
-                  所管庁の作文では動かしにくい軸として最も重く置いている
+                  金額が活動の規模に見合い、資金が受益者に届く経路を確認できるか。事業概要に加え支出先・金額・再委託の記録を重視し、
+                  記録で裏付けを確かめられる軸として最も重く置いている
                   <div className="tabular-nums text-mirai-text-muted">
                     {policy?.budgetProportionality != null
                       ? `${fmtRaw(policy.budgetProportionality)}/10 → ${policy.proportionalityScore}点`
@@ -474,9 +478,9 @@ ${a.desc}`}>
                   {policy?.findings.proportionality && <div className="leading-relaxed">{policy.findings.proportionality}</div>}
                 </div>
                 <div>
-                  <span className="font-medium text-mirai-text-subtle">必要性</span>
+                  <span className="font-medium text-mirai-text-subtle">代替困難性</span>
                   <span className="ml-1 text-mirai-text-muted">重み{WEIGHT_BY_KEY.necessityScore}</span>:
-                  廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に「そもそも要るのか」を問う
+                  廃止したら誰が具体的に困るか、その手当てを他の手段で代替できるか。設計の巧拙とは独立に、公的支援の必要性と代替手段を問う
                   <div className="tabular-nums text-mirai-text-muted">
                     {policy?.necessity != null ? `${fmtRaw(policy.necessity)}/10 → ${policy.necessityScore}点` : "未評価"}
                   </div>
@@ -521,10 +525,10 @@ ${a.desc}`}>
                 <div>
                   <span className="font-medium text-mirai-text-subtle">収支の一致</span>（機械計算・
                   <span className="text-status-warn">執行透明性には不算入</span>）:
-                  執行額と実質支出が一致しているか。実測で9割の事業が満点になりほぼ定数だったため、
+                  執行額と実質支出額が一致しているか。実測で9割の事業が満点になりほぼ定数だったため、
                   加重平均から外して「不一致フラグ」（60点未満）として判定ルールが直接見る形に降格した。
                   <div className="tabular-nums text-mirai-text-muted">
-                    執行 {formatAmount(item.execAmount ?? 0)} vs 実質支出 {formatAmount(item.spendNetTotal)}
+                    執行 {formatAmount(item.execAmount ?? 0)} vs 再委託を除く支出 {formatAmount(item.spendNetTotal)}
                     ／乖離 {pct(item.gapRatio)}（10%まで満点）
                     = {item.axisBudget != null ? item.axisBudget.toFixed(0) : "—"}点
                     {item.axisBudget != null && item.axisBudget < 60 && (
@@ -556,8 +560,8 @@ ${a.desc}`}>
                 )}
               </div>
               <div className="mt-1 text-[11px] leading-4 text-mirai-text-muted">
-                費用対内容と必要性を厚くしているのは、この2軸だけが所管庁の作文が支配できない証拠
-                （支出先の実績・予算執行）に基づくためです。よく書けた事業計画だけで上位に来ないようにしています。
+                費用対内容と代替困難性を厚くしているのは、この2軸が事業概要の記述だけでなく、支出先・金額・再委託の記録
+                （支出先の実績・予算執行）でも裏付けを確かめられるためです。よく書けた事業計画だけで上位に来ないようにしています。
               </div>
             </div>
 
@@ -601,35 +605,65 @@ ${a.desc}`}>
                 <span>整合スコア {item.axisStructure != null ? item.axisStructure.toFixed(0) : "—"}</span>
               </div>
             </div>
+
+            {/* AI が採点したときのプロンプト全文と採点モデル（サンキー図・評価一覧の「説明」と同じもの） */}
+            <div className="px-5 py-2.5 text-xs">
+              <Button variant="ghost" size="xs" aria-expanded={showPrompt} aria-controls="score-axis-prompt" onClick={() => setShowPrompt(v => !v)} className="px-0 text-primary-accent">
+                {showPrompt ? '▾' : '▸'} AI 評価に使ったプロンプト（全文）と採点モデル
+              </Button>
+              <div id="score-axis-prompt">{showPrompt && <PromptText sheetYear={Number(sourceYear)} />}</div>
+            </div>
           </div>
         )}
 
         {/* Recipients */}
         <div className="flex flex-col">
-          <div className="px-6 py-2.5 border-b border-mirai-border shrink-0 bg-mirai-surface-gray">
-            <div className="flex items-center gap-3">
-              <div className="text-xs font-bold text-mirai-text-secondary shrink-0">
-                支出先一覧
-                {recipients && (
-                  <span className="ml-1.5 text-mirai-text-muted font-normal tabular-nums">
-                    {recipientSearch.trim() && displayedRecipients.length !== recipients.length
-                      ? `${displayedRecipients.length} / ${recipients.length}件`
-                      : `${recipients.length}件`}
-                  </span>
-                )}
-              </div>
-              {recipients && recipients.length > 0 && (
+          <div className="px-6 pt-2 border-b border-mirai-border shrink-0 bg-mirai-surface-gray">
+            {/* 支出先・ブロック（再委託）・予算内訳を1か所のタブにまとめる。ブロックを選ぶと支出先をそのブロックで絞り込む */}
+            <div role="tablist" aria-label="支出先と予算・委託構造" className="flex items-end gap-1">
+              {([
+                ['recipients', '支出先一覧'],
+                ['blocks', 'ブロック・再委託'],
+                ['budget', '予算内訳'],
+              ] as const).map(([id, label]) => (
+                <Button key={id} variant="ghost" role="tab" aria-selected={recipientTab === id} onClick={() => setRecipientTab(id)}
+                  className={`h-auto rounded-none border-b-2 px-2 py-1.5 text-xs font-bold hover:bg-transparent ${recipientTab === id ? 'border-primary text-primary-accent' : 'border-transparent text-mirai-text-muted hover:text-mirai-text-subtle'}`}>
+                  {label}
+                  {id === 'recipients' && recipients && (
+                    <span className="ml-1.5 font-normal tabular-nums text-mirai-text-muted">
+                      {displayedRecipients.length !== recipients.length ? `${displayedRecipients.length} / ${recipients.length}件` : `${recipients.length}件`}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+            {recipientTab === 'recipients' && recipients && recipients.length > 0 && (
+              <div className="py-2">
                 <input
                   type="text"
                   placeholder="支出先名で検索..."
                   value={recipientSearch}
                   onChange={e => setRecipientSearch(e.target.value)}
-                  className="min-w-0 flex-1 px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                  className="w-full px-3 py-1 text-xs border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
+          {recipientTab !== 'recipients' && (
+            <div className="px-6 py-2">
+              {!recipientsAvailable && <p className="my-2 text-xs text-mirai-text-muted">以下は{fiscalYearLabel(sourceYear)}の値です。{fiscalYearLabel(year)}額・委託構造ではありません。</p>}
+              <ScoreProjectStructure key={`${sourceYear}-${item.pid}`} pid={item.pid} year={sourceYear} tab={recipientTab}
+                onSelectBlock={blockId => { setBlockFilter(blockId); setRecipientTab('recipients'); }} />
+            </div>
+          )}
+          {recipientTab === 'recipients' && blockFilter && (
+            <div className="px-6">
+              <ScoreBlockFilterHeader pid={item.pid} year={sourceYear} blockId={blockFilter} onClear={() => setBlockFilter(null)} />
+            </div>
+          )}
+
+          {recipientTab === 'recipients' && <>
           {!recipientsAvailable && <div className="px-6 py-4 text-xs text-mirai-text-muted">{year}年度の支出先・執行実績は未収録です。予算要求の段階のため、この年度の支出先一覧は表示できません。事業概要と評価の元データは{sourceYear}年度のRSシートです。</div>}
           {recipientsAvailable && recipientsError && (
             <div className="px-6 py-4 text-xs text-mirai-text-muted">
@@ -643,7 +677,7 @@ ${a.desc}`}>
             </div>
           )}
           {recipients && recipients.length === 0 && (
-            <div className="px-6 py-4 text-xs text-mirai-text-muted">支出先データなし</div>
+            <NoRecipientsNote className="px-6 py-4 text-xs" />
           )}
           {recipients && recipients.length > 0 && (
             <div>
@@ -656,9 +690,10 @@ ${a.desc}`}>
                     {([
                       { label: '支出先名', align: 'left', sort: null, title: undefined },
                       { label: '委託チェーン', align: 'left', sort: 'chain' as const, title: '委託チェーン（A→B→C）でソート' },
-                      { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号(Corporate Number)。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）' },
+                      { label: '法人番号', align: 'center', sort: 'c' as const, title: '法人番号。番号順でソート（未記入は末尾）。⚠は形式不正（誤記載の疑い）。支出先名の横の OK・未登録などのバッジにカーソルを合わせると判定の意味を表示' },
                       { label: '金額', align: 'right', sort: 'a2' as const, title: '個別支出額（CSVの「金額」列）' },
-                      { label: '実支出比', align: 'right', sort: 'pct' as const, title: '実質支出合計に対する割合' },
+                      { label: '支出比', align: 'right', sort: 'pct' as const, title: '実質支出額に対する割合' },
+                      { label: '契約方式', align: 'left', sort: null, title: '入札・随意契約などの契約方式と応札・応募者数（RS公開APIから突き合わせ。補助金等は「契約以外」）。バッジにカーソルを合わせると補足・落札率を表示' },
                       { label: '役割', align: 'left', sort: null, title: '事業を行う上での役割（ブロック単位）' },
                       { label: '契約概要', align: 'left', sort: null, title: undefined },
                     ] as const).map((col, ci) => (
@@ -680,13 +715,16 @@ ${a.desc}`}>
                 <tbody className="divide-y divide-border">
                   {displayedRecipients.map((row, i) => {
                     const sm = STATUS_META[row.s];
+                    // 「その他」行は、まとめられた件数（分かる場合）と出どころをツールチップに出す
+                    const othersCount = row.oc !== undefined && row.ot !== undefined ? { n: row.oc, t: row.ot } : null;
+                    const isOthers = isOthersRowName(row.n);
                     return (
                       <tr key={i} className="hover:bg-mirai-surface-teal/60 transition-colors">
-                        <td className="px-4 py-1.5 text-mirai-text font-medium" title={row.n}>
+                        <td className="px-4 py-1.5 text-mirai-text font-medium" title={isOthers ? `${othersLabel(row.n, othersCount)}\n${othersTitle(othersCount)}` : row.n}>
                           <div className="flex items-center gap-1.5 min-w-0">
-                            <span className="truncate flex-1">{row.n}</span>
-                            {!row.o && <span className={`shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
-                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="不透明キーワードにマッチ">不透明</span>}
+                            <span className="truncate flex-1">{isOthers ? othersLabel(row.n, othersCount) : row.n}</span>
+                            {!row.o && <span title={sm.desc} className={`shrink-0 inline-block cursor-help px-1.5 py-0.5 rounded-md text-[10px] font-bold ${sm.cls}`}>{sm.label}</span>}
+                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-status-warn-bg text-status-warn-fg" title="支出先名が「その他」「〇〇等」など、相手を特定できない書き方にあたります（不透明キーワードに一致）">不透明</span>}
                           </div>
                         </td>
                         <td className="px-3 py-1.5 tabular-nums text-mirai-text-muted truncate" title={row.chain}>
@@ -736,6 +774,9 @@ ${a.desc}`}>
                             ? (() => { const p = row.a2 / item.spendNetTotal * 100; return p >= 1 ? `${p.toFixed(0)}%` : '<1%'; })()
                             : <span className="text-mirai-text-placeholder">—</span>}
                         </td>
+                        <td className="px-3 py-1.5 min-w-0">
+                          {row.m ? <ContractMethodBadge method={row.m} text={row.mt} applicants={row.ap} bidRate={row.br} /> : <span className="text-mirai-text-placeholder">—</span>}
+                        </td>
                         <td className="px-3 py-1.5 text-mirai-text-muted truncate" title={row.role || undefined}>
                           {row.role || <span className="text-mirai-text-placeholder">—</span>}
                         </td>
@@ -749,6 +790,7 @@ ${a.desc}`}>
               </table>
             </div>
           )}
+          </>}
         </div>
         </div>
       </div>

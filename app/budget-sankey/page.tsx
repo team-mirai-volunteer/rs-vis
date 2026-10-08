@@ -22,23 +22,29 @@ import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
   UNIFIED_FILTER_DEFAULT,
   UNIFIED_PRESET_COLUMNS,
+  UNIFIED_PROGRAM_SORT_SHORT,
   UNIFIED_SCORE_RANGE_EMPTY,
   hasScoreRange,
   type UnifiedOffset,
   type UnifiedPolicyScores,
+  type UnifiedProgramSort,
   type UnifiedScoreRange,
   type UnifiedTopN,
   type UnifiedViewFilter,
 } from '@/types/unified-budget-view';
 import { usePolicySummary } from '@/client/components/unified-budget/policy-summary-cache';
+import { useProjectSortMetrics } from '@/client/hooks/useProjectSortMetrics';
+import { buildProgramRanking, programSortNeedsMetrics, programSortNeedsScore } from '@/app/lib/unified-budget/program-sort';
 import type { LabelDensity } from '@/types/mof-hierarchy';
 import { applyFilter, applyTopN, collapseColumns, countByColumn, offsetToReveal, sortForDisplay, toRsMinistryGraph, toViewGraph } from '@/app/lib/unified-budget/transform';
 import { withProvisionalSpending } from '@/app/lib/unified-budget/provisional';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { YearSelect } from '@/components/navigation/YearSelect';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
-import { UnifiedSankeyChart, LABEL_FONT_PX_DEFAULT } from '@/client/components/unified-budget/UnifiedSankeyChart';
+import { UnifiedSankeyChart } from '@/client/components/unified-budget/UnifiedSankeyChart';
+import { autoLabelFontPx, LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { UnifiedControls } from '@/client/components/unified-budget/UnifiedControls';
+import { UnifiedHelp } from '@/client/components/unified-budget/UnifiedHelp';
 import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedViewSelect';
 import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
@@ -74,6 +80,11 @@ const COL_KEY: Record<UnifiedColumn, string> = {
   recipient: 're',
 };
 const KEY_COL = Object.fromEntries(Object.entries(COL_KEY).map(([c, k]) => [k, c])) as Record<string, UnifiedColumn>;
+
+/** 事業列の並べ替え → URL の sort（金額＝既定は省く） */
+const SORT_KEY: Record<UnifiedProgramSort, string> = { amount: '', 'score-asc': 'sa', 'score-desc': 'sd', years: 'yr', diff: 'df', ratio: 'dr' };
+const parseProgramSort = (v: string | null): UnifiedProgramSort =>
+  (Object.keys(SORT_KEY) as UnifiedProgramSort[]).find(k => k !== 'amount' && SORT_KEY[k] === v) ?? 'amount';
 
 /** 事業詳細パネルの上端と左上カード行の下端の間隔(px) */
 const SIDE_PANEL_GAP_PX = 8;
@@ -205,9 +216,21 @@ function UnifiedBudgetSankeyContent() {
   const effectiveProvisional = year === 2025 && provisionalView;
   const [topN, setTopN] = useState<UnifiedTopN>(() => parsePerColumn(searchParams, 't'));
   const [offset, setOffset] = useState<UnifiedOffset>(() => parsePerColumn(searchParams, 'o'));
+  const [programSort, setProgramSort] = useState<UnifiedProgramSort>(() => parseProgramSort(searchParams.get('sort')));
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
   const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
-  const [fontPx, setFontPx] = useState(() => Number(searchParams.get('fs')) || LABEL_FONT_PX_DEFAULT);
+  /** 利用者が明示した文字サイズ（URL の fs）。null は自動（画面の大きさから決める） */
+  const [fontPxOverride, setFontPxOverride] = useState<number | null>(() => Number(searchParams.get('fs')) || null);
+  const [autoFontPx, setAutoFontPx] = useState(LABEL_FONT_PX_FULL_HD);
+  useEffect(() => {
+    const update = () => setAutoFontPx(autoLabelFontPx(window.innerWidth, window.innerHeight));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  const fontPx = fontPxOverride ?? autoFontPx;
+  // 自動の値に戻したときは明示をやめる（URL にも載せない）
+  const setFontPx = useCallback((value: number) => setFontPxOverride(value === autoFontPx ? null : value), [autoFontPx]);
   const [flowScale, setFlowScale] = useState(() => parseFlowScale(searchParams.get('th')));
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
@@ -302,7 +325,18 @@ function UnifiedBudgetSankeyContent() {
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
   // 取得前（undefined）・取得失敗（null）のときは ctx.policy を渡さず、スコアの絞り込みは効かせない
   const scoreFilterActive = hasScoreRange(filter.scoreO) || hasScoreRange(filter.scoreX) || hasScoreRange(filter.scoreN);
-  const policySummary = usePolicySummary(scoreFilterActive && graph && !graph.metadata.apiCoverage ? graph.metadata.rsSheetYear : null);
+  // 並べ替えの値（総合点・継続年数・差額）も、その並べ替えを選んだときだけ読む。暫定（API）ビューには無い
+  const sheetYear = graph && !graph.metadata.apiCoverage ? graph.metadata.rsSheetYear : null;
+  const policySummary = usePolicySummary((scoreFilterActive || programSortNeedsScore(programSort)) && sheetYear !== null ? sheetYear : null);
+  const sortMetrics = useProjectSortMetrics(programSortNeedsMetrics(programSort) && sheetYear !== null ? sheetYear : null);
+  const programRanking = useMemo(
+    () => buildProgramRanking(programSort, { policy: policySummary?.items, metrics: sortMetrics }),
+    [programSort, policySummary, sortMetrics]
+  );
+  const programSortStatus = programSort === 'amount' ? 'ready'
+    : sheetYear === null ? 'unavailable'
+    : (programSortNeedsScore(programSort) ? policySummary : sortMetrics) === undefined ? 'loading'
+    : programRanking ? 'ready' : 'unavailable';
   const policyScores = useMemo<UnifiedPolicyScores | undefined>(() => {
     if (!policySummary) return undefined;
     const out: UnifiedPolicyScores = {};
@@ -313,15 +347,18 @@ function UnifiedBudgetSankeyContent() {
   const filtered = useMemo(() => (base ? applyFilter(base, filter, filterCtx) : null), [base, filter, filterCtx]);
   const collapsed = useMemo(() => (filtered ? collapseColumns(filtered, effectiveColumns) : null), [filtered, effectiveColumns]);
   const columnCounts = useMemo(() => (collapsed ? countByColumn(collapsed) : {}), [collapsed]);
-  const display = useMemo(() => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset)) : null), [collapsed, topN, offset]);
+  const display = useMemo(
+    () => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset, programRanking), programRanking) : null),
+    [collapsed, topN, offset, programRanking]
+  );
   // 選択ノード（一覧のリンク・検索・URL から来る）が TopN の窓から溢れて図に無いときは、
   // その列の表示位置をノードが窓に入るところまで動かす。「図には出ていません」で止まらないようにする
   useEffect(() => {
     if (!selectedId || !collapsed || !display) return;
     if (display.nodes.some(n => n.id === selectedId)) return;
-    const patch = offsetToReveal(collapsed, topN, offset, selectedId);
+    const patch = offsetToReveal(collapsed, topN, offset, selectedId, programRanking);
     if (patch) setOffset(o => ({ ...o, ...patch }));
-  }, [selectedId, collapsed, display, topN, offset]);
+  }, [selectedId, collapsed, display, topN, offset, programRanking]);
   const ministries = useMemo(() => (base ? [...new Set(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name))] : []), [base]);
 
   // URL 同期
@@ -337,16 +374,17 @@ function UnifiedBudgetSankeyContent() {
       if (topN[c] !== undefined) params.set(`t${COL_KEY[c]}`, String(topN[c]));
       if (offset[c]) params.set(`o${COL_KEY[c]}`, String(offset[c]));
     }
+    if (programSort !== 'amount') params.set('sort', SORT_KEY[programSort]);
     if (selectedId) params.set('sel', selectedId);
     if (focusRelated) params.set('fr', '1');
-    if (fontPx !== LABEL_FONT_PX_DEFAULT) params.set('fs', String(fontPx));
+    if (fontPxOverride !== null) params.set('fs', String(fontPxOverride));
     if (flowScale !== FLOW_SCALE_DEFAULT) params.set('th', String(Number((flowScale * FLOW_SCALE_BASE).toFixed(8))));
     params.set('ld', labelDensity);
     serializeFilter(params, filter);
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, selectedId, focusRelated, fontPx, flowScale, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, programSort, selectedId, focusRelated, fontPxOverride, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -359,9 +397,10 @@ function UnifiedBudgetSankeyContent() {
       setVisibleColumns(parseColumns(params.get('cols')) ?? UNIFIED_PRESET_COLUMNS.full);
       setTopN(parsePerColumn(params, 't'));
       setOffset(parsePerColumn(params, 'o'));
+      setProgramSort(parseProgramSort(params.get('sort')));
       setSelectedId(params.get('sel'));
       setFocusRelated(params.get('fr') === '1');
-      setFontPx(Number(params.get('fs')) || LABEL_FONT_PX_DEFAULT);
+      setFontPxOverride(Number(params.get('fs')) || null);
       setFlowScale(parseFlowScale(params.get('th')));
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
       setFilter(parseFilter(params));
@@ -397,14 +436,14 @@ function UnifiedBudgetSankeyContent() {
       } / RSシート${metadata.rsSheetYear}`
     : `${metadata.budgetYear}年度 ${metadata.basisBudgetType} / 純計 ${formatBudgetFromYen(metadata.totals.net)}（総計 ${formatBudgetFromYen(metadata.totals.gross)}・繰入 ${formatBudgetFromYen(metadata.totals.transfer)}） / RS事業 ${formatBudgetFromYen(metadata.totals.rsProgram)}${
     metadata.rsAmountKind === 'request' ? '（翌年度要求額）' : ''
-  } / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
+  } / 給付・金融取引など ${formatBudgetFromYen(metadata.totals.byKind['non-program'] ?? 0)} / 未突合 ${formatBudgetFromYen(metadata.totals.byKind.unmatched)} / RSシート${metadata.rsSheetYear}`;
 
   const settingsPanel = (placement: 'top-right' | 'top-auto') => (
     <UnifiedSettings
       placement={placement}
       fontPx={fontPx}
       onFontPxChange={setFontPx}
-      defaultFontPx={LABEL_FONT_PX_DEFAULT}
+      defaultFontPx={autoFontPx}
       flowScale={flowScale}
       onFlowScaleChange={setFlowScale}
       labelDensity={labelDensity}
@@ -415,12 +454,20 @@ function UnifiedBudgetSankeyContent() {
       availableColumns={availableColumns}
       onVisibleColumnsChange={columns => setVisibleColumns(previous => UNIFIED_COLUMNS.filter(c =>
         availableColumns.includes(c) ? columns.includes(c) : previous.includes(c)))}
+      programSort={programSort}
+      onProgramSortChange={next => {
+        setProgramSort(next);
+        // 並びが変わると表示位置の意味も変わるので先頭へ戻す
+        setOffset(o => ({ ...o, program: undefined, 'program-spending': undefined }));
+      }}
+      programSortStatus={programSortStatus}
       summary={summary}
     />
   );
   return (
     <>
     <AppHeader fiscalYear={year} position="fixed" current="/budget-sankey">
+      <UnifiedHelp sheetYear={graph?.metadata.rsSheetYear ?? year + 1} />
       <UnifiedBasisSelect value={effectiveBasis} available={basesOf(year)} onChange={setBasis} />
       <UnifiedViewSelect
         provisional={effectiveProvisional}
@@ -454,7 +501,7 @@ function UnifiedBudgetSankeyContent() {
         onFilterChange={setFilter}
         filterOpen={filterOpen}
         onToggleFilterOpen={() => { const next = !filterOpen; setFilterOpen(next); if (next) setAiOpen(false); }}
-        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} year={year} onClose={() => setAiOpen(false)}
+        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} sheetYear={metadata.rsSheetYear} onClose={() => setAiOpen(false)}
           onApply={result => {
             setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
             setFilterOpen(false);
@@ -475,6 +522,7 @@ function UnifiedBudgetSankeyContent() {
         columnLabels={rsMinistryMode ? UNIFIED_RS_MINISTRY_COLUMN_LABELS : undefined}
         provisional={!!metadata.apiCoverage}
         rsSheetYear={metadata.rsSheetYear}
+        programSortLabel={programRanking ? UNIFIED_PROGRAM_SORT_SHORT[programSort] : undefined}
         rsAmountKind={metadata.rsAmountKind}
         hasSpending={metadata.hasSpending}
         scoreStatus={metadata.apiCoverage ? 'unavailable' : !scoreFilterActive ? 'idle' : policySummary === undefined ? 'loading' : policySummary === null ? 'unavailable' : 'ready'}
@@ -493,7 +541,7 @@ function UnifiedBudgetSankeyContent() {
           <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
         </Button>
       </div>}
-      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-[2px] sm:flex sm:max-w-[calc(100%-420px)] sm:flex-row sm:items-start', mobileControlsOpen ? 'flex' : 'hidden')}>
+      <div ref={controlsRowRef} className={cn('pointer-events-none absolute right-3 top-14 z-30 flex-col items-end gap-2 sm:left-3 sm:right-auto sm:top-[2px] sm:flex sm:max-w-[calc(100%-372px)] xl:max-w-[calc(100%-356px)] 2xl:max-w-[calc(100%-372px)] sm:flex-row sm:items-start xl:w-[calc(100%-356px)] 2xl:w-[calc(100%-372px)]', mobileControlsOpen ? 'flex' : 'hidden')}>
         <UnifiedControls visibleColumns={effectiveColumns} topN={topN} offset={offset} columnCounts={columnCounts} onTopNChange={setTopN} onOffsetChange={setOffset} />
         {!wideControls && settingsPanel('top-right')}
       </div>

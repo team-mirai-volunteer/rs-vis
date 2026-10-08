@@ -16,7 +16,6 @@ import { ResourceEstimation, ResourceSettings } from '@/client/components/fiscal
 import { Demographics, DemographicSettings } from '@/client/components/fiscal-space/Demographics';
 import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCalibration';
 import { CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
-import { consumptionTaxLimit } from '@/app/lib/fiscal-space/calibration';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
@@ -116,6 +115,7 @@ export default function FiscalSpacePage() {
     inputs: (v: FiscalForm['inputs']) => setForm(f => ({ ...f, inputs: v, capacity: { ...f.capacity, mode: 'manual' } })), longRun: (v: FiscalForm['longRun']) => update('longRun', v),
     calibration: (v: FiscalForm['calibration']) => setForm(f => ({ ...f, calibration: v, horizon: f.horizon === EXTENDED_HORIZON ? f.horizon : Math.min(f.horizon, REFERENCES[v.referenceModel].years),
       amounts: Object.fromEntries(Object.entries(f.amounts).map(([id, n]) => [id, policyCostYen(id, n, v) / TRILLION])) })),
+    insuranceSplit: (amount: number, healthShare: number) => setForm(f => ({ ...f, insuranceHealthShare: healthShare, amounts: { ...f.amounts, 'social-insurance': amount } })),
     supply: (v: FiscalForm['supply']) => update('supply', v), corporate: (v: number) => update('corporateShare', v),
     electricity: (v: FiscalForm['calibration']['electricity']) => setForm(f => ({ ...f, calibration: { ...f.calibration, electricity: v } })),
     demographics: (v: FiscalForm['calibration']['demographics']) => setForm(f => ({ ...f, calibration: { ...f.calibration, demographics: v } })),
@@ -134,9 +134,11 @@ export default function FiscalSpacePage() {
   const result = completed?.result;
   const calculationForm = completed?.form;
   const policies = useMemo(() => POLICIES.map(policy => ({ ...policy, ...form.policySettings[policy.id] })), [form.policySettings]);
+  // 減税の入力上限（兆円）。税収・保険料収入を限度とし、上限の無い支出系は100兆円
+  const policyMax = useMemo(() => Object.fromEntries(POLICIES.map(policy => { const limit = policyInputLimitYen(policy.id, form.calibration); return [policy.id, Number.isFinite(limit) ? limit / TRILLION : 100]; })), [form.calibration]);
   const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
-  const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
+  const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : result.estimate.status === 'empty-mix' ? '参考上限：未計算（政策の配分を入力してください）' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
   return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-11 [&_summary]:py-2">
     <AppHeader current="/fiscal-space">
       <Button variant="outline" size="sm" className="border-mirai-border" onClick={() => { setDialogOpen(true); dataDialog.current?.showModal(); }}>
@@ -144,7 +146,7 @@ export default function FiscalSpacePage() {
       </Button>
     </AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-24 pt-5 lg:pb-10">
-      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">債務持続性の判定ではありません。物価・労働・電力・産業能力の実物制約が、公表モデルの期間（最大5年）でどこまで追加支出を許すかを条件付きで比較します。15年評価は公表期間外を仮定で延長します。減税、公共投資、研究、エネルギーの使い道と期間を変えて、需要・物価・労働・輸入・借換のつながりを確かめます。</p></section>
+      <section className="rounded-2xl bg-mirai-gradient p-6 sm:p-8"><p className="mb-2 text-sm font-bold">財政余力（実物制約の条件比較）</p><h1 className="text-2xl font-bold tracking-normal sm:text-3xl">次の1兆円で、何が最初に足りなくなる？</h1><p className="mt-3 max-w-3xl text-sm leading-relaxed">減税・公共投資・研究・エネルギーなどの使い道と規模・期間を入れると、物価・労働・電力・産業能力のどの制約に最初に当たるかを試算できます。債務持続性の判定ではなく、公表モデルの期間（最大5年）での条件付きの比較です。15年評価は公表期間外を仮定で延長します。</p></section>
       <ShareScenario form={form} onPreset={change.preset} onOptimizationSettings={openOptimizationSettings} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
@@ -158,7 +160,7 @@ export default function FiscalSpacePage() {
         {result && <p>下の結果は直前に計算できた条件です。</p>}
         <Button variant="outline" onClick={retry} className="mt-2">計算を再試行</Button>
       </div>}
-      {result && <p role="status" aria-live="polite" className="sr-only">追加予算は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
+      {result && <p role="status" aria-live="polite" className="sr-only">追加の財政措置は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">
@@ -179,8 +181,7 @@ export default function FiscalSpacePage() {
           onClose={() => setControlsOpen(false)}
           amounts={form.amounts} rateShock={form.rateShock} energyShock={form.energyShock} stresses={form.stresses} onStress={change.stress}
           thresholds={form.thresholds} gap={form.gap} inflation={form.inflation} construction={form.construction} firmCapacity={form.firmCapacity}
-          consumptionTaxMax={consumptionTaxLimit(form.calibration) / TRILLION}
-          socialInsuranceMax={policyInputLimitYen('social-insurance', form.calibration) / TRILLION}
+          policyMax={policyMax} calibration={form.calibration} healthShare={form.insuranceHealthShare} onInsuranceSplit={change.insuranceSplit}
           additionalSettings={Object.entries(DETAIL_SETTINGS).filter(([key]) => key !== 'poverty' && key !== 'childcare').map(([key, label]) => <Button key={key} variant="outline" className="w-full" aria-haspopup="dialog" onClick={() => { setDetailSetting(key as DetailSetting); detailDialog.current?.showModal(); }}>{label}</Button>)}
           policies={policies} onPowerSettings={openPowerSettings} onCashSettings={openCashSettings} onChildcareSettings={openChildcareSettings} onCalibrationSettings={openCalibrationSettings} onSupplySettings={openSupplySettings}
           horizon={form.horizon === EXTENDED_HORIZON ? EXTENDED_HORIZON : Math.min(form.horizon, REFERENCES[form.calibration.referenceModel].years)}

@@ -7,15 +7,25 @@ export function formatProjectText(text: string): string {
     .join('');
 }
 
+/** 継続年数（対象年度 − 開始年度 ＋ 1）。評価一覧の「継続年数」と同じ定義で、対象年度はRSシート年度。 */
+export function yearsRunning(startYear: number | null, sheetYear: string | number | undefined): number | null {
+  const target = Number(sheetYear);
+  return startYear && Number.isInteger(target) && target > 0 ? Math.max(1, target - startYear + 1) : null;
+}
+
 /** サイドパネルと詳細ダイアログで共通の事業説明。 */
-export function ProjectDescription({ detail, showSourceLink = true }: {
+export function ProjectDescription({ detail, showSourceLink = true, sheetYear }: {
   detail: ProjectDetail;
   showSourceLink?: boolean;
+  /** RSシート年度。渡すと継続年数を出す */
+  sheetYear?: string | number;
 }) {
+  const years = yearsRunning(detail.startYear, sheetYear);
   return <div className="space-y-3 text-xs">
     <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-mirai-text-muted">
       {detail.category && <span>区分: {detail.category}</span>}
       {(detail.startYear || detail.startYearUnknown) && <span>開始: {detail.startYear ? `${detail.startYear}年度` : '不明'}</span>}
+      {years !== null && <span title="対象年度 − 開始年度 ＋ 1（評価一覧の継続年数と同じ）" className="font-bold text-mirai-text-secondary">継続年数: {years}年</span>}
       <span>終了: {detail.noEndDate ? '予定なし' : detail.endYear ? `${detail.endYear}年度` : '-'}</span>
       {detail.implementationMethods?.length > 0 && <span>実施方法: {detail.implementationMethods.join('・')}</span>}
       {showSourceLink && detail.url && /^https?:\/\//.test(detail.url) && <a href={detail.url} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline hover:text-primary-accent">事業概要URL ↗</a>}

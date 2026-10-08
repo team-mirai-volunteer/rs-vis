@@ -15,19 +15,19 @@ import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { scoreColor } from '@/client/components/quality/score-format';
-import { TONE_CLS, ACTION_CLS } from '@/client/components/quality/score-meta';
+import { TONE_CLS, ACTION_CLS, AI_EVALUATION_NATURE, AI_EVALUATION_TITLE } from '@/client/components/quality/score-meta';
 
 /** 表示に必要な最小セット。呼び出し側がサマリ or 単体評価から組み立てる */
 export interface PolicyEvaluationView {
   /** 総合点（0-100） */
   overall: number | null;
-  /** 成果設計・検証可能性・執行透明性。渡すと 5 軸すべてを並べる（幅のあるパネル向け）。省略時は総合・費用対内容・必要性の 3 つ */
+  /** 成果設計・検証可能性・執行透明性。渡すと 5 軸すべてを並べる（幅のあるパネル向け）。省略時は総合・費用対内容・代替困難性の 3 つ */
   designClarity?: number | null;
   evidence?: number | null;
   transparency?: number | null;
   /** 費用対内容（0-100） */
   proportionality: number | null;
-  /** 必要性（0-100） */
+  /** 代替困難性（0-100。データ上の名前は necessity） */
   necessity: number | null;
   /** 推奨判断の表示名。未判定は null */
   recommendation: string | null;
@@ -41,7 +41,7 @@ export interface PolicyEvaluationView {
 function recommendationCls(rec: string): string {
   if (rec === '継続') return TONE_CLS.green;
   if (rec === '要改善') return TONE_CLS.blue;
-  if (rec === '再設計' || rec === '終了・廃止候補') return TONE_CLS.red;
+  if (rec === '再設計' || rec === '見直し候補') return TONE_CLS.red;
   return TONE_CLS.amber;
 }
 
@@ -91,15 +91,15 @@ export function PolicyEvaluationBlock({
   }
   if (!view) return null;   // 取得中・スコアなしはブロックごと出さない（パネルのちらつき防止）
 
-  // 既定は、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸（費用対内容・必要性）＋総合点。
+  // 既定は、総合点への寄与が最も大きく所管庁の作文が支配しにくい2軸（費用対内容・代替困難性）＋総合点。
   // 残り3軸（成果設計・検証可能性・執行透明性）は呼び出し側が渡したときだけ並べる（統合ビューの広いパネル）。
   const full = view.designClarity !== undefined || view.evidence !== undefined || view.transparency !== undefined;
   const cells: Array<[string, number | null]> = full
     ? [
         ['総合点', view.overall], ['成果設計', view.designClarity ?? null], ['検証可能性', view.evidence ?? null],
-        ['執行透明性', view.transparency ?? null], ['費用対内容', view.proportionality], ['必要性', view.necessity],
+        ['執行透明性', view.transparency ?? null], ['費用対内容', view.proportionality], ['代替困難性', view.necessity],
       ]
-    : [['総合点', view.overall], ['費用対内容', view.proportionality], ['必要性', view.necessity]];
+    : [['総合点', view.overall], ['費用対内容', view.proportionality], ['代替困難性', view.necessity]];
 
   return (
     <div className="shrink-0 border-b border-border px-3.5 py-2">
@@ -107,7 +107,7 @@ export function PolicyEvaluationBlock({
       <div className="mb-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
         {/* 「暫定」は全事業に共通なので本文には出さず、見出しのツールチップで断る */}
         <span className="cursor-help font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}
-          title="AI による暫定の評価です（行政事業レビューシートの記載からのスクリーニングで、結論ではありません）">政策評価</span>
+          title={`${AI_EVALUATION_TITLE}。${AI_EVALUATION_NATURE}スクリーニングの目安で、結論ではありません。`}>政策評価</span>
         {view.categoryLabel && (
           <span
             className="whitespace-nowrap rounded-full bg-mirai-surface-light px-1.5 py-px text-mirai-text-subtle"

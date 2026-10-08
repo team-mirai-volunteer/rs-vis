@@ -23,7 +23,7 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
   return <section id="fiscal-envelope" aria-label="財政余力の探索結果" className="scroll-mt-20 space-y-3">
     <Card><CardContent className="space-y-4 pt-5">
       <h2 className="text-lg font-bold">同じ配分を拡大した場合の参考上限（選んだストレスに耐える額）</h2>
-      <p className="text-3xl font-bold tabular-nums" data-testid="recommended-envelope-summary">{money(estimate.recommendedEnvelope, 1)} / 年</p>
+      <p className="text-3xl font-bold tabular-nums" data-testid="recommended-envelope-summary">{estimate.status === 'empty-mix' ? '未計算：政策の配分を入力してください' : `${money(estimate.recommendedEnvelope, 1)} / 年`}</p>
       <p className="text-sm">条件付きの参考値で、推奨額でも財政の上限でもありません。ストレスなしの探索額は <span data-testid="theoretical-maximum">{money(estimate.theoreticalMaximum, 1)}</span>（実質的な控除 {percent(estimate.reserveRule.share, 0)}。控除率は入力ではなく結果）。評価期間{horizon}年間{riskAudit.extrapolatedYears > 0 && `（うち${riskAudit.extrapolatedYears}年は公表期間外の延長計算）`}。</p>
       {estimate.stress && estimate.stress.length > 0 && <div className="overflow-x-auto" role="region" aria-label="ストレス別の参考上限" tabIndex={0} data-testid="stress-table"><table className="w-full min-w-[460px] text-right text-sm tabular-nums">
         <caption className="text-left text-xs">各ストレスを同じ配分に載せて再探索した額。チェックした条件の最小値を参考上限にします（「予算を制約する条件」で選択）。{estimate.stress.some(s => s.selected) ? '' : '現在は未選択のため、ストレスなしの探索額を表示しています。'}ストレスの大きさは仮定ですが、「何に耐えるか」として読める条件です。</caption>
@@ -58,8 +58,8 @@ export function Summary({ estimate, riskAudit, longRun, ...modelProps }: {
         </tr>)}</tbody>
       </table><p className="mt-2 text-xs">CPI上限だけを変え、全制約を再探索しています。表示桁は計算の丸めで、推定精度を表しません。上限の設定に強く依存する条件付きの値で、許容物価の推奨や信頼区間ではありません。</p></div></details>
       <details><summary className="cursor-pointer text-sm font-bold">この数字の読み方</summary><div className="mt-2 space-y-2 text-sm">
-        <p>追加予算に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
-        <p>参考上限（ストレス耐性額）を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加予算と国の一般会計予算」を参照してください。</p>
+        <p>追加の財政措置に上乗せする金額ではありません。一般政府の減税・支出の追加総額であり、国の一般会計予算とは合算しません。</p>
+        <p>参考上限（ストレス耐性額）を実施した場合：年{horizon}の実質GDP効果 {money(riskAudit.terminalGdpEffect)}。判定用CPIピークは年{riskAudit.cpi.year}、{percent(riskAudit.cpi.peak)}。制約はピーク年、GDP効果は終端年で評価されるため、両者は同じ年ではありません。三時点の内訳は上部の「追加の財政措置と国の一般会計予算」を参照してください。</p>
         <p><strong>安全性は未判定です。</strong> 産業内の職種・設備の偏り、地域間の電力融通、追加の為替ストレスは上限に十分反映できません。手入力の空欄は未評価です。参考上限は政策の推奨額や便益の評価ではありません。</p>
       </div></details>
 

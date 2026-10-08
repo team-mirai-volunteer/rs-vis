@@ -9,10 +9,10 @@
  * 絞る前のものを受け取る。
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { computeMOFSankeyLayout, mofRibbonPath, type MOFLayoutLink, type MOFLayoutNode } from '@/app/lib/mof-sankey-layout';
 import { MAJOR_EXPENSE_NAMES, PURPOSE_NAMES, UNIFIED_LAYOUT, unifiedNodeColor } from '@/app/lib/unified-budget/constants';
-import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedNodeIds } from '@/app/lib/unified-budget/focus';
+import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
 import { columnIndex } from '@/app/lib/unified-budget/transform';
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, UNIFIED_PROGRAM_KIND_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { hasActiveUnifiedFilter, UNIFIED_FILTER_DEFAULT, type UnifiedViewDetails, type UnifiedViewFilter, type UnifiedViewNode } from '@/types/unified-budget-view';
@@ -30,12 +30,16 @@ import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
 import { Building2, Maximize, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { externalCorporateLinks } from '@/app/lib/api/links';
-import { UnifiedProjectSections } from './UnifiedProjectSections';
-import { UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
-import { rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
+import { UnifiedProjectSections, useProjectDetail } from './UnifiedProjectSections';
+import { UnifiedRecipientProfile } from './UnifiedRecipientProfile';
+import { yearsRunning } from '@/client/components/ProjectDescription';
+import { NoRecipientsNote, UnifiedProjectBlocks, UnifiedBlockRecipients, useProjectBlocks, useProvisionalProject } from './UnifiedProjectBlocks';
+import { rsApiContractLines, rsApiToProjectDetail, rsApiToSubcontractGraph } from '@/app/lib/unified-budget/rs-api-panel-adapter';
 import { RecipientContractSummary } from '@/client/components/RecipientContractSummary';
 import { RecipientHoverCard, type RecipientHover } from '@/client/components/RecipientHoverCard';
 import { recipientContractsInProject } from '@/app/lib/recipient-contracts';
+import { isOthersRowName, othersLabel, othersTitle, sumOthersCounts } from '@/app/lib/others-count';
+import type { BlockNode } from '@/types/subcontract';
 import { usePolicySummary } from './policy-summary-cache';
 import { BudgetExecutionSection } from '@/client/components/BudgetExecutionSection';
 import { UnifiedAggregateEvaluation } from './UnifiedAggregateEvaluation';
@@ -55,6 +59,12 @@ const SEARCH_ROW_PX = 54; // sm 未満: 左上の検索ピルの行
 const CONTROL_ROW_PX = 60; // sm 以上: 左上の表示数カード（1行）の行。詳細パネルはこの下から
 const ZOOM_MAX = 4;
 const ZOOM_STEP = 1.2;
+
+/**
+ * ポータルで body に出したもの（政策評価の詳細ダイアログ・ホバーカードなど）のイベントも、React では
+ * コンポーネントの親であるこの図まで伝わる。図の DOM の外から来たホイール・ドラッグでズーム・パンしない
+ */
+const fromPortal = (e: React.SyntheticEvent) => !e.currentTarget.contains(e.target as Node);
 
 export function UnifiedSankeyChart({
   nodes,
@@ -78,6 +88,7 @@ export function UnifiedSankeyChart({
   rsMeasureLabel,
   columnLabels,
   rsSheetYear,
+  programSortLabel,
   rsAmountKind,
   hasSpending = true,
   scoreStatus = 'idle',
@@ -119,6 +130,8 @@ export function UnifiedSankeyChart({
   /** 列見出しの差し替え（府省庁基準では 会計→予算総計、所管→府省庁）。無い列は既定の列名 */
   columnLabels?: Partial<Record<UnifiedColumn, string>>;
   rsSheetYear: number;
+  /** 事業列を金額以外で並べているときの表記（「総合点の低い順」など）。列見出しの測定量に添える */
+  programSortLabel?: string;
   rsAmountKind: MofRsAmountKind;
   /** 事業(支出)・支出先の列がある年度か（無ければ支出額・支出先名・再委託の絞り込みを出さない） */
   hasSpending?: boolean;
@@ -168,17 +181,18 @@ export function UnifiedSankeyChart({
   }, [visibleColumns]);
   const orderedVisible = useMemo(() => UNIFIED_COLUMNS.filter(c => visibleColumns.includes(c)), [visibleColumns]);
 
+  const browse = useMemo(() => (browseNodes && browseLinks ? { nodes: browseNodes, links: browseLinks } : undefined), [browseNodes, browseLinks]);
   const related = useMemo(() => {
     if (!selectedId) return null;
     if (!nodes.some(n => n.id === selectedId)) return null;
-    return relatedNodeIds(links, selectedId, nodes);
-  }, [selectedId, links, nodes]);
+    return relatedThroughAggregates({ nodes, links }, browse, selectedId);
+  }, [selectedId, links, nodes, browse]);
 
-  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedNodeIds(links, hovered.id, nodes) : null), [hovered, selectedId, focusRelated, links, nodes]);
+  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedThroughAggregates({ nodes, links }, browse, hovered.id) : null), [hovered, selectedId, focusRelated, links, nodes, browse]);
 
   const visible = useMemo(() => {
     if (!focusRelated || !selectedId || !related) return { nodes, links };
-    return focusGraph(nodes, links, selectedId);
+    return focusGraph(nodes, links, selectedId, related);
   }, [nodes, links, related, focusRelated, selectedId]);
 
   const layout = useMemo(
@@ -349,14 +363,17 @@ export function UnifiedSankeyChart({
   const [panelRecipientHover, setPanelRecipientHover] = useState<RecipientHover | null>(null);
   const recipientHoverFor = useCallback((item: UnifiedViewNode, x: number, y: number): RecipientHover => {
     // 個別事業を選んでいるときは、その事業の中の契約だけ。読み込み済みの再委託構造（暫定は RS 公開 API 由来）から手元で引く
+    // 年度があれば API から引く（同じ再委託構造に加えて契約方式も返る）。暫定は API に無いので手元の構造を使う
     if (isIndividualProject && selectedDetails?.projectId !== undefined && projectBlocks) {
+      if (contractSheetYear !== null) return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: [selectedDetails.projectId] };
       const own = recipientContractsInProject(projectBlocks, item.name);
-      return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], year: contractSheetYear, pids: [selectedDetails.projectId] };
+      return { x, y, name: item.name, amount: item.value, contracts: own?.contracts ?? [], lines: provisionalProject ? rsApiContractLines(provisionalProject, item.name) : undefined,
+        year: contractSheetYear, pids: [selectedDetails.projectId] };
     }
     // 所管・項などを選んでいるときは、その選択に連なる事業（パネルの事業タブに出るもの）からの契約だけにする
     const inSelection = selectionProjectIds.size > 0 ? contractPidsOf(item.id).filter(pid => selectionProjectIds.has(pid)) : contractPidsOf(item.id);
     return { x, y, name: item.name, amount: item.value, year: contractSheetYear, pids: inSelection };
-  }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, contractSheetYear, contractPidsOf, selectionProjectIds]);
+  }, [isIndividualProject, selectedDetails?.projectId, projectBlocks, provisionalProject, contractSheetYear, contractPidsOf, selectionProjectIds]);
   /**
    * 支出先を選んでいるときの「事業」「事業(支出)」タブの行ホバー。その事業がこの支出先に払った額と契約を出す。
    * 金額は事業全体ではなく、この支出先へのつながり（絞り込み前の browseLinks）の合計
@@ -377,6 +394,16 @@ export function UnifiedSankeyChart({
   const priorSheetYear = budgetYear;
   const priorSheetPolicy = usePolicySummary(provisional && isIndividualProject ? priorSheetYear : null);
   /**
+   * 見出しの継続年数。下の事業概要と同じシート年度・同じデータで数える（暫定は、前年度シートにある事業はその事業概要、
+   * 無い新規事業は RS 公開 API の事業概要）
+   */
+  const inPriorSheet = provisional && selectedDetails?.projectId !== undefined && !!priorSheetPolicy?.items[String(selectedDetails.projectId)];
+  const detailSheetYear = provisional ? (inPriorSheet ? priorSheetYear : null) : rsSheetYear;
+  const headerDetail = useProjectDetail(isIndividualProject ? selectedDetails?.projectId : undefined, detailSheetYear);
+  const headerYears = provisional && !inPriorSheet
+    ? yearsRunning(provisionalProject ? rsApiToProjectDetail(provisionalProject).startYear : null, rsSheetYear)
+    : yearsRunning(headerDetail?.startYear ?? null, detailSheetYear ?? undefined);
+  /**
    * パネル上段（事実表・評価・事業の詳細群・集約の内訳）に出すものがあるか。支出先などは何も無いので、
    * 空の枠（余白と罫線だけの帯）を描かない
    */
@@ -386,6 +413,7 @@ export function UnifiedSankeyChart({
     || (isIndividualProject && selectedDetails.projectId !== undefined)
     || !!selectedDetails.aggregated
     || !!selectedDetails.aggregatedTop?.length
+    || (selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null)
     || focusRelated
   );
   const hasBlocksTab = isIndividualProject && hasSpending;
@@ -406,9 +434,63 @@ export function UnifiedSankeyChart({
     }
     return items;
   }, [hasBudgetTab, budgetBreakdown.length, hasBlocksTab, projectBlocks?.blocks.length, selectedBlock, relatedColumnList]);
-  const [mobileOverviewOpen, setMobileOverviewOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<string | null>(null);
   const activeTab = tabs.some(t => t.id === panelTab) ? panelTab : (viewport.width < 640 && tabs.some(t => t.id === 'recipient') ? 'recipient' : tabs[0]?.id ?? null);
+  /**
+   * 「その他」行（上位以外をまとめた行）の表示名と注記。ブロック内の行はそのブロックの件数、
+   * 事業の支出先一覧は直接支出ブロックの件数の合計、複数事業にまたがる行は事業を選ぶよう案内する
+   */
+  const othersNote = (name: string, block?: BlockNode): { label: string; note: string } | undefined => {
+    if (!isOthersRowName(name)) return undefined;
+    if (block) return { label: othersLabel(name, block.othersCount), note: othersTitle(block.othersCount) };
+    if (isIndividualProject && projectBlocks) {
+      const sum = sumOthersCounts(projectBlocks.blocks
+        .filter(b => b.originKind === 'direct' && b.recipients.some(r => isOthersRowName(r.name)))
+        .map(b => ({ blockId: b.blockId, count: b.othersCount })));
+      return { label: sum.total === null ? name : `${name}（計${sum.total.toLocaleString('ja-JP')}件）`, note: sum.title };
+    }
+    return { label: name, note: '行政側が上位以外をまとめて記載した行（複数事業の合計）です。件数は事業を選ぶと「ブロック」タブでブロックごとに確認できます。' };
+  };
+  /** パネルのタブの1行。クリックで図のノードを選び、支出先はホバーで契約を出す */
+  const renderPanelRow = (item: UnifiedViewNode, others = activeTab === 'recipient' && !item.details.aggregated ? othersNote(item.name) : undefined) => (
+    <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
+      {...(activeTab === 'recipient' ? {
+        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover({ ...recipientHoverFor(item, e.clientX, e.clientY), ...(others ? { title: others.label, note: others.note } : {}) }),
+        onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+        onMouseLeave: () => setPanelRecipientHover(null),
+      } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
+        onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(projectHoverFor(item, e.clientX, e.clientY)),
+        onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
+        onMouseLeave: () => setPanelRecipientHover(null),
+      } : {})}>
+      <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
+        <span className="truncate text-xs text-mirai-text-secondary">{others?.label ?? item.name}</span>
+        <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
+      </Button>
+    </div>
+  );
+  /**
+   * ブロックで絞り込んだ支出先。普段の支出先一覧と同じ行（クリックで選択・ホバーで契約）にする。
+   * 再委託先や TopN の外など図にノードが無い支出先は、選択はできないがホバーで契約を出す
+   */
+  const recipientItems = relatedColumnList.find(t => t.column === 'recipient')?.items ?? [];
+  const renderBlockRecipient = (block: BlockNode, recipient: { name: string; amount: number }, index: number) => {
+    const others = othersNote(recipient.name, block);
+    const item = recipientItems.find(n => n.name.trim() === recipient.name.trim());
+    if (item) return <Fragment key={`${item.id}-${index}`}>{renderPanelRow(item, others)}</Fragment>;
+    const hover = (x: number, y: number): RecipientHover => ({ x, y, name: recipient.name, amount: recipient.amount, year: contractSheetYear,
+      ...(others ? { title: others.label, note: others.note } : {}),
+      pids: selectedDetails?.projectId !== undefined ? [selectedDetails.projectId] : [],
+      ...(contractSheetYear === null && projectBlocks ? { contracts: recipientContractsInProject(projectBlocks, recipient.name)?.contracts ?? [],
+        lines: provisionalProject ? rsApiContractLines(provisionalProject, recipient.name) : undefined } : {}) });
+    return <div key={`${recipient.name}-${index}`} className="flex w-full items-baseline justify-between gap-3 border-b border-border px-1 py-1.5"
+      onMouseEnter={e => setPanelRecipientHover(hover(e.clientX, e.clientY))}
+      onMouseMove={e => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev))}
+      onMouseLeave={() => setPanelRecipientHover(null)}>
+      <span className="truncate text-xs text-mirai-text-secondary" title={others ? undefined : '図に単独のノードが無い支出先（再委託先・表示件数の外など）'}>{others?.label ?? recipient.name}</span>
+      <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{formatBudgetFromYen(recipient.amount)}</span>
+    </div>;
+  };
 
   const zoomRef = useRef(1);
   useLayoutEffect(() => {
@@ -424,7 +506,7 @@ export function UnifiedSankeyChart({
   }, []);
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
-      if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
+      if (fromPortal(e) || (e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
       const rect = containerRef.current?.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, rect ? e.clientX - rect.left : 0, rect ? e.clientY - rect.top : 0);
     },
@@ -453,16 +535,21 @@ export function UnifiedSankeyChart({
   const amountLabel = rsAmountKind === 'request' ? '要求額' : '予算額';
   /** 執行年度（支出先まで繋がる年度）か。事業(支出)ノードがあれば執行年度 */
   const isExecutionYear = useMemo(() => nodes.some(n => n.details.column === 'program-spending'), [nodes]);
+  /** 歳入列の測定量。歳入は選んだ基準のデータが無い年度は当初予算に戻るので、ノードが持つ実際の基準で表示する */
+  const revenueMeasure = useMemo(() => {
+    const basis = nodes.find(n => n.details.column === 'revenue')?.details.revenueBasis;
+    return basis === 'settlement' ? '決算（収納済額）' : basis === 'supplementary' ? '補正後予算' : '当初予算';
+  }, [nodes]);
   /**
    * 列見出し。事業〜支出先は「何年度の・何の額か」で混乱しやすいので年度と測定量を添える
-   * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は MOF の当初予算
+   * （事業_2024 予算現額 / 事業(支出)_2024 支出額 / 支出先_2024）。会計〜目は選んだ基準（当初・補正後・決算など）の MOF の額
    */
   const columnHeader = (column: UnifiedColumn): { label: string; measure?: string } => {
     const base = columnLabels?.[column] ?? UNIFIED_COLUMN_LABELS[column];
-    if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: '当初予算・会計間受入含む' };
+    if (column === 'revenue') return { label: `${base}_${budgetYear}`, measure: `${revenueMeasure}・会計間受入含む` };
     if (column === 'program') {
       const measure = rsAmountKind === 'request' ? '翌年度要求額' : rsMeasureLabel ?? (isExecutionYear ? '歳出予算現額' : '当初予算');
-      return { label: `${base}_${budgetYear}`, measure };
+      return { label: `${base}_${budgetYear}`, measure: programSortLabel ? `${measure}・${programSortLabel}` : measure };
     }
     if (column === 'program-spending') return { label: `${base}_${budgetYear}`, measure: '支出額' };
     if (column === 'recipient') return { label: `${base}_${budgetYear}`, measure: '支出額' };
@@ -476,7 +563,7 @@ export function UnifiedSankeyChart({
       onWheel={handleWheel}
       style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
       onPointerDown={e => {
-        if (e.pointerType !== 'touch' || (e.target as Element).closest('[data-pan-disabled="true"]')) return;
+        if (e.pointerType !== 'touch' || fromPortal(e) || (e.target as Element).closest('[data-pan-disabled="true"]')) return;
         e.currentTarget.setPointerCapture(e.pointerId);
         touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const points = [...touches.current.values()];
@@ -526,7 +613,7 @@ export function UnifiedSankeyChart({
         setIsPanning(false);
       }}
       onMouseDown={e => {
-        if ((e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
+        if (fromPortal(e) || (e.target as HTMLElement).closest('[data-pan-disabled="true"]')) return;
         panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
         dragged.current = false;
         setIsPanning(true);
@@ -682,10 +769,17 @@ export function UnifiedSankeyChart({
         </g>
       </svg>
 
+      {/* 図のツールチップは詳細パネル（z-25）より下に置く。パネルの上にかぶさってパネルの中身を隠さないように */}
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel}
         contract={hovered.details?.column === 'recipient' && !hovered.details.aggregated && contractSheetYear !== null
           ? { year: contractSheetYear, pids: contractPidsOf(hovered.id) } : undefined} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} contractSheetYear={contractSheetYear} />}
+      {/* 要求額の年度は、予算書（成立した当初予算）とRS（翌年度要求額）という基準の違う額をつないでいる。図の近くに常に出す */}
+      {rsAmountKind === 'request' && (
+        <div data-testid={testId('unified-basis-notice')} className="pointer-events-none absolute bottom-2 left-2 z-10 max-w-md rounded border border-mirai-border bg-card/90 px-2 py-1 text-[11px] leading-relaxed text-mirai-text-subtle">
+          {budgetYear}年度は、予算書の当初予算と、{rsSheetYear}年版レビューシートの翌年度要求額をつないでいます。成立した予算どうしの一致ではありません。
+        </div>
+      )}
 
       {/* 検索クラスタ（検索・絞込・AI・解除）。sm 未満は左上、sm 以上は右上（左上は表示数カードと設定） */}
       <div data-pan-disabled="true" className="absolute left-3 top-3 z-30 flex items-start gap-1.5 sm:top-[2px] sm:left-auto sm:right-3">
@@ -766,30 +860,31 @@ export function UnifiedSankeyChart({
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: unifiedNodeColor({ ...selectedDetails, aggregated: false }) }}>
+                  <span className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium text-white" style={{ backgroundColor: unifiedNodeColor({ ...selectedDetails, aggregated: false }) }}>
                     {UNIFIED_COLUMN_LABELS[selectedDetails.column]}
                   </span>
                   {selectedDetails.kind && selectedDetails.kind !== 'rs' && (
-                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
+                    <span className="whitespace-nowrap rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text">{UNIFIED_PROGRAM_KIND_LABELS[selectedDetails.kind]}</span>
                   )}
-                  {selectedDetails.aggregated && <span className="rounded-full border border-mirai-border bg-card px-2 py-0.5 text-[11px] font-medium text-mirai-text-subtle">集約</span>}
+                  {selectedDetails.aggregated && <span className="whitespace-nowrap rounded-full border border-mirai-border bg-card px-2 py-0.5 text-[11px] font-medium text-mirai-text-subtle">集約</span>}
                   {selectedDetails.accountType && (
-                    <span className="rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
+                    <span className="whitespace-nowrap rounded-full bg-mirai-surface-muted px-2 py-0.5 text-[11px] font-medium text-mirai-text-secondary">{selectedDetails.accountType === 'general' ? '一般会計' : '特別会計'}</span>
                   )}
-                  {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える */}
+                  {/* RS府省庁・予算事業ID は事実表の 2 行を取らず、バッジ行に 1 行で添える。各項目の途中では折り返さない（「予算事業」「ID 7」に割れないように） */}
                   {(selectedDetails.rsMinistry || selectedDetails.projectId !== undefined) && (
-                    <span className="flex gap-2 text-[11px] text-mirai-text-muted">
-                      {selectedDetails.rsMinistry && <span>{selectedDetails.rsMinistry}</span>}
+                    <span className="flex min-w-0 flex-nowrap gap-x-2 whitespace-nowrap text-[11px] text-mirai-text-muted">
+                      {selectedDetails.rsMinistry && <span className="min-w-0 truncate" title={selectedDetails.rsMinistry}>{selectedDetails.rsMinistry}</span>}
                       {selectedDetails.projectId !== undefined && <span>予算事業ID {selectedDetails.projectId}</span>}
+                      {isIndividualProject && headerYears !== null && <span title="継続年数（対象年度 − 開始年度 ＋ 1。評価一覧と同じ定義）">継続{headerYears}年</span>}
                     </span>
                   )}
                   {selectedDetails.sourceUrl && (
-                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
+                    <a href={selectedDetails.sourceUrl} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       {provisional && isIndividualProject ? 'RSシートの出典' : '予算書の出典'}
                     </a>
                   )}
                   {selectedDetails.column === 'koumoku' && (
-                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
+                    <a href={`/mof-kou-moku?year=${budgetYear}`} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[11px] text-primary underline underline-offset-4 hover:text-primary-accent">
                       科目別内訳で開く
                     </a>
                   )}
@@ -797,10 +892,13 @@ export function UnifiedSankeyChart({
               </div>
 
               {hasOverview && <>
-              <Button variant="ghost" className="h-auto min-h-10 w-full shrink-0 justify-start rounded-none border-b border-border px-3 text-left text-xs font-bold text-primary-accent hover:bg-mirai-surface-teal sm:hidden" aria-expanded={mobileOverviewOpen} onClick={() => setMobileOverviewOpen(value => !value)}>事業概要・評価 {mobileOverviewOpen ? 'を閉じる' : 'を見る'}</Button>
-              {/* 上段（事業概要・評価・推移）は PC で 48% まで。フル HD のブラウザ（表示領域 900px 前後）で、意見を閉じた状態ならスクロールなしで収まる高さ。残りを下段の予算・ブロック・支出先タブに確保する */}
-              <div className={cn("flex-shrink-0 overflow-y-auto p-4 pb-0", !mobileOverviewOpen && "max-sm:hidden")} style={{ maxHeight: viewport.width < 640 ? '35%' : '48%' }}>
+              {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）の高さの配分は画面の高さで決める。フル HD では 60% で、
+                  意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない。文字の大きさはラベル文字サイズ（fontPx）に連動して各セクションが決める */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : '60%' }}>
                 <NodeFacts details={selectedDetails} />
+                {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
+                {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&
+                  <UnifiedRecipientProfile name={selectedPanelNode.name} sheetYear={contractSheetYear} corporateNumber={selectedDetails.representativeCorporateNumber} scaleFont={px => Math.round((px * fontPx) / 11)} />}
                 {/* 会計〜目（自身は評価を持たない）: 配下 RS事業の政策評価を金額加重平均で要約 */}
                 {!provisional && ['account', 'ministry', 'organization', 'section', 'koumoku'].includes(selectedDetails.column) && downstreamPrograms.length > 0 && (
                   <div className="-mx-4 mt-3 border-t border-border">
@@ -868,7 +966,7 @@ export function UnifiedSankeyChart({
 
               {tabs.length > 0 && (
                 <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', hasOverview && 'border-t border-border')}>
-                  <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-2 sm:flex sm:overflow-x-auto">
+                  <div role="tablist" className="grid flex-shrink-0 grid-cols-4 border-b border-border px-1 sm:flex sm:overflow-x-auto">
                     {tabs.map(({ id, label, count }) => (
                       <Button
                         key={id}
@@ -902,31 +1000,16 @@ export function UnifiedSankeyChart({
                         setPanelTab('recipient');
                       }} />
                     ) : activeTab === 'recipient' && selectedBlock && projectBlocks ? (
-                      <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                      <>
+                        <UnifiedBlockRecipients graph={projectBlocks} block={selectedBlock} onClear={() => setBlockSelection(null)} />
+                        {selectedBlock.recipients.map((recipient, index) => renderBlockRecipient(selectedBlock, recipient, index))}
+                      </>
                     ) : activeTab === 'recipient' && !relatedColumnList.some(t => t.column === 'recipient') ? (
-                      <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
+                      isIndividualProject ? <NoRecipientsNote /> : <p className="py-2 text-xs text-mirai-text-muted">支出先の記載はありません。</p>
                     ) : relatedColumnList
                       .find(t => t.column === activeTab)
                       ?.items.slice(0, 300)
-                      .map(item => {
-                        return (
-                          <div key={item.id} className="flex w-full items-baseline gap-1 border-b border-border py-1.5"
-                            {...(activeTab === 'recipient' ? {
-                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(recipientHoverFor(item, e.clientX, e.clientY)),
-                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
-                              onMouseLeave: () => setPanelRecipientHover(null),
-                            } : selectedRecipient && (activeTab === 'program' || activeTab === 'program-spending') ? {
-                              onMouseEnter: (e: React.MouseEvent) => setPanelRecipientHover(projectHoverFor(item, e.clientX, e.clientY)),
-                              onMouseMove: (e: React.MouseEvent) => setPanelRecipientHover(prev => (prev ? { ...prev, x: e.clientX, y: e.clientY } : prev)),
-                              onMouseLeave: () => setPanelRecipientHover(null),
-                            } : {})}>
-                            <Button variant="ghost" onClick={() => { setPanelRecipientHover(null); onSelect(item.id); }} className="flex h-auto min-w-0 flex-1 items-baseline justify-between gap-3 rounded-md px-1 py-0 text-left font-normal hover:bg-mirai-surface">
-                              <span className="truncate text-xs text-mirai-text-secondary">{item.name}</span>
-                              <span className="shrink-0 text-[11px] tabular-nums text-mirai-text-muted">{item.details.budgetUnmatched ? '予算未突合' : formatBudgetFromYen(item.value)}</span>
-                            </Button>
-                          </div>
-                        );
-                      })}
+                      .map(item => renderPanelRow(item))}
                   </div>
                 </div>
               )}
@@ -1050,7 +1133,10 @@ function NodeFacts({ details }: { details: UnifiedViewDetails }) {
         会計の表示額は{details.revenueBasis === 'settlement' ? '支出済歳出額' : '歳出予算額'}です。歳入と歳出が異なる場合も、金額を合わせる補正はしていません。帯の太さは両方を収めるための値です。
       </p>}
       {details.kind === 'unmatched' && (
-        <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費のいずれにも当たらない目の残余です（要精査）。</p>
+        <p className="mt-2 text-[11px] text-stance-neutral">RS事業が1件も紐づかず、国債費・交付税・繰入・予備費・人件費等・給付や金融取引のいずれにも当たらない目の残余です。事業費・補助・委託・施設などで、本来はRS事業に結びつくはずの対応づけ漏れの可能性があります（要精査）。</p>
+      )}
+      {details.kind === 'non-program' && (
+        <p className="mt-2 text-[11px] text-mirai-text-muted">補填金・利子などの金融取引、年金制度の間の資金移転（共済組合連合会等交付金）、政党交付金など、目の名前から事業ではないと判断した支出です。制度上レビューシートの対象外と推定しています。</p>
       )}
     </div>
   );
@@ -1077,7 +1163,7 @@ function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
 }) {
   const d = node.details;
   return (
-    <div className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+    <div className="pointer-events-none fixed z-20 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       {d?.column && (
         <div className="text-[11px] font-medium text-mirai-text-muted">
           {UNIFIED_COLUMN_LABELS[d.column]}
@@ -1099,6 +1185,8 @@ function UnifiedTooltip({ node, x, y, amountLabel, contract }: {
   );
 }
 
+const INFERRED_LABELS = { note: '補足情報に書かれた項・目', 'amount+name': '金額と名前の一致', reviewed: '候補を確認した対応表' } as const;
+
 function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayoutLink<UnifiedViewDetails>; x: number; y: number; contractSheetYear: number | null }) {
   // 事業 → 支出先の帯は「この事業がこの支出先に何を払ったか」と 1 対 1 なので、契約の概要を添える
   const src = link.source.details;
@@ -1106,12 +1194,13 @@ function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayout
     && src && !src.aggregated && src.projectId !== undefined && (!src.kind || src.kind === 'rs') ? src.projectId : undefined;
   const accountTypes = [...new Set([link.source.details?.accountType, link.target.details?.accountType].filter((type): type is 'general' | 'special' => !!type))];
   return (
-    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-50 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+    <div data-testid={testId('unified-link-tooltip')} className="pointer-events-none fixed z-20 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
       <div className="text-xs text-mirai-text-subtle">
         {link.source.name} → {link.target.name}
       </div>
       {accountTypes.length > 0 && <div className="text-xs text-mirai-text-subtle">会計区分：{accountTypes.map(type => ACCOUNT_TYPE_LABELS[type]).join(' → ')}</div>}
       <div className="text-lg font-bold text-mirai-text">{formatBudgetFromYen(link.value)}</div>
+      {link.inferred && <div className="mt-1 text-xs text-stance-neutral">推定の対応：レビューシートの項・目が空欄のため、{INFERRED_LABELS[link.inferred]}で予算書の目に結びつけています。</div>}
       {contractPid !== undefined && contractSheetYear !== null && (
         <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={contractSheetYear} name={link.target.name} pids={[contractPid]} />
       )}

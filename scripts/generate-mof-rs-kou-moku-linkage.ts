@@ -37,6 +37,7 @@
  *   public/data/mof-rs-linkage-unmatched-{予算年度}.json        … 未一致の全件（ローカル診断用・Git 管理外）
  */
 
+import { amountHit, byNote, nameHit, sameScope } from './lib/link-supplements';
 import * as fs from 'fs';
 import * as path from 'path';
 import { readShiftJISCSV, parseAmount } from '@/scripts/csv-reader';
@@ -137,6 +138,10 @@ function kouMokuMatchKey(it: MOFKouMokuItem): string {
     ? [it.budgetType, norm(it.ministry), norm(it.organization), norm(it.sectionName), norm(it.subItemName)].join('|')
     : [it.budgetType, norm(it.ministry), norm(it.specialAccount), norm(it.subAccount), norm(it.sectionName), norm(it.subItemName)].join('|');
 }
+
+/** 補完リンクの確認済み対応表（suggest-mof-rs-link-supplements.ts の候補を確認して足したもの） */
+const SUPPLEMENTS_FILE = path.resolve('scripts/data/mof-rs-link-supplements.json');
+interface ReviewedSupplement { budgetYear: number; projectId: number; mofBudgetType: string; kouMokuKeys: string[] }
 
 function rsMatchKey(row: CSVRow, accountCategory: string, mofBudgetType: MOFBudgetType): string {
   // 一般会計: 所管|組織・勘定|項|目、特別会計: 所管|会計|勘定|項|目
@@ -265,6 +270,22 @@ function main() {
     return t;
   };
 
+  const supplementRowOf = (row: CSVRow, project: { name: string; ministry: string }, accountCategory: string, amount: number) => ({
+    projectName: project.name, projectMinistry: project.ministry, accountCategory,
+    account: row['会計'] || '', subAccount: row['勘定'] || '', note: row['歳出予算項目の補足情報'] || '', amount,
+  });
+  /** 推定で結びつけた目へ、RS金額を目額比で配る（同じ事業×目のリンクがあれば足し込む） */
+  const addInferred = (pid: number, project: { name: string; ministry: string }, items: MOFKouMokuItem[], amount: number, inferred: NonNullable<MofRsKouMokuLinkageRecord['inferred']>) => {
+    const denom = items.reduce((sum, it) => sum + Math.max(0, it.amount), 0);
+    for (const it of items) {
+      const share = items.length === 1 ? amount : denom > 0 ? Math.round((amount * Math.max(0, it.amount)) / denom) : Math.round(amount / items.length);
+      const pairKey = `${pid}|${it.key}`;
+      const existing = linkMap.get(pairKey);
+      if (existing) existing.rsAmount += share;
+      else linkMap.set(pairKey, { ...makeRecord(pid, project, it, share), inferred });
+    }
+  };
+
   for (const row of budgetItemRows) {
     const pid = parseInt(row['予算事業ID'], 10);
     if (isNaN(pid) || !projectMap.has(pid)) continue;
@@ -298,9 +319,22 @@ function main() {
 
     const key = rsMatchKey(row, accountCategory, mofBudgetType);
     const candidates = kouMokuByKey.get(key);
+    const noSubject = !(row['項'] || '').trim() || !(row['目'] || '').trim();
+    // 項・目が空欄でも、その行の補足情報に項名・目名が書かれていれば目に結びつける（補完リンク・推定）
+    if (!candidates && noSubject) {
+      const supplementRow = supplementRowOf(row, project, accountCategory, amount);
+      const hits = byNote(supplementRow, sameScope(supplementRow, kouMokuItems, mofBudgetType));
+      if (hits.length) {
+        addInferred(pid, project, hits, amount, 'note');
+        linkedRows++;
+        linkedAmount += amount;
+        t.rsAmountLinked += amount;
+        continue;
+      }
+    }
     if (!candidates) {
       t.rsAmountUnmatched += amount;
-      const reason: MofRsUnmatchedReason = !(row['項'] || '').trim() || !(row['目'] || '').trim() ? 'rs-no-subject-code' : 'no-mof-match';
+      const reason: MofRsUnmatchedReason = noSubject ? 'rs-no-subject-code' : 'no-mof-match';
       const uKey = `${pid}|${key}`;
       const u = unmatchedRsMap.get(uKey);
       if (u) {
@@ -347,6 +381,39 @@ function main() {
       }
     }
   }
+  // 項・目が空欄で補足情報でも決まらなかった行は、事業ごとの合計で
+  //   金額がほぼ一致し名前も一致する目が1件だけ（amount+name）、または確認済みの対応表（reviewed）なら結びつける
+  const reviewed: ReviewedSupplement[] = fs.existsSync(SUPPLEMENTS_FILE)
+    ? (JSON.parse(fs.readFileSync(SUPPLEMENTS_FILE, 'utf8')).reviewed ?? []).filter((r: ReviewedSupplement) => r.budgetYear === BUDGET_YEAR) : [];
+  const itemByKey = new Map(kouMokuItems.map(it => [it.key, it]));
+  let supplementedRows = 0, supplementedAmount = 0;
+  for (const [uKey, u] of unmatchedRsMap) {
+    if (u.reason !== 'rs-no-subject-code') continue;
+    const type = resolveMofBudgetType(u.rsBudgetType);
+    if (!type) continue;
+    const project = { name: u.projectName, ministry: u.projectMinistry };
+    const review = reviewed.find(r => r.projectId === u.projectId && r.mofBudgetType === type);
+    let hits: MOFKouMokuItem[] = [];
+    let basis: 'amount+name' | 'reviewed' = 'reviewed';
+    if (review) hits = review.kouMokuKeys.map(k => itemByKey.get(k)).filter((it): it is MOFKouMokuItem => !!it);
+    if (!hits.length) {
+      const supplementRow = { projectName: u.projectName, projectMinistry: u.projectMinistry, accountCategory: u.accountCategory, account: u.account, subAccount: u.subAccount, note: u.note, amount: u.rsAmount };
+      const scope = sameScope(supplementRow, kouMokuItems, type).filter(it => amountHit(u.rsAmount, it) && nameHit(u.projectName, it));
+      if (scope.length === 1) { hits = scope; basis = 'amount+name'; }
+    }
+    if (!hits.length) continue;
+    addInferred(u.projectId, project, hits, u.rsAmount, basis);
+    const t = projectTotals.get(u.projectId)!;
+    t.rsAmountUnmatched -= u.rsAmount;
+    t.rsAmountLinked += u.rsAmount;
+    linkedRows += u.rows;
+    linkedAmount += u.rsAmount;
+    supplementedRows += u.rows;
+    supplementedAmount += u.rsAmount;
+    unmatchedRsMap.delete(uKey);
+  }
+  const inferredLinks = [...linkMap.values()].filter(l => l.inferred);
+  console.log(`  補完リンク（項・目空欄の行を推定で結びつけ）: ${inferredLinks.length.toLocaleString()} ペア（補足情報 ${inferredLinks.filter(l => l.inferred === 'note').length}・金額と名前 ${inferredLinks.filter(l => l.inferred === 'amount+name').length}・確認済み ${inferredLinks.filter(l => l.inferred === 'reviewed').length}）、うち事業合計で ${supplementedRows.toLocaleString()} 行 / ${(supplementedAmount / 1e12).toFixed(2)} 兆円`);
   console.log(`  対象行（予算年度${RS_ROW_YEAR}・一般会計＋特別会計・${REQUEST_MODE ? '当初予算行の要求額' : '当初予算＋補正予算'}）: ${targetRows.toLocaleString()} 行`);
   if (!REQUEST_MODE) console.log(`  繰越・予備費等（項・目無し・事業合計のみ保持）: ${noSubjectRows.toLocaleString()} 行 / ${(noSubjectAmount / 1e12).toFixed(2)} 兆円`);
   if (otherAccountRows > 0) console.log(`  会計区分が一般/特別以外（対象外）: ${otherAccountRows.toLocaleString()} 行`);

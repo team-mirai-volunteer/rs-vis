@@ -16,7 +16,7 @@ export const POLICY_AXES: ReadonlyArray<{ key: PolicyAxis; label: string }> = [
   { key: 'e', label: '検証可能性' },
   { key: 't', label: '執行透明性' },
   { key: 'x', label: '費用対内容' },
-  { key: 'n', label: '必要性' },
+  { key: 'n', label: '代替困難性' },
 ];
 
 export interface WeightedProgram {

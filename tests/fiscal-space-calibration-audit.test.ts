@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initialEconomy, PARAMETERS as P, POLICIES, TRILLION as T } from '../app/lib/fiscal-space/assumptions';
-import { calibratedResponse } from '../app/lib/fiscal-space/calibration';
+import { allItemsRevenuePerPoint, calibratedResponse } from '../app/lib/fiscal-space/calibration';
 import { simulate } from '../app/lib/fiscal-space/simulate';
 import type { ModelParameters } from '../types/fiscal-space';
 
@@ -28,7 +28,8 @@ test('VAT direct prices match tax-inclusive arithmetic at 0, 50, 70 and 100 perc
     const q = { ...policy('consumption-tax'), annualCost: p.consumptionTax.revenuePerPoint, kind: 'temporary' as const, duration: 1 };
     const response = calibratedResponse(initial, q, 1, p);
     near(response.directTaxPrices, ((1 + baseRate - .01) / (1 + baseRate) - 1) * cpiShare * passThrough);
-    near(response.directTaxDeflator, -.005 * passThrough);
+    // デフレーターの直接効果は表⑤（全品目1ポイント）基準なので、全品目に対する標準税率品目の比で縮む
+    near(response.directTaxDeflator, -.005 * passThrough * p.consumptionTax.revenuePerPoint / allItemsRevenuePerPoint(p));
     near(calibratedResponse(initial, q, 2, p).directTaxPrices, 0);
     const full = calibratedResponse(initial, q, 1, { ...p, consumptionTax: { ...p.consumptionTax, passThrough: 1 } });
     near(response.gdp, full.gdp); // This control is a direct-price scenario, not a re-estimated demand response.

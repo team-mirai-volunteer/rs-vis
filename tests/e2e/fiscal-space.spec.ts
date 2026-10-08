@@ -118,10 +118,10 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(result.getByRole('heading', { name: '5年目の結果（試算）' })).toBeVisible();
   // 2026-09-17.1: latest fiscal aggregates bridged with IMF 2026 ratios (taxes 19.8% + contributions 13.1% at year 0).
   await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('33.71%');
-  await page.getByRole('button', { name: '例：社会保険料減税だけで15兆円' }).click();
+  await page.getByRole('button', { name: '例：社会保険料の軽減だけで15兆円' }).click();
   await expect(page.getByTestId('annual-total')).toHaveText('15.0兆円');
   await expect(page.getByTestId('input-overview')).toContainText('15.00兆円 / 年');
-  await expect(page.getByTestId('input-overview')).toContainText('追加予算');
+  await expect(page.getByTestId('input-overview')).toContainText('追加の財政措置');
   await expect(page.getByTestId('input-overview')).not.toContainText('入力額');
   await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('31.95%');
   await expect(result.locator('[data-metric="国民負担（GDP比）"]')).toContainText('差 -1.763ポイント');
@@ -136,7 +136,7 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(budget).toContainText('32.70兆円');
   await expect(budget).toContainText('2026年度・国の一般会計（補正後）');
   const headings = await page.locator('main h2').allTextContents();
-  expect(headings.indexOf('追加予算と国の一般会計予算')).toBeLessThan(headings.indexOf('5年目の結果（試算）'));
+  expect(headings.indexOf('追加の財政措置と国の一般会計予算')).toBeLessThan(headings.indexOf('5年目の結果（試算）'));
   expect(headings.indexOf('5年目の結果（試算）')).toBeLessThan(headings.indexOf('次の1兆円で、どの制約が動く？'));
   const projectionTable = page.getByRole('region', { name: '5年間の推計表', exact: true });
   await expect(projectionTable.getByRole('columnheader', { name: '国民負担/GDP', exact: true })).toBeVisible();
@@ -159,7 +159,7 @@ test('example allocation displays pinned yen conversion and absolute search resu
   await expect(page.getByText('現在は1.2', { exact: true })).toBeVisible();
   await expect(page.getByText('財務省答弁の実績ベースの値は1.7（2015〜2024年度）', { exact: true })).toBeVisible();
   await elasticity.fill('1.7');
-  await expect(page.getByText('名目GDPが1%増えたとき、税（罰金を含む）が約1.7%、社会保険料が約1.0%増える想定です（減税分を引く前）。所得税・住民税・消費税の減税は税から、社会保険料減税は社会負担から差し引きます。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
+  await expect(page.getByText('名目GDPが1%増えたとき、税（罰金を含む）が約1.7%、社会保険料が約1.0%増える想定です（減税分を引く前）。所得税・住民税・消費税の減税は税から、社会保険料の軽減は社会負担から差し引きます。入力した値を評価期間全体に適用します。', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(result.locator('[data-metric="税・社会保険料収入"]')).toContainText('266.55兆円');
   await expect(page.getByText('債務経路の仮定：名目GDPへの弾性値は税 1.7・社会保険料 1', { exact: false })).toBeVisible();
@@ -167,7 +167,7 @@ test('example allocation displays pinned yen conversion and absolute search resu
 
 test('insurance relief stops at contributor revenue and readjusts when the split changes', async ({ page }) => {
   await page.goto('/fiscal-space');
-  const input = page.getByLabel('社会保険料減税・数値で入力', { exact: true });
+  const input = page.getByLabel('社会保険料の軽減・数値で入力', { exact: true });
   await expect(page.getByTestId('input-overview')).toBeVisible();
   await input.fill('100');
   await expect(input).toHaveValue('78.7');

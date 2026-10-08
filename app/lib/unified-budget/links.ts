@@ -136,3 +136,9 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   }
   return out.toString();
 }
+
+/** 事業をサンキー図で開く。シート2026（2025年度の執行）だけにある事業は、予算年度2025の暫定ビューで開く */
+export function unifiedProjectUrlForSheet(projectId: number | string, sheetYear: number): string {
+  if (sheetYear >= 2026) return `/budget-sankey?year=2025&b=execution&sel=project-budget-${projectId}`;
+  return unifiedProjectUrl(projectId, sheetYear);
+}

@@ -1,6 +1,7 @@
 'use client';
 
-import { fiscalYear, fiscalYearLabel } from '@/app/lib/rs-fiscal-year';
+import { QualityHelp } from '@/client/components/quality/QualityHelp';
+import { fiscalYear, fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -19,7 +20,7 @@ import { useQualityLocation } from '@/client/hooks/useQualityLocation';
 import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
 import { scoreBand, scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
-  AXIS_META, COL_DESC, UNUSED_TREND_META, COL_WIDTHS,
+  AI_EVALUATION_NATURE, AXIS_META, COL_DESC, UNUSED_TREND_META, COL_WIDTHS,
   RECOMMENDATION_LABELS, IMPROVEMENT_ACTION_LABELS,
   RecommendationBadge, ActionBadge, PersistentUnusedMark,
   type PolicyMetric, type SortField, type SortDir,
@@ -370,6 +371,19 @@ export default function QualityPage() {
   const filterKey = `${selectedMinistry}|${scoreRange}|${distMetric}|${searchQuery}|${amountFilterKey}|${sortField}|${sortDir}`
     + `|${selectedRecommendation}|${selectedAction}|${selectedCategory}|${yearsFilter.min}-${yearsFilter.max}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  const hasFilters = Boolean(searchQuery || selectedMinistry || scoreRange !== 'all' || selectedRecommendation.length
+    || selectedAction.length || selectedCategory || yearsFilter.min || yearsFilter.max
+    || Object.values(amountFilters).some(f => f.min || f.max) || Object.values(scoreFilters).some(f => f.min || f.max));
+  function clearAllFilters() {
+    setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
+    setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
+    setScoreFilters(EMPTY_SCORE_FILTERS());
+    setYearsFilter({ min: '', max: '' });
+    setAmountFilters({
+      budgetAmount: { min: '', max: '' }, execAmount: { min: '', max: '' },
+      spendTotal: { min: '', max: '' }, spendNetTotal: { min: '', max: '' },
+    });
+  }
   if (filterKey !== lastFilterKey) {
     setLastFilterKey(filterKey);
     setPage(1);
@@ -417,6 +431,7 @@ export default function QualityPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <AppHeader fiscalYear={fiscalYear(year)} current="/quality">
+        <QualityHelp sheetYear={Number(year)} />
         {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
         <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
           {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (
@@ -453,12 +468,12 @@ export default function QualityPage() {
       {mode === 'section' && (
         <>
           <div className="flex shrink-0 flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-mirai-border bg-card px-3 py-2">
-            <h1 className="text-sm font-bold text-mirai-text">項別 政策評価</h1>
+            <h1 className="text-sm font-bold text-mirai-text">項別 AI評価（独自基準・試行）</h1>
             <details className="text-xs text-mirai-text-muted">
               <summary className="cursor-pointer">集計方法</summary>
               <p className="mt-1 max-w-3xl leading-relaxed">
                 配下の RS事業の評価を RS 2-2 の{isRequestYear ? '要求額' : '計上額'}で加重平均しています。項名から評価内訳・推奨の分布・配下事業を確認できます。
-                {isRequestYear && '2026年度は要求ベース（採点はシート2025）です。'}
+                {isRequestYear && '2026年度要求額ベースです（AI評価の対象は2024年度実績・2025年版レビューシート）。'}
               </p>
             </details>
           </div>
@@ -471,9 +486,10 @@ export default function QualityPage() {
         <div>
           <div className="mb-1">
             <h1 className="min-w-0 text-lg font-bold text-mirai-text">
-              事業別 政策評価・執行透明性スコア
-              {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">2026年度は要求ベース（採点はシート2025・予算額は翌年度要求額・執行額なし）</span>}
+              事業別 AI評価（独自基準・試行）・執行透明性スコア
+              {isRequestYear && <span className="ml-2 align-middle text-xs font-medium text-mirai-text-muted">金額は2026年度要求額（執行額なし）。AI評価の対象は2024年度実績（2025年版レビューシート）</span>}
             </h1>
+            <p className="mt-0.5 text-xs leading-relaxed text-mirai-text-muted">{!isRequestYear && `AI評価の対象：${fiscalYearLabel(year)}（${rsSheetLabel(year)}）。`}{AI_EVALUATION_NATURE}評価基準と判定方法はヘッダーの「説明」にあります。</p>
           </div>
           <p className="hidden text-sm text-mirai-text-muted mt-1 sm:block">
             {(() => {
@@ -493,7 +509,7 @@ export default function QualityPage() {
                 { label: '総合点', s: stat(p => p.overallScore) },
                 ...AXIS_META.map(a => ({ label: a.label, s: stat(p => p[a.key]) })),
               ];
-              const abolition = policyRows.filter(p => p.recommendation === '終了・廃止候補').length;
+              const abolition = policyRows.filter(p => p.recommendation === '見直し候補').length;
               return (
                 <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <span className="tabular-nums">{summary.total.toLocaleString()}事業</span>
@@ -508,7 +524,7 @@ export default function QualityPage() {
                     </span>
                   ))}
                   <span className="whitespace-nowrap">
-                    <span className="text-mirai-text-subtle font-medium">終了・廃止候補</span>
+                    <span className="text-mirai-text-subtle font-medium">見直し候補</span>
                     <span className="ml-1 tabular-nums text-xs">{abolition.toLocaleString()}件</span>
                   </span>
                 </span>
@@ -662,12 +678,49 @@ export default function QualityPage() {
                         </Button>
                   </>}
                 </div>
+                {/* 足きり（政策評価の各指標）。表の列と同じく指標を上に置く。狭い画面では折り返す */}
+                {policyByPid && (
+                  <div className="flex items-center gap-1 text-xs flex-wrap">
+                        {([
+                          { key: 'overallScore' as const, label: '総合', desc: COL_DESC.総合点 },
+                          ...AXIS_META.map(a => ({ key: a.key, label: a.short,
+                            desc: `${a.label}（総合点への重み ${a.weight}）
+
+${a.desc}` })),
+                        ]).map(({ key, label, desc }) => (
+                          <div key={key} className="flex items-center shrink-0" title={desc}>
+                            <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
+                            <RangeStepInput
+                              value={scoreFilters[key].min} width={40} placeholder="下限" title="下限 (0-100)"
+                              onStep={(c, d) => stepScore(c, d)}
+                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
+                            />
+                            <span className="text-mirai-text-muted mx-px">~</span>
+                            <RangeStepInput
+                              value={scoreFilters[key].max} width={40} placeholder="上限" title="上限 (0-100)"
+                              onStep={(c, d) => stepScore(c, d)}
+                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setScoreFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
+                              disabled={!(scoreFilters[key].min || scoreFilters[key].max)}
+                              aria-label={`${label}の範囲を解除`}
+                              className={CLEAR_BTN_CLS}
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        ))}
+                  </div>
+                )}
                 {/* 金額の範囲フィルタ */}
                 <div className="flex items-center gap-1 text-xs flex-wrap">
                   {([
                     { key: 'budgetAmount', label: '予算', desc: COL_DESC.予算額 },
                     { key: 'execAmount', label: '執行', desc: COL_DESC.執行額 },
-                    { key: 'spendTotal', label: '支出計', desc: COL_DESC.支出先合計 },
+                    { key: 'spendTotal', label: '支出先', desc: COL_DESC.支出先合計 },
                     { key: 'spendNetTotal', label: '実質', desc: COL_DESC.実質支出額 },
                   ] as const).map(({ key, label, desc }) => (
                     <div key={key} className="flex items-center shrink-0" title={desc}>
@@ -719,6 +772,11 @@ export default function QualityPage() {
                           ✕
                         </Button>
                       </div>
+                      {/* 個別の「✕」とは別に、検索・府省・範囲をまとめて既定に戻す */}
+                      <Button variant="outline" size="xs" onClick={clearAllFilters} disabled={!hasFilters}
+                        className="ml-1 shrink-0 border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
+                        条件をクリア
+                      </Button>
                       {/* 指標の説明。足きり行は6組で最も詰まるので、余裕のある金額行の末尾に置く */}
                       {/* 指標の説明なので、指標そのものが並ぶこの行の末尾に置く */}
                       <Button
@@ -729,43 +787,6 @@ export default function QualityPage() {
                         {showGuide ? '▲ 読み方を閉じる' : '▼ 指標の読み方'}
                       </Button>
                 </div>
-                {/* 足きり。1600px幅で列Cは1040pxあり7組が収まる。狭い画面では折り返す */}
-                {policyByPid && (
-                  <div className="flex items-center gap-1 text-xs flex-wrap">
-                        {([
-                          { key: 'overallScore' as const, label: '総合', desc: COL_DESC.総合点 },
-                          ...AXIS_META.map(a => ({ key: a.key, label: a.short,
-                            desc: `${a.label}（総合点への重み ${a.weight}）
-
-${a.desc}` })),
-                        ]).map(({ key, label, desc }) => (
-                          <div key={key} className="flex items-center shrink-0" title={desc}>
-                            <span className="text-mirai-text-muted whitespace-nowrap mr-0.5 cursor-help underline decoration-dotted decoration-mirai-border underline-offset-2">{label}</span>
-                            <RangeStepInput
-                              value={scoreFilters[key].min} width={50} placeholder="下限" title="下限 (0-100)"
-                              onStep={(c, d) => stepScore(c, d)}
-                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], min: v } }))}
-                            />
-                            <span className="text-mirai-text-muted mx-px">~</span>
-                            <RangeStepInput
-                              value={scoreFilters[key].max} width={50} placeholder="上限" title="上限 (0-100)"
-                              onStep={(c, d) => stepScore(c, d)}
-                              onChange={v => setScoreFilters(prev => ({ ...prev, [key]: { ...prev[key], max: v } }))}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setScoreFilters(prev => ({ ...prev, [key]: { min: '', max: '' } }))}
-                              disabled={!(scoreFilters[key].min || scoreFilters[key].max)}
-                              aria-label={`${label}の範囲を解除`}
-                              className={CLEAR_BTN_CLS}
-                            >
-                              ✕
-                            </Button>
-                          </div>
-                        ))}
-                  </div>
-                )}
               </div>
             </div>
           );
@@ -773,18 +794,19 @@ ${a.desc}` })),
         {/* 指標の説明。フローに置くと展開したぶん表が押し下げられるので、絶対配置で表の上に重ねる */}
         {policyByPid && showGuide && (
         <p className="absolute left-4 right-4 top-full z-20 -mt-1 rounded-xl border border-mirai-border bg-card px-4 py-3 shadow-soft text-[11px] leading-5 text-mirai-text-subtle">
-        <span className="font-bold">政策評価</span>は「誰のどんな課題を、どの活動で、どう改善するか」がどれだけ明確に説明され、
-        その成果を検証できる状態かどうか。
+        <span className="font-bold">政策評価</span>は{AI_EVALUATION_NATURE}
+        成果設計・検証可能性（課題・活動・成果の道筋が説明され、検証できる状態か）に加え、費用対内容・代替困難性（公的支援の必要性と代替手段）を判定します。
         <span className="font-bold">執行透明性</span>は支出先が特定できるか・使途を説明できるか（支出先の明確さ55＋使途の説明45）。
         「収支の一致」は9割の事業が満点でほぼ定数だったため加重平均から外し、不一致（60点未満）だけをフラグとして拾っています。
         <span className="font-bold">総合点</span>は政策評価と執行透明性を統合した値です。
         推奨は絶対点ではなく<span className="font-bold">母集団内の順位帯</span>で切っています（総合点は中央に強く偏るため、絶対値では下位帯が空になる）。
+        下位にあることは、廃止が妥当であることを意味しません。
         「<span className="font-bold">縮小</span>」は事業の優劣ではなく<span className="font-bold">不用額</span>（予算と執行の乖離）に基づく計上額の見直しで、総合点には影響しません
         — 不用額の返納は適切な行動であり、減点すると使い切りを誘発するためです。
         単年度の不用は入札差金でも生じるため、縮小は<span className="font-bold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
         単年度のみ・前年度実績が無い事業は要改善（差異理由の説明）にとどめています。
         逆に予算をほぼ消化していても支出先が不透明な事業は「継続」とせず要改善として拾います。
-        「終了・廃止候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
+        「見直し候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
         判断（推奨）と改善（改善アクション）は分離して表示しています。
         </p>
         )}
@@ -792,7 +814,10 @@ ${a.desc}` })),
 
       {/* Table */}
       <div className="shrink-0 space-y-2 px-3 pb-3 sm:hidden">
-        <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full rounded-lg border border-mirai-border bg-card p-2 text-sm" />
+        <div className="flex gap-2">
+          <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-mirai-border bg-card p-2 text-sm" />
+          <Button variant="outline" size="sm" onClick={clearAllFilters} disabled={!hasFilters} className="shrink-0 border-mirai-border text-xs font-normal text-mirai-text-subtle disabled:opacity-40">条件をクリア</Button>
+        </div>
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">
@@ -1047,16 +1072,7 @@ ${a.desc}`}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
-                  setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
-                  setScoreFilters(EMPTY_SCORE_FILTERS());
-                  setYearsFilter({ min: '', max: '' });
-                  setAmountFilters({
-                    budgetAmount: { min: '', max: '' }, execAmount: { min: '', max: '' },
-                    spendTotal: { min: '', max: '' }, spendNetTotal: { min: '', max: '' },
-                  });
-                }}
+                onClick={clearAllFilters}
                 className="mt-3 border-mirai-border text-xs text-mirai-text-subtle"
               >
                 すべての絞り込みを解除

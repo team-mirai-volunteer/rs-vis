@@ -20,7 +20,14 @@ export const PARAMETERS: ModelParameters = {
   productionModel: 'leontief', gapDemandSensitivity: 3, gapPriceSensitivity: 5, gapInflationSlope: .05,
   // 構造的失業率2.5%は日本のNAIRU推定幅（約2.3〜2.7%）の中央付近を置いた仮定。推定値ではない。
   structuralUnemployment: .025, inflationRule: 'peak',
-  consumptionTax: { revenuePerPoint: 3.5e12, cpiShare: .85, baseRate: .10, passThrough: 1, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
+  // 標準税率品目：1ポイント＝国と地方の消費税収（約34兆円）から飲食料品分（約5兆円）を除き10で割った値。
+  // CPI比率50%は消費者物価指数2020年基準のウエイトで、総合から軽減税率品目（22.1%）と非課税品目（家賃・持家の帰属家賃・診療代・授業料など約28%）を除いた値。
+  // 価格への反映率70%は、外食・サービスを含む減税の実証（ドイツ2020年の一時減税で約60〜70%、外食の減税は10〜25%）を踏まえた仮定。増税時はほぼ全額転嫁だった。
+  consumptionTax: { revenuePerPoint: 2.9e12, cpiShare: .50, baseRate: .10, passThrough: .7, referenceDirectCpi: .78, referenceDirectDeflator: .5 },
+  // 軽減税率品目（飲食料品・定期購読新聞）：1ポイント＝財務省試算として報じられた「税率ゼロで年4.8兆円の減収」を8で割った値。
+  // CPI比率22%は消費者物価指数2020年基準のウエイト（酒類・外食を除く食料、新聞など。品目表から合算した22.1%）。
+  // 価格への反映率90%は、食料品の減税の実証（ポルトガル・スペイン・ポーランド2022〜23年で90%超〜ほぼ全額、ドイツ2020年の小売品で約70%）を踏まえた仮定。
+  reducedConsumptionTax: { revenuePerPoint: .6e12, cpiShare: .22, baseRate: .08, passThrough: .9 },
   electricity: { ...ELECTRICITY_BASELINE },
   referenceModel: 'ef2026', multiplierScale: 1,
   insurance: { ...INSURANCE_DEFAULTS }, macroTailYears: 5,
@@ -84,8 +91,9 @@ const policy = (id: string, name: string, overrides: Partial<Policy>): Policy =>
 export const POLICIES: Policy[] = [
   policy('income-tax', '所得税減税', { channel: 'tax', kind: 'permanent' }),
   policy('resident-tax', '住民税減税', { channel: 'tax', kind: 'permanent' }),
-  policy('consumption-tax', '消費税減税', { channel: 'tax', kind: 'permanent' }),
-  policy('social-insurance', '社会保険料減税', { channel: 'tax', kind: 'permanent' }),
+  policy('consumption-tax', '消費税減税（標準税率）', { channel: 'tax', kind: 'permanent' }),
+  policy('consumption-tax-reduced', '消費税減税（軽減税率）', { channel: 'tax', kind: 'permanent' }),
+  policy('social-insurance', '社会保険料の軽減', { channel: 'tax', kind: 'permanent' }),
   policy('cash', '現金給付', {}),
   policy('public-investment', '公共投資', { kind: 'growth', sector: 'construction' }),
   policy('defence', '防衛', {}),

@@ -23,7 +23,9 @@ export const defaults = (dataset: JapanDataset = 'latest') => {
   gap: Number(((initial.macro.realGdp / initial.macro.potentialGdp - 1) * 100).toFixed(1)),
   inflation: initial.macro.inflation * 100,
   construction: initial.labour.sectorUtilization.construction * 100, firmCapacity: resourcePowerBalance(0, 0, 0, RESOURCE_DEFAULTS).nationalSupplyGw,
-  amounts: Object.fromEntries(POLICIES.map(p => [p.id, 0])) as Record<string, number>, thresholds: { ...THRESHOLDS } };
+  amounts: Object.fromEntries(POLICIES.map(p => [p.id, 0])) as Record<string, number>, thresholds: { ...THRESHOLDS },
+  /** 社会保険料の軽減額のうち健康保険料率の引下げに当たる割合（残りは厚生年金）。入力欄の表示にだけ使う */
+  insuranceHealthShare: .5 };
 };
 
 export type FiscalForm = ReturnType<typeof defaults>;

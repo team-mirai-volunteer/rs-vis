@@ -9,8 +9,8 @@ import { focusSankey, relatedNodeIds as relatedByLinks } from '@/app/lib/sankey-
 
 import type { SankeyLink } from '@/types/sankey';
 import type { UnifiedColumn } from '@/types/unified-budget';
-import type { UnifiedViewNode } from '@/types/unified-budget-view';
-import { columnIndex } from './transform';
+import { aggregateId, type UnifiedViewNode } from '@/types/unified-budget-view';
+import { columnIndex, isAggregateId, relatedSet } from './transform';
 
 /** 金額の辺がない双子も、同じ事業として選択・強調表示する。 */
 function projectSeeds(nodes: UnifiedViewNode[], links: SankeyLink[], selectedId: string): Set<string> {
@@ -30,6 +30,34 @@ export function relatedNodeIds(links: SankeyLink[], selectedId: string, nodes: U
     for (const id of relatedByLinks(links, seed)) related.add(id);
   }
   return related;
+}
+
+type Graph = { nodes: UnifiedViewNode[]; links: SankeyLink[] };
+
+/**
+ * TopN の集約ノード（「N事業」など）は多くの親を持つので、表示グラフのまま辿ると、
+ * 集約ノード経由で無関係な府省・項まで全部が関連扱いになる。
+ * 集約前のグラフで辿り、表示に無いノードはその列の集約ノードへ写す。
+ * 集約ノード自体を選んだときは、中身（溢れたノード）を起点に辿る。
+ */
+export function relatedThroughAggregates(display: Graph, full: Graph | undefined, selectedId: string): Set<string> {
+  const shown = new Set(display.nodes.map(n => n.id));
+  const fullById = new Map(full?.nodes.map(n => [n.id, n]) ?? []);
+  if (!full || (!isAggregateId(selectedId) && !fullById.has(selectedId))) return relatedNodeIds(display.links, selectedId, display.nodes);
+  let related: Set<string>;
+  if (isAggregateId(selectedId)) {
+    const column = display.nodes.find(n => n.id === selectedId)?.details.column;
+    related = relatedSet(full.links, new Set(full.nodes.filter(n => n.details.column === column && !shown.has(n.id)).map(n => n.id)));
+  } else {
+    related = relatedNodeIds(full.links, selectedId, full.nodes);
+  }
+  const out = new Set<string>([selectedId]);
+  for (const id of related) {
+    if (shown.has(id)) { out.add(id); continue; }
+    const column = fullById.get(id)?.details.column;
+    if (column && shown.has(aggregateId(column))) out.add(aggregateId(column));
+  }
+  return out;
 }
 
 /**
@@ -113,7 +141,11 @@ export function ancestorsByColumn(nodes: UnifiedViewNode[], links: SankeyLink[],
  * 選択した筋だけのノードとリンクを作る。金額は2方向に付け替える（mof-section-rs-focus.focusHierarchy と同じ）。
  * 上流: 選択ノードの値を祖先へ比例配分で遡らせる。下流: 集約ノードの流出を流入に合わせて縮める。
  */
-export function focusGraph(nodes: UnifiedViewNode[], links: SankeyLink[], selectedId: string): { nodes: UnifiedViewNode[]; links: SankeyLink[] } {
+export function focusGraph(allNodes: UnifiedViewNode[], allLinks: SankeyLink[], selectedId: string,
+  allowed?: Set<string>): { nodes: UnifiedViewNode[]; links: SankeyLink[] } {
+  // allowed（relatedThroughAggregates）で先に絞り、集約ノード経由で無関係な上流へ広がらないようにする
+  const nodes = allowed ? allNodes.filter(n => allowed.has(n.id)) : allNodes;
+  const links = allowed ? allLinks.filter(l => allowed.has(l.source) && allowed.has(l.target)) : allLinks;
   const focusedNodes = new Map<string, UnifiedViewNode>();
   const focusedLinks = new Map<string, SankeyLink>();
   for (const seed of projectSeeds(nodes, links, selectedId)) {

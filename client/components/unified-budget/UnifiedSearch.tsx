@@ -80,8 +80,8 @@ export function UnifiedSearch({
         <input
           type="search"
           value={query}
-          placeholder="ノードを検索（2文字以上）"
-          aria-label="ノードを検索"
+          placeholder="事業や支出先を検索"
+          aria-label="事業や支出先を検索"
           onChange={e => {
             setQuery(e.target.value);
             setOpen(true);
@@ -103,7 +103,7 @@ export function UnifiedSearch({
               setOpen(false);
             }
           }}
-          className="h-8 w-44 bg-transparent text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
+          className="h-8 w-44 bg-transparent xl:w-40 2xl:w-44 text-xs text-mirai-text placeholder:text-mirai-text-placeholder outline-none"
         />
         <Button
           variant="ghost"

@@ -210,7 +210,7 @@ export function UnifiedFilterFields({
         </div>
         <ScoreRow label="総合点" title="AI政策評価の総合点（0〜100）" range={filter.scoreO} onChange={r => set({ scoreO: r })} />
         <ScoreRow label="費用対内容" title="費用対内容（0〜100）。金額が活動の規模に見合っているか" range={filter.scoreX} onChange={r => set({ scoreX: r })} />
-        <ScoreRow label="必要性" title="必要性（0〜100）。廃止したら誰が具体的に困るか" range={filter.scoreN} onChange={r => set({ scoreN: r })} />
+        <ScoreRow label="代替困難性" title="代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか" range={filter.scoreN} onChange={r => set({ scoreN: r })} />
         {scoreStatus === 'loading' && <p className="text-[10px] text-mirai-text-muted">政策評価を読み込み中…（取得できるまでスコアの絞り込みは効きません）</p>}
         {scoreStatus === 'unavailable' && <p className="text-[10px] text-destructive">政策評価を取得できませんでした。スコアの絞り込みは効いていません</p>}
       </div>

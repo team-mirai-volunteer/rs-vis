@@ -7,7 +7,7 @@ test('2024年度の支出から委託構造・評価・共有先まで年度と�
   await panel.getByRole('tab', { name: /^ブロック/ }).click();
   await page.getByRole('link', { name: 'フローを見る ↗' }).click();
   await expect(page).toHaveURL(/subcontracts\/1503\?fiscalYear=2024/);
-  await expect(page.getByLabel('年度', { exact: true }).locator('option:checked')).toHaveText('2024年度');
+  await expect(page.getByLabel('年度', { exact: true }).locator('option:checked')).toHaveText('2024年度実績');
   await expect(page.getByText('ブロック 3', { exact: true })).toBeVisible();
   const link = page.getByRole('link', { name: '一覧で見る →' });
   const href = await link.getAttribute('href');
@@ -21,7 +21,7 @@ test('2024年度の支出から委託構造・評価・共有先まで年度と�
   const fresh = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const receiver = await fresh.newPage();
   await receiver.goto(url);
-  await expect(receiver.getByRole('dialog')).toContainText('2024年度');
+  await expect(receiver.getByRole('dialog')).toContainText('2024年度実績');
   await expect(receiver.getByRole('dialog')).toContainText('ブロック:3件');
   await fresh.close();
 });

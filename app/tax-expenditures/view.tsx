@@ -49,7 +49,7 @@ export default function TaxExpenditures() {
         <p className="mt-3 max-w-2xl text-sm leading-relaxed">法人税の租税特別措置を、適用額・政策評価・制度の詳細から調べます。関連する行政事業レビュー（RS）もたどれます。</p>
       </header>
       <nav aria-label="租税特別措置の表示切替" className="flex flex-wrap gap-2">
-        {([{ id: 'amount', label: '適用額を見る', icon: BarChart3 }, { id: 'assessment', label: '妥当性を評価', icon: ClipboardCheck }, { id: 'measures', label: '制度一覧', icon: ListFilter }] as const).map(({ id, label, icon: Icon }) => <Button key={id} variant={view === id ? 'default' : 'outline'} aria-pressed={view === id} onClick={() => setView(id)}><Icon aria-hidden="true" />{label}</Button>)}
+        {([{ id: 'amount', label: '適用額を見る', icon: BarChart3 }, { id: 'assessment', label: 'AI評価と根拠を見る', icon: ClipboardCheck }, { id: 'measures', label: '制度一覧', icon: ListFilter }] as const).map(({ id, label, icon: Icon }) => <Button key={id} variant={view === id ? 'default' : 'outline'} aria-pressed={view === id} onClick={() => setView(id)}><Icon aria-hidden="true" />{label}</Button>)}
       </nav>
       <section aria-label="制度を調べる" className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="min-w-0 space-y-4 lg:sticky lg:top-5" aria-label="制度の絞り込み">
