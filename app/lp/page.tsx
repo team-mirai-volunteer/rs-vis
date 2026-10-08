@@ -246,15 +246,15 @@ export default function LandingPage() {
             <ol className="mt-6 space-y-3">
               {DIET_QUESTIONS.map((q, index) => (
                 <li key={q.theme}>
-                  <details className="group rounded-2xl border border-mirai-border bg-background open:bg-card">
+                  <details className="group rounded-2xl border border-mirai-border bg-card shadow-xs transition-colors hover:border-primary open:border-primary">
                     <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-1.5">
                           <Badge variant="light" className="rounded-full">{q.theme}</Badge>
                           {q.script && <Badge variant="default" className="rounded-full">台本つき</Badge>}
-                          {q.purpose.map(tag => <Badge key={tag} variant="muted" className="rounded-full">{tag}</Badge>)}
-                          {q.answerer.map(tag => <Badge key={tag} variant="dark" className="rounded-full">{tag}</Badge>)}
+                          {q.purpose.map(tag => <Badge key={tag} variant="light" className="rounded-full">{tag}</Badge>)}
+                          {q.answerer.map(tag => <Badge key={tag} variant="outline" className="rounded-full bg-mirai-surface">{tag}</Badge>)}
                         </span>
                         <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.summary}</span>
                         <span className="mt-1 block text-xs text-mirai-text-muted">{q.committee}</span>
