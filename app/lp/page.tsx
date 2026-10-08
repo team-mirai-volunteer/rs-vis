@@ -32,6 +32,7 @@ import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 import { Badge } from '@/components/ui/badge';
+import { BudgetNewsHook, PolicyCases } from '@/components/lp/PolicyCases';
 import { Button } from '@/components/ui/button';
 import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
 
@@ -92,8 +93,8 @@ const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
 const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld=all&fnrs=0';
 
 /**
- * LP（ランディングページ）。価値の説明と実画面 → 代表的な発見3件（残りは展開）→ 使い方 → 国会質問の例 → 想定読者・ビュー → 出典、の順。
- * ツール本体は各ビューに任せる。数字と文言は insights.ts に集約。
+ * LP（ランディングページ）。価値の説明と実画面 → ニュースの入口 → 代表的な発見3件（残りは展開）→ 使い方・調査モデル → 国会質問の例 → 想定読者・ビュー → 出典、の順。
+ * ツール本体は各ビューに任せる。数字と文言は insights.ts と policy-cases.ts に集約。
  */
 export default function LandingPage() {
   // dev ブランチのプレビューとローカルでのみ公開する。本番（main）では 404
@@ -182,6 +183,8 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <BudgetNewsHook />
+
         {/* Insights */}
         <section id="insights" aria-labelledby="insights-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl space-y-6">
@@ -244,6 +247,8 @@ export default function LandingPage() {
             </ol>
           </div>
         </section>
+
+        <PolicyCases />
 
         {/* Diet questions */}
         <section id="questions" aria-labelledby="questions-heading" className="px-4 py-10 sm:px-6 lg:px-8">
