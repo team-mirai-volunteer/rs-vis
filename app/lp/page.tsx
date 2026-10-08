@@ -16,8 +16,11 @@ import {
   Scale,
   Search,
   ShieldAlert,
+  Baby,
+  FlaskConical,
   Target,
   Timer,
+  Zap,
   TrendingUp,
   Users,
   Workflow,
@@ -60,6 +63,9 @@ const INSIGHT_ICONS: Partial<Record<Insight['id'], LucideIcon>> = {
   audit: ClipboardCheck,
   'defense-growth': TrendingUp,
   outcomes: Target,
+  childcare: Baby,
+  research: FlaskConical,
+  energy: Zap,
 };
 
 /** 主要ビューのアイコン（トップページと同じ対応） */
