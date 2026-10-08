@@ -77,7 +77,7 @@ function HeaderFrame({ current, config, slotRef }: {
   slotRef: (element: HTMLDivElement | null) => void;
 }) {
   // 主要ナビは右スロットの幅しだいで入り切らなくなる。文字の途中で切れないよう、
-  // 収まらない項目は丸ごと隠す（全件は右端のメニューから辿れる）
+  // 収まらない項目は丸ごと隠す（全件は右端のメニューから辿れる）。768px 以上なら幅に応じて出せる分だけ出す（以前は 1280px 未満で全部隠していた）
   const navRef = useRef<HTMLElement>(null);
   const [fitCount, setFitCount] = useState<number>(PRIMARY_PAGES.length);
   useLayoutEffect(() => {
@@ -112,10 +112,10 @@ function HeaderFrame({ current, config, slotRef }: {
       <div className="pointer-events-auto flex flex-wrap items-center gap-x-3 rounded-2xl border border-mirai-border bg-card px-4 shadow-xs sm:h-12 sm:flex-nowrap">
         <Link href="/" className="flex h-12 shrink-0 items-center gap-3 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
           <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} className="h-[17px] w-auto" priority />
-          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text sm:inline">{PRODUCT_NAME}</span>
+          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text lg:inline">{PRODUCT_NAME}</span>
         </Link>
 
-        <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden xl:flex">
+        <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden md:flex">
           {PRIMARY_PAGES.map((item, index) => {
             const isCurrent = item.href === current;
             const fits = index < fitCount;

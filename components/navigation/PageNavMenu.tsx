@@ -54,9 +54,9 @@ export function PageNavMenu({
       </Button>
       {open && (
         <>
-          {/* メニュー外クリックで閉じる */}
+          {/* メニュー外クリックで閉じる。sm 未満ではメニューを画面に対して左右 12px で固定し（ボタン基準だと左右の余白が非対称になる）、sm 以上はボタンの右端に揃える */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <nav aria-label="全ページ" className="absolute right-0 top-11 z-50 max-h-[calc(100dvh-5rem)] w-64 overflow-y-auto rounded-xl border border-mirai-border bg-card p-1.5 text-sm shadow-soft">
+          <nav aria-label="全ページ" className="fixed inset-x-3 top-[63px] z-50 max-h-[calc(100dvh-5rem)] w-auto overflow-y-auto rounded-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-56 lg:w-64 2xl:w-72 border border-mirai-border bg-card p-1.5 text-sm shadow-soft">
             <MenuLink href="/" label="トップ" isCurrent={current === '/'} onSelect={() => setOpen(false)} />
             {MENU_GROUPS.map(group => (
               <div key={group.heading} className="mt-1 border-t border-border pt-1">
@@ -99,7 +99,10 @@ function MenuLink({ href, label, prototype = false, isCurrent, onSelect }: {
     >
       <span className="min-w-0 flex-1">{label}</span>
       {prototype && <Badge variant="muted" className="px-1.5 text-[10px]">試作</Badge>}
-      {isCurrent && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
+      {/* チェックの枠は常に確保し、現在ページでも「試作」バッジの位置が動かないようにする */}
+      <span className="flex size-3.5 shrink-0 items-center justify-center" aria-hidden="true">
+        {isCurrent && <Check className="size-3.5" />}
+      </span>
     </Link>
   );
 }

@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const width of [1440, 900, 390]) {
-  test(`bubble detail floats alongside controls or below the size legend (${width}px)`, async ({ page }) => {
+  test(`bubble detail floats alongside controls or opens as a sheet without the size legend (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/project-bubble?v=map');
     const canvas = page.locator('canvas');
@@ -26,11 +26,15 @@ for (const width of [1440, 900, 390]) {
     await expect(panel.getByText('検証可能性', { exact: true })).toBeVisible();
     const bounds = (await panel.boundingBox())!;
     const search = width >= 1280 ? (await page.getByPlaceholder('事業名・事業IDで検索').boundingBox())! : null;
-    const size = (await page.getByLabel('バブルの大きさ').boundingBox())!;
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
-    if (width >= 1280) expect(bounds.x).toBeGreaterThan(search!.x + search!.width);
-    else expect(bounds.y).toBeGreaterThan(size.y + size.height);
+    if (width >= 1280) {
+      expect(bounds.x).toBeGreaterThan(search!.x + search!.width);
+    } else {
+      // 1024px 未満では左の列を畳み、詳細を開いている間は表示切替（大きさ）のカードを隠して詳細だけを出す
+      await expect(page.getByLabel('バブルの大きさ')).toBeHidden();
+      expect(bounds.y).toBeGreaterThanOrEqual(0);
+    }
     const toggle = panel.getByRole('button', { name: '事業概要', exact: true });
     await toggle.scrollIntoViewIfNeeded();
     const label = (await toggle.locator('span').boundingBox())!;
