@@ -8,8 +8,8 @@
 
 /** フル HD の既定値。UnifiedSankeyChart の LABEL_FONT_PX_DEFAULT と同じ */
 export const LABEL_FONT_PX_FULL_HD = 13;
-/** 自動で縮める下限。これより小さいと和文が読みにくい */
-export const LABEL_FONT_PX_AUTO_MIN = 10;
+/** 自動で縮める下限。詳細パネルの文字はこの値を 1 倍として fontPx に連動するので、これ以上は縮めない */
+export const LABEL_FONT_PX_AUTO_MIN = 11;
 /** 基準の表示領域。フル HD のブラウザの内側（ツールバー・タブを除くと 1900×900 前後）で 13px のままになる値 */
 const BASE_WIDTH = 1800;
 const BASE_HEIGHT = 880;

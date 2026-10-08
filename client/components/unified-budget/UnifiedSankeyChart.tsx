@@ -25,7 +25,6 @@ import { UnifiedSearch } from './UnifiedSearch';
 import type { ReactNode } from 'react';
 import { UnifiedFilterFields, type UnifiedScoreStatus } from './UnifiedFilterFields';
 import { SidePanelChrome, SIDE_PANEL_INSET } from '@/client/components/SidePanelChrome';
-import { autoLabelFontPx, LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { MinimapOverlay } from '@/client/components/SankeySvg/MinimapOverlay';
 import { useSidePanel } from '@/client/hooks/useSidePanel';
 import { testId } from '@/client/lib/testId';
@@ -893,15 +892,9 @@ export function UnifiedSankeyChart({
               </div>
 
               {hasOverview && <>
-              {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）は PC で 48%、縦 1000px 以上（フル HD）では 60% まで。
-                  フル HD で、意見を閉じた状態なら基金と外部の検査の1行があってもスクロールなしで収まる高さ。超える分は中でスクロール */}
-              {/* スマホでも畳まずに出す（開くボタンを探させない）。高さは 35% までで、超える分は中でスクロール */}
-              {/* 上段の高さの配分は画面の高さで決める（フル HD では 60% で、意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない）。
-                  文字の縮小はラベル文字サイズと同じ規則（画面が小さいときだけ。フル HD では 1 のまま） */}
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{
-                maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '52%' : '55%',
-                zoom: viewport.width < 640 ? 1 : autoLabelFontPx(viewport.width, viewport.height + 72) / LABEL_FONT_PX_FULL_HD,
-              }}>
+              {/* 上段（事業概要・評価・推移・外部の検査・基金の1行）の高さの配分は画面の高さで決める。フル HD では 60% で、
+                  意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない。文字の大きさはラベル文字サイズ（fontPx）に連動して各セクションが決める */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : '58%' }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
                 {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&
