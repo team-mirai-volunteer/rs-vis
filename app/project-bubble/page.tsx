@@ -797,7 +797,7 @@ export default function ProjectMapPage() {
       </div>
 
       {/* ── 左上: 絞り込みの開閉（sm 未満のみ。PC では左フロート列が常に出ている） ── */}
-      <div className="absolute left-3 top-3 z-40 sm:hidden">
+      <div className="absolute left-3 top-3 z-30 sm:hidden">
         <Button
           variant="outline"
           size="icon"
@@ -866,7 +866,7 @@ export default function ProjectMapPage() {
 
       {/* ── 表ビュー（図と同じ内容の、色に依存しない読み方）。下から重ねる ── */}
       {data && !loading && showTable && (
-        <div className="absolute inset-x-3 bottom-3 z-40 sm:right-[308px]">
+        <div className="absolute inset-x-3 bottom-3 z-30 sm:right-[308px]">
           <TableView
             points={filtered}
             clusterById={clusterById}
