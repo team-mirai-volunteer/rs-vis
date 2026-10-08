@@ -99,7 +99,10 @@ function MenuLink({ href, label, prototype = false, isCurrent, onSelect }: {
     >
       <span className="min-w-0 flex-1">{label}</span>
       {prototype && <Badge variant="muted" className="px-1.5 text-[10px]">試作</Badge>}
-      {isCurrent && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
+      {/* チェックの枠は常に確保し、現在ページでも「試作」バッジの位置が動かないようにする */}
+      <span className="flex size-3.5 shrink-0 items-center justify-center" aria-hidden="true">
+        {isCurrent && <Check className="size-3.5" />}
+      </span>
     </Link>
   );
 }
