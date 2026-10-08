@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readDataJson } from '../app/lib/api/data-file';
 import data from '../app/lib/tax-expenditures/data.json';
 import { PAGES } from '../components/navigation/pages';
+import type { ProjectDetailsData } from '../types/project-details';
 
 test('application total agrees with MOF, excluding consolidated-group subsets', () => {
   const total = data.measures.reduce((total, m) => total + m.rows.filter(r => r.entity === '単体法人')
@@ -20,7 +21,8 @@ test('source rows are unique and all registered RS relations resolve to the stat
   const rows = data.measures.flatMap(m => m.rows.map(r => r.sourceRow));
   assert.equal(new Set(rows).size, rows.length);
   assert.equal(data.measures.length, 79);
-  const projects = JSON.parse(readFileSync('public/data/rs2025-project-details.json', 'utf8'));
+  // A clean checkout contains the compressed data only; npm test must not require prebuild.
+  const projects = readDataJson<ProjectDetailsData>('rs2025-project-details.json', 'npm run generate-project-details');
   for (const m of data.measures.filter(m => m.rsProjectId)) {
     assert.match(projects[String(m.rsProjectId)].purpose, /企業版ふるさと納税/);
     assert.match(projects[String(m.rsProjectId)].projectName, /普及促進/);
