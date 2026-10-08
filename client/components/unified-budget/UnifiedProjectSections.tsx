@@ -26,8 +26,7 @@ import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cac
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 import { ProjectFunds } from './ProjectFunds';
 import { ProjectAgencySegments } from './ProjectAgencySegments';
-import { ProjectBudgetExecutionAudit } from './ProjectBudgetExecutionAudit';
-import { ProjectAuditReport } from './ProjectAuditReport';
+import { ProjectExternalReviewNote } from './ProjectExternalReviewNote';
 
 const detailCache = new Map<string, ProjectDetail | null>();
 const extractDetail = (d: unknown) => d as ProjectDetail;
@@ -104,9 +103,8 @@ export function UnifiedProjectSections({
         detailLoading={scoreLoading}
       />
 
-      {/* 政府・検査機関による調査は AI評価の直後に置き、見比べられるようにする */}
-      {!isProvisional && <ProjectBudgetExecutionAudit pid={pid} scaleFont={scaleFont} />}
-      {!isProvisional && <ProjectAuditReport pid={pid} scaleFont={scaleFont} />}
+      {/* 政府・検査機関による調査は件数だけを AI評価の直後に出し、全文は政策評価の詳細（ScoreDetailDialog）に置く */}
+      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} />}
       {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} />}
       {!isProvisional && <ProjectAgencySegments pid={pid} rsSheetYear={rsSheetYear} scaleFont={scaleFont} />}
 
