@@ -20,7 +20,13 @@ for (const width of [1440, 390]) {
     if (!new URL(page.url()).pathname.endsWith('/lp')) await page.goto('/lp');
     await page.getByRole('link', { name: '事業を調べる', exact: true }).click();
     await expect(page).toHaveURL(/\/quality$/);
-    await expect(page.getByRole('textbox', { name: '事業を検索', exact: true })).toBeVisible();
+    // 評価一覧はPCの表とスマホのカードで検索欄の表示が異なる。
+    const projectSearch = width < 640
+      ? page.getByRole('textbox', { name: '事業を検索', exact: true })
+      : page.getByPlaceholder('事業名・PID・組織名で検索...');
+    await expect(projectSearch).toBeVisible();
+    await projectSearch.fill('6494');
+    await expect(projectSearch).toHaveValue('6494');
     await page.goBack();
     await expect(page.getByRole('heading', { name: '国会質問の設計（台本つき11本＋3本）' })).toBeVisible();
     await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(14);
