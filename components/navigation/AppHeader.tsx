@@ -112,7 +112,7 @@ function HeaderFrame({ current, config, slotRef }: {
       <div className="pointer-events-auto flex flex-wrap items-center gap-x-3 rounded-2xl border border-mirai-border bg-card px-4 shadow-xs sm:h-12 sm:flex-nowrap">
         <Link href="/" className="flex h-12 shrink-0 items-center gap-3 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
           <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} className="h-[17px] w-auto" priority />
-          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text sm:inline">{PRODUCT_NAME}</span>
+          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text lg:inline">{PRODUCT_NAME}</span>
         </Link>
 
         <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden md:flex">
