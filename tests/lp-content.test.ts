@@ -98,12 +98,12 @@ test('LP keeps the verified scope and avoids causal conclusions from descriptive
   assert.doesNotMatch(childcare.techProposal, /効果を翌年には確かめられ/);
 });
 
-test('LP retains all fourteen parliamentary questions and eleven scripts', () => {
+test('LP retains all fifteen parliamentary questions and twelve scripts', () => {
   assert.deepEqual(DIET_QUESTIONS.map(q => q.theme), [
     '記載の穴', '1者応札', '基金', '補正予算の執行見込み', '防衛費の契約検証', '検査結果の反映', '再委託',
-    '成果指標', '補助金事務局', '企画競争・公募', '賃上げ税制', '少子化', '研究力', 'エネルギー',
+    '成果指標', '補助金事務局', '企画競争・公募', '賃上げ税制', '研究開発税制', '少子化', '研究力', 'エネルギー',
   ]);
-  assert.equal(DIET_QUESTIONS.filter(q => q.script).length, 11);
+  assert.equal(DIET_QUESTIONS.filter(q => q.script).length, 12);
   for (const q of DIET_QUESTIONS) {
     assert.ok(q.opening && q.acknowledge && q.known.length && q.official.length && q.response && q.minister && q.promise && q.closing && q.techProposal && q.verify);
   }
