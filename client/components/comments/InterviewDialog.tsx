@@ -282,7 +282,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
             </div>
             <div className="truncate text-xs text-mirai-text-subtle" title={context.projectName}>
               {context.projectName}
-              {step !== 'loading' && step !== 'key' && <span className="ml-2">・{settings ? 'あなたのキーで実行（会話はサーバーに送られません）' : 'サイト提供のAIで実行（会話はサーバーを経由）'}</span>}
+              {step !== 'loading' && step !== 'key' && <span className="ml-2">・{settings ? 'あなたのキーで実行（会話は投稿するまでサーバーに送られません）' : 'サイト提供のAIで実行（会話はサーバーを経由）'}</span>}
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="閉じる" className="shrink-0 text-mirai-text-subtle hover:bg-card">
