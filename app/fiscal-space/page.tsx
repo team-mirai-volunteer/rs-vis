@@ -150,7 +150,7 @@ export default function FiscalSpacePage() {
       <ShareScenario form={form} onPreset={change.preset} onOptimizationSettings={openOptimizationSettings} error={shareError} restore={restore} />
       {shareError && <div role="alert" className="rounded-xl border-2 border-mirai-text bg-card p-4 text-sm"><p className="font-bold">共有条件を復元できませんでした。</p><p>{shareError}</p></div>}
       <div className="contents" data-testid="calculation-status" aria-live="polite">
-        {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-50 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-soft lg:bottom-3 lg:top-auto">
+        {pending && <div className="fixed right-3 top-[var(--app-header-h)] z-30 max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-sm shadow-soft lg:bottom-3 lg:top-auto">
           <p role="status">{result ? '入力を反映しています。結果は直前の条件です。' : '最初の計算を準備しています。政策額は入力できます。'}</p>
           <Button variant="link" className="mt-1 h-auto text-sm font-medium text-primary-accent" onClick={retry}>計算をやり直す</Button>
         </div>}
@@ -163,7 +163,7 @@ export default function FiscalSpacePage() {
       {result && <p role="status" aria-live="polite" className="sr-only">追加の財政措置は年間{money(result.totalYen, 1)}。追加1兆円への感応度は制約の一覧を参照してください。</p>}
 
       <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">
+        <aside className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 lg:sticky lg:inset-x-auto lg:bottom-auto lg:top-4 lg:z-10">
           <Button variant="outline" className="mb-2 w-full justify-between border-mirai-border bg-card shadow-soft lg:hidden"
             aria-expanded={controlsOpen} aria-controls="fiscal-policy-controls" onClick={() => setControlsOpen(open => !open)}>
             <span className="flex items-center gap-2"><SlidersHorizontal aria-hidden="true" />{controlsOpen ? '政策パネルを閉じる' : '政策を調整'}</span>

@@ -24,6 +24,7 @@ import { ProjectOverviewSection } from '@/client/components/subcontract/ProjectO
 import { ProjectComments } from '@/client/components/comments/ProjectComments';
 import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cache';
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
+import { LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { ProjectFunds } from './ProjectFunds';
 import { ProjectAgencySegments } from './ProjectAgencySegments';
 import { ProjectExternalReviewNote } from './ProjectExternalReviewNote';
@@ -37,6 +38,8 @@ export function useProjectDetail(pid: number | undefined, rsSheetYear: number | 
 }
 
 const OVERVIEW_PREVIEW_HEIGHT = 72;
+/** 事業概要プレビュー本文の文字サイズ（フル HD の既定 = text-xs） */
+const OVERVIEW_TEXT_PX = 12;
 
 export function UnifiedProjectSections({
   pid,
@@ -66,6 +69,9 @@ export function UnifiedProjectSections({
   const year = String(rsSheetYear);
   const isProvisional = provisionalDetail !== undefined;
   const scaleFont = useCallback((px: number) => Math.round((px * fontPx) / 11), [fontPx]);
+  // 画面が小さくラベル文字が 13px 未満のときだけ、固定寸法のセクション（事業概要プレビュー・推移グラフ）も同じ比率で縮める。
+  // フル HD（13px）では 1 なので見た目は変わらない
+  const compact = Math.min(1, fontPx / LABEL_FONT_PX_FULL_HD);
   const [overviewExpanded, setOverviewExpanded] = useState(false);
   const [scoreItem, setScoreItem] = useState<QualityScoreItem | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
@@ -113,13 +119,14 @@ export function UnifiedProjectSections({
         scaleFont={scaleFont}
         expanded={overviewExpanded}
         onToggle={() => setOverviewExpanded(v => !v)}
-        previewHeight={OVERVIEW_PREVIEW_HEIGHT}
+        previewHeight={Math.round(OVERVIEW_PREVIEW_HEIGHT * compact)}
+        previewTextPx={Math.max(10, Math.round(OVERVIEW_TEXT_PX * compact))}
         showBottomBorder={false}
         isLoading={overviewExpanded && detail === undefined}
       />
 
       <div className="border-t border-border px-4">
-        <ProjectBudgetHistory key={pid} pid={pid} />
+        <ProjectBudgetHistory key={pid} pid={pid} scale={compact} />
       </div>
       {/* 推移の下に、外部の検査と関連する基金を件数だけの1行で。全文は政策評価の詳細（ScoreDetailDialog）と基金一覧に置く */}
       {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} padding="px-4 py-2" />}
