@@ -73,9 +73,10 @@ export async function insertComment(
       pid: input.pid,
       year: input.year,
       body: input.body,
-      // Interview history is transient: posting the summary does not authorize
-      // retaining the user's full conversation (which may contain personal data).
-      transcript: null,
+      // 対話ログは非公開で保存し、運営・政策の検討・不正対策に使う（みらい議会と同じ扱い。
+      // 利用規約 第4条・プライバシーポリシー 2 項で明示し、投稿をもって同意とみなす）。
+      // 公開ロールには列権限が無いので transcript が外に出ることはない
+      transcript: input.transcript,
       status: input.status,
       ip_hash: input.ipHash,
     })
