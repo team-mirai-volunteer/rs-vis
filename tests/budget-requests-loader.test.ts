@@ -12,7 +12,8 @@ import { requestDataset } from './fixtures/budget-requests-ui';
 const repository = process.cwd();
 function loadIn(root: string) {
   const loader = pathToFileURL(resolve(repository, 'app/lib/api/budget-requests-loader.ts')).href;
-  return JSON.parse(execFileSync(process.execPath, ['--import', require.resolve('tsx'), '--input-type=module', '-e',
+  // --import needs a file:// URL on Windows (a bare drive path is rejected by the ESM loader)
+  return JSON.parse(execFileSync(process.execPath, ['--import', pathToFileURL(require.resolve('tsx')).href, '--input-type=module', '-e',
     `const module = await import(${JSON.stringify(loader)}); const {loadBudgetRequests} = module.default ?? module; console.log(JSON.stringify(loadBudgetRequests()));`], {
     cwd: root, env: { ...process.env, TSX_TSCONFIG_PATH: resolve(repository, 'tsconfig.json') }, encoding: 'utf8',
   }));
