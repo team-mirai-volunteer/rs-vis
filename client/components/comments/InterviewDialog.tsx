@@ -422,7 +422,7 @@ export function InterviewDialog({ context: initialContext, onClose, onSubmitted 
             {error && <div className="text-xs text-destructive">{error}</div>}
             <p className="m-0 text-[11px] text-mirai-text-muted">
               公開前に機械的なチェック（連絡先・URL 等）を行います。問題があれば公開を保留します。
-              インタビュー全文は投稿条件の確認に使い、データベースには保存しません。公開されるのは確認した本文です。
+              公開されるのは確認した本文だけです。インタビューの対話内容は公開せず、当団体がサービスの運営・政策の検討・不正対策のために保存します。
               投稿は<a href="/terms#comments" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">利用規約</a>と<a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary-accent">プライバシーポリシー</a>に同意したものとして扱います。
             </p>
             <div className="flex justify-end gap-2">

@@ -14,7 +14,7 @@ create table if not exists public.project_comments (
   pid         text not null,                       -- 予算事業ID（文字列）
   year        int  not null,                       -- 事業年度（2024 / 2025）
   body        text not null check (char_length(body) between 1 and 1000),
-  transcript  jsonb,                               -- 旧インタビュー全文（非公開・新規投稿では保存しない）
+  transcript  jsonb,                               -- インタビューの対話ログ（非公開。運営・政策検討・不正対策用。公開ロールは列権限なし）
   status      text not null default 'published' check (status in ('published', 'hidden')),
   ip_hash     text,                                -- ソルト付きハッシュ（レート制限・荒らし対応）
   created_at  timestamptz not null default now()

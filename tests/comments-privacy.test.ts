@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 import { insertComment } from '../app/lib/comments/comments-store';
 
-test('posting a summary never persists the private interview conversation', async () => {
+test('posting a summary stores the interview transcript privately alongside the public body', async () => {
   const requests: Record<string, unknown>[] = [];
   const db = createClient('https://example.supabase.co', 'test-service-role', {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -17,6 +17,8 @@ test('posting a summary never persists the private interview conversation', asyn
   assert.equal(id, 'comment-id');
   assert.equal(requests.length, 1);
   assert.equal(requests[0].body, '公開する意見');
-  assert.equal(requests[0].transcript, null);
-  assert(!JSON.stringify(requests).includes('個人の連絡先'));
+  // 対話ログは非公開で保存する（利用規約 第4条）。公開側には列権限が無い（supabase/schema.sql）
+  assert.deepEqual(requests[0].transcript, [{ role: 'user', content: '個人の連絡先を含む会話' }]);
+  // 公開本文と対話ログは別の列。本文に対話の内容が混ざらない
+  assert(!String(requests[0].body).includes('個人の連絡先'));
 });
