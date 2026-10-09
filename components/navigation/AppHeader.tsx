@@ -71,6 +71,9 @@ export function AppHeader({
   </>;
 }
 
+/** 主要ナビのホバーカードの幅（px） */
+const HINT_WIDTH = 280;
+
 function HeaderFrame({ current, config, slotRef }: {
   current: NavPageHref | '/';
   config: HeaderConfig;
@@ -80,6 +83,14 @@ function HeaderFrame({ current, config, slotRef }: {
   // 収まらない項目は丸ごと隠す（全件は右端のメニューから辿れる）。768px 以上なら幅に応じて出せる分だけ出す（以前は 1280px 未満で全部隠していた）
   const navRef = useRef<HTMLElement>(null);
   const [fitCount, setFitCount] = useState<number>(PRIMARY_PAGES.length);
+  // 主要ナビの項目にホバー・フォーカスしたとき、正式名と説明を小さなカードで出す。
+  // ナビは overflow-hidden で測っているので、カードは fixed で項目の下に置く（画面右端は内側に寄せる）
+  const [hint, setHint] = useState<{ index: number; left: number; top: number } | null>(null);
+  const hintId = useId();
+  const showHint = (index: number, element: HTMLElement) => {
+    const r = element.getBoundingClientRect();
+    setHint({ index, left: Math.max(8, Math.min(r.left, window.innerWidth - HINT_WIDTH - 8)), top: r.bottom + 6 });
+  };
   useLayoutEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
@@ -126,6 +137,11 @@ function HeaderFrame({ current, config, slotRef }: {
                 aria-current={isCurrent ? 'page' : undefined}
                 aria-hidden={fits ? undefined : true}
                 tabIndex={fits ? undefined : -1}
+                aria-describedby={hint?.index === index ? hintId : undefined}
+                onMouseEnter={e => showHint(index, e.currentTarget)}
+                onMouseLeave={() => setHint(null)}
+                onFocus={e => showHint(index, e.currentTarget)}
+                onBlur={() => setHint(null)}
                 className={cn(
                   'shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-xs transition-colors',
                   !fits && 'invisible',
@@ -139,6 +155,17 @@ function HeaderFrame({ current, config, slotRef }: {
             );
           })}
         </nav>
+        {hint && (
+          <div
+            id={hintId}
+            role="tooltip"
+            className="pointer-events-none fixed z-[60] rounded-xl border border-mirai-border bg-card px-3 py-2 text-xs leading-relaxed shadow-soft"
+            style={{ left: hint.left, top: hint.top, width: HINT_WIDTH }}
+          >
+            <p className="font-bold text-mirai-text">{PRIMARY_PAGES[hint.index].label}</p>
+            <p className="mt-0.5 text-mirai-text-subtle">{PRIMARY_PAGES[hint.index].description}</p>
+          </div>
+        )}
 
         {/* 右スロット。sm 未満では basis-full で 2 段目に落ち、横にスクロールする（スクロールバーは隠す） */}
         <div ref={slotRef} className={cn('order-last h-[46px] basis-full items-center gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:order-none sm:ml-auto sm:h-12 sm:basis-auto sm:overflow-visible sm:pb-0', config.hasControls ? 'flex' : 'hidden')} />

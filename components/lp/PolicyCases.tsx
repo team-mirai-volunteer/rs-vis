@@ -1,42 +1,16 @@
 import Link from 'next/link';
-import { ArrowUpRight, ChevronDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { SUPPORT_CASE, INVESTIGATION_CASE, PUBLICITY_REQUEST_NEWS } from '@/app/lp/policy-cases';
+import { ArrowRight, ChevronDown } from 'lucide-react';
+import { SUPPORT_CASE, INVESTIGATION_CASE } from '@/app/lp/policy-cases';
 
-const linkClass = 'inline-flex items-center gap-1 text-sm font-bold text-primary-accent underline underline-offset-2 hover:opacity-90';
+import { SUMMARY_LINK, TEXT_LINK } from '@/components/lp/styles';
 
-export function BudgetNewsHook() {
-  const news = PUBLICITY_REQUEST_NEWS;
-  return (
-    <section id="budget-news" aria-labelledby="budget-news-heading" className="px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl rounded-2xl border border-mirai-border bg-mirai-surface-teal p-5 sm:p-6">
-        <p className="text-xs font-bold text-primary-accent">{news.label}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 id="budget-news-heading" className="text-xl/7 font-bold sm:text-2xl/8">{news.title}</h2>
-          <Badge variant="outline" className="rounded-full bg-card">報道ベース・当サイトの集計ではありません</Badge>
-        </div>
-        <p className="mt-2 text-sm leading-relaxed">{news.reported} {news.status}</p>
-        <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{news.limitation}</p>
-        <details className="group mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
-            この数字から、次に確かめること
-            <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-mirai-text-subtle">{news.next}</p>
-          <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">過年度の広報事業では、支出先・契約方式・記載された成果指標を確認できます。今回の要求との対応関係は、別途確認が必要です。</p>
-          <Link href={news.explore.href} className={`${linkClass} mt-2`}>{news.explore.name} <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></Link>
-        </details>
-        <a href={news.source.href} target="_blank" rel="noopener noreferrer" className={`${linkClass} mt-3`}>{news.source.name} <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></a>
-      </div>
-    </section>
-  );
-}
+const linkClass = TEXT_LINK;
 
 export function PolicyCases() {
   return (
     <section id="policy-cases" aria-labelledby="policy-cases-heading" className="px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
-        <p className="text-sm font-bold text-primary-accent">From data to policy</p>
+        <p className="text-sm font-bold text-primary-accent">政策の選択肢</p>
         <h2 id="policy-cases-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">数字の先に、政策の選択肢をつくる</h2>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-mirai-text-subtle">増やすべき予算や、支援の届き方を変える方法も探せます。以下は調査のモデルケース。確認済みの記載と、これから求める根拠を分けています。</p>
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
@@ -54,9 +28,9 @@ export function PolicyCases() {
                 <dd className="mt-1 text-mirai-text-subtle">{SUPPORT_CASE.unknown}</dd>
               </div>
             </dl>
-            <Link href={SUPPORT_CASE.project.href} className={`${linkClass} mt-4`}>学校施設整備の事業詳細を開く <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></Link>
+            <Link href={SUPPORT_CASE.project.href} className={`${linkClass} mt-4`}>学校施設整備の事業詳細を開く <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>
             <details className="group mt-5 border-t border-mirai-border pt-4">
-              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
+              <summary className={SUMMARY_LINK}>
                 3つの原因と、国会で確かめる問い
                 <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
               </summary>
@@ -92,8 +66,8 @@ export function PolicyCases() {
               ))}
             </ol>
             <div className="mt-4 flex flex-col items-start gap-2">
-              <Link href={INVESTIGATION_CASE.vendor.href} className={linkClass}>事業者の年度別の記載を開く <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></Link>
-              <Link href={INVESTIGATION_CASE.project.href} className={linkClass}>ハローワークの事業詳細を開く <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></Link>
+              <Link href={INVESTIGATION_CASE.vendor.href} className={linkClass}>事業者の年度別の記載を開く <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>
+              <Link href={INVESTIGATION_CASE.project.href} className={linkClass}>ハローワークの事業詳細を開く <ArrowRight className="size-4 shrink-0" aria-hidden="true" /></Link>
             </div>
           </article>
         </div>

@@ -2,9 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readDataJson } from '../app/lib/api/data-file';
-import { parseQualityYear } from '../app/lib/api/quality-year';
 import { contractCategory, type ContractMethodsByPid } from '../app/lib/contract-method';
-import { SUPPORT_CASE, INVESTIGATION_CASE, PUBLICITY_REQUEST_NEWS } from '../app/lp/policy-cases';
+import { SUPPORT_CASE, INVESTIGATION_CASE } from '../app/lp/policy-cases';
 import type { VendorsFile } from '../types/vendors';
 
 // 単なる見出しのスナップショットではなく、入口の事業・年度・企業が収録データと合うことを確認。
@@ -58,29 +57,11 @@ test('LP investigation carries alternative explanations through verification and
   assert.match(INVESTIGATION_CASE.steps[4].body, /応札者数.*価格.*品質.*事務負担/);
 });
 
-test('LP news identifies the reported request and does not promise unsupported FY2027 tracing', () => {
-  const news = PUBLICITY_REQUEST_NEWS;
-  assert.match(news.label, /2026年9月11日報道/);
-  assert.match(news.reported, /FNN.*内閣官房・内閣広報室.*2027年度概算要求.*72\.3億円.*2026年度予算.*7億円/);
-  assert.match(news.status, /成立予算・契約額・支出実績とは異なります/);
-  assert.match(news.limitation, /2027年度の概算要求全体は未収録/);
-  assert.match(news.limitation, /原資料・詳細内訳は未確認/);
-  assert.match(news.limitation, /内閣府.*分けて扱い/);
-  assert.equal(parseQualityYear('2027'), null, '2027対応時はLPの未収録注記も再確認する');
-  assert.equal(news.source.href, 'https://www.fnn.jp/articles/-/1112462');
-  assert.equal(news.explore.href, '/quality');
-  assert.match(news.explore.name, /過年度/);
-  assert.doesNotMatch(JSON.stringify(news), /detail=98|pid=98|72.3億円を追える|総理の支出/);
-});
-
-test('LP renders both policy models and news without replacing existing questions or title', () => {
+test('LP renders both policy models without replacing existing questions or title', () => {
   const page = readFileSync(new URL('../app/lp/page.tsx', import.meta.url), 'utf8');
   const components = readFileSync(new URL('../components/lp/PolicyCases.tsx', import.meta.url), 'utf8');
   assert.match(page, /const TITLE = '国の予算は、ここまで見える。'/);
-  assert.match(page, /<BudgetNewsHook \/>/);
   assert.match(page, /<PolicyCases \/>/);
   assert.match(page, /DIET_QUESTIONS/);
   assert.match(components, /aria-labelledby="policy-cases-heading"/);
-  assert.match(components, /\{news\.limitation\}/);
-  assert.ok(components.indexOf('{news.limitation}') < components.indexOf('<details'), '重要な未収録注記を閉じた詳細に隠さない');
 });

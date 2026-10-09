@@ -1,10 +1,7 @@
 name: Refresh official budget requests
 on:
-  schedule:
-    # Weekly Monday, 05:10 JST: refresh, or continue an unfinished cycle.
-    - cron: '10 20 * * 0'
-    # Other days only drain an unfinished compatible checkpoint; no new daily full crawl.
-    - cron: '10 20 * * 1-6'
+  # 手動起動のみ。概算要求は 8 月末に出揃い、その後ほとんど動かないので定期実行はしない。
+  # 提出後や正誤表が出たときに Actions の「Run workflow」から起動する（未完了なら再度押して続行）。
   workflow_dispatch:
 permissions:
   contents: write

@@ -59,12 +59,11 @@ for (const width of [1440, 390]) {
   test(`LP model cases disclose evidence limits and open the correct records (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/lp');
-    const news = page.locator('#budget-news');
-    await expect(news).toContainText('内閣官房・内閣広報室の2027年度概算要求は72.3億円');
-    await expect(news.getByText(/2027年度の概算要求全体は未収録/)).toBeVisible();
-    await expect(news.getByRole('link', { name: 'FNNの報道を読む' })).toHaveAttribute('href', 'https://www.fnn.jp/articles/-/1112462');
-    await news.locator('summary').click();
-    await expect(news.getByText(/今回の要求との対応関係は、別途確認が必要/)).toBeVisible();
+    // ニュースから調べる広報の例は示唆カードの1つ（「残りを見る」で展開）
+    await page.locator('#insights > div > details > summary').click();
+    const publicity = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /内閣広報経費の契約3件はすべて応札1者/ }) });
+    await expect(publicity.getByText(/当サイトの集計ではない/)).toBeVisible();
+    await expect(publicity.getByRole('link', { name: /内閣広報経費の契約と5年の推移を見る/ })).toHaveAttribute('href', '/quality?fiscalYear=2024&detail=45');
 
     const support = page.locator('#support-case');
     await expect(support.getByText(/執行率だけでは支援の過不足は分かりません/)).toBeVisible();
