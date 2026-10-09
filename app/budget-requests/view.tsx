@@ -154,9 +154,9 @@ function RecordCard({ record, document }: { record: BudgetRequestRecord; documen
       <div className="min-w-0"><p className="text-xs text-mirai-text-muted">{record.ministry} ／ {record.account ?? '会計未特定'} ／ {DOCUMENT_TYPE_LABELS[record.documentType]}</p><h2 className="mt-1 break-words font-bold">{record.projectName}</h2></div>
       <span className="h-fit rounded bg-mirai-surface px-2 py-1 text-xs">{{ total: '総計行', subtotal: '小計行', detail: '内訳行', unknown: '集計区分未判定' }[record.aggregationFlag]}</span>
     </div>
-    {document && ['fetch_failed', 'extraction_failed'].includes(document.status) && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">記録時の取得・抽出に失敗しています。以下は過去の取得時点（{date(record.provenance.retrievedAt)}）の記録です。</p>}
-    {document?.validation.some(note => /再発見|再取得に失敗|今回未取得/.test(note)) && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">今回、この資料の最新版を確認できていません。取得日時と掲載ページを確認してください。</p>}
-    {!!record.provenance.validation.length && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">検証上の注意が{record.provenance.validation.length}件あります。金額・名称は原文の確認が必要です。</p>}
+    {document && ['fetch_failed', 'extraction_failed'].includes(document.status) && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">記録時の取得・抽出に失敗しています。以下は過去の取得時点（{date(record.provenance.retrievedAt)}）の記録です。</p>}
+    {document?.validation.some(note => /再発見|再取得に失敗|今回未取得/.test(note)) && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">今回、この資料の最新版を確認できていません。取得日時と掲載ページを確認してください。</p>}
+    {!!record.provenance.validation.length && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">検証上の注意が{record.provenance.validation.length}件あります。金額・名称は原文の確認が必要です。</p>}
     <dl className="mt-3 grid gap-2 sm:grid-cols-3">{Object.entries(AMOUNT_TYPE_LABELS).map(([key, label]) => <div key={key} className="min-w-0 rounded-lg bg-mirai-surface p-3"><dt className="text-xs text-mirai-text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-bold tabular-nums">{formatRequestAmount(record.amounts[key as keyof typeof AMOUNT_TYPE_LABELS])}</dd></div>)}</dl>
     <p className="mt-3 text-xs"><SourceLink url={record.provenance.url} page={record.provenance.page}>原資料を開く</SourceLink><span className="ml-2 text-mirai-text-muted">{recordLocation(record)}</span></p>
     <details className="mt-3 text-xs leading-relaxed">
@@ -188,8 +188,8 @@ function DocumentCard({ document }: { document: BudgetRequestDocument }) {
     <h2 className="mt-1 break-words font-bold"><SourceLink url={document.url}>{document.title}</SourceLink></h2>
     <p className="mt-2 text-sm">{ACQUISITION_STATUS_LABELS[document.status]} ・抽出 {document.recordCount.toLocaleString()}行</p>
     {!!document.validation.length && ['partial', 'unsupported', 'extraction_failed', 'discovered'].includes(document.status) && <p className="mt-2 break-words text-xs text-mirai-text-secondary">{document.validation[0].slice(0, 300)}{document.validation[0].length > 300 ? '…' : ''}</p>}
-    {document.error && <p className="mt-2 break-words rounded bg-amber-50 p-2 text-xs text-amber-900">取得・抽出上の問題: {document.error}</p>}
-    {['fetch_failed', 'extraction_failed'].includes(document.status) && document.recordCount > 0 && <p className="mt-2 text-xs text-amber-900">抽出行は過去の成功時の記録を保持しています。最新資料の確認はできていません。</p>}
+    {document.error && <p className="mt-2 break-words rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">取得・抽出上の問題: {document.error}</p>}
+    {['fetch_failed', 'extraction_failed'].includes(document.status) && document.recordCount > 0 && <p className="mt-2 text-xs text-status-warn-fg">抽出行は過去の成功時の記録を保持しています。最新資料の確認はできていません。</p>}
     <details className="mt-3 text-xs leading-relaxed"><summary className="cursor-pointer font-medium text-primary-accent">取得履歴と出典</summary><div className="mt-3 space-y-2">
       <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2"><Detail label="取得日時">{date(document.retrievedAt)}</Detail><Detail label="記録時の最終試行">{document.status === 'discovered' && !document.retrievedAt ? '未試行' : date(document.lastAttemptAt)}</Detail><Detail label="改訂番号">{document.revision}</Detail><Detail label="資料ハッシュ">{document.hash ?? '未取得'}</Detail></dl>
       {!!document.validation.length && <p>検証上の注意: {document.validation.join(' ／ ')}</p>}

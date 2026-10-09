@@ -93,6 +93,10 @@ export function publishBudgetUpdate({ run = systemRun, checks }: PublishOptions 
       checked('gh', ['pr', 'create', '--draft', '--base', 'main', '--head', UPDATE_BRANCH, '--title', 'data: refresh official FY2027 budget requests', '--body',
         `Official-source data update. Review before merging.\n\nPublication runs npm ci, typecheck, all unit tests, and budget-data validation on the exact candidate (and again after any concurrent merge): ${runUrl}.\n\nThis PR uses GITHUB_TOKEN, so ordinary pull_request workflows are not automatically triggered. These publication gates do not replace required branch-protection checks or browser/security jobs. A maintainer must arrange the normal checks if required; this workflow does not auto-merge.`]);
     }
+    // GITHUB_TOKEN-created pushes/PRs never trigger pull_request workflows, but workflow_dispatch
+    // may be started with it. Run the ordinary checks (validate/browser/security) on the exact SHA.
+    const dispatched = run('gh', ['workflow', 'run', 'checks.yml', '--ref', UPDATE_BRANCH]);
+    if (dispatched.status !== 0) console.warn(`Could not dispatch checks.yml on ${UPDATE_BRANCH}; start it manually (${dispatched.stdout.trim()})`);
     console.log(`Published validated data ${sha} to ${UPDATE_BRANCH}`);
     return { published: true, sha };
   }

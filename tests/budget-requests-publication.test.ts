@@ -47,6 +47,7 @@ test('publication gates the exact SHA, changes only dedicated branch and creates
   assert.equal(repo.git(repo.work, 'ls-remote', '--heads', 'origin', 'main').split(/\s/)[0], before);
   assert.equal(repo.git(repo.work, 'ls-remote', '--heads', 'origin', UPDATE_BRANCH).split(/\s/)[0], result.sha);
   assert.ok(repo.calls.some(call => call.command === 'gh' && call.args[1] === 'create'));
+  assert.ok(repo.calls.some(call => call.command === 'gh' && call.args[0] === 'workflow' && call.args[1] === 'run' && call.args.includes(UPDATE_BRANCH)), 'checks.yml を更新ブランチで起動する');
   assert.ok(repo.calls.filter(call => call.command === 'git' && call.args[0] === 'push').every(call => !call.args.some(arg => arg.includes('force')) && call.args.at(-1) === `HEAD:refs/heads/${UPDATE_BRANCH}`));
 });
 

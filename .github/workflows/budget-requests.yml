@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  actions: read
+  # read: 過去 run の artifact 復元。write: 更新ブランチで checks.yml を workflow_dispatch 起動
+  actions: write
   pull-requests: write
 concurrency:
   group: official-budget-requests

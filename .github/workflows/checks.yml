@@ -3,6 +3,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # 自動データ更新（GITHUB_TOKEN が作る PR は pull_request を起動しない）から同じチェックを起動するため
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
