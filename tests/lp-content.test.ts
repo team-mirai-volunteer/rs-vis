@@ -5,6 +5,7 @@ import { AI_EVALUATION_NATURE } from '../app/lib/ai-evaluation-disclosure';
 import { readDataJson } from '../app/lib/api/data-file';
 import type { RecipientRowsByPid } from '../app/lib/api/quality-recipients-loader';
 import { contractCategory, type ContractMethodsByPid } from '../app/lib/contract-method';
+import { creditSeries } from '../app/lib/tax-expenditures/credits';
 import { AUDIT_MATCH_DISCLOSURE, AUDIT_PROJECT_COUNTS } from '../app/lp/audit-summary';
 import { DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, PERSONAS } from '../app/lp/insights';
 import auditMatches from '../scripts/data/audit-report-matches.json';
@@ -96,6 +97,25 @@ test('LP keeps the verified scope and avoids causal conclusions from descriptive
   assert.match(childcare.techProposal, /比較対象/);
   assert.match(childcare.techProposal, /他の要因/);
   assert.doesNotMatch(childcare.techProposal, /効果を翌年には確かめられ/);
+});
+
+test('LP tax credit figures agree with the /tax-expenditures series (standalone + 2022 consolidated)', () => {
+  const oku = (amountThousandYen: number) => Math.round(amountThousandYen / 100_000);
+  const rd2024 = creditSeries('2024').find(s => s.id === 'mof-2024-r24')!;
+  const rd2022 = creditSeries('2022').find(s => s.id === 'mof-2024-r24')!;
+  assert.equal(oku(rd2024.total!), 10_069);
+  assert.equal(oku(rd2022.total!), 7_636);
+  assert.equal(oku(rd2024.segments[0].amount!), 9_586);
+  assert.equal((rd2024.total! / rd2022.total!).toFixed(2), '1.32');
+  const rd = INSIGHTS.find(item => item.id === 'rd-tax-credit')!;
+  assert.equal(rd.figure, '1兆69億円');
+  assert.match(rd.facts[0], /7,636億円.*1兆69億円（1\.32倍）/);
+  assert.match(DIET_QUESTIONS.find(q => q.theme === '研究開発税制')!.known[0], /7,636億円.*1\.32倍/);
+  const wage2024 = creditSeries('2024').find(s => s.id === 'mof-2024-r217')!;
+  const wage2022 = creditSeries('2022').find(s => s.id === 'mof-2024-r217')!;
+  assert.equal(oku(wage2024.total!), 9_560);
+  assert.equal(oku(wage2022.total!), 5_150);
+  assert.match(INSIGHTS.find(item => item.id === 'wage-tax-credit')!.facts[0], /5,150億円.*9,560億円/);
 });
 
 test('LP retains all fifteen parliamentary questions and twelve scripts', () => {
