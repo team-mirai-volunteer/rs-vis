@@ -118,6 +118,18 @@ test('LP tax credit figures agree with the /tax-expenditures series (standalone 
   assert.match(INSIGHTS.find(item => item.id === 'wage-tax-credit')!.facts[0], /5,150億円.*9,560億円/);
 });
 
+test('LP does not claim an NTA joint-research precedent for the R&D credit and cites the 2003 study correctly', () => {
+  for (const q of DIET_QUESTIONS) {
+    assert.doesNotMatch(`${q.response} ${q.techProposal}`, /前例があ/);
+    assert.doesNotMatch(JSON.stringify(q), /2015年度改正/);
+  }
+  const rd = DIET_QUESTIONS.find(q => q.theme === '研究開発税制')!;
+  assert.match(rd.techProposal, /国税庁と相談中/);
+  const card = INSIGHTS.find(item => item.id === 'rd-tax-credit')!;
+  assert.match(card.facts[3], /2003年度改正.*2014年/);
+  assert.match(card.facts[2], /令和8年度改正で3年延長/);
+});
+
 test('LP retains all fifteen parliamentary questions and twelve scripts', () => {
   assert.deepEqual(DIET_QUESTIONS.map(q => q.theme), [
     '記載の穴', '1者応札', '基金', '補正予算の執行見込み', '防衛費の契約検証', '検査結果の反映', '再委託',
