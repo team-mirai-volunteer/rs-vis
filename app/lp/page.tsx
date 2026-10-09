@@ -30,13 +30,14 @@ import {
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
+import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
-  '1者応札が競争入札の48%、基金残高16.7兆円、予算の半分も使われない事業が340件。行政事業レビューと財務省予算書の公開データから分かったことと、国会質問への使い方。';
+  'RSに記載された競争入札のうち応札者数の記載がある契約の48%が1者応札。基金残高16.7兆円、年度内の執行が予算現額の半分未満の事業が340件。公開データから分かったことと、国会質問への使い方。';
 
 export const metadata: Metadata = {
   title: `${TITLE}｜${PRODUCT_NAME}`,
@@ -116,12 +117,12 @@ export default function LandingPage() {
               <h1 className="max-w-3xl text-3xl/10 font-bold tracking-normal sm:text-4xl/[3rem]">{TITLE}</h1>
               <p className="mt-4 max-w-2xl text-[15px] leading-relaxed font-medium">
                 省庁から事業へ、事業から支出先へ。国の予算がどこへ流れたかを、1本の図で追えます。
-                5,794事業・9.9万の支出先・328基金・外部の検査結果まで、公開データをひとつながりにしました。
+                5,794事業・延べ9.9万件の支出先記載・328基金・外部の検査結果まで、公開データをひとつながりにしました。
               </p>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-mirai-text-subtle">
                 議員・政策秘書の質問づくり、記者・研究者の調査、気になる事業や企業を調べたい市民のために。
               </p>
-              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button asChild size="lg">
                   <Link href={PREVIEW_HREF}>
                     予算の流れを見てみる <ArrowRight />
@@ -129,7 +130,12 @@ export default function LandingPage() {
                 </Button>
                 <Button asChild variant="outline" size="lg">
                   <Link href="/quality">
-                    <Search /> 気になる事業・企業を調べる
+                    <Search /> 事業を調べる
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg">
+                  <Link href="/vendors">
+                    <Search /> 企業・事業者を調べる
                   </Link>
                 </Button>
               </div>
@@ -218,7 +224,7 @@ export default function LandingPage() {
               <p className="text-sm font-bold text-primary-accent">How to</p>
               <h2 id="howto-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">3ステップで、根拠つきの問いにする</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                数字はすべて公開データから再現できます。質問や記事の根拠として示すときは、画面の共有URLをそのまま添えてください。
+                公開データの集計条件と元資料を確かめ、質問や記事の根拠として示すときは、画面の共有URLを添えてください。
               </p>
             </div>
 
@@ -433,15 +439,15 @@ export default function LandingPage() {
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">金額は府省の記載どおり。</span>
-                このサイトでは検証していません。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。
+                このサイトでは検証していません。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。延べ9.9万件は各事業の支出先記載数の合計（再委託先を含む）で、同じ法人等の重複を除いた数ではありません。
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">AI評価はスクリーニング。</span>
-                公開資料に基づく独自基準で、説明の充実度を見ています。事業の良し悪しの結論ではなく、人が確かめに行く順番を決めるためのものです。
+                {AI_EVALUATION_NATURE}事業の良し悪しを断定せず、人が詳しく確かめるための手がかりとして使ってください。
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">対象は国の予算の約27%。</span>
-                分母は2023年度の財務省予算書の歳出総額555.5兆円（一般会計と特別会計の合計。会計間の繰入れを重複して含む）、分子は同年度の行政事業レビュー対象事業の歳出予算現額151.1兆円です。冒頭の147.6兆円は2024年度の対象事業の予算現額です。国債費・地方交付税・年金給付・財政投融資はレビューの対象外で、サンキー図では「RS対象外」として別に示しています。
+                <span className="font-bold text-mirai-text">レビュー対象事業と、国の予算全体は範囲が異なります。</span>
+                冒頭の147.6兆円は2024年度のレビュー対象事業の歳出予算現額です。一般会計と特別会計を単純に足した総額には会計間の繰入れが重複して含まれるため、この比率を予算全体の網羅率としては示していません。年金給付を含む事業もレビュー対象です。サンキー図では財務省の予算書・決算書とレビュー事業を対応づけ、対応のない金額も区分して示しています。
               </li>
             </ul>
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
