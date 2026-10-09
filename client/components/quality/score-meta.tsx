@@ -14,13 +14,8 @@ import {
 } from '@/app/lib/policy-evaluation';
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 
-/** AI評価の名称。評価の性格（独自基準・試行）が分かる名前を、一覧・説明・サイドパネルで共通に使う */
-export const AI_EVALUATION_TITLE = '公開資料に基づく独自基準のAI評価（試行）';
-
-/** 評価主体と判断基準。表の近くと説明パネルに同じ文を出す */
-export const AI_EVALUATION_NATURE = '本サイトが定めた独自の基準で、AIが行政事業レビューシートの公開記載を採点したものです。'
-  + '記載の充実度だけでなく、公的支援の必要性・費用と内容の見合い・資金が受益者に届く経路といった政策上の判断を含みます。'
-  + '政府の公式評価ではなく、人によるレビューも経ていません。';
+// LPを含め、評価主体・判断基準・確認状況の説明を共通にする。
+export { AI_EVALUATION_TITLE, AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 
 /** 一覧に出す政策評価の指標（品質軸の生値は詳細側に集約した） */
 export type PolicyMetric = 'overallScore' | 'designClarityScore' | 'evidenceScore'
