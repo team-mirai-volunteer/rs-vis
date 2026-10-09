@@ -68,7 +68,11 @@
     "generate-recipient-index-2025": "tsx scripts/generate-recipient-index.ts 2025",
     "compress-data": "gzip -9 -k -f public/data/rs2024-project-details.json && gzip -9 -k -f public/data/rs2025-project-details.json && gzip -9 -k -f public/data/project-quality-recipients-2024.json && gzip -9 -k -f public/data/project-quality-recipients-2025.json && gzip -9 -k -f public/data/sankey-svg-2024-graph.json && gzip -9 -k -f public/data/sankey-svg-2025-graph.json && gzip -9 -k -f public/data/subcontracts-2024.json && gzip -9 -k -f public/data/subcontracts-2025.json && gzip -9 -k -f public/data/recipient-index-2024.json && gzip -9 -k -f public/data/recipient-index-2025.json && gzip -9 -k -f public/data/project-quality-scores-2024.json && gzip -9 -k -f public/data/project-quality-scores-2025.json && gzip -9 -k -f public/data/project-map-2024.json && gzip -9 -k -f public/data/project-map-2025.json && for f in public/data/mof-jikou-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-kou-moku-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-budget-overview-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-rs-linkage-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-rs-kou-moku-linkage-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/unified-budget-*-graph.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-section-pages-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-budget-[0-9]*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && for f in public/data/mof-budget-descriptions-*.json; do [ -f \"$f\" ] && gzip -9 -k -f \"$f\" || true; done && node scripts/compress-tax-burden-data.mjs",
     "validate-mof-data": "tsx scripts/validate-mof-budget-overview-data.ts",
-    "test:tax-burden:browser": "node tests/tax-burden-browser.mjs"
+    "test:tax-burden:browser": "node tests/tax-burden-browser.mjs",
+    "fetch:budget-requests": "node --import tsx scripts/fetch-budget-requests.ts --year 2027",
+    "validate:budget-requests": "node --import tsx scripts/validate-budget-requests.ts 2027",
+    "test:budget-requests": "node --import tsx --test tests/budget-requests*.test.ts",
+    "reprocess:budget-requests": "node --import tsx scripts/reprocess-budget-requests.ts 2027"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
