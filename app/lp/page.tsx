@@ -23,7 +23,6 @@ import {
   Timer,
   Zap,
   TrendingUp,
-  Users,
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,8 +33,10 @@ import { SITE_URL } from '@/app/lib/site-url';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 import { Badge } from '@/components/ui/badge';
 import { PolicyCases } from '@/components/lp/PolicyCases';
+import { MobileCta } from '@/components/lp/MobileCta';
+import { SUMMARY_LINK, TEXT_LINK } from '@/components/lp/styles';
 import { Button } from '@/components/ui/button';
-import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, PERSONAS, type Insight } from './insights';
+import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, type Insight } from './insights';
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
@@ -90,11 +91,22 @@ const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
   '/fiscal-space': Landmark,
 };
 
+/** セクションの正式名（ラベル）。フッターの「このページの構成」とラベルで同じ文言を使う */
+const SECTIONS = [
+  { id: 'insights', label: '分かったこと' },
+  { id: 'howto', label: '使い方' },
+  { id: 'policy-cases', label: '政策の選択肢' },
+  { id: 'questions', label: '国会質問の試案' },
+  { id: 'views', label: 'ビュー一覧' },
+  { id: 'data', label: 'データについて' },
+] as const;
+
 /** Hero に載せるサンキー図の実画面（所管 → 事業 → 支出先、2024年度決算）。public/lp/sankey-preview.jpg */
 const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld=all&fnrs=0';
 
 /**
- * LP（ランディングページ）。価値の説明と実画面 → 代表的な発見3件（残りは展開。ニュースから調べる広報の例を含む）→ 使い方・調査モデル → 国会質問の例 → 想定読者・ビュー → 出典、の順。
+ * LP（ランディングページ）。価値の説明と実画面 → 分かったこと3件（残りは展開）→ 使い方 → 政策の選択肢 → 国会質問の試案 → ビュー一覧 → データについて → 最後の CTA、の順。
+ * 作法は .claude/skills/lp-production（ラベル→h2→サブ→ブロック→開閉、文字リンク1種・開閉1種、スマホは下部固定 CTA）。
  * ツール本体は各ビューに任せる。数字と文言は insights.ts と policy-cases.ts に集約。
  */
 export default function LandingPage() {
@@ -103,8 +115,11 @@ export default function LandingPage() {
   const featured = INSIGHTS.filter(i => i.featured);
   const rest = INSIGHTS.filter(i => !i.featured);
   // 台本つきを先に、残りをその後に（配列の相対順は保つ）
-  const questions = [...DIET_QUESTIONS].sort((a, b) => Number(!!b.script) - Number(!!a.script));
+  // 質疑1回分の束（DIET_SETS）に入る問を先に見せ、残りは「ほかの問を見る」の中に畳む（スマホの縦の長さを抑える）
+  const inSets = new Set(DIET_SETS.flatMap(set => set.themes as readonly string[]));
+  const questions = [...DIET_QUESTIONS].sort((a, b) => Number(inSets.has(b.theme)) - Number(inSets.has(a.theme)) || Number(!!b.script) - Number(!!a.script));
   const scripted = questions.filter(q => q.script).length;
+  const shownCount = questions.filter(q => inSets.has(q.theme)).length;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
@@ -112,7 +127,7 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero */}
-        <section className="px-4 py-6 sm:px-6 lg:px-8">
+        <section id="lp-hero" className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl overflow-hidden rounded-3xl bg-mirai-gradient">
             <div className="p-6 sm:p-10 lg:p-14 lg:pb-8">
               <p className="mb-3 text-xs font-bold tracking-normal">チームみらい {PRODUCT_NAME}</p>
@@ -188,30 +203,30 @@ export default function LandingPage() {
         <section id="insights" aria-labelledby="insights-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">Insights</p>
+              <p className="text-sm font-bold text-primary-accent">{SECTIONS[0].label}</p>
               <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                各府省が自ら公表した数字の集計です（集計日 {DATA_ASOF}）。数字は問題の結論ではなく、具体的な問いを立てる材料です。各項目を「分かった事実 → まだ分からないこと → 確認する事項」の順に書いています。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
+                各府省が自ら公表した数字の集計です（集計日 {DATA_ASOF}）。数字は結論ではなく、問いを立てる材料です。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
               </p>
             </div>
 
             <ol className="grid gap-4 lg:grid-cols-3">
-              {featured.map((insight, index) => (
+              {featured.map(insight => (
                 <li key={insight.id}>
-                  <InsightCard insight={insight} index={index + 1} />
+                  <InsightCard insight={insight} />
                 </li>
               ))}
             </ol>
 
             <details className="group">
-              <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-card px-5 py-2.5 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
+              <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-white px-6 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
                 残りの{rest.length}件を見る
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
               </summary>
               <ol className="mt-4 grid gap-4 lg:grid-cols-2" start={featured.length + 1}>
-                {rest.map((insight, index) => (
+                {rest.map(insight => (
                   <li key={insight.id}>
-                    <InsightCard insight={insight} index={featured.length + index + 1} />
+                    <InsightCard insight={insight} />
                   </li>
                 ))}
               </ol>
@@ -223,7 +238,7 @@ export default function LandingPage() {
         <section id="howto" aria-labelledby="howto-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
             <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">How to</p>
+              <p className="text-sm font-bold text-primary-accent">{SECTIONS[1].label}</p>
               <h2 id="howto-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">3ステップで、根拠つきの問いにする</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 公開データの集計条件と元資料を確かめ、質問や記事の根拠として示すときは、画面の共有URLを添えてください。
@@ -253,7 +268,7 @@ export default function LandingPage() {
         <section id="questions" aria-labelledby="questions-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">For the Diet</p>
+              <p className="text-sm font-bold text-primary-accent">{SECTIONS[3].label}</p>
               <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体はチームみらいの実際の質疑の型（政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する）に揃えています。
@@ -285,7 +300,7 @@ export default function LandingPage() {
                     <ol className="mt-2 space-y-1 text-sm">
                       {set.themes.map(theme => {
                         const n = questions.findIndex(x => x.theme === theme) + 1;
-                        return <li key={theme}><a href={`#q-${n}`} className="font-bold text-primary-accent hover:underline">Q{n} {theme}</a></li>;
+                        return <li key={theme}><a href={`#q-${n}`} className={TEXT_LINK}>Q{n} {theme}↓</a></li>;
                       })}
                     </ol>
                     <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{set.note}</p>
@@ -295,8 +310,150 @@ export default function LandingPage() {
             </div>
 
             <ol className="mt-6 space-y-3">
-              {questions.map((q, index) => (
+              {questions.slice(0, shownCount).map((q, index) => <QuestionItem key={q.theme} q={q} index={index} />)}
+            </ol>
+            <details className="group mt-4">
+              <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-white px-6 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
+                所管委員会で単独に使う問い（{questions.length - shownCount}本）を見る
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol className="mt-4 space-y-3" start={shownCount + 1}>
+                {questions.slice(shownCount).map((q, index) => <QuestionItem key={q.theme} q={q} index={shownCount + index} />)}
+              </ol>
+            </details>
+          </div>
+        </section>
+
+        {/* Views */}
+        <section id="views" aria-labelledby="views-heading" className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl space-y-4">
+            <div className="max-w-2xl">
+              <p className="text-sm font-bold text-primary-accent">{SECTIONS[4].label}</p>
+              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{PRIMARY_PAGES.length}つの見方で</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {PRIMARY_PAGES.map(page => {
+                const Icon = PAGE_ICONS[page.href] ?? Workflow;
+                return (
+                  <Link
+                    key={page.href}
+                    href={page.href}
+                    className="group flex flex-col gap-2 rounded-2xl border border-mirai-border bg-card p-4 transition-colors hover:border-primary sm:p-5"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className="size-5 shrink-0 text-primary-accent" aria-hidden="true" />
+                      <span className="text-base font-bold">{page.navLabel}</span>
+                      {page.prototype && <Badge variant="muted">試作</Badge>}
+                    </span>
+                    <span className="flex-1 text-sm leading-relaxed text-mirai-text-subtle max-sm:hidden">{page.description}</span>
+                    <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent max-sm:hidden">
+                      開く <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* Data notes */}
+        <section id="data" aria-labelledby="data-heading" className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
+            <p className="text-sm font-bold text-primary-accent">{SECTIONS[5].label}</p>
+            <h2 id="data-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">数字は公開元の記載どおり。出典と前提をここに書いています</h2>
+            <ul className="mt-4 grid gap-3 text-sm leading-relaxed text-mirai-text-subtle md:grid-cols-2">
+              <li className="rounded-xl bg-mirai-surface p-4 md:col-span-2">
+                <span className="font-bold text-mirai-text">出典と利用条件。</span>
+                各データは次の公開元から取得し、出典を明記して加工しています。集計日は{DATA_ASOF}、対象は{DATA_VERSIONS}。
+                <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {SOURCES.map(src => (
+                    <li key={src.name} className="flex flex-col">
+                      <SourceLink href={src.href}>{src.name}</SourceLink>
+                      <span className="text-xs text-mirai-text-muted">{src.terms}</span>
+                    </li>
+                  ))}
+                </ul>
+                <span className="mt-2 block text-xs text-mirai-text-muted">各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。</span>
+              </li>
+              <li className="rounded-xl bg-mirai-surface p-4">
+                <span className="font-bold text-mirai-text">金額は府省の記載をそのまま用いています。</span>
+                当サイトはその正確性を独自に調査・保証するものではなく、取り込みや集計に誤りが含まれる可能性もあります。正式な情報は公開元の原資料で確かめてください。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。延べ9.9万件は各事業の支出先記載数の合計（再委託先を含む）で、同じ法人等の重複を除いた数ではありません。
+              </li>
+              <li className="rounded-xl bg-mirai-surface p-4">
+                <span className="font-bold text-mirai-text">AI評価はスクリーニング。</span>
+                {AI_EVALUATION_NATURE}事業の良し悪しを断定せず、人が詳しく確かめるための手がかりとして使ってください。
+              </li>
+              <li className="rounded-xl bg-mirai-surface p-4">
+                <span className="font-bold text-mirai-text">レビュー対象事業と、国の予算全体は範囲が異なります。</span>
+                冒頭の147.6兆円は2024年度のレビュー対象事業の歳出予算現額です。一般会計と特別会計を単純に足した総額には会計間の繰入れが重複して含まれるため、この比率を予算全体の網羅率としては示していません。年金給付を含む事業もレビュー対象です。サンキー図では財務省の予算書・決算書とレビュー事業を対応づけ、対応のない金額も区分して示しています。
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* 最後の CTA（主 CTA を背景色で区切る。スマホでは下部固定 CTA と同じ行き先） */}
+        <section id="lp-final-cta" aria-labelledby="cta-heading" className="px-4 py-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl rounded-3xl bg-mirai-surface-teal p-6 text-center sm:p-10">
+            <p className="text-sm font-bold text-primary-accent">次の一歩</p>
+            <h2 id="cta-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データから、根拠つきの問いへ</h2>
+            <p className="mx-auto mt-2 max-w-2xl text-[15px] leading-relaxed text-mirai-text-subtle">省庁から事業、事業から支出先へ。気になるところをクリックして、共有URLをそのまま根拠に。</p>
+            <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
+              <Button asChild size="lg" className="h-12 px-8">
+                <Link href={PREVIEW_HREF}>
+                  予算の流れを見てみる <ArrowRight />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="h-12">
+                <Link href="/">すべてのビューへ</Link>
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-mirai-text-subtle">登録不要・無料。公開データだけで動いています。</p>
+          </div>
+        </section>
+      </main>
+
+      <footer className="mt-4 bg-mirai-text px-4 py-6 pb-24 text-xs leading-relaxed text-white sm:px-6 sm:pb-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="font-bold">チームみらい</p>
+          <nav aria-label="このページの構成" className="mt-2">
+            <p className="text-white/60">このページの構成</p>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              {SECTIONS.map(section => <li key={section.id}><a href={`#${section.id}`} className="inline-block py-1 text-white/90 hover:underline">{section.label}↑</a></li>)}
+            </ul>
+          </nav>
+          <p className="mt-1 text-white/80">
+            出典：行政事業レビュー見える化サイト（内閣官房）、財務省 予算書・決算書データベース ほか。公開データを当サイトで編集・加工しています（公共データ利用規約 PDL1.0）。
+            AI による評価はスクリーニングであり、結論ではありません。このページは試案で、チームみらいの公式見解や質問の予定を示すものではありません。
+          </p>
+          <LegalLinks />
+        </div>
+      </footer>
+      <MobileCta href={PREVIEW_HREF} label="予算の流れを見てみる" watch={['lp-hero', 'lp-final-cta']} />
+    </div>
+  );
+}
+
+/** 出典と利用条件。利用規約は公開元の表示に従う（確認日 2026-10-08） */
+const SOURCES = [
+  { name: '行政事業レビュー見える化サイト（RSシステム）', href: 'https://rssystem.go.jp/terms', terms: 'レビューシート・基金シート・セグメントシート・公開API。公共データ利用規約（PDL1.0）。出典「行政事業レビュー見える化サイト」を明記し、編集・加工した旨を表示' },
+  { name: '財務省 予算書・決算書データベース', href: 'https://www.bb.mof.go.jp/', terms: '政府標準利用規約（第2.0版）。出典を明記し、編集・加工した旨を表示' },
+  { name: '会計検査院 検査報告データベース', href: 'https://report.jbaudit.go.jp/', terms: '政府標準利用規約（PDL1.0相当）。出典「会計検査院Webサイト」、加工時は明記' },
+  { name: '財務省 予算執行調査', href: 'https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/', terms: '政府標準利用規約（PDL1.0相当）。出典を明記' },
+  { name: '財務省 租税特別措置の適用実態調査', href: 'https://www.mof.go.jp/tax_policy/reference/stm_report/', terms: '政府標準利用規約。原表Excelの行番号と原本のハッシュを保持' },
+  { name: '総務省 家計調査（e-Stat）', href: 'https://www.e-stat.go.jp/', terms: '政府統計の総合窓口の利用規約。出典を明記' },
+  { name: '国税庁 法人番号公表サイト／Wikidata／Wikipedia', href: 'https://www.houjin-bangou.nta.go.jp/', terms: '法人番号は公表情報。Wikidata は CC0、Wikipedia の冒頭文は CC BY-SA 4.0 で出典とリンクを表示' },
+] as const;
+
+const STEPS = [
+  { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
+  { icon: ClipboardCheck, title: '根拠を固める', body: '事業の詳細で支出先・契約方式・落札率・5年の予算執行推移・検査院と予算執行調査の指摘を確かめ、共有URLを控える。' },
+  { icon: MessageSquareText, title: '問う', body: '参考人には数字を、大臣には判断を聞く。一覧は質問主意書に回し、約束は金額・件数・期限で取って翌年この画面で確かめる。' },
+] as const;
+
+function QuestionItem({ q, index }: { q: (typeof DIET_QUESTIONS)[number]; index: number }) {
+  return (
                 <li key={q.theme} id={`q-${index + 1}`} className="scroll-mt-24">
+
                   <details className="group rounded-2xl border border-mirai-border bg-card shadow-xs transition-colors hover:border-primary open:border-primary">
                     <summary className="flex cursor-pointer list-none items-start gap-3 p-4 [&::-webkit-details-marker]:hidden">
                       <span className="mt-0.5 text-xs font-bold text-mirai-text-muted">Q{index + 1}</span>
@@ -304,11 +461,11 @@ export default function LandingPage() {
                         <span className="flex flex-wrap items-center gap-1.5">
                           <Badge variant="light" className="rounded-full">{q.theme}</Badge>
                           {q.script && <Badge variant="default" className="rounded-full">台本つき</Badge>}
-                          {q.purpose.map(tag => <Badge key={tag} variant="light" className="rounded-full">{tag}</Badge>)}
-                          {q.answerer.map(tag => <Badge key={tag} variant="outline" className="rounded-full bg-mirai-surface">{tag}</Badge>)}
+                          {q.purpose.map(tag => <Badge key={tag} variant="light" className="rounded-full max-sm:hidden">{tag}</Badge>)}
+                          {q.answerer.map(tag => <Badge key={tag} variant="outline" className="rounded-full bg-mirai-surface max-sm:hidden">{tag}</Badge>)}
                         </span>
                         <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.summary}</span>
-                        <span className="mt-1 block text-xs text-mirai-text-muted">{q.committee}</span>
+                        <span className="mt-1 block text-xs text-mirai-text-muted max-sm:hidden">{q.committee}</span>
                       </span>
                       <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
@@ -372,156 +529,22 @@ export default function LandingPage() {
                         <span className="font-bold">読み方の注意：</span>
                         {q.caveat}
                       </p>
-                      <Link href={q.href} className="inline-flex items-center gap-1 font-bold text-primary-accent hover:underline">
-                        {q.linkLabel} <ArrowUpRight className="size-4" aria-hidden="true" />
+                      <Link href={q.href} className={TEXT_LINK}>
+                        {q.linkLabel} <ArrowRight className="size-4" aria-hidden="true" />
                       </Link>
                     </div>
                   </details>
                 </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* Personas */}
-        <section aria-labelledby="persona-heading" className="px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl space-y-4">
-            <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">Who</p>
-              <h2 id="persona-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">こんな人に</h2>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              {PERSONAS.map(persona => (
-                <div key={persona.title} className="rounded-2xl border border-mirai-border bg-card p-5">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
-                    <Users className="size-5" aria-hidden="true" />
-                  </span>
-                  <h3 className="mt-3 text-base font-bold">{persona.title}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-mirai-text-subtle">{persona.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Views */}
-        <section aria-labelledby="views-heading" className="px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl space-y-4">
-            <div className="max-w-2xl">
-              <p className="text-sm font-bold text-primary-accent">Views</p>
-              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{PRIMARY_PAGES.length}つの見方で</h2>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {PRIMARY_PAGES.map(page => {
-                const Icon = PAGE_ICONS[page.href] ?? Workflow;
-                return (
-                  <Link
-                    key={page.href}
-                    href={page.href}
-                    className="group flex flex-col gap-2 rounded-2xl border border-mirai-border bg-card p-5 transition-colors hover:border-primary"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Icon className="size-5 shrink-0 text-primary-accent" aria-hidden="true" />
-                      <span className="text-base font-bold">{page.navLabel}</span>
-                      {page.prototype && <Badge variant="muted">試作</Badge>}
-                    </span>
-                    <span className="flex-1 text-sm leading-relaxed text-mirai-text-subtle">{page.description}</span>
-                    <span className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent">
-                      開く <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Data notes */}
-        <section aria-labelledby="data-heading" className="px-4 py-10 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
-            <h2 id="data-heading" className="text-2xl/8 font-bold tracking-normal">データについて</h2>
-            <ul className="mt-4 grid gap-3 text-sm leading-relaxed text-mirai-text-subtle md:grid-cols-2">
-              <li className="rounded-xl bg-mirai-surface p-4 md:col-span-2">
-                <span className="font-bold text-mirai-text">出典と利用条件。</span>
-                各データは次の公開元から取得し、出典を明記して加工しています。集計日は{DATA_ASOF}、対象は{DATA_VERSIONS}。
-                <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-                  {SOURCES.map(src => (
-                    <li key={src.name} className="flex flex-col">
-                      <SourceLink href={src.href}>{src.name}</SourceLink>
-                      <span className="text-xs text-mirai-text-muted">{src.terms}</span>
-                    </li>
-                  ))}
-                </ul>
-                <span className="mt-2 block text-xs text-mirai-text-muted">各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。</span>
-              </li>
-              <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">金額は府省の記載をそのまま用いています。</span>
-                当サイトはその正確性を独自に調査・保証するものではなく、取り込みや集計に誤りが含まれる可能性もあります。正式な情報は公開元の原資料で確かめてください。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。延べ9.9万件は各事業の支出先記載数の合計（再委託先を含む）で、同じ法人等の重複を除いた数ではありません。
-              </li>
-              <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">AI評価はスクリーニング。</span>
-                {AI_EVALUATION_NATURE}事業の良し悪しを断定せず、人が詳しく確かめるための手がかりとして使ってください。
-              </li>
-              <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">レビュー対象事業と、国の予算全体は範囲が異なります。</span>
-                冒頭の147.6兆円は2024年度のレビュー対象事業の歳出予算現額です。一般会計と特別会計を単純に足した総額には会計間の繰入れが重複して含まれるため、この比率を予算全体の網羅率としては示していません。年金給付を含む事業もレビュー対象です。サンキー図では財務省の予算書・決算書とレビュー事業を対応づけ、対応のない金額も区分して示しています。
-              </li>
-            </ul>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-              <Button asChild size="lg">
-                <Link href={PREVIEW_HREF}>
-                  予算の流れを見てみる <ArrowRight />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/">すべてのビューへ</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="mt-4 bg-mirai-text px-4 py-6 text-xs leading-relaxed text-white sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <p className="font-bold">チームみらい</p>
-          <p className="mt-1 text-white/80">
-            出典：行政事業レビュー見える化サイト（内閣官房）、財務省 予算書・決算書データベース ほか。公開データを当サイトで編集・加工しています（公共データ利用規約 PDL1.0）。
-            AI による評価はスクリーニングであり、結論ではありません。このページは試案で、チームみらいの公式見解や質問の予定を示すものではありません。
-          </p>
-          <LegalLinks />
-        </div>
-      </footer>
-    </div>
   );
 }
 
-/** 出典と利用条件。利用規約は公開元の表示に従う（確認日 2026-10-08） */
-const SOURCES = [
-  { name: '行政事業レビュー見える化サイト（RSシステム）', href: 'https://rssystem.go.jp/terms', terms: 'レビューシート・基金シート・セグメントシート・公開API。公共データ利用規約（PDL1.0）。出典「行政事業レビュー見える化サイト」を明記し、編集・加工した旨を表示' },
-  { name: '財務省 予算書・決算書データベース', href: 'https://www.bb.mof.go.jp/', terms: '政府標準利用規約（第2.0版）。出典を明記し、編集・加工した旨を表示' },
-  { name: '会計検査院 検査報告データベース', href: 'https://report.jbaudit.go.jp/', terms: '政府標準利用規約（PDL1.0相当）。出典「会計検査院Webサイト」、加工時は明記' },
-  { name: '財務省 予算執行調査', href: 'https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/', terms: '政府標準利用規約（PDL1.0相当）。出典を明記' },
-  { name: '財務省 租税特別措置の適用実態調査', href: 'https://www.mof.go.jp/tax_policy/reference/stm_report/', terms: '政府標準利用規約。原表Excelの行番号と原本のハッシュを保持' },
-  { name: '総務省 家計調査（e-Stat）', href: 'https://www.e-stat.go.jp/', terms: '政府統計の総合窓口の利用規約。出典を明記' },
-  { name: '国税庁 法人番号公表サイト／Wikidata／Wikipedia', href: 'https://www.houjin-bangou.nta.go.jp/', terms: '法人番号は公表情報。Wikidata は CC0、Wikipedia の冒頭文は CC BY-SA 4.0 で出典とリンクを表示' },
-] as const;
-
-const STEPS = [
-  { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
-  { icon: ClipboardCheck, title: '根拠を固める', body: '事業の詳細で支出先・契約方式・落札率・5年の予算執行推移・検査院と予算執行調査の指摘を確かめ、共有URLを控える。' },
-  { icon: MessageSquareText, title: '問う', body: '参考人には数字を、大臣には判断を聞く。一覧は質問主意書に回し、約束は金額・件数・期限で取って翌年この画面で確かめる。' },
-] as const;
-
-function InsightCard({ insight, index }: { insight: Insight; index: number }) {
+function InsightCard({ insight }: { insight: Insight }) {
   const Icon = INSIGHT_ICONS[insight.id] ?? Workflow;
   return (
     <article className="flex h-full flex-col gap-4 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
-          <Icon className="size-5" aria-hidden="true" />
-        </span>
-        <span className="text-xs font-bold text-mirai-text-muted">{String(index).padStart(2, '0')}</span>
-      </div>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
       <div>
         <p className="font-lexend text-3xl font-medium tracking-normal text-primary-accent">{insight.figure}</p>
         <p className="mt-1 text-xs font-medium text-mirai-text-subtle">{insight.figureNote}</p>
@@ -529,8 +552,8 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
       <h3 className="text-lg/7 font-bold tracking-normal">{insight.title}</h3>
       <FactList label="分かった事実" items={insight.facts.slice(0, 2)} />
       <details className="group/more text-sm leading-relaxed">
-        <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm font-bold text-primary-accent [&::-webkit-details-marker]:hidden">
-          続きと、まだ分からないこと
+        <summary className={SUMMARY_LINK}>
+          詳しく見る：続きと、まだ分からないこと
           <ChevronDown className="size-4 transition-transform group-open/more:rotate-180" aria-hidden="true" />
         </summary>
         <div className="mt-3 space-y-3">
@@ -545,7 +568,7 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
       </details>
       <div className="mt-auto flex flex-col gap-2 border-t border-mirai-border pt-4">
         <p className="text-xs text-mirai-text-muted">{insight.source}</p>
-        <Link href={insight.href} className="inline-flex items-center gap-1 text-sm font-bold text-primary-accent hover:underline">
+        <Link href={insight.href} className={TEXT_LINK}>
           {insight.linkLabel} <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
@@ -572,8 +595,8 @@ function FactList({ label, items, tone = 'fact' }: { label?: string; items: stri
 
 function SourceLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="font-bold text-primary-accent underline underline-offset-2 hover:opacity-90">
-      {children}
+    <a href={href} target="_blank" rel="noopener noreferrer" className={TEXT_LINK}>
+      {children}↗
     </a>
   );
 }
