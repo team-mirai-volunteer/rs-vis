@@ -1,9 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { budgetRequestResponse, DEFAULT_REQUEST_FILTERS, filterBudgetRequests, formatRequestAmount, parseBudgetRequestFilters, recordLocation, requestSourceUrl } from '../app/lib/budget-requests';
 import { requestDataset, requestDocument, requestRecord } from './fixtures/budget-requests-ui';
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
+
+test('絞り込みの選択肢とは独立したアクセシブル名を付ける', () => {
+  const source = readFileSync(new URL('../app/budget-requests/view.tsx', import.meta.url), 'utf8');
+  const filter = source.slice(source.indexOf('function Filter('), source.indexOf('function RecordCard('));
+  const select = filter.match(/<select\b[^>]*>/)?.[0];
+  assert.ok(select, '共通Filterにselectがある');
+  assert.match(select, /\baria-label=\{label\}/, '選択中の値や選択肢をラベルに混ぜない');
+});
 
 test('要求額は金額0・事項要求・空欄・抽出失敗を分けて表示する', () => {
   assert.equal(formatRequestAmount({ valueYen: 0, status: 'numeric', raw: '0' }), '0円');

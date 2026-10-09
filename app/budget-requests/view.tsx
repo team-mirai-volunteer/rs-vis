@@ -144,7 +144,7 @@ export default function BudgetRequestsView() {
 }
 
 function Filter({ label, value, onChange, options, all }: { label: string; value: string; onChange: (value: string) => void; options: Record<string, string>; all: string }) {
-  return <label className="block text-xs text-mirai-text-secondary"><span className="mb-1 block">{label}</span><select className={fieldClass} value={value} onChange={event => onChange(event.target.value)}><option value="">{all}</option>{value && !Object.hasOwn(options, value) && <option value={value}>{value}</option>}{Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
+  return <label className="block text-xs text-mirai-text-secondary"><span className="mb-1 block">{label}</span><select aria-label={label} className={fieldClass} value={value} onChange={event => onChange(event.target.value)}><option value="">{all}</option>{value && !Object.hasOwn(options, value) && <option value={value}>{value}</option>}{Object.entries(options).map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
 }
 
 function RecordCard({ record, document }: { record: BudgetRequestRecord; document?: BudgetRequestDocument }) {

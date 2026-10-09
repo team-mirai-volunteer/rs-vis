@@ -19,6 +19,9 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('heading', { name: '概算要求を原資料から探す' })).toBeVisible();
     const record = page.getByTestId('request-record');
     await expect(record).toHaveCount(1);
+    for (const label of ['府省・機関等', '取得状況', '資料種別', '記載のある金額区分']) {
+      await expect(page.getByRole('combobox', { name: label, exact: true })).toBeVisible();
+    }
     await expect(record).toContainText('0円');
     await expect(record).toContainText('事項要求（金額未定）');
     await expect(record).toContainText('記載なし');
@@ -45,6 +48,7 @@ for (const width of [1440, 390]) {
     await expect(record).toHaveCount(1);
     await page.getByRole('button', { name: '条件をクリア' }).click();
     await page.getByLabel('府省・機関等', { exact: true }).selectOption('別省');
+    await expect(page.getByRole('combobox', { name: '府省・機関等', exact: true })).toHaveValue('別省');
     await expect(page.getByText('条件に一致する抽出済みの行はありません。')).toBeVisible();
     await page.getByRole('button', { name: /^資料と取得状況/ }).click();
     await page.getByLabel('取得状況', { exact: true }).selectOption('fetch_failed');
@@ -69,7 +73,7 @@ test('欠落データ・通信失敗は0件と混同せず、再試行できる'
   await expect(page.getByTestId('request-record')).toHaveCount(0);
   state = 'error';
   await page.getByRole('button', { name: '再読み込み' }).click();
-  await expect(page.getByRole('alert')).toContainText('テスト通信失敗');
+  await expect(page.getByRole('region', { name: '概算要求の検索結果' }).getByRole('alert')).toContainText('テスト通信失敗');
   state = 'ok';
   await page.getByRole('button', { name: '再読み込み' }).click();
   await expect(page.getByTestId('request-record')).toHaveCount(2);
