@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { LegalLinks } from '@/components/legal/LegalLinks';
 import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
@@ -443,8 +444,8 @@ export default function LandingPage() {
                 <span className="mt-2 block text-xs text-mirai-text-muted">各画面に取得日と原本のハッシュを記録しています。集計条件は各示唆の「分かった事実」に母数とともに書いています。</span>
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
-                <span className="font-bold text-mirai-text">金額は府省の記載どおり。</span>
-                このサイトでは検証していません。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。延べ9.9万件は各事業の支出先記載数の合計（再委託先を含む）で、同じ法人等の重複を除いた数ではありません。
+                <span className="font-bold text-mirai-text">金額は府省の記載をそのまま用いています。</span>
+                当サイトはその正確性を独自に調査・保証するものではなく、取り込みや集計に誤りが含まれる可能性もあります。正式な情報は公開元の原資料で確かめてください。「2024年度実績」は2025年版レビューシートの前年度執行額です。基金は2026年版基金シートに載る328基金の年度初め残高で、過去のシートにしかない基金を含めた全体は354基金です。延べ9.9万件は各事業の支出先記載数の合計（再委託先を含む）で、同じ法人等の重複を除いた数ではありません。
               </li>
               <li className="rounded-xl bg-mirai-surface p-4">
                 <span className="font-bold text-mirai-text">AI評価はスクリーニング。</span>
@@ -476,6 +477,7 @@ export default function LandingPage() {
             出典：行政事業レビュー見える化サイト（内閣官房）、財務省 予算書・決算書データベース ほか。公開データを当サイトで編集・加工しています（公共データ利用規約 PDL1.0）。
             AI による評価はスクリーニングであり、結論ではありません。このページは試案で、チームみらいの公式見解や質問の予定を示すものではありません。
           </p>
+          <LegalLinks />
         </div>
       </footer>
     </div>
