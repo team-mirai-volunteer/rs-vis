@@ -159,6 +159,19 @@ test('failed sources do not starve later files across bounded resumes and retry 
   assert.equal(server.calls.filter(url => url === file(0)).length, 2);
 });
 
+test('a failed landing page retains failure while verified cached current links still advance', async t => {
+  const options = await setup(t); const server = fixture(2);
+  const first = await ingestBudgetRequests({ ...options, maxFiles: 0, fetcher: server.fetcher });
+  server.sources.delete(ROOT);
+  const second = await ingestBudgetRequests({ ...options, now: NEXT, previous: first, fetcher: server.fetcher });
+  assert.equal(second.records.length, 2);
+  const root = second.documents.find(doc => doc.url === ROOT)!;
+  assert.equal(root.status, 'fetch_failed');
+  assert.equal(root.retrievedAt, NOW);
+  assert.ok(root.validation.some(note => note.includes('保存済みHTML')));
+  assert.ok(second.records.every(record => record.provenance.retrievedAt === NEXT));
+});
+
 test('one invocation timestamp is shared even when fetches finish at different times', async t => {
   const options = await setup(t); const server = fixture(1);
   const result = await ingestBudgetRequests({ ...options, now: undefined, fetcher: async url => {

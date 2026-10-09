@@ -6,9 +6,11 @@ import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import type { BudgetRequestDataset, BudgetRequestDocument, BudgetRequestRecord } from '../types/budget-requests';
 import { discoverCatalogues, discoverChildren, discoverMinistries, officialUrl, sha256, sourceDocument, isCurrentRequestSource } from './budget-requests-discover';
+import { currentCycleSnapshot } from './budget-requests-scope';
 
 
 const MAX_BYTES = 40 * 1024 * 1024;
+export const DEFAULT_DISCOVERY_DEPTH = 3;
 export interface SourceResponse { bytes: Uint8Array; contentType: string; url: string; retrievedAt?: string; }
 export type SourceFetcher = (url: string) => Promise<SourceResponse>;
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -95,7 +97,7 @@ async function atomicWrite(path: string, bytes: Uint8Array | string) {
   await rename(temporary, path);
 }
 export async function ingestionFingerprint(): Promise<string> {
-  return sha256((await Promise.all(['fetch-budget-requests.ts', 'budget-requests-extract.ts', 'budget-requests-discover.ts'].map(file => readFile(new URL(file, import.meta.url), 'utf8')))).join('\n'));
+  return sha256((await Promise.all(['fetch-budget-requests.ts', 'budget-requests-extract.ts', 'budget-requests-discover.ts', 'budget-requests-scope.ts'].map(file => readFile(new URL(file, import.meta.url), 'utf8')))).join('\n'));
 }
 export async function ingestBudgetRequests(options: IngestionOptions): Promise<BudgetRequestDataset> {
   const { year, maxFiles, maxPages, depth, concurrency, cacheDir, output } = options;
@@ -123,7 +125,8 @@ export async function ingestBudgetRequests(options: IngestionOptions): Promise<B
   let originalOutput: Buffer | undefined;
   let originalJson: string | undefined;
   try { originalOutput = await readFile(output); originalJson = gunzipSync(originalOutput).toString('utf8'); } catch { /* No readable output yet. */ }
-  const previous = baseline ? structuredClone(baseline) : undefined;
+  const scoped = baseline ? await currentCycleSnapshot(baseline, cacheDir) : undefined;
+  const previous = scoped?.dataset;
   if (previous) {
     previous.documents = previous.documents.filter(doc => isCurrentRequestSource(doc.url, year));
     const allowed = new Set(previous.documents.map(doc => doc.id));
@@ -216,7 +219,7 @@ export async function ingestBudgetRequests(options: IngestionOptions): Promise<B
       completedPages: [...completedPages], completedFiles: [...completedFiles], dataset, sources };
     await atomicWrite(checkpointPath, gzipSync(JSON.stringify(state), { level: 9 }));
     await atomicWrite(join(cacheDir, `last-run-${year}.json`), JSON.stringify({ startedAt: now, cycleStartedAt: state.startedAt, complete,
-      pagesAttempted: pageCount, filesAttempted: fileCount, deferredPages, deferredFiles, deferredSources: [...deferredSources.values()], attempts, snapshotGeneratedAt: dataset.generatedAt }, null, 2));
+      pagesAttempted: pageCount, filesAttempted: fileCount, deferredPages, deferredFiles, deferredSources: [...deferredSources.values()], excludedOutOfScope: scoped?.excluded ?? [], attempts, snapshotGeneratedAt: dataset.generatedAt }, null, 2));
     return dataset;
   }
   const indexDoc = register(sourceDocument(indexUrl, `${year}年度 財務省公式索引`, '全府省', year, now, null, null, 'index'));
@@ -248,13 +251,26 @@ export async function ingestBudgetRequests(options: IngestionOptions): Promise<B
       if (/\.(pdf|csv|tsv|xml|xlsx?|zip)(?:\?|$)/i.test(doc.url)) { files.set(doc.id, doc); return; }
       const discoveryType = discoveryTypes.get(doc.id) ?? queued.documentType;
       const result = await acquirePage(doc, true);
-      if (!result.source) return;
-      const isHtml = /text\/html|application\/xhtml/.test(result.source.contentType) || /^\s*<!doctype html|^\s*<html/i.test(decodeSource(result.source).slice(0, 200));
+      let discoverySource = result.source;
+      // A temporarily unavailable landing page must not strand already verified
+      // current-cycle links. Replay only hash-verified HTML; retain fetch_failed
+      // and the last successful provenance rather than inventing a fresh fetch.
+      if (!discoverySource && result.doc.status === 'fetch_failed' && result.doc.hash && /html/i.test(result.doc.contentType ?? '')) {
+        try {
+          const bytes = await readFile(join(cacheDir, result.doc.hash));
+          if (sha256(bytes) === result.doc.hash) {
+            discoverySource = { bytes, contentType: result.doc.contentType!, url: result.doc.url, retrievedAt: result.doc.retrievedAt ?? undefined };
+            result.doc.validation = unique([...result.doc.validation, '取得失敗のため、保存済みHTMLの当年度リンクを再確認して続行しました']);
+          }
+        } catch { /* No verified cached page; leave the explicit acquisition failure. */ }
+      }
+      if (!discoverySource) return;
+      const isHtml = /text\/html|application\/xhtml/.test(discoverySource.contentType) || /^\s*<!doctype html|^\s*<html/i.test(decodeSource(discoverySource).slice(0, 200));
       if (!isHtml) { files.set(doc.id, result.doc); return; }
       records.delete(doc.id);
       result.doc.recordCount = 0;
       result.doc.documentType = 'index';
-      const children = discoverChildren(decodeSource(result.source), { ...result.doc, documentType: discoveryType }, now).map(register);
+      const children = discoverChildren(decodeSource(discoverySource), { ...result.doc, documentType: discoveryType }, now).map(register);
       if (!children.length) result.doc.validation = unique([...result.doc.validation, '対応する概算要求資料リンクを自動検出できませんでした']);
       for (const child of children) {
         if (child.status === 'unsupported' && child.validation.some(value => value.includes('歳入'))) continue;
@@ -323,7 +339,7 @@ async function main() {
   const output = join(process.cwd(), 'public', 'data', `budget-requests-${year}.json.gz`);
   let previous: BudgetRequestDataset | undefined;
   try { previous = JSON.parse(gunzipSync(await readFile(output)).toString('utf8')); } catch { /* First acquisition. */ }
-  const result = await ingestBudgetRequests({ year, maxFiles: option('--max-files', 2000), maxPages: option('--max-pages', 200), depth: option('--depth', 2), concurrency: Math.max(1, Math.min(option('--concurrency', 3), 6)), cacheDir: join(process.cwd(), 'data', 'budget-requests', 'sources'), output, previous, resume: args.includes('--resume') });
+  const result = await ingestBudgetRequests({ year, maxFiles: option('--max-files', 2000), maxPages: option('--max-pages', 200), depth: option('--depth', DEFAULT_DISCOVERY_DEPTH), concurrency: Math.max(1, Math.min(option('--concurrency', 3), 6)), cacheDir: join(process.cwd(), 'data', 'budget-requests', 'sources'), output, previous, resume: args.includes('--resume') });
   console.log(JSON.stringify(result.coverage, null, 2));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch(error => { console.error(error); process.exitCode = 1; });

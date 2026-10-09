@@ -327,3 +327,12 @@ test('explicit source-URL year and archive rejection precede extraction even for
     assert.equal(result.status, 'extraction_failed'); assert.equal(result.records.length, 0);
   }
 });
+
+test('archiving revenue originals never makes them expenditure rows during replay', async () => {
+  for (const metadata of [{ title: '令和9年度歳入概算見積書' }, { validation: ['歳入資料は歳出概算要求の抽出対象外'] }]) {
+    const result = await structured('事業名,要求額(千円)\n歳入項目,100\n', metadata);
+    assert.equal(result.status, 'unsupported');
+    assert.equal(result.records.length, 0);
+    assert.deepEqual(result.validation, ['歳入資料は歳出概算要求の抽出対象外']);
+  }
+});

@@ -8,9 +8,10 @@ import { decodeSource, preserveUnchangedSnapshot } from './fetch-budget-requests
 import { discoverChildren, documentType, isCurrentRequestSource, sha256 } from './budget-requests-discover';
 import { extractRequestDocument } from './budget-requests-extract';
 import { validateBudgetRequests } from './validate-budget-requests';
+import { currentCycleSnapshot } from './budget-requests-scope';
 
 export async function reprocessBudgetRequests(data: BudgetRequestDataset, cacheDir: string): Promise<BudgetRequestDataset> {
-  const next = structuredClone(data);
+  const { dataset: next } = await currentCycleSnapshot(data, cacheDir);
   next.documents = next.documents.filter(doc => isCurrentRequestSource(doc.url, next.requestedFY));
   const documents = new Map(next.documents.map(doc => [doc.id, doc]));
   const records = new Map<string, BudgetRequestRecord[]>(next.documents.map(doc => [doc.id, next.records.filter(record => record.documentId === doc.id)]));

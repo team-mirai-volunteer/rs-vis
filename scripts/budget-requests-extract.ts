@@ -492,6 +492,11 @@ function extractXml(text: string, doc: BudgetRequestDocument, hash: string): Res
 export async function extractRequestDocument(bytes: Uint8Array, doc: BudgetRequestDocument): Promise<Result> {
   const hash = digest(bytes);
   if (!isCurrentRequestSource(doc.url, doc.requestedFY)) return { records: [], status: 'extraction_failed', validation: ['公式の対象年度資料として確認できないURLです'] };
+  // Originals may be archived for completeness without treating revenue as spending.
+  // Keep this guard in the extractor too, so an offline replay cannot change that scope.
+  if (doc.validation.some(note => note.includes('歳入資料は歳出概算要求の抽出対象外')) || (/歳入/.test(doc.title) && !/歳出/.test(doc.title))) {
+    return { records: [], status: 'unsupported', validation: ['歳入資料は歳出概算要求の抽出対象外'] };
+  }
   try {
     if (Buffer.from(bytes.subarray(0, 5)).toString('ascii') === '%PDF-') return await extractPdf(bytes, doc, hash);
     const contentType = doc.contentType ?? '';

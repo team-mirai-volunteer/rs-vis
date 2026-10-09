@@ -3,7 +3,7 @@ import { appendFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
-import { ingestionFingerprint } from './fetch-budget-requests';
+import { DEFAULT_DISCOVERY_DEPTH, ingestionFingerprint } from './fetch-budget-requests';
 
 export const WEEKLY_REFRESH = '10 20 * * 0';
 export const BACKLOG_CONTINUATION = '10 20 * * 1-6';
@@ -13,7 +13,7 @@ export function shouldAcquireBudgetRequests(event: string, schedule: string, che
   if (schedule === WEEKLY_REFRESH) return true;
   if (schedule !== BACKLOG_CONTINUATION || !checkpoint || typeof checkpoint !== 'object') return false;
   const saved = checkpoint as { version?: number; year?: number; depth?: number; fingerprint?: string; complete?: boolean; dataset?: { requestedFY?: number; documents?: unknown[]; records?: unknown[] }; completedFiles?: unknown[]; completedPages?: unknown[] };
-  return saved.version === 1 && saved.year === 2027 && saved.depth === 2 && saved.fingerprint === fingerprint && saved.complete === false
+  return saved.version === 1 && saved.year === 2027 && saved.depth === DEFAULT_DISCOVERY_DEPTH && saved.fingerprint === fingerprint && saved.complete === false
     && saved.dataset?.requestedFY === 2027 && Array.isArray(saved.dataset.documents) && Array.isArray(saved.dataset.records)
     && Array.isArray(saved.completedFiles) && Array.isArray(saved.completedPages);
 }
