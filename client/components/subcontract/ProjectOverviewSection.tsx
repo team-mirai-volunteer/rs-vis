@@ -31,6 +31,7 @@ export function ProjectOverviewSection({
   expanded,
   onToggle,
   previewHeight,
+  previewTextPx = 12,
   onResizeStart,
   onResizeReset,
   isLoading = false,
@@ -45,6 +46,8 @@ export function ProjectOverviewSection({
   expanded: boolean;
   onToggle: () => void;
   previewHeight: number;
+  /** プレビュー本文の文字サイズ（px）。既定 12（text-xs）。小さい画面では呼び出し側が縮める */
+  previewTextPx?: number;
   onResizeStart?: (e: React.MouseEvent) => void;
   onResizeReset?: () => void;
   isLoading?: boolean;
@@ -108,12 +111,13 @@ export function ProjectOverviewSection({
         <>
           <div className="px-3.5 pb-2">
             <div
-              className="overflow-hidden whitespace-pre-wrap break-words text-xs leading-relaxed text-mirai-text-subtle"
+              className="overflow-hidden whitespace-pre-wrap break-words leading-relaxed text-mirai-text-subtle"
               style={{
                 display: '-webkit-box',
                 WebkitBoxOrient: 'vertical',
-                // text-xs (12px) × leading-relaxed (1.625)、下余白8pxを除いた行数。
-                WebkitLineClamp: Math.max(1, Math.floor((previewHeight - 8) / 19.5)),
+                fontSize: previewTextPx,
+                // 文字サイズ × leading-relaxed (1.625)、下余白8pxを除いた行数。
+                WebkitLineClamp: Math.max(1, Math.floor((previewHeight - 8) / (previewTextPx * 1.625))),
               }}
             >
               {formatProjectText(previewText)}

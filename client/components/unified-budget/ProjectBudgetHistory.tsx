@@ -16,7 +16,8 @@ const format = (amount: number | null) => amount === null ? '—' : formatBudget
 
 /**
  * グラフは実寸（px）で描く。viewBox で拡大すると幅の広いパネルで文字と高さが膨らみ、
- * 下の「予算・ブロック・支出先」タブの領域を圧迫するため、高さは固定にしている。
+ * 下の「予算・ブロック・支出先」タブの領域を圧迫するため、高さはパネル幅に連動させない。
+ * 画面が小さいとき（ラベル文字サイズが 13px 未満のとき）だけ `scale` で縦方向と文字を縮める。
  */
 const CHART_H = 96;
 const PLOT_TOP = 6;
@@ -25,8 +26,11 @@ const AXIS_LABEL_Y = 90;
 const PLOT_LEFT = 66;
 const PLOT_RIGHT_PAD = 14;
 
-/** Mount with key={pid}, so changing projects cannot retain another project's selection/data. */
-export function ProjectBudgetHistory({ pid }: { pid: number }) {
+/**
+ * Mount with key={pid}, so changing projects cannot retain another project's selection/data.
+ * @param scale 縦方向と文字の倍率（1 がフル HD の既定。小さい画面で 1 未満）
+ */
+export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: number }) {
   const [data, setData] = useState(() => cache.get(pid));
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -75,10 +79,18 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
   const points = Array.from({ length: lastYear - firstYear + 1 }, (_, i) => data.points.find(point => point.fiscalYear === firstYear + i)
     ?? { fiscalYear: firstYear + i, initialBudget: null, totalBudget: null, executedAmount: null });
   const max = Math.max(1, ...points.flatMap(point => series.map(item => point[item.key] ?? 0)));
+  const k = Math.min(1, Math.max(0.6, scale));
+  const chartH = Math.round(CHART_H * k);
+  const plotTop = Math.round(PLOT_TOP * k);
+  const plotBottom = Math.round(PLOT_BOTTOM * k);
+  const axisLabelY = Math.round(AXIS_LABEL_Y * k);
+  const tickPx = Math.max(8, Math.round(9 * k));
+  const textPx = Math.max(10, Math.round(12 * k));
+  const legendPx = Math.max(9, Math.round(10 * k));
   const plotWidth = width - PLOT_LEFT - PLOT_RIGHT_PAD;
   const step = points.length === 1 ? plotWidth : plotWidth / (points.length - 1);
   const x = (index: number) => points.length === 1 ? PLOT_LEFT + plotWidth / 2 : PLOT_LEFT + index * step;
-  const y = (amount: number) => PLOT_BOTTOM - amount / max * (PLOT_BOTTOM - PLOT_TOP);
+  const y = (amount: number) => plotBottom - amount / max * (plotBottom - plotTop);
   // 年度ラベルが重なる本数なら最新年度から数えて間引く（ヒット領域は全年度に残す）
   const labelEvery = Math.max(1, Math.ceil(28 / step));
   const active = points.find(point => point.fiscalYear === activeYear);
@@ -86,17 +98,17 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
   return <section className="py-2" aria-label="予算・執行額の推移">
     {/* 見出し・凡例・出典を 1 行にまとめる（狭い幅では凡例が次の行へ折り返す） */}
     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-      <h3 className="text-xs font-bold text-mirai-text">予算・執行額の推移</h3>
-      <div className="flex flex-wrap gap-x-2.5 text-[10px] text-mirai-text-secondary">
+      <h3 className="font-bold text-mirai-text" style={{ fontSize: textPx }}>予算・執行額の推移</h3>
+      <div className="flex flex-wrap gap-x-2.5 text-mirai-text-secondary" style={{ fontSize: legendPx }}>
         {series.map(item => <span key={item.key} className="inline-flex items-center gap-1"><span aria-hidden="true" className="inline-block w-3 border-t-2" style={{ borderColor: item.color, borderStyle: item.dash ? 'dashed' : 'solid' }} />{item.label}</span>)}
       </div>
-      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-[10px] text-mirai-text-muted hover:underline" title={`${data.sheetYear}年版レビューシートの訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
+      <a href={data.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-auto text-mirai-text-muted hover:underline" style={{ fontSize: legendPx }} title={`${data.sheetYear}年版レビューシートの訂正を含む記載値。取得日：${new Date(data.retrievedAt).toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' })}。予算現額は補正・繰越等を含みます。`}>出典 ↗</a>
     </div>
     <div ref={chartRef} className="relative mt-1" onMouseLeave={() => setActiveYear(null)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setActiveYear(null); } }}>
-    <svg width={width} height={CHART_H} viewBox={`0 0 ${width} ${CHART_H}`} className="block" role="group" aria-label={`${firstYear}〜${lastYear}年度の予算・執行額。グラフに触れると金額を表示します。`}>
+    <svg width={width} height={chartH} viewBox={`0 0 ${width} ${chartH}`} className="block" role="group" aria-label={`${firstYear}〜${lastYear}年度の予算・執行額。グラフに触れると金額を表示します。`}>
       {[0, 0.5, 1].map(ratio => <g key={ratio}>
         <line x1={PLOT_LEFT} x2={width - PLOT_RIGHT_PAD} y1={y(max * ratio)} y2={y(max * ratio)} stroke="currentColor" className="text-mirai-border" />
-        <text x={PLOT_LEFT - 5} y={y(max * ratio) + 3} textAnchor="end" fontSize={9} fill="currentColor" className="text-mirai-text-muted">{formatBudgetFromYen(max * ratio)}</text>
+        <text x={PLOT_LEFT - 5} y={y(max * ratio) + 3} textAnchor="end" fontSize={tickPx} fill="currentColor" className="text-mirai-text-muted">{formatBudgetFromYen(max * ratio)}</text>
       </g>)}
       {series.map(item => {
         let previous = false;
@@ -113,8 +125,8 @@ export function ProjectBudgetHistory({ pid }: { pid: number }) {
         </g>;
       })}
       {points.map((point, i) => <g key={point.fiscalYear}>
-        {(points.length - 1 - i) % labelEvery === 0 && <text x={x(i)} y={AXIS_LABEL_Y} textAnchor="middle" fontSize={9} fill="currentColor" className="text-mirai-text-muted">{point.fiscalYear}</text>}
-        <rect x={points.length === 1 ? PLOT_LEFT : i === 0 ? PLOT_LEFT - 8 : x(i) - step / 2} y={0} width={points.length === 1 ? plotWidth : (i === 0 || i === points.length - 1) ? step / 2 + 8 : step} height={CHART_H} fill="transparent"
+        {(points.length - 1 - i) % labelEvery === 0 && <text x={x(i)} y={axisLabelY} textAnchor="middle" fontSize={tickPx} fill="currentColor" className="text-mirai-text-muted">{point.fiscalYear}</text>}
+        <rect x={points.length === 1 ? PLOT_LEFT : i === 0 ? PLOT_LEFT - 8 : x(i) - step / 2} y={0} width={points.length === 1 ? plotWidth : (i === 0 || i === points.length - 1) ? step / 2 + 8 : step} height={chartH} fill="transparent"
           tabIndex={0} role="button" aria-label={`${point.fiscalYear}年度の金額`} aria-describedby={activeYear === point.fiscalYear ? `budget-history-tooltip-${pid}` : undefined}
           onPointerMove={event => { setPointer({ x: event.clientX, y: event.clientY }); setActiveYear(point.fiscalYear); }}
           onFocus={event => { const bounds = event.currentTarget.getBoundingClientRect(); setPointer({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }); setActiveYear(point.fiscalYear); }}
