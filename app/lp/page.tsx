@@ -28,6 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { LegalLinks } from '@/components/legal/LegalLinks';
 import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
@@ -476,6 +477,7 @@ export default function LandingPage() {
             出典：行政事業レビュー見える化サイト（内閣官房）、財務省 予算書・決算書データベース ほか。公開データを当サイトで編集・加工しています（公共データ利用規約 PDL1.0）。
             AI による評価はスクリーニングであり、結論ではありません。このページは試案で、チームみらいの公式見解や質問の予定を示すものではありません。
           </p>
+          <LegalLinks />
         </div>
       </footer>
     </div>

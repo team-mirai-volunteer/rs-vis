@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { LegalLinks } from '@/components/legal/LegalLinks';
 import { PAGES } from '@/components/navigation/pages';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -126,6 +127,7 @@ export default function Home() {
             データは行政事業レビューシステム（RS）と財務省 予算書・決算書データベースの公開データを加工したものです。
             AI による評価はスクリーニングであり、結論ではありません。
           </p>
+          <LegalLinks />
         </div>
       </footer>
     </div>

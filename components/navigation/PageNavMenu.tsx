@@ -73,6 +73,10 @@ export function PageNavMenu({
                 ))}
               </div>
             ))}
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 border-t border-border px-2.5 pb-1 pt-2 text-[11px] text-mirai-text-muted">
+              <Link href="/terms" onClick={() => setOpen(false)} className="hover:text-mirai-text hover:underline">利用規約</Link>
+              <Link href="/privacy" onClick={() => setOpen(false)} className="hover:text-mirai-text hover:underline">プライバシーポリシー</Link>
+            </div>
           </nav>
         </>
       )}
