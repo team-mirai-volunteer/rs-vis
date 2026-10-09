@@ -1,4 +1,4 @@
-/** Weekly refresh; daily schedules only drain a known unfinished cycle. Never starts a daily full crawl. */
+/** Manual runs always acquire. The schedule rules below stay for when a cron is re-enabled; today the workflow has no schedule. */
 import { appendFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
