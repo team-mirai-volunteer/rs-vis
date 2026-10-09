@@ -1,0 +1,16 @@
+[
+  {
+    "file": "mof-index.html",
+    "url": "https://www.mof.go.jp/policy/budget/budger_workflow/budget/fy2027/index.html",
+    "originalSha256": "72ab133858c2c1c387bc6ea9bfe88e592d315a7face17827d49927f746f8c17e",
+    "retrievedAt": "2026-10-08T18:09:00Z",
+    "transformation": "Main content only; source fixture for parser regression."
+  },
+  {
+    "file": "mof-special.html",
+    "url": "https://www.mof.go.jp/policy/budget/budger_workflow/budget/fy2027/2026yokyutokkai_link.html",
+    "originalSha256": "0939e34f7216ca73a21dc0237c5029d3187068df7fc00a47b750dcf1f441bc20",
+    "retrievedAt": "2026-10-08T18:09:00Z",
+    "transformation": "Main content only; source fixture for parser regression."
+  }
+]

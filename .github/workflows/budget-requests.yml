@@ -1,0 +1,43 @@
+name: Refresh official budget requests
+on:
+  schedule:
+    - cron: '10 20 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: official-budget-requests
+  cancel-in-progress: false
+jobs:
+  refresh:
+    # Only takes effect after review/merge; this PR does not run or deploy the updater.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:budget-requests
+      - run: npm run fetch:budget-requests
+      - run: npm run validate:budget-requests
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: budget-request-sources-${{ github.run_id }}
+          path: |
+            data/budget-requests/sources/
+            public/data/budget-requests-2027.json.gz
+          retention-days: 30
+      - name: Commit verified data only
+        run: |
+          git add public/data/budget-requests-2027.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'data: refresh official FY2027 budget requests'
+          # Refuse a concurrent main-branch change rather than overwrite it.
+          git push origin HEAD:main
