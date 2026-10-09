@@ -28,8 +28,8 @@ for (const width of [1440, 390]) {
     await projectSearch.fill('6494');
     await expect(projectSearch).toHaveValue('6494');
     await page.goBack();
-    await expect(page.getByRole('heading', { name: '国会質問の設計（台本つき11本＋3本）' })).toBeVisible();
-    await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(14);
+    await expect(page.getByRole('heading', { name: '国会質問の設計（台本つき12本＋3本）' })).toBeVisible();
+    await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(15);
     const firstQuestion = page.locator('#q-1 details');
     await firstQuestion.locator('summary').click();
     await expect(firstQuestion.getByText('大臣への問い', { exact: true })).toBeVisible();
@@ -95,6 +95,6 @@ for (const width of [1440, 390]) {
     await expect(projectRecord).toContainText('2023年度・2025年度に1者応札');
     await page.goBack();
     await expect(page).toHaveURL(/\/lp$/);
-    await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(14);
+    await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(15);
   });
 }
