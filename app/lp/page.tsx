@@ -334,6 +334,19 @@ export default function LandingPage() {
                         <p className="text-xs font-bold text-primary-accent">大臣へのお願い（期限・形式つき）</p>
                         <p className="mt-1 rounded-xl border-l-4 border-primary-accent bg-mirai-surface-teal/60 px-3 py-2 font-medium">{q.promise}</p>
                       </div>
+                      {q.rebuttals && q.rebuttals.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold text-primary-accent">想定答弁と返し</p>
+                          <dl className="mt-1 space-y-1.5">
+                            {q.rebuttals.map(item => (
+                              <div key={item.reply} className="rounded-xl bg-mirai-surface px-3 py-2">
+                                <dt className="text-xs text-mirai-text-muted">想定答弁：{item.reply}</dt>
+                                <dd className="mt-0.5">{item.counter}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </div>
+                      )}
                       {(q.written || q.committeeAction) && (
                         <div className="space-y-1 text-mirai-text-subtle">
                           <p className="text-xs font-bold text-primary-accent">文書・委員会で取る数表（提案。党として主意書・検査要請は未使用）</p>

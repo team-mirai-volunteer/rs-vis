@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowUpRight, ChevronDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { SUPPORT_CASE, INVESTIGATION_CASE, PUBLICITY_REQUEST_NEWS } from '@/app/lp/policy-cases';
 
 const linkClass = 'inline-flex items-center gap-1 text-sm font-bold text-primary-accent underline underline-offset-2 hover:opacity-90';
@@ -10,7 +11,10 @@ export function BudgetNewsHook() {
     <section id="budget-news" aria-labelledby="budget-news-heading" className="px-4 py-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl rounded-2xl border border-mirai-border bg-mirai-surface-teal p-5 sm:p-6">
         <p className="text-xs font-bold text-primary-accent">{news.label}</p>
-        <h2 id="budget-news-heading" className="mt-1 text-xl/7 font-bold sm:text-2xl/8">{news.title}</h2>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 id="budget-news-heading" className="text-xl/7 font-bold sm:text-2xl/8">{news.title}</h2>
+          <Badge variant="outline" className="rounded-full bg-card">報道ベース・当サイトの集計ではありません</Badge>
+        </div>
         <p className="mt-2 text-sm leading-relaxed">{news.reported} {news.status}</p>
         <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{news.limitation}</p>
         <details className="group mt-3">
