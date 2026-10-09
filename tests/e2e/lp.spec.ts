@@ -54,3 +54,47 @@ test('LP key disclosures remain visible without opening an individual insight', 
   await expect(page.getByText(/年金給付を含む事業もレビュー対象/)).toBeVisible();
   await expect(page.getByText(/政府の公式評価ではなく、人によるレビューも経ていません/)).toBeVisible();
 });
+
+for (const width of [1440, 390]) {
+  test(`LP model cases disclose evidence limits and open the correct records (${width}px)`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/lp');
+    const news = page.locator('#budget-news');
+    await expect(news).toContainText('内閣官房・内閣広報室の2027年度概算要求は72.3億円');
+    await expect(news.getByText(/2027年度の概算要求全体は未収録/)).toBeVisible();
+    await expect(news.getByRole('link', { name: 'FNNの報道を読む' })).toHaveAttribute('href', 'https://www.fnn.jp/articles/-/1112462');
+    await news.locator('summary').click();
+    await expect(news.getByText(/今回の要求との対応関係は、別途確認が必要/)).toBeVisible();
+
+    const support = page.locator('#support-case');
+    await expect(support.getByText(/執行率だけでは支援の過不足は分かりません/)).toBeVisible();
+    await support.locator('summary').click();
+    await expect(support.getByRole('heading', { name: '国会で確かめる問い（試案）' })).toBeVisible();
+    await expect(support.getByText(/要件を満たした学校施設整備の申請/)).toBeVisible();
+    await support.locator('summary').click();
+    await expect(support.getByRole('heading', { name: '国会で確かめる問い（試案）' })).toBeHidden();
+    await support.locator('summary').click();
+    await expect(support.getByRole('heading', { name: '国会で確かめる問い（試案）' })).toBeVisible();
+    await expect(page.locator('#investigation-case ol > li')).toHaveCount(5);
+    await expect(page.locator('#investigation-case')).toContainText('2023・2025年度にあります（2025年度は暫定）');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+    await support.getByRole('link', { name: '学校施設整備の事業詳細を開く' }).click();
+    await expect(page).toHaveURL(/\/quality\?fiscalYear=2024&detail=1527$/);
+    const detail = page.getByRole('dialog', { name: '公立学校施設整備費 の詳細', exact: true });
+    await expect(detail).toBeVisible();
+    await expect(detail.getByText('PID 1527', { exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/lp$/);
+    await page.locator('#investigation-case').getByRole('link', { name: '事業者の年度別の記載を開く' }).click();
+    await expect(page).toHaveURL(/\/vendors\?.*vendor=1020001071491/);
+    const vendor = page.getByRole('complementary', { name: '富士通株式会社 の詳細', exact: true });
+    // 支出先プロフィール内の同名事業ではなく、直下の1者応札リストを検証する。
+    const projectRecord = vendor.locator(':scope > ul > li').filter({ hasText: 'ハローワークシステム運営費' });
+    await expect(projectRecord).toHaveCount(1);
+    await expect(projectRecord).toContainText('2023年度・2025年度に1者応札');
+    await page.goBack();
+    await expect(page).toHaveURL(/\/lp$/);
+    await expect(page.locator('#questions li[id^="q-"]')).toHaveCount(14);
+  });
+}
