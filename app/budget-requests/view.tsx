@@ -4,10 +4,14 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { Button } from '@/components/ui/button';
 import {
-  ACQUISITION_STATUS_LABELS, AMOUNT_TYPE_LABELS, BUDGET_REQUEST_NOTES, DOCUMENT_TYPE_LABELS,
+  ACQUISITION_STATUS_LABELS, AMOUNT_TYPE_LABELS, BUDGET_REQUEST_NOTES, DOCUMENT_KIND_LABELS, DOCUMENT_TYPE_LABELS, documentKind,
   formatRequestAmount, recordLocation, requestSourceUrl, type BudgetRequestResponse,
 } from '@/app/lib/budget-requests';
 import type { BudgetRequestDocument, BudgetRequestRecord } from '@/types/budget-requests';
+import type { BudgetRequestLinksFile, BudgetRequestMinistryTotal } from '@/types/budget-request-links';
+import { formatBudgetFromYen } from '@/client/lib/formatBudget';
+
+type Summary = Pick<BudgetRequestLinksFile, 'requestedFY' | 'sheetYear' | 'generatedAt' | 'crawledMinistries' | 'ministries' | 'stats'>;
 
 const fieldClass = 'w-full rounded-lg border border-mirai-border bg-card px-3 py-2 text-sm focus-visible:outline-primary';
 const date = (value: string | null) => value && !Number.isNaN(Date.parse(value))
@@ -26,7 +30,18 @@ export default function BudgetRequestsView() {
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const params = useMemo(() => new URLSearchParams(search ?? ''), [search]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/budget-requests/summary', { signal: controller.signal }).then(async response => {
+      if (!response.ok) return;
+      const body: Summary = await response.json();
+      if (!controller.signal.aborted) setSummary(body);
+    }).catch(() => { /* 府省別の表は任意。失敗しても一覧は出す */ });
+    return () => controller.abort();
+  }, []);
   const view = params.get('view') === 'documents' ? 'documents' : 'records';
 
   useEffect(() => {
@@ -102,6 +117,8 @@ export default function BudgetRequestsView() {
         {!!data.coverage.warnings.length && <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium">取得範囲の注意（{data.coverage.warnings.length}件）</summary><ul className="mt-2 space-y-1 pl-5 list-disc">{data.coverage.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
       </section>}
 
+      {summary && summary.ministries.length > 0 && <MinistryTotals summary={summary} />}
+
       <aside className="rounded-xl border border-mirai-border bg-mirai-surface-teal p-4 text-xs leading-relaxed text-mirai-text-secondary">
         <p>概要・内訳・総計が重複するため、資料横断の金額合計は表示しません。事項要求・記載なし・抽出失敗を0円として扱いません。</p>
         <details className="mt-1"><summary className="cursor-pointer">データの読み方</summary><ul className="mt-2 list-disc space-y-1 pl-5">{BUDGET_REQUEST_NOTES.map(note => <li key={note}>{note}</li>)}</ul></details>
@@ -115,7 +132,7 @@ export default function BudgetRequestsView() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Filter label="府省・機関等" value={params.get('ministry') ?? ''} onChange={value => change('ministry', value)} options={Object.fromEntries((data?.ministries ?? []).map(ministry => [ministry, ministry]))} all="全府省・機関等" />
           <Filter label="取得状況" value={params.get('status') ?? ''} onChange={value => change('status', value)} options={ACQUISITION_STATUS_LABELS} all="すべての状況" />
-          <Filter label="資料種別" value={params.get('type') ?? ''} onChange={value => change('type', value)} options={DOCUMENT_TYPE_LABELS} all="すべての資料" />
+          <Filter label="資料の種類" value={params.get('kind') ?? ''} onChange={value => change('kind', value)} options={DOCUMENT_KIND_LABELS} all="すべての種類" />
           <Filter label="記載のある金額区分" value={params.get('amount') ?? ''} onChange={value => change('amount', value)} options={AMOUNT_TYPE_LABELS} all="すべての金額区分" />
         </div>
         <Button variant="ghost" size="sm" onClick={reset}>条件をクリア</Button>
@@ -184,9 +201,12 @@ function RecordCard({ record, document }: { record: BudgetRequestRecord; documen
 
 function DocumentCard({ document }: { document: BudgetRequestDocument }) {
   return <article className="min-w-0 rounded-xl border border-mirai-border bg-card p-4" data-testid="request-document">
-    <p className="text-xs text-mirai-text-muted">{document.ministry} ／ {DOCUMENT_TYPE_LABELS[document.documentType]} ／ {document.account ?? '会計未特定'}</p>
+    <p className="flex flex-wrap items-center gap-x-2 text-xs text-mirai-text-muted">
+      <span className="rounded bg-mirai-surface-teal px-1.5 py-0.5 font-bold text-primary-accent">{DOCUMENT_KIND_LABELS[documentKind(document)]}</span>
+      <span>{document.ministry} ／ {document.account ?? '会計未特定'} ／ リンクの分類: {DOCUMENT_TYPE_LABELS[document.documentType]}</span>
+    </p>
     <h2 className="mt-1 break-words font-bold"><SourceLink url={document.url}>{document.title}</SourceLink></h2>
-    <p className="mt-2 text-sm">{ACQUISITION_STATUS_LABELS[document.status]} ・抽出 {document.recordCount.toLocaleString()}行</p>
+    <p className="mt-2 text-sm">{ACQUISITION_STATUS_LABELS[document.status]} ・抽出 {document.recordCount.toLocaleString()}行{documentKind(document) === 'overview' && document.recordCount === 0 ? '（概要は自由レイアウトのため数値は未抽出。要求額は「要求書（明細表）」で）' : ''}</p>
     {!!document.validation.length && ['partial', 'unsupported', 'extraction_failed', 'discovered'].includes(document.status) && <p className="mt-2 break-words text-xs text-mirai-text-secondary">{document.validation[0].slice(0, 300)}{document.validation[0].length > 300 ? '…' : ''}</p>}
     {document.error && <p className="mt-2 break-words rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">取得・抽出上の問題: {document.error}</p>}
     {['fetch_failed', 'extraction_failed'].includes(document.status) && document.recordCount > 0 && <p className="mt-2 text-xs text-status-warn-fg">抽出行は過去の成功時の記録を保持しています。最新資料の確認はできていません。</p>}
@@ -202,4 +222,41 @@ function DocumentCard({ document }: { document: BudgetRequestDocument }) {
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return <div className="min-w-0"><dt className="text-mirai-text-muted">{label}</dt><dd className="break-words [overflow-wrap:anywhere]">{children}</dd></div>;
+}
+
+/** 府省・組織別の要求額。明細表の総計行だけを使うので資料間で重複しない。RS 事業との対応状況も添える */
+function MinistryTotals({ summary }: { summary: Summary }) {
+  const [open, setOpen] = useState(false);
+  const rows = summary.ministries.filter(row => row.requestYen !== null);
+  const byMinistry = new Map<string, BudgetRequestMinistryTotal[]>();
+  for (const row of rows) byMinistry.set(row.ministry, [...(byMinistry.get(row.ministry) ?? []), row]);
+  const groups = [...byMinistry.entries()].map(([ministry, items]) => ({
+    ministry, items,
+    requestYen: items.reduce((sum, row) => sum + (row.requestYen ?? 0), 0),
+    previousYen: items.every(row => row.previousYen !== null) ? items.reduce((sum, row) => sum + (row.previousYen ?? 0), 0) : null,
+  })).sort((a, b) => b.requestYen - a.requestYen);
+  const shown = open ? groups : groups.slice(0, 10);
+  const pct = (request: number, previous: number | null) => previous === null || previous === 0 ? '—' : `${request >= previous ? '+' : ''}${((request - previous) / previous * 100).toFixed(1)}%`;
+  return <section aria-label="府省別の要求額" className="rounded-xl border border-mirai-border bg-card p-4">
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <h2 className="font-bold">府省・組織別の要求額（明細表の総計行）</h2>
+      <p className="text-xs text-mirai-text-muted">RS事業との対応: {summary.stats.linked.toLocaleString()}事業で歳出予算項目が明細表と一致（取得できた{summary.crawledMinistries.length}府省・機関）</p>
+    </div>
+    <p className="mt-1 text-xs leading-relaxed text-mirai-text-secondary">各資料の総計行（組織・勘定ごと）だけを足しています。一般会計と特別会計が別資料の府省は両方を含みます。明細表が取得・抽出できていない府省（厚生労働省・経済産業省・法務省など）は載りません。</p>
+    <div className="mt-3 overflow-x-auto">
+      <table className="w-full min-w-[640px] text-sm">
+        <thead><tr className="text-left text-xs text-mirai-text-muted"><th className="py-1 pr-2 font-medium">府省・機関</th><th className="py-1 pr-2 text-right font-medium">{summary.requestedFY}年度要求</th><th className="py-1 pr-2 text-right font-medium">{summary.requestedFY - 1}年度予算</th><th className="py-1 pr-2 text-right font-medium">増減</th><th className="py-1 font-medium">内訳（組織・勘定）と原資料</th></tr></thead>
+        <tbody>
+          {shown.map(group => <tr key={group.ministry} className="border-t border-mirai-border align-top">
+            <td className="py-1.5 pr-2 font-bold">{group.ministry}</td>
+            <td className="py-1.5 pr-2 text-right tabular-nums">{formatBudgetFromYen(group.requestYen)}</td>
+            <td className="py-1.5 pr-2 text-right tabular-nums text-mirai-text-muted">{group.previousYen === null ? '—' : formatBudgetFromYen(group.previousYen)}</td>
+            <td className="py-1.5 pr-2 text-right tabular-nums">{pct(group.requestYen, group.previousYen)}</td>
+            <td className="py-1.5 text-xs text-mirai-text-secondary">{group.items.map(row => <span key={`${row.organization}|${row.url}`} className="mr-2 inline-block">{row.organization}{row.account && row.account !== '一般会計' ? `（${row.account}）` : ''} {formatBudgetFromYen(row.requestYen ?? 0)} <SourceLink url={row.url} page={row.page}>原資料</SourceLink></span>)}</td>
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+    {groups.length > 10 && <Button variant="ghost" size="sm" className="mt-2" onClick={() => setOpen(value => !value)} aria-expanded={open}>{open ? '上位10件に戻す' : `残り${groups.length - 10}府省・機関を見る`}</Button>}
+  </section>;
 }

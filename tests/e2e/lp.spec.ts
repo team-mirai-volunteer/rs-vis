@@ -61,9 +61,9 @@ for (const width of [1440, 390]) {
     await page.goto('/lp');
     // ニュースから調べる広報の例は示唆カードの1つ（「残りを見る」で展開）
     await page.locator('#insights > div > details > summary').click();
-    const publicity = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /内閣広報経費の契約3件はすべて応札1者/ }) });
-    await expect(publicity.getByText(/当サイトの集計ではない/)).toBeVisible();
-    await expect(publicity.getByRole('link', { name: /内閣広報経費の契約と5年の推移を見る/ })).toHaveAttribute('href', '/quality?fiscalYear=2024&detail=45');
+    const publicity = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /広報費「10倍」の正体は投資枠64.8億円/ }) });
+    await expect(publicity.getByText(/「強く豊かな日本」投資枠で、通常の要求分は7.4億円と横ばい/)).toBeVisible();
+    await expect(publicity.getByRole('link', { name: /概算要求の画面で内閣府の広報関連の明細を見る/ })).toHaveAttribute('href', /\/budget-requests\?q=/);
 
     const support = page.locator('#support-case');
     await expect(support.getByText(/執行率だけでは支援の過不足は分かりません/)).toBeVisible();

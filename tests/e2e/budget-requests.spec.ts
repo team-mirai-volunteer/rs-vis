@@ -19,7 +19,7 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('heading', { name: '概算要求を原資料から探す' })).toBeVisible();
     const record = page.getByTestId('request-record');
     await expect(record).toHaveCount(1);
-    for (const label of ['府省・機関等', '取得状況', '資料種別', '記載のある金額区分']) {
+    for (const label of ['府省・機関等', '取得状況', '資料の種類', '記載のある金額区分']) {
       await expect(page.getByRole('combobox', { name: label, exact: true })).toBeVisible();
     }
     await expect(record).toContainText('0円');

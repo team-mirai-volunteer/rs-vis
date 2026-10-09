@@ -9,6 +9,31 @@ export const ACQUISITION_STATUS_LABELS: Record<AcquisitionStatus, string> = {
   discovered: '発見・未取得', fetched: '取得済・未抽出', extracted: '抽出済', partial: '一部抽出', unsupported: '対象外・未対応', fetch_failed: '取得失敗', extraction_failed: '抽出失敗',
 };
 export const AMOUNT_TYPE_LABELS = { request: '要求額', demand: '要望額', specialInvestment: '特別投資枠' } as const;
+
+/**
+ * 資料の種類（読む人向け）。機械判定の documentType（リンクの文言から推定）より、取得後の中身で決める。
+ * - 要求書（明細表）: 歳出概算要求額明細表を抽出できた資料、または題名がそれ
+ * - 歳入: 歳入予算見積書（歳出の要求ではない）
+ * - 要望一覧・投資枠一覧: 要求額とは別枠の一覧
+ * - 概要: 概算要求の概要・主要事項・ポイント（自由レイアウト。数値は未抽出）
+ * - 参考資料: 自己点検・政策評価調書・事前分析表など、要求額を示す資料ではないもの
+ * - 掲載ページ: HTML の掲載ページ
+ */
+export type DocumentKind = 'request-table' | 'revenue' | 'demand' | 'investment' | 'overview' | 'reference' | 'index' | 'other';
+export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
+  'request-table': '要求書（明細表）', revenue: '歳入見積（対象外）', demand: '要望一覧', investment: '投資枠一覧', overview: '要求の概要', reference: '参考資料', index: '掲載ページ', other: 'その他',
+};
+export function documentKind(document: Pick<BudgetRequestDocument, 'documentType' | 'title' | 'validation' | 'recordCount' | 'status'>): DocumentKind {
+  const title = document.title.normalize('NFKC');
+  if (document.documentType === 'index') return 'index';
+  if (document.validation.some(note => note.includes('歳入資料')) || (/歳入/.test(title) && !/歳出/.test(title))) return 'revenue';
+  if (/自己点検|政策評価|事前分析|行政事業レビュー|参考資料|説明資料|調書|Q&A|よくある|定員|機構/.test(title)) return 'reference';
+  if (document.recordCount > 0 || /歳出概算要求書|要求額明細|概算要求書/.test(title)) return 'request-table';
+  if (document.documentType === 'demand_list' || /要望一覧|要望事項/.test(title)) return 'demand';
+  if (document.documentType === 'investment_list' || /投資枠/.test(title)) return 'investment';
+  if (document.documentType === 'overview' || /概要|主要事項|重点|ポイント|姿|総括表/.test(title)) return 'overview';
+  return 'other';
+}
 export type RequestAmountType = keyof typeof AMOUNT_TYPE_LABELS;
 export const BUDGET_REQUEST_NOTES = [
   '概算要求・要望段階の公表資料です。成立予算・執行実績ではありません。',
@@ -18,10 +43,10 @@ export const BUDGET_REQUEST_NOTES = [
 ] as const;
 
 export interface BudgetRequestFilters {
-  query: string; ministry: string; status: AcquisitionStatus | ''; documentType: RequestDocumentType | ''; amountType: RequestAmountType | '';
+  query: string; ministry: string; status: AcquisitionStatus | ''; documentType: RequestDocumentType | ''; amountType: RequestAmountType | ''; kind: DocumentKind | '';
   page: number; pageSize: number;
 }
-export const DEFAULT_REQUEST_FILTERS: BudgetRequestFilters = { query: '', ministry: '', status: '', documentType: '', amountType: '', page: 1, pageSize: 50 };
+export const DEFAULT_REQUEST_FILTERS: BudgetRequestFilters = { query: '', ministry: '', status: '', documentType: '', amountType: '', kind: '', page: 1, pageSize: 50 };
 
 export function parseBudgetRequestFilters(params: URLSearchParams): BudgetRequestFilters {
   const query = (params.get('q') ?? '').trim();
@@ -29,19 +54,21 @@ export function parseBudgetRequestFilters(params: URLSearchParams): BudgetReques
   const status = params.get('status') ?? '';
   const documentType = params.get('type') ?? '';
   const amountType = params.get('amount') ?? '';
+  const kind = params.get('kind') ?? '';
   const fy = params.get('fy');
   if (fy !== null && fy !== String(REQUESTED_FY)) throw new Error('対応する要求年度は2027年度です');
   if (query.length > 200 || ministry.length > 100) throw new Error('検索条件が長すぎます');
   if (status && !Object.hasOwn(ACQUISITION_STATUS_LABELS, status)) throw new Error('取得状況が不正です');
   if (documentType && !Object.hasOwn(DOCUMENT_TYPE_LABELS, documentType)) throw new Error('資料種別が不正です');
   if (amountType && !Object.hasOwn(AMOUNT_TYPE_LABELS, amountType)) throw new Error('金額区分が不正です');
+  if (kind && !Object.hasOwn(DOCUMENT_KIND_LABELS, kind)) throw new Error('資料の種類が不正です');
   const parsePositive = (key: string, fallback: number, max: number) => {
     const raw = params.get(key);
     if (raw === null) return fallback;
     if (!/^[1-9]\d*$/.test(raw) || Number(raw) > max) throw new Error(`${key} が不正です`);
     return Number(raw);
   };
-  return { query, ministry, status: status as AcquisitionStatus | '', documentType: documentType as RequestDocumentType | '', amountType: amountType as RequestAmountType | '',
+  return { query, ministry, status: status as AcquisitionStatus | '', documentType: documentType as RequestDocumentType | '', amountType: amountType as RequestAmountType | '', kind: kind as DocumentKind | '',
     page: parsePositive('page', 1, 100_000), pageSize: parsePositive('limit', 50, 100) };
 }
 
@@ -52,7 +79,8 @@ const documentText = (document: BudgetRequestDocument) => [document.title, docum
 export function filterBudgetRequests(data: BudgetRequestDataset, filters: BudgetRequestFilters) {
   const query = normalize(filters.query);
   const eligibleDocuments = data.documents.filter(document => (!filters.ministry || document.ministry === filters.ministry)
-    && (!filters.status || document.status === filters.status) && (!filters.documentType || document.documentType === filters.documentType));
+    && (!filters.status || document.status === filters.status) && (!filters.documentType || document.documentType === filters.documentType)
+    && (!filters.kind || documentKind(document) === filters.kind));
   const documentsById = new Map(eligibleDocuments.map(document => [document.id, document]));
   const records = data.records.filter(record => {
     const document = documentsById.get(record.documentId);
