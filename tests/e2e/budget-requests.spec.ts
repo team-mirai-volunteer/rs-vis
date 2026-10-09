@@ -56,7 +56,7 @@ for (const width of [1440, 390]) {
     await expect(documentCard).toHaveCount(1);
     await expect(documentCard).toContainText('テスト用取得失敗');
     await documentCard.getByText('取得履歴と出典', { exact: true }).click();
-    await expect(documentCard).toContainText('最終試行日時');
+    await expect(documentCard).toContainText('記録時の最終試行');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/budget-requests-${width}.png`, fullPage: true });
     expect(errors).toEqual([]);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { discoverCatalogues, discoverMinistries, discoverChildren, officialUrl, sourceDocument, fiscalYears } from '../scripts/budget-requests-discover';
+import { discoverCatalogues, discoverMinistries, discoverChildren, officialUrl, sourceDocument, fiscalYears, isCurrentRequestSource } from '../scripts/budget-requests-discover';
 import { acquireDocument, withSuccessfulFetch } from '../scripts/fetch-budget-requests';
 
 const NOW = '2026-10-08T18:00:00Z';
@@ -13,10 +13,24 @@ test('discovers all three real MOF catalogues, including whitespace-bearing href
   const links = discoverCatalogues(fixture('mof-index.html'), BASE);
   assert.deepEqual(links.map(l => l.text), ['概算要求の概要等', '一般会計', '特別会計']);
   assert.equal(links[1].url, 'https://www.mof.go.jp/policy/budget/budger_workflow/budget/fy2027/20260904185021.html');
+  assert.deepEqual(discoverCatalogues('<a href="../fy2026/old.html">一般会計</a>', BASE), []);
 });
 test('official URL policy rejects arbitrary hosts, userinfo, ports, scripts and suffix tricks', () => {
-  for (const bad of ['https://mof.go.jp.evil.example/x', 'http://127.0.0.1/', 'https://user@www.mof.go.jp/', 'https://www.mof.go.jp:444/', 'javascript:alert(1)', 'data:text/html,x']) assert.equal(officialUrl(bad), null);
+  for (const bad of ['https://mof.go.jp.evil.example/x', 'http://127.0.0.1/', 'https://user@www.mof.go.jp/', 'https://www.mof.go.jp:444/', 'javascript:alert(1)', 'data:text/html,x', 'https://warp.ndl.go.jp/web/20230412203351/https://www.ndl.go.jp/jp/aboutus/outline/finances.html', 'https://warp.ndl.go.jp/info:ndljp/pid/11575230/www.cas.go.jp/archive.html', 'https://sub.warp.ndl.go.jp/2027.pdf']) assert.equal(officialUrl(bad), null);
   assert.equal(officialUrl('../a.pdf#page=1', BASE), 'https://www.mof.go.jp/policy/budget/budger_workflow/budget/a.pdf');
+});
+test('explicit fiscal-year URL provenance cannot be overridden by a current-year label', () => {
+  const parent = { ...makeDoc(), url: 'https://www.cao.go.jp/requests.html' };
+  const html = '<h1>令和9年度</h1><a href="/yosan/soshiki/r08/old.csv">令和9年度要求書</a><a href="/budget/fy2026/old.pdf">要求書</a><a href="/yosan/soshiki/r09/new.csv">要求書</a><a href="/20260901/current.pdf">要求書</a>';
+  assert.deepEqual(discoverChildren(html, parent, NOW).map(doc => doc.url), ['https://www.cao.go.jp/yosan/soshiki/r09/new.csv', 'https://www.cao.go.jp/20260901/current.pdf']);
+  assert.equal(isCurrentRequestSource('https://www.mod.go.jp/j/budget/gaisan/r5/gaisanyoukyu.pdf', 2027), false);
+  assert.equal(isCurrentRequestSource('https://www.cao.go.jp/20260901/current.pdf', 2027), true, 'publication year is not fiscal year');
+  assert.equal(discoverChildren('<a href="new.pdf">要求書</a>', { ...parent, url: 'https://www.cao.go.jp/budget/fy2026/index.html' }, NOW).length, 0);
+});
+test('national catalogues do not import stale fiscal-year landing pages or archived snapshots', () => {
+  const catalogue = discoverCatalogues(fixture('mof-index.html'), BASE)[1];
+  const html = '<table><tr><td>経済産業省</td><td><a href="https://www.meti.go.jp/main/yosangaisan/fy2021/index.html">令和9年度</a></td></tr><tr><td>国立国会図書館</td><td><a href="https://warp.ndl.go.jp/web/2023/https://www.ndl.go.jp/a.html">歳出予算</a></td></tr></table>';
+  assert.deepEqual(discoverMinistries(html, catalogue, 2027, NOW), []);
 });
 test('special-account names never become ministries, and no unobserved URL is synthesized', () => {
   const catalogue = discoverCatalogues(fixture('mof-index.html'), BASE)[2];

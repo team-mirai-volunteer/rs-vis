@@ -3,8 +3,9 @@ import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import type { BudgetRequestDataset, BudgetRequestDocument, BudgetRequestRecord } from '../types/budget-requests';
-import { discoverCatalogues, discoverChildren, discoverMinistries, officialUrl, sha256, sourceDocument } from './budget-requests-discover';
+import { discoverCatalogues, discoverChildren, discoverMinistries, officialUrl, sha256, sourceDocument, isCurrentRequestSource } from './budget-requests-discover';
 
 
 const MAX_BYTES = 40 * 1024 * 1024;
@@ -43,158 +44,275 @@ export function decodeSource(source: SourceResponse): string {
   const encoding = source.contentType.match(/charset\s*=\s*["']?([\w-]+)/i)?.[1] ?? prefix.match(/charset\s*=\s*["']?([\w-]+)/i)?.[1] ?? 'utf-8';
   try { return new TextDecoder(encoding).decode(source.bytes); } catch { return new TextDecoder().decode(source.bytes); }
 }
+/** These notes describe a traversal attempt, not the source or extraction result. */
+const RUN_NOTE = /^(?:HTML取得件数上限|資料取得件数上限|探索深度上限|今回、全国索引|今回のリンク探索|対応する概算要求資料リンクを自動検出)/;
+const unique = (values: string[]) => [...new Set(values)];
+const persistentNotes = (values: string[]) => unique(values.filter(value => !RUN_NOTE.test(value)));
+
+/** Acquisition timestamps are operational; source hashes and extracted content are semantic. */
+export function semanticSnapshot(data: BudgetRequestDataset): string {
+  return JSON.stringify({ ...data, documents: [...data.documents].sort((a, b) => a.id.localeCompare(b.id)), records: [...data.records].sort((a, b) => a.id.localeCompare(b.id)) }, (key, value) => ['generatedAt', 'retrievedAt', 'lastAttemptAt'].includes(key) ? undefined : value);
+}
+export function preserveUnchangedSnapshot(next: BudgetRequestDataset, previous?: BudgetRequestDataset): BudgetRequestDataset {
+  return previous && semanticSnapshot(next) === semanticSnapshot(previous) ? structuredClone(previous) : next;
+}
 export function withSuccessfulFetch(doc: BudgetRequestDocument, source: SourceResponse, now: string): BudgetRequestDocument {
   const hash = sha256(source.bytes);
   const changed = doc.hash !== hash;
   const revision = changed ? doc.revision + 1 : doc.revision;
-  return { ...doc, status: 'fetched', hash, revision, retrievedAt: source.retrievedAt ?? now, lastAttemptAt: source.retrievedAt ?? now, error: null, contentType: source.contentType,
-    revisions: changed ? [...doc.revisions, { hash, retrievedAt: source.retrievedAt ?? now, revision }] : doc.revisions,
-    validation: [ ...(changed && doc.hash ? ['同一URLの内容変更を検出し、再抽出しました'] : []), ...(source.url !== doc.url ? [`取得先リダイレクト: ${source.url}`] : []) ] };
+  const acquiredAt = source.retrievedAt ?? now;
+  // Keep provenance tied to the first acquisition of these exact bytes. Freshness is recorded separately.
+  const retrievedAt = changed ? acquiredAt : doc.retrievedAt ?? acquiredAt;
+  return { ...doc, status: 'fetched', hash, revision, retrievedAt,
+    lastAttemptAt: changed || doc.status === 'fetch_failed' ? acquiredAt : doc.lastAttemptAt,
+    error: null, contentType: source.contentType,
+    revisions: changed ? [...doc.revisions.map(item => ({ ...item })), { hash, retrievedAt, revision }] : doc.revisions.map(item => ({ ...item })),
+    validation: unique([...(changed ? (doc.hash ? ['同一URLの内容変更を検出し、再抽出しました'] : []) : persistentNotes(doc.validation).filter(note => !note.startsWith('最終成功'))),
+      ...(source.url !== doc.url ? [`取得先リダイレクト: ${source.url}`] : [])]) };
 }
 export async function acquireDocument(doc: BudgetRequestDocument, fetcher: SourceFetcher, now: string, retries = 1): Promise<{ doc: BudgetRequestDocument; source: SourceResponse | null }> {
   let error: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    try { const source = await fetcher(doc.url); return { doc: withSuccessfulFetch(doc, source, now), source }; }
+    try {
+      if (!isCurrentRequestSource(doc.url, doc.requestedFY)) throw new Error('政府ドメインまたは要求年度に一致しない取得元です');
+      const source = await fetcher(doc.url);
+      if (!isCurrentRequestSource(source.url, doc.requestedFY)) throw new Error('政府ドメインまたは要求年度に一致しないリダイレクト先です');
+      return { doc: withSuccessfulFetch(doc, source, now), source };
+    }
     catch (cause) { error = cause; if (attempt < retries && !/HTTP 40[134]|政府ドメイン|40 MB/.test(String(cause))) await delay(500 * 2 ** attempt); else break; }
   }
-  return { doc: { ...doc, status: 'fetch_failed', lastAttemptAt: now, error: error instanceof Error ? error.message : String(error), validation: [...doc.validation.filter(v => !v.startsWith('最終成功')), ...(doc.hash ? ['最終成功時の抽出結果を保持。今回の取得は失敗しています'] : [])] }, source: null };
+  return { doc: { ...doc, status: 'fetch_failed', lastAttemptAt: now, error: error instanceof Error ? error.message : String(error), validation: unique([...persistentNotes(doc.validation).filter(v => !v.startsWith('最終成功')), ...(doc.hash ? ['最終成功時の抽出結果を保持。今回の取得は失敗しています'] : [])]) }, source: null };
 }
 export interface IngestionOptions { year: number; maxFiles: number; maxPages: number; depth: number; concurrency: number; cacheDir: string; output: string; now?: string; fetcher?: SourceFetcher; previous?: BudgetRequestDataset; resume?: boolean; }
+interface Checkpoint {
+  version: 1; fingerprint: string; year: number; depth: number; startedAt: string; complete: boolean;
+  completedPages: string[]; completedFiles: string[]; dataset: BudgetRequestDataset;
+  sources: Record<string, { hash: string; contentType: string; url: string; retrievedAt: string }>;
+}
+async function atomicWrite(path: string, bytes: Uint8Array | string) {
+  const temporary = `${path}.${randomUUID()}.tmp`;
+  await writeFile(temporary, bytes);
+  await rename(temporary, path);
+}
+export async function ingestionFingerprint(): Promise<string> {
+  return sha256((await Promise.all(['fetch-budget-requests.ts', 'budget-requests-extract.ts', 'budget-requests-discover.ts'].map(file => readFile(new URL(file, import.meta.url), 'utf8')))).join('\n'));
+}
 export async function ingestBudgetRequests(options: IngestionOptions): Promise<BudgetRequestDataset> {
   const { year, maxFiles, maxPages, depth, concurrency, cacheDir, output } = options;
-  const now = options.now ?? new Date().toISOString();
-  // Only the national annual index follows MOF's explicit stable pattern. Ministry URLs are discovered.
+  if (![year, maxFiles, maxPages, depth, concurrency].every(Number.isInteger) || maxFiles < 0 || maxPages < 0 || depth < 0 || concurrency < 1) throw new Error('Invalid ingestion limits');
+  const now = options.now ?? new Date().toISOString(); // One timestamp for this entire invocation.
   const indexUrl = `https://www.mof.go.jp/policy/budget/budger_workflow/budget/fy${year}/index.html`;
-  const previous = options.previous?.requestedFY === year ? options.previous : undefined;
-  const previousDocs = new Map(previous?.documents.map(d => [d.id, d]) ?? []);
-  const documents = new Map<string, BudgetRequestDocument>();
+  await mkdir(cacheDir, { recursive: true });
+  await mkdir(join(output, '..'), { recursive: true });
+  const checkpointPath = join(cacheDir, `checkpoint-${year}.json.gz`);
+  // Do not reuse extraction results after the parser/discovery/ingestion implementation changes.
+  const fingerprint = await ingestionFingerprint();
+  let checkpoint: Checkpoint | undefined;
+  let cachedBaseline: BudgetRequestDataset | undefined;
+  if (options.resume) {
+    try {
+      const saved = JSON.parse(gunzipSync(await readFile(checkpointPath)).toString('utf8')) as Checkpoint;
+      if (saved.version === 1 && saved.fingerprint === fingerprint && saved.year === year && saved.depth === depth) {
+        cachedBaseline = saved.dataset;
+        if (!saved.complete) checkpoint = saved;
+      }
+    } catch { /* Missing/corrupt checkpoints start a fresh bounded cycle. */ }
+  }
+  const supplied = options.previous?.requestedFY === year ? options.previous : undefined;
+  const baseline = checkpoint?.dataset ?? (cachedBaseline && (!supplied || cachedBaseline.generatedAt > supplied.generatedAt) ? cachedBaseline : supplied);
+  let originalOutput: Buffer | undefined;
+  let originalJson: string | undefined;
+  try { originalOutput = await readFile(output); originalJson = gunzipSync(originalOutput).toString('utf8'); } catch { /* No readable output yet. */ }
+  const previous = baseline ? structuredClone(baseline) : undefined;
+  if (previous) {
+    previous.documents = previous.documents.filter(doc => isCurrentRequestSource(doc.url, year));
+    const allowed = new Set(previous.documents.map(doc => doc.id));
+    previous.records = previous.records.filter(record => allowed.has(record.documentId));
+  }
+  const documents = new Map(previous?.documents.map(doc => [doc.id, { ...doc, validation: unique(doc.validation.filter(note => !RUN_NOTE.test(note) || /^今回のリンク探索|^今回、全国索引/.test(note))) }]) ?? []);
   const records = new Map<string, BudgetRequestRecord[]>();
+  for (const record of previous?.records ?? []) { const group = records.get(record.documentId) ?? []; group.push(record); records.set(record.documentId, group); }
+  const discovered = new Set<string>();
+  const discoveryTypes = new Map<string, BudgetRequestDocument['documentType']>();
+  const completedPages = new Set(checkpoint?.completedPages ?? []);
+  const completedFiles = new Set(checkpoint?.completedFiles ?? []);
+  const sources: Checkpoint['sources'] = checkpoint?.sources ?? {};
   const warnings = ['概算要求段階の資料です。成立予算・執行額ではありません。', '概要・要求書・要望・投資枠や親子項目は重複します。横断合計は行いません。', '標準明細表と対応するCSV/TSV/XMLを抽出します。概要図・画像PDF（OCR）・Excel・ZIP内包表・自由形式の要望/投資枠一覧は数値未対応です。', `公開リンクを最大${depth}階層まで探索。掲載漏れ・未対応形式・画像PDF・未取得資料があり、全件抽出を保証しません。`];
   const networkFetcher = options.fetcher ?? fetchOfficialSource;
-  const cached = new Map(previous?.documents.filter(d => d.hash && d.retrievedAt && d.status !== 'fetch_failed').map(d => [d.url, d]) ?? []);
+  const attempts: { url: string; checkedAt: string; status: 'success' | 'failed'; hash?: string; error?: string }[] = [];
   const fetcher: SourceFetcher = async url => {
-    const doc = cached.get(url);
-    if (options.resume && doc?.hash && doc.retrievedAt && now.slice(0, 10) === doc.retrievedAt.slice(0, 10)) {
-      try { const bytes = await readFile(join(cacheDir, doc.hash)); if (sha256(bytes) === doc.hash) return { bytes, contentType: doc.contentType ?? '', url, retrievedAt: doc.retrievedAt }; } catch { /* Re-fetch missing or corrupt cache. */ }
+    try {
+      const source = await networkFetcher(url);
+      const retrievedAt = source.retrievedAt ?? now;
+      sources[url] = { hash: sha256(source.bytes), contentType: source.contentType, url: source.url, retrievedAt };
+      attempts.push({ url, checkedAt: now, status: 'success', hash: sources[url].hash });
+      return { ...source, retrievedAt };
+    } catch (error) {
+      attempts.push({ url, checkedAt: now, status: 'failed', error: error instanceof Error ? error.message : String(error) });
+      throw error;
     }
-    return networkFetcher(url);
   };
-  await mkdir(cacheDir, { recursive: true });
-  let pageCount = 0; let fileCount = 0;
+  let pageCount = 0; let fileCount = 0; let deferredPages = 0; let deferredFiles = 0;
+  const deferredSources = new Map<string, { id: string; url: string; reason: string }>();
+  function defer(doc: BudgetRequestDocument, reason: string) { deferredSources.set(doc.id, { id: doc.id, url: doc.url, reason }); }
   function register(doc: BudgetRequestDocument): BudgetRequestDocument {
-    const existing = documents.get(doc.id);
-    if (existing) return existing;
-    const old = previousDocs.get(doc.id);
-    const merged = old ? { ...old, title: doc.title, account: doc.account, ministry: doc.ministry, requestedFY: doc.requestedFY, documentType: doc.documentType, parentUrl: doc.parentUrl, lastAttemptAt: old.lastAttemptAt } : doc;
+    if (discovered.has(doc.id)) return documents.get(doc.id)!;
+    discovered.add(doc.id);
+    discoveryTypes.set(doc.id, doc.documentType);
+    const old = documents.get(doc.id);
+    const merged = old ? { ...old, title: doc.title, account: doc.account, ministry: doc.ministry, requestedFY: doc.requestedFY,
+      documentType: old.hash ? old.documentType : doc.documentType, parentUrl: doc.parentUrl, validation: persistentNotes(old.validation), revisions: old.revisions.map(item => ({ ...item })) } : structuredClone(doc);
     documents.set(doc.id, merged);
-    if (old) records.set(doc.id, previous!.records.filter(r => r.documentId === doc.id));
     return merged;
   }
+  async function cachedSource(doc: BudgetRequestDocument): Promise<SourceResponse | null> {
+    const saved = sources[doc.url];
+    if (!saved) return null;
+    try {
+      const bytes = await readFile(join(cacheDir, saved.hash));
+      if (sha256(bytes) === saved.hash && isCurrentRequestSource(saved.url, year)) return { bytes, ...saved };
+    } catch { /* Re-fetch missing or corrupt cache within this invocation's budget. */ }
+    return null;
+  }
   async function acquire(doc: BudgetRequestDocument) {
-    const result = await acquireDocument(doc, fetcher, options.now ?? new Date().toISOString());
+    const result = await acquireDocument(doc, fetcher, now);
     documents.set(doc.id, result.doc);
-    if (result.source && result.doc.hash) await writeFile(join(cacheDir, result.doc.hash), result.source.bytes);
+    if (result.source && result.doc.hash) await atomicWrite(join(cacheDir, result.doc.hash), result.source.bytes);
+    return result;
+  }
+  async function acquirePage(doc: BudgetRequestDocument, bounded: boolean) {
+    if (completedPages.has(doc.id)) {
+      if (doc.status === 'fetch_failed') return { doc, source: null };
+      const source = await cachedSource(doc);
+      if (source) return { doc, source };
+      completedPages.delete(doc.id);
+    }
+    if (bounded && pageCount >= maxPages) { defer(doc, 'HTML取得件数上限のため今回未取得'); deferredPages++; return { doc, source: null }; }
+    if (bounded) pageCount++;
+    const result = await acquire(doc);
+    completedPages.add(doc.id); // Failed sources are retried next cycle, never starve later sources.
     return result;
   }
   function snapshot(): BudgetRequestDataset {
-    const docs = [...documents.values()];
-    const items = [...records.values()].flat();
-    return { schemaVersion: 1, requestedFY: year, generatedAt: options.now ?? new Date().toISOString(), indexUrl, coverage: { ministries: new Set(docs.filter(d => d.ministry !== '全府省').map(d => d.ministry)).size, discoveredDocuments: docs.length, fetchedDocuments: docs.filter(d => d.retrievedAt).length, extractedDocuments: docs.filter(d => d.recordCount > 0).length, records: items.length, warnings: [...warnings] }, documents: docs.sort((a, b) => a.ministry.localeCompare(b.ministry, 'ja') || a.url.localeCompare(b.url)), records: items };
+    const docs = [...documents.values()].map(doc => ({ ...doc, validation: unique(doc.validation) })).sort((a, b) => a.ministry.localeCompare(b.ministry, 'ja') || a.url.localeCompare(b.url));
+    // Stable source order without scrambling row/page order inside each extracted document.
+    const items = docs.flatMap(doc => records.get(doc.id) ?? []);
+    const next: BudgetRequestDataset = { schemaVersion: 1, requestedFY: year, generatedAt: now, indexUrl,
+      coverage: { ministries: new Set(docs.filter(doc => doc.ministry !== '全府省').map(doc => doc.ministry)).size, discoveredDocuments: docs.length,
+        fetchedDocuments: docs.filter(doc => doc.retrievedAt).length, extractedDocuments: docs.filter(doc => doc.recordCount > 0).length, records: items.length, warnings: unique(warnings) }, documents: docs, records: items };
+    return preserveUnchangedSnapshot(next, baseline);
   }
-  async function save() {
+  async function save(complete = false) {
     const dataset = snapshot();
-    await mkdir(join(output, '..'), { recursive: true });
-    await writeFile(`${output}.tmp`, gzipSync(JSON.stringify(dataset), { level: 9 }));
-    await rename(`${output}.tmp`, output);
+    const json = JSON.stringify(dataset);
+    const bytes = originalOutput && originalJson === json ? originalOutput : gzipSync(json, { level: 9 });
+    let unchanged = false;
+    try {
+      // Also preserve existing gzip metadata/compression when the serialized snapshot is unchanged.
+      unchanged = (await readFile(output)).equals(bytes);
+    } catch { /* First snapshot. */ }
+    if (!unchanged) await atomicWrite(output, bytes);
+    const state: Checkpoint = { version: 1, fingerprint, year, depth, startedAt: checkpoint?.startedAt ?? now, complete,
+      completedPages: [...completedPages], completedFiles: [...completedFiles], dataset, sources };
+    await atomicWrite(checkpointPath, gzipSync(JSON.stringify(state), { level: 9 }));
+    await atomicWrite(join(cacheDir, `last-run-${year}.json`), JSON.stringify({ startedAt: now, cycleStartedAt: state.startedAt, complete,
+      pagesAttempted: pageCount, filesAttempted: fileCount, deferredPages, deferredFiles, deferredSources: [...deferredSources.values()], attempts, snapshotGeneratedAt: dataset.generatedAt }, null, 2));
     return dataset;
   }
   const indexDoc = register(sourceDocument(indexUrl, `${year}年度 財務省公式索引`, '全府省', year, now, null, null, 'index'));
-  const index = await acquire(indexDoc);
+  const index = await acquirePage(indexDoc, false);
   if (!index.source) {
     warnings.push('財務省の年度索引を取得できませんでした。前回データがある場合はそのまま保持しています。');
-    for (const doc of previous?.documents ?? []) if (!documents.has(doc.id)) { register(doc); documents.get(doc.id)!.validation.push('今回、全国索引の再取得に失敗。掲載継続は未確認'); }
-    return save();
+    for (const doc of documents.values()) if (!discovered.has(doc.id)) doc.validation = unique([...doc.validation, '今回、全国索引の再取得に失敗。掲載継続は未確認']);
+    return save(true);
   }
+  for (const doc of documents.values()) doc.validation = doc.validation.filter(note => !note.startsWith('今回、全国索引'));
   const catalogues = discoverCatalogues(decodeSource(index.source), indexUrl).sort((a, b) => Number(a.text === '特別会計') - Number(b.text === '特別会計'));
   if (catalogues.length < 3) warnings.push(`全国索引から確認できた分類は${catalogues.length}/3件。未確認の分類があります。`);
   const roots: BudgetRequestDocument[] = [];
   for (const catalogue of catalogues) {
     const doc = register(sourceDocument(catalogue.url, catalogue.text, '全府省', year, now, indexUrl, null, 'index'));
-    const result = await acquire(doc);
+    const result = await acquirePage(doc, false);
     if (result.source) roots.push(...discoverMinistries(decodeSource(result.source), catalogue, year, now, roots).map(register));
     else warnings.push(`${catalogue.text}の全国リンク表を取得できませんでした。`);
   }
-  // De-duplicate pages by ministry/URL even if linked from several national catalogues.
   const queue = [...new Map(roots.map(doc => [doc.id, { doc, level: 0 }])).values()];
   const visited = new Set<string>();
   const files = new Map<string, BudgetRequestDocument>();
   while (queue.length) {
-    if (!options.resume) queue.sort((a, b) => Number(!!previousDocs.get(a.doc.id)?.retrievedAt) - Number(!!previousDocs.get(b.doc.id)?.retrievedAt));
     const batch = queue.splice(0, concurrency);
     await Promise.all(batch.map(async ({ doc: queued, level }) => {
       const doc = documents.get(queued.id)!;
       if (visited.has(doc.id)) return;
       visited.add(doc.id);
       if (/\.(pdf|csv|tsv|xml|xlsx?|zip)(?:\?|$)/i.test(doc.url)) { files.set(doc.id, doc); return; }
-      if (pageCount >= maxPages) { doc.validation.push('HTML取得件数上限のため今回未取得'); return; }
-      pageCount++;
-      const result = await acquire(doc);
+      const discoveryType = discoveryTypes.get(doc.id) ?? queued.documentType;
+      const result = await acquirePage(doc, true);
       if (!result.source) return;
       const isHtml = /text\/html|application\/xhtml/.test(result.source.contentType) || /^\s*<!doctype html|^\s*<html/i.test(decodeSource(result.source).slice(0, 200));
       if (!isHtml) { files.set(doc.id, result.doc); return; }
       records.delete(doc.id);
       result.doc.recordCount = 0;
       result.doc.documentType = 'index';
-      const children = discoverChildren(decodeSource(result.source), { ...result.doc, documentType: queued.documentType }, now).map(register);
-      if (!children.length) result.doc.validation.push('対応する概算要求資料リンクを自動検出できませんでした');
+      const children = discoverChildren(decodeSource(result.source), { ...result.doc, documentType: discoveryType }, now).map(register);
+      if (!children.length) result.doc.validation = unique([...result.doc.validation, '対応する概算要求資料リンクを自動検出できませんでした']);
       for (const child of children) {
-        if (child.status === 'unsupported' && child.validation.some(v => v.includes('歳入'))) continue;
+        if (child.status === 'unsupported' && child.validation.some(value => value.includes('歳入'))) continue;
         if (/\.(pdf|csv|tsv|xml|xlsx?|zip)(?:\?|$)/i.test(child.url)) files.set(child.id, child);
         else if (level < depth) queue.push({ doc: child, level: level + 1 });
-        else child.validation.push('探索深度上限のため今回未取得');
+        else defer(child, '探索深度上限のため今回未取得');
       }
     }));
     await save();
-    console.log(`Discovery: ${pageCount} pages, ${documents.size} sources, ${files.size} files`);
+    console.log(`Discovery: ${pageCount} new pages, ${documents.size} sources, ${files.size} files`);
   }
-  // Structured formats first. Within a format, interleave ministries so bounded runs remain representative.
   const grouped = new Map<string, BudgetRequestDocument[]>();
   for (const doc of files.values()) { const group = grouped.get(doc.ministry) ?? []; group.push(doc); grouped.set(doc.ministry, group); }
   const ordered: BudgetRequestDocument[] = [];
   for (let i = 0; ; i++) { const round = [...grouped.values()].flatMap(group => group[i] ? [group[i]] : []); if (!round.length) break; ordered.push(...round); }
-  const priority = (doc: BudgetRequestDocument) => (!options.resume && previousDocs.get(doc.id)?.retrievedAt ? 10 : 0) + (/\.(csv|tsv|xml|xlsx?)(?:\?|$)/i.test(doc.url) ? 0 : doc.documentType === 'accounting_table' ? 1 : 2);
+  const priority = (doc: BudgetRequestDocument) => (/\.(csv|tsv|xml|xlsx?)(?:\?|$)/i.test(doc.url) ? 0 : doc.documentType === 'accounting_table' ? 1 : 2);
   ordered.sort((a, b) => priority(a) - priority(b));
-  for (let offset = 0; offset < ordered.length; offset += concurrency) {
-    if (fileCount >= maxFiles) {
-      for (const remaining of ordered.slice(offset)) documents.get(remaining.id)!.validation.push('資料取得件数上限のため今回未取得');
-      break;
-    }
-    await Promise.all(ordered.slice(offset, offset + concurrency).map(async original => {
+  const pending = ordered.filter(doc => !completedFiles.has(doc.id));
+  for (let offset = 0; offset < pending.length; offset += concurrency) {
+    await Promise.all(pending.slice(offset, offset + concurrency).map(async original => {
       const doc = documents.get(original.id)!;
-      if (fileCount >= maxFiles) { doc.validation.push('資料取得件数上限のため今回未取得'); return; }
+      if (fileCount >= maxFiles) { defer(doc, '資料取得件数上限のため今回未取得'); deferredFiles++; return; }
       fileCount++;
-      const result = await acquire(doc);
-      if (!result.source) return;
-      try {
-        const { extractRequestDocument } = await import('./budget-requests-extract');
-        const extracted = await extractRequestDocument(result.source.bytes, result.doc);
-        records.set(doc.id, extracted.records);
-        const types = [...new Set(extracted.records.map(record => record.documentType))];
-        if (types.length === 1) result.doc.documentType = types[0];
-        Object.assign(result.doc, { status: extracted.status, recordCount: extracted.records.length, validation: [...result.doc.validation, ...extracted.validation] });
-      } catch (error) {
-        // A changed source can never retain records for an older hash as though they came from new bytes.
-        records.delete(doc.id);
-        Object.assign(result.doc, { status: 'extraction_failed', recordCount: 0, error: error instanceof Error ? error.message : String(error) });
+      // Extensionless files may already have been downloaded during page discovery.
+      const cached = completedPages.has(doc.id) ? await cachedSource(doc) : null;
+      const result = cached ? { doc, source: cached } : await acquire(doc);
+      if (result.source) {
+        try {
+          result.doc.documentType = discoveryTypes.get(doc.id) ?? result.doc.documentType;
+          const { extractRequestDocument } = await import('./budget-requests-extract');
+          const extracted = await extractRequestDocument(result.source.bytes, result.doc);
+          records.set(doc.id, extracted.records);
+          const types = [...new Set(extracted.records.map(record => record.documentType))];
+          if (types.length === 1) result.doc.documentType = types[0];
+          // Replace old extraction diagnostics, retaining only revision/redirect provenance.
+          Object.assign(result.doc, { status: extracted.status, recordCount: extracted.records.length,
+            validation: unique([...result.doc.validation.filter(note => /^(?:同一URL|取得先リダイレクト)/.test(note)), ...extracted.validation]) });
+        } catch (error) {
+          records.delete(doc.id);
+          Object.assign(result.doc, { status: 'extraction_failed', recordCount: 0, error: error instanceof Error ? error.message : String(error) });
+        }
       }
+      completedFiles.add(doc.id);
     }));
     await save();
-    console.log(`Extraction: ${Math.min(fileCount, ordered.length)}/${ordered.length} files, ${[...records.values()].flat().length} records`);
+    console.log(`Extraction: ${fileCount} new files, ${completedFiles.size} completed in this cycle`);
+    if (fileCount >= maxFiles) {
+      for (const remaining of pending.slice(offset + concurrency)) {
+        const doc = documents.get(remaining.id)!;
+        defer(doc, '資料取得件数上限のため今回未取得'); deferredFiles++;
+      }
+      break;
+    }
   }
-  if (fileCount < files.size) warnings.push(`資料${files.size}件中${fileCount}件を今回取得対象にしました。未取得資料もカタログに表示します。`);
-  // Keep vanished sources visible rather than silently dropping them; no stale amount is made current.
-  for (const old of previous?.documents ?? []) if (!documents.has(old.id)) { register(old); documents.get(old.id)!.validation.push('今回のリンク探索では再発見できませんでした。前回の記録を保持'); }
-  return save();
+  // Budget/depth deferrals are operational, not source changes. Do not create commits or claim
+  // that a source disappeared merely because this invocation has not traversed its parent yet.
+  for (const doc of documents.values()) if (deferredPages === 0 && !discovered.has(doc.id)) doc.validation = unique([...doc.validation, '今回のリンク探索では再発見できませんでした。前回の記録を保持']);
+  return save(deferredPages === 0 && deferredFiles === 0);
 }
 
 async function main() {

@@ -56,3 +56,32 @@ SHA-256:
 The arithmetic safety check marks conflicting current and previous figures as
 `extraction_failed`, retaining source raw text and evidence, if a comparison
 triple remains inconsistent after coordinate extraction.
+
+## Special-account code and account-heading regressions
+
+Unmodified complete cached official PDFs, retrieved 2026-10-08. Reconstruction
+contains all 5 original pages, reinsurance all 9, and account heading all 5.
+The fixture hashes below are also the hashes of the original official bytes:
+
+| Fixture | Official source | Check |
+| --- | --- | --- |
+| `mof-r09-reconstruction.pdf` | https://www.mof.go.jp/about_mof/mof_budget/budget/fy2027/2027fukkou_2.pdf | Three-digit central codes with internal spaces. Page 4: 復興債償還財源等国債整理基金特別会計へ繰入, previous 47,658,341千円 / request 63,923,795千円. |
+| `mof-r09-reinsurance.pdf` | https://www.mof.go.jp/about_mof/mof_budget/budget/fy2027/2027jisinn_2.pdf | One-digit central codes split across two positioned text items, e.g. `95199-` + `9-21-6020`. |
+| `mof-r09-account-heading.pdf` | https://www.mof.go.jp/about_mof/mof_budget/budget/fy2027/2027tokuzai_2.pdf | One-digit account heading `3 特定国有財産整備勘定` with its own explicit amounts and descendants. |
+
+SHA-256:
+
+- Reconstruction: `9b652e4cb5a77afd698e7b5ed555bdaeee9f7d50e31fba5c592713de9285f564`
+- Reinsurance: `26a8813cdca485dee3ca1b0fbf05074e6a4aa0d98b293feae6c46512a3b7f2a1`
+- Account heading: `6185121e63dd791698010115b8b038fcad2bce62938b75513dc604f2806450ee`
+
+Synthetic coordinate tests additionally cover long whole/fragmented amounts that
+cross a header midpoint, with blank or 事項要求 comparison cells. Physically
+overlapping cells, separate ambiguous numeric runs and merged `100 200` items
+must fail closed; no partial numeric value is kept. CSV delta columns are used
+only to validate an explicit current/prior pair, never to infer a missing figure.
+
+Signed-overflow tests keep adjacent signs and leading digit fragments with their
+whole amount before column assignment. Touching per-digit runs are ambiguous
+without a consistent explicit numeric request/prior/change triple; blank or
+事項要求 comparison cells make the affected monetary cells extraction_failed.

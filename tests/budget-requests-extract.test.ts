@@ -83,7 +83,7 @@ test('summary category columns are explicitly unsupported rather than concatenat
 });
 
 test('explicit PDF fiscal year mismatch prevents cross-year ingestion', async () => {
-  const result = await extractRequestDocument(fixture('cao-r09-12.pdf'), { ...doc, requestedFY: 2026 });
+  const result = await extractRequestDocument(fixture('cao-r09-12.pdf'), { ...doc, requestedFY: 2026, url: 'https://www.cao.go.jp/request.pdf' });
   assert.equal(result.status, 'extraction_failed');
   assert.equal(result.records.length, 0);
   assert.match(result.validation.join(' '), /要求年度不一致/);
@@ -213,4 +213,117 @@ test('XLSX openxml MIME is unsupported binary, never misread as XML text', async
   const result = await extractRequestDocument(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff]), { ...doc, url: 'https://www.cao.go.jp/request.xlsx', contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   assert.equal(result.status, 'unsupported'); assert.equal(result.records.length, 0);
   assert.match(result.validation.join(' '), /Excel/);
+});
+
+test('adjacent PDF code glyphs retain full observed special-account codes', async () => {
+  const { findPdfItemCode } = await import('../scripts/budget-requests-extract');
+  const glyph = (text: string, x: number, width: number) => ({ text, x, width, y: 100, height: 7 });
+  for (const middle of ['9', '306', '2129']) {
+    const left = [glyph('95016-', 86, 21), glyph(`${middle}-`, 115, 10), glyph('02-', 126, 10), glyph('0000', 137, 14), glyph('職員基本給', 154, 45)];
+    const code = findPdfItemCode(left, 207, 7)!;
+    assert.equal(code.text, `95016-${middle}-02-0000`);
+    assert.equal(code.x, 86); assert.equal(code.x + code.width, 151);
+  }
+  assert.equal(findPdfItemCode([glyph('1', 40, 4), glyph('10-95', 66, 19), glyph('事業', 90, 14)], 207, 7)?.text, '10-95');
+  assert.equal(findPdfItemCode([glyph('95016-12-02-0000', 86, 63)], 207, 7), null); // Unobserved grammar is not inferred.
+});
+
+test('real special-account PDFs recover full codes, names, amounts and one-digit account hierarchy', async () => {
+  const reconstruction = await extractRequestDocument(fixture('mof-r09-reconstruction.pdf'), { ...doc, id: 'mof-reconstruction' });
+  const record = reconstruction.records.find(row => row.previousYear.valueYen === 47_658_341_000)!;
+  assert.ok(record);
+  assert.equal(record.projectName, '復興債償還財源等国債整理基金特別会計へ繰入');
+  assert.equal(record.itemCodes.at(-1), '20100-306-22-1430');
+  assert.equal(record.amounts.request.valueYen, 63_923_795_000);
+  assert.equal(record.parentId, reconstruction.records.find(row => row.requestNumber === '2' && row.itemCodes.at(-1) === '11-20')?.id);
+  assert.equal(record.provenance.page, 4);
+  assert.ok(!reconstruction.validation.some(note => note.includes('未解決の明細行')));
+  const reinsurance = await extractRequestDocument(fixture('mof-r09-reinsurance.pdf'), { ...doc, id: 'mof-reinsurance' });
+  const insurance = reinsurance.records.find(row => row.itemCodes.at(-1) === '95199-9-21-6020')!;
+  assert.equal(insurance.projectName, '再保険金');
+  assert.equal(insurance.amounts.request.valueYen, 133_127_738_000);
+  assert.ok(!reinsurance.validation.some(note => note.includes('未解決の明細行')));
+  const accounts = await extractRequestDocument(fixture('mof-r09-account-heading.pdf'), { ...doc, id: 'mof-accounts' });
+  const account = accounts.records.find(row => row.itemCodes.at(-1) === '3' && row.projectName === '特定国有財産整備勘定')!;
+  assert.ok(account);
+  assert.equal(account.amounts.request.valueYen, 4_023_592_000);
+  assert.equal(account.subaccount, '特定国有財産整備勘定');
+  assert.ok(accounts.records.some(row => row.parentId === account.id && row.subaccount === account.subaccount));
+  assert.ok(!accounts.validation.some(note => note.includes('未解決の明細行')));
+});
+
+test('whole amount runs crossing a header midpoint cannot silently lose digits, including nonnumeric comparison', async () => {
+  const { readPdfAmountColumns } = await import('../scripts/budget-requests-extract');
+  const glyph = (text: string, x: number, width: number) => ({ text, x, width, y: 100, height: 10 });
+  const layout = { previous: { start: 200, end: 245 }, request: { start: 260, end: 300 }, comparison: { start: 410, end: 455 }, fontHeight: 10 };
+  for (const comparison of [[], [glyph('事項要求', 420, 40)]]) {
+    for (const amount of [[glyph('123,456,789', 245, 60)], [glyph('123,', 245, 20), glyph('456,', 265, 20), glyph('789', 285, 20)]]) {
+      const result = readPdfAmountColumns([...amount, ...comparison], layout, '千円');
+      assert.equal(result.request.valueYen, 123_456_789_000);
+      assert.equal(result.previousYear.status, 'blank');
+      assert.equal(result.change.status, comparison.length ? '事項要求' : 'blank');
+    }
+    const previous = readPdfAmountColumns([glyph('123,456,789', 180, 70), ...comparison], layout, '千円');
+    assert.equal(previous.previousYear.valueYen, 123_456_789_000);
+    // A sign belongs to its adjacent complete amount, including when both the
+    // sign and the leading digits overflow the old column boundary.
+    for (const sign of ['△', '▲', '-']) {
+      for (const negative of [[glyph(sign, 174, 6), glyph('123,456,789', 180, 70)], [glyph(`${sign}123,456,789`, 174, 76)],
+        [glyph(sign, 174, 6), glyph('123,', 180, 15), glyph('456,', 195, 30), glyph('789', 225, 25)]]) {
+        const result = readPdfAmountColumns([...negative, ...comparison], layout, '千円');
+        assert.equal(result.previousYear.valueYen, -123_456_789_000);
+        assert.equal(result.request.status, 'blank');
+      }
+      for (const negative of [[glyph(sign, 239, 6), glyph('123,456,789', 245, 60)], [glyph(`${sign}123,456,789`, 239, 66)]]) {
+        const result = readPdfAmountColumns([...negative, ...comparison], layout, '千円');
+        assert.equal(result.request.valueYen, -123_456_789_000);
+        assert.equal(result.previousYear.status, 'blank');
+      }
+    }
+
+    const digitStream = readPdfAmountColumns([...Array.from('123456789012', (digit, index) => glyph(digit, 245 + index * 5, 5)), ...comparison], layout, '千円');
+    assert.equal(digitStream.previousYear.status, 'extraction_failed');
+    assert.equal(digitStream.request.status, 'extraction_failed');
+    assert.equal(digitStream.request.valueYen, null);
+    const overlap = readPdfAmountColumns([glyph('80', 240, 10), glyph('123,456,789', 245, 60), ...comparison], layout, '千円');
+    assert.equal(overlap.request.status, 'extraction_failed');
+    assert.equal(overlap.request.valueYen, null);
+    assert.equal(overlap.request.raw, '123,456,789');
+    assert.equal(overlap.previousYear.status, 'extraction_failed');
+  }
+  const verifiedTouching = readPdfAmountColumns([glyph('80', 240, 10), glyph('100', 250, 55), glyph('20', 450, 10)], layout, '千円');
+  assert.equal(verifiedTouching.previousYear.valueYen, 80_000);
+  assert.equal(verifiedTouching.request.valueYen, 100_000);
+  const separatedSign = readPdfAmountColumns([glyph('△', 204, 6), glyph('80', 240, 10), glyph('100', 290, 15)], layout, '千円');
+  assert.equal(separatedSign.previousYear.valueYen, -80_000);
+  assert.equal(separatedSign.request.valueYen, 100_000);
+  const mergedCells = readPdfAmountColumns([glyph('100 200', 230, 75)], layout, '千円');
+  assert.equal(mergedCells.request.status, 'extraction_failed');
+  assert.equal(mergedCells.request.valueYen, null);
+  assert.equal(mergedCells.request.raw, '100 200');
+  const kerning = readPdfAmountColumns([glyph('123, 456, 789', 245, 60)], layout, '千円');
+  assert.equal(kerning.request.valueYen, 123_456_789_000);
+  const separated = readPdfAmountColumns([glyph('12', 265, 10), glyph('34', 295, 10)], layout, '千円');
+  assert.equal(separated.request.status, 'extraction_failed'); // Never concatenate separate possible values.
+});
+
+test('structured year-on-year deltas never become previous-year amounts or inferred source figures', async () => {
+  const deltaOnly = await structured('事業名,要求額(千円),対前年度増減額(千円)\n事業A,100,30\n');
+  assert.equal(deltaOnly.records[0].amounts.request.valueYen, 100_000);
+  assert.equal(deltaOnly.records[0].previousYear.status, 'blank');
+  assert.equal(deltaOnly.records[0].previousYear.valueYen, null);
+  assert.equal(deltaOnly.records[0].previousYearComparisonBasis, null);
+  const explicit = await structured('事業名,要求額(千円),前年度予算額(千円),対前年度増減額(千円)\n事業A,100,70,30\n');
+  assert.equal(explicit.status, 'extracted');
+  assert.equal(explicit.records[0].previousYear.valueYen, 70_000);
+  const conflict = await structured('事業名,要求額(千円),前年度予算額(千円),対前年度増減額(千円)\n事業A,100,70,31\n');
+  assert.equal(conflict.records[0].amounts.request.status, 'extraction_failed');
+  assert.equal(conflict.records[0].previousYear.status, 'extraction_failed');
+});
+
+test('explicit source-URL year and archive rejection precede extraction even for matching table text', async () => {
+  for (const url of ['https://www.mof.go.jp/about_mof/mof_budget/budget/fy2021/request.csv', 'https://warp.ndl.go.jp/collections/content/info:ndljp/pid/123/https://www.cao.go.jp/request.csv']) {
+    const result = await structured('事業名,要求額(千円)\n事業A,100\n', { url });
+    assert.equal(result.status, 'extraction_failed'); assert.equal(result.records.length, 0);
+  }
 });

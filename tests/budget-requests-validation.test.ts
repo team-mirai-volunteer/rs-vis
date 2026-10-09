@@ -31,3 +31,11 @@ test('blocks fabricated exact linkage and mismatched fiscal year', () => {
   const errors = validateBudgetRequests(data);
   assert.ok(errors.some(e => e.includes('fiscal year'))); assert.ok(errors.some(e => e.includes('exact RS')));
 });
+test('blocks archived sources and conflicting source URL fiscal-year provenance', () => {
+  const data = validDataset();
+  data.documents[0].url = 'https://www.meti.go.jp/main/yosangaisan/fy2021/index.html';
+  data.documents[1].url = 'https://warp.ndl.go.jp/web/20230412/https://www.ndl.go.jp/budget.pdf';
+  const errors = validateBudgetRequests(data);
+  assert.ok(errors.some(error => error.includes('source URL fiscal year mismatch')));
+  assert.ok(errors.some(error => error.includes('non-official source')));
+});

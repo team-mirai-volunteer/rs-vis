@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import type { BudgetRequestDataset, RequestAmount } from '../types/budget-requests';
-import { officialUrl } from './budget-requests-discover';
+import { isCurrentRequestSource, officialUrl } from './budget-requests-discover';
 
 export function validateBudgetRequests(data: BudgetRequestDataset): string[] {
   const errors: string[] = [];
@@ -18,6 +18,7 @@ export function validateBudgetRequests(data: BudgetRequestDataset): string[] {
   };
   for (const doc of data.documents) {
     if (!officialUrl(doc.url)) errors.push(`${doc.id}: non-official source`);
+    else if (!isCurrentRequestSource(doc.url, data.requestedFY)) errors.push(`${doc.id}: source URL fiscal year mismatch`);
     if (doc.requestedFY !== data.requestedFY) errors.push(`${doc.id}: fiscal year mismatch`);
     if (doc.hash && !/^[a-f0-9]{64}$/.test(doc.hash)) errors.push(`${doc.id}: invalid digest`);
     if (doc.hash && !doc.revisions.some(rev => rev.hash === doc.hash && rev.revision === doc.revision)) errors.push(`${doc.id}: missing revision`);

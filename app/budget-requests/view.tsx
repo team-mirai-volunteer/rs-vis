@@ -85,7 +85,7 @@ export default function BudgetRequestsView() {
       {data && <section aria-label="データ取得状況" className="rounded-xl border border-mirai-border bg-card p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <h2 className="font-bold">取得状況（全資料・絞り込み前）</h2>
-          <p className="text-xs text-mirai-text-muted">データ更新: {date(data.generatedAt)}</p>
+          <p className="text-xs text-mirai-text-muted">内容・状態の更新: {date(data.generatedAt)}</p>
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {[
@@ -95,7 +95,8 @@ export default function BudgetRequestsView() {
         </dl>
         <p className="mt-3 text-xs leading-relaxed text-mirai-text-secondary">
           発見済みの資料についての件数です。取得成功歴には過去の成功を、抽出行のある資料には一部抽出を含みます。全府省・機関等の全資料の網羅や原表の合計との一致を保証しません。
-          最新の取得・抽出失敗 {failureCount}件 ／ 対象外・未対応 {data.statusCounts.unsupported}件 ／ 一部抽出 {data.statusCounts.partial}件。
+          記録時の取得・抽出失敗 {failureCount}件 ／ 対象外・未対応 {data.statusCounts.unsupported}件 ／ 一部抽出 {data.statusCounts.partial}件。
+          内容・状態が変わらない再確認では更新日時を変更しません。取得日時は保存した原本の取得時点を示します。
           {' '}<SourceLink url={data.indexUrl}>財務省の掲載一覧</SourceLink>
         </p>
         {!!data.coverage.warnings.length && <details className="mt-3 text-sm"><summary className="cursor-pointer font-medium">取得範囲の注意（{data.coverage.warnings.length}件）</summary><ul className="mt-2 space-y-1 pl-5 list-disc">{data.coverage.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
@@ -153,7 +154,7 @@ function RecordCard({ record, document }: { record: BudgetRequestRecord; documen
       <div className="min-w-0"><p className="text-xs text-mirai-text-muted">{record.ministry} ／ {record.account ?? '会計未特定'} ／ {DOCUMENT_TYPE_LABELS[record.documentType]}</p><h2 className="mt-1 break-words font-bold">{record.projectName}</h2></div>
       <span className="h-fit rounded bg-mirai-surface px-2 py-1 text-xs">{{ total: '総計行', subtotal: '小計行', detail: '内訳行', unknown: '集計区分未判定' }[record.aggregationFlag]}</span>
     </div>
-    {document && ['fetch_failed', 'extraction_failed'].includes(document.status) && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">最新の取得・抽出に失敗しています。以下は過去の取得時点（{date(record.provenance.retrievedAt)}）の記録です。</p>}
+    {document && ['fetch_failed', 'extraction_failed'].includes(document.status) && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">記録時の取得・抽出に失敗しています。以下は過去の取得時点（{date(record.provenance.retrievedAt)}）の記録です。</p>}
     {document?.validation.some(note => /再発見|再取得に失敗|今回未取得/.test(note)) && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">今回、この資料の最新版を確認できていません。取得日時と掲載ページを確認してください。</p>}
     {!!record.provenance.validation.length && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">検証上の注意が{record.provenance.validation.length}件あります。金額・名称は原文の確認が必要です。</p>}
     <dl className="mt-3 grid gap-2 sm:grid-cols-3">{Object.entries(AMOUNT_TYPE_LABELS).map(([key, label]) => <div key={key} className="min-w-0 rounded-lg bg-mirai-surface p-3"><dt className="text-xs text-mirai-text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-bold tabular-nums">{formatRequestAmount(record.amounts[key as keyof typeof AMOUNT_TYPE_LABELS])}</dd></div>)}</dl>
@@ -190,7 +191,7 @@ function DocumentCard({ document }: { document: BudgetRequestDocument }) {
     {document.error && <p className="mt-2 break-words rounded bg-amber-50 p-2 text-xs text-amber-900">取得・抽出上の問題: {document.error}</p>}
     {['fetch_failed', 'extraction_failed'].includes(document.status) && document.recordCount > 0 && <p className="mt-2 text-xs text-amber-900">抽出行は過去の成功時の記録を保持しています。最新資料の確認はできていません。</p>}
     <details className="mt-3 text-xs leading-relaxed"><summary className="cursor-pointer font-medium text-primary-accent">取得履歴と出典</summary><div className="mt-3 space-y-2">
-      <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2"><Detail label="取得日時">{date(document.retrievedAt)}</Detail><Detail label="最終試行日時">{document.status === 'discovered' && !document.retrievedAt ? '未試行' : date(document.lastAttemptAt)}</Detail><Detail label="改訂番号">{document.revision}</Detail><Detail label="資料ハッシュ">{document.hash ?? '未取得'}</Detail></dl>
+      <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2"><Detail label="取得日時">{date(document.retrievedAt)}</Detail><Detail label="記録時の最終試行">{document.status === 'discovered' && !document.retrievedAt ? '未試行' : date(document.lastAttemptAt)}</Detail><Detail label="改訂番号">{document.revision}</Detail><Detail label="資料ハッシュ">{document.hash ?? '未取得'}</Detail></dl>
       {!!document.validation.length && <p>検証上の注意: {document.validation.join(' ／ ')}</p>}
       {!!document.revisions.length && <ul className="list-disc space-y-1 pl-5">{document.revisions.map((revision, index) => <li key={`${revision.hash}-${index}`} className="break-all">改訂 {revision.revision} ・ {date(revision.retrievedAt)} ・ {revision.hash}</li>)}</ul>}
       <p className="break-all">出典URL: <SourceLink url={document.url}>{document.url}</SourceLink></p>

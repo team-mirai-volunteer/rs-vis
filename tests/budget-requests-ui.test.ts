@@ -3,8 +3,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { budgetRequestResponse, DEFAULT_REQUEST_FILTERS, filterBudgetRequests, formatRequestAmount, parseBudgetRequestFilters, recordLocation, requestSourceUrl } from '../app/lib/budget-requests';
 import { requestDataset, requestDocument, requestRecord } from './fixtures/budget-requests-ui';
+import { PRIMARY_PAGES } from '../components/navigation/pages';
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
+
+test('概算要求の試作ナビは既存の主要ページの後に並ぶ', () => {
+  assert.equal(PRIMARY_PAGES[0].href, '/budget-sankey');
+  assert.ok(PRIMARY_PAGES.findIndex(page => page.href === '/budget-requests') > PRIMARY_PAGES.findIndex(page => page.href === '/tax-expenditures'));
+  assert.equal(PRIMARY_PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
+});
+
+test('無変更の再確認を公開データの更新や最新取得と誤表示しない', () => {
+  const source = readFileSync(new URL('../app/budget-requests/view.tsx', import.meta.url), 'utf8');
+  assert.match(source, /内容・状態の更新/);
+  assert.match(source, /内容・状態が変わらない再確認では更新日時を変更しません/);
+  assert.match(source, /記録時の最終試行/);
+});
 
 test('絞り込みの選択肢とは独立したアクセシブル名を付ける', () => {
   const source = readFileSync(new URL('../app/budget-requests/view.tsx', import.meta.url), 'utf8');

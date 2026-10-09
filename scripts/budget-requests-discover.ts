@@ -12,9 +12,22 @@ export function officialUrl(value: string, base?: string): string | null {
   try {
     const url = new URL(value.trim().replace(/&amp;/g, '&'), base);
     if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.port || !/(^|\.)[a-z0-9-]+\.go\.jp$/i.test(url.hostname)) return null;
+    // WARP can replay arbitrary publishers and prior years; it is not a current official source.
+    if (/(^|\.)warp\.ndl\.go\.jp$/i.test(url.hostname)) return null;
     url.hash = '';
     return url.href;
   } catch { return null; }
+}
+/** Only explicit fiscal-year path markers count; a publication date may precede the requested FY. */
+export function isCurrentRequestSource(value: string, year: number): boolean {
+  const url = officialUrl(value);
+  if (!url) return false;
+  const path = new URL(url).pathname;
+  const years = [
+    ...[...path.matchAll(/\/fy(20\d{2})(?=\/|$)/gi)].map(match => Number(match[1])),
+    ...[...path.matchAll(/\/(?:gaisan|soshiki)\/r(\d{1,2})(?=\/|$)/gi)].map(match => Number(match[1]) + 2018),
+  ];
+  return years.every(sourceYear => sourceYear === year);
 }
 export function mainContent(html: string): string {
   const clean = html.replace(/<(script|style|nav|footer)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
@@ -63,7 +76,8 @@ export function sourceDocument(url: string, title: string, ministry: string, yea
 }
 /** The three catalogue URLs must be present as real anchors in the fiscal-year index. */
 export function discoverCatalogues(html: string, base: string): OfficialLink[] {
-  return extractOfficialLinks(html, base).filter(link => /^(?:概算要求の概要等|一般会計|特別会計)$/.test(link.text));
+  const year = Number(new URL(base).pathname.match(/\/fy(20\d{2})(?:\/|$)/i)?.[1]);
+  return extractOfficialLinks(html, base).filter(link => /^(?:概算要求の概要等|一般会計|特別会計)$/.test(link.text) && (!year || isCurrentRequestSource(link.url, year)));
 }
 /** One source per distinct ministry/URL. Empty cells remain absent; they are never fabricated URLs. */
 export function discoverMinistries(html: string, catalogue: OfficialLink, year: number, now: string, known: BudgetRequestDocument[] = []): BudgetRequestDocument[] {
@@ -75,6 +89,7 @@ export function discoverMinistries(html: string, catalogue: OfficialLink, year: 
     const rowLabel = plainText(cells[0][1]).replace(/\s/g, '').replace(/^内閣本府$/, '内閣府').replace(/^カジノ監理委員会$/, 'カジノ管理委員会');
     if (!rowLabel || /会計名|概算要求|要望|所管名/.test(rowLabel) || ['国会', '内閣', '皇室費'].includes(rowLabel)) continue;
     for (const link of extractOfficialLinks(row[1], catalogue.url)) {
+      if (!isCurrentRequestSource(link.url, year)) continue;
       const exact = known.find(d => d.url === link.url);
       const candidates = [...new Set(known.filter(d => new URL(d.url).hostname === new URL(link.url).hostname).map(d => d.ministry))];
       const ministry = catalogue.text === '特別会計' ? (exact?.ministry ?? (candidates.length === 1 ? candidates[0] : '所管未判定')) : rowLabel;
@@ -92,17 +107,15 @@ export function fiscalYears(text: string): number[] {
   return [...new Set([...normalized.matchAll(/令和(元|\d{1,2})年度|平成(元|\d{1,2})年度|(20\d{2})年度/g)].map(m => m[1] ? 2018 + (m[1] === '元' ? 1 : Number(m[1])) : m[2] ? 1988 + (m[2] === '元' ? 1 : Number(m[2])) : Number(m[3])))];
 }
 export function discoverChildren(html: string, doc: BudgetRequestDocument, now: string): BudgetRequestDocument[] {
+  if (!isCurrentRequestSource(doc.url, doc.requestedFY)) return [];
   const seen = new Set<string>();
   return extractOfficialLinks(html, doc.url).flatMap(link => {
     const domain = (url: string) => new URL(url).hostname.split('.').slice(-3).join('.');
     if (domain(link.url) !== domain(doc.url)) return []; // Cross-ministry reference links are not this ministry's requests.
-    const pathFY = new URL(link.url).pathname.match(/\/fy(20\d{2})(?:\/|$)/i);
-    if (pathFY && Number(pathFY[1]) !== doc.requestedFY) return [];
+    if (!isCurrentRequestSource(link.url, doc.requestedFY)) return [];
     const label = `${link.heading} ${link.context}`;
     if (/税制改正|租税特別|機構.*定員|定員.*機構/.test(link.heading)) return [];
     const anchorYears = fiscalYears(link.text);
-    const eraPath = new URL(link.url).pathname.match(/\/(?:gaisan|soshiki)\/r(\d{1,2})\/.*\.pdf$/i);
-    if (eraPath && Number(eraPath[1]) + 2018 !== doc.requestedFY && !anchorYears.includes(doc.requestedFY)) return [];
     if (anchorYears.length && !anchorYears.includes(doc.requestedFY)) return [];
     const years = fiscalYears(label);
     if (years.length && !years.includes(doc.requestedFY)) return [];
