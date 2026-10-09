@@ -1,36 +1,8 @@
 import Link from 'next/link';
 import { ArrowUpRight, ChevronDown } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { SUPPORT_CASE, INVESTIGATION_CASE, PUBLICITY_REQUEST_NEWS } from '@/app/lp/policy-cases';
+import { SUPPORT_CASE, INVESTIGATION_CASE } from '@/app/lp/policy-cases';
 
 const linkClass = 'inline-flex items-center gap-1 text-sm font-bold text-primary-accent underline underline-offset-2 hover:opacity-90';
-
-export function BudgetNewsHook() {
-  const news = PUBLICITY_REQUEST_NEWS;
-  return (
-    <section id="budget-news" aria-labelledby="budget-news-heading" className="px-4 py-4 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl rounded-2xl border border-mirai-border bg-mirai-surface-teal p-5 sm:p-6">
-        <p className="text-xs font-bold text-primary-accent">{news.label}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 id="budget-news-heading" className="text-xl/7 font-bold sm:text-2xl/8">{news.title}</h2>
-          <Badge variant="outline" className="rounded-full bg-card">報道ベース・当サイトの集計ではありません</Badge>
-        </div>
-        <p className="mt-2 text-sm leading-relaxed">{news.reported} {news.status}</p>
-        <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">{news.limitation}</p>
-        <details className="group mt-3">
-          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-bold [&::-webkit-details-marker]:hidden">
-            この数字から、次に確かめること
-            <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
-          </summary>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-mirai-text-subtle">{news.next}</p>
-          <p className="mt-2 text-xs leading-relaxed text-mirai-text-subtle">過年度の広報事業では、支出先・契約方式・記載された成果指標を確認できます。今回の要求との対応関係は、別途確認が必要です。</p>
-          <Link href={news.explore.href} className={`${linkClass} mt-2`}>{news.explore.name} <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></Link>
-        </details>
-        <a href={news.source.href} target="_blank" rel="noopener noreferrer" className={`${linkClass} mt-3`}>{news.source.name} <ArrowUpRight className="size-4 shrink-0" aria-hidden="true" /></a>
-      </div>
-    </section>
-  );
-}
 
 export function PolicyCases() {
   return (

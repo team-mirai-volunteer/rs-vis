@@ -130,6 +130,28 @@ test('LP does not claim an NTA joint-research precedent for the R&D credit and c
   assert.match(card.facts[2], /令和8年度改正で3年延長/);
 });
 
+test('LP publicity card keeps the reported figure separate and reproduces the contract figures', () => {
+  const card = INSIGHTS.find(item => item.id === 'publicity')!;
+  assert.match(card.facts[0], /FNN.*2027年度概算要求は72\.3億円.*当サイトの集計ではない/);
+  assert.match(card.caveat, /当サイトでは追えず/);
+  const scores = readDataJson<{ pid: string; name: string; execAmount: number | null }[]>('project-quality-scores-2025.json', 'npm run score-quality-2025');
+  const contracts = readDataJson<ContractMethodsByPid>('contract-methods-2025.json', 'npm run generate-contract-methods');
+  const publicity = scores.filter(p => p.name.includes('広報'));
+  assert.equal(publicity.length, 52);
+  assert.equal(Math.round(publicity.reduce((sum, p) => sum + (p.execAmount ?? 0), 0) / 1e8), 180);
+  const open = publicity.flatMap(p => contracts[p.pid] ?? []).filter(row => contractCategory(row.m) === 'open');
+  assert.equal(open.length, 264);
+  assert.equal(open.filter(row => row.ap === 1).length, 70);
+  const cabinet = contracts['45'] ?? [];
+  assert.equal(cabinet.length, 3);
+  assert.ok(cabinet.every(row => row.ap === 1 && contractCategory(row.m) === 'open'));
+  assert.match(card.figure, /^27%$/);
+  assert.match(card.facts[1], /契約3件はすべて一般競争で応札1者/);
+  assert.match(card.facts[2], /52事業・執行180億円/);
+  assert.match(card.facts[3], /264件のうち応札1者は70件（27%）/);
+  assert.equal(new URL(card.href, 'https://example.test').searchParams.get('detail'), '45');
+});
+
 test('LP retains all fifteen parliamentary questions and twelve scripts', () => {
   assert.deepEqual(DIET_QUESTIONS.map(q => q.theme), [
     '記載の穴', '1者応札', '基金', '補正予算の執行見込み', '防衛費の契約検証', '検査結果の反映', '再委託',
