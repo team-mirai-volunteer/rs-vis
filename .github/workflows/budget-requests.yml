@@ -1,0 +1,99 @@
+name: Refresh official budget requests
+on:
+  schedule:
+    # Weekly Monday, 05:10 JST: refresh, or continue an unfinished cycle.
+    - cron: '10 20 * * 0'
+    # Other days only drain an unfinished compatible checkpoint; no new daily full crawl.
+    - cron: '10 20 * * 1-6'
+  workflow_dispatch:
+permissions:
+  contents: write
+  # read: 過去 run の artifact 復元。write: 更新ブランチで checks.yml を workflow_dispatch 起動
+  actions: write
+  pull-requests: write
+concurrency:
+  group: official-budget-requests
+  cancel-in-progress: false
+jobs:
+  refresh:
+    # Only takes effect after review/merge; this PR does not run or deploy the updater.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Prepare dedicated data PR branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          node --import tsx scripts/publish-budget-requests.ts prepare
+      - name: Restore raw sources and resumable cycle checkpoint
+        id: source-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: data/budget-requests/sources/
+          key: budget-requests-v2-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            budget-requests-v2-${{ runner.os }}-
+      - name: Fall back to prior run artifacts after weekly cache eviction
+        if: steps.source-cache.outputs.cache-matched-key == ''
+        run: node --import tsx scripts/restore-budget-request-cache.ts
+      - name: Decide weekly refresh or bounded backlog continuation
+        id: acquisition-plan
+        env:
+          BUDGET_EVENT_NAME: ${{ github.event_name }}
+          BUDGET_SCHEDULE: ${{ github.event.schedule }}
+        run: node --import tsx scripts/plan-budget-request-run.ts
+      - run: npm run test:budget-requests
+        if: steps.acquisition-plan.outputs.run == 'true'
+      - name: Acquire a bounded batch
+        if: steps.acquisition-plan.outputs.run == 'true'
+        # Stop normally before the job timeout, so partial progress is saved even on slow sources.
+        # Ingestion atomically checkpoints each completed batch, independent of calendar-day changes.
+        shell: bash
+        run: |
+          set +e
+          timeout --signal=TERM --kill-after=30s 55m npm run fetch:budget-requests -- --resume --max-files 100 --max-pages 40 --concurrency 3
+          result=$?
+          set -e
+          if [ "$result" -ne 0 ] && [ "$result" -ne 124 ]; then exit "$result"; fi
+      - name: Persist progress even after a failed or interrupted acquisition
+        if: always() && steps.acquisition-plan.outputs.run == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: data/budget-requests/sources/
+          key: budget-requests-v2-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Keep durable source/checkpoint fallback across weekly cache eviction
+        if: always() && steps.acquisition-plan.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: budget-request-cache-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/budget-requests/sources/
+            !data/budget-requests/sources/*.tmp
+          retention-days: 30
+      - name: Gate candidate and publish update PR
+        if: steps.acquisition-plan.outputs.run == 'true'
+        # Tests/typecheck/data validation run on the exact candidate before every non-force push.
+        # GITHUB_TOKEN cannot trigger ordinary PR checks. Branch protection is not bypassed;
+        # browser/security/required checks still need the normal maintainer-triggered workflow.
+        run: node --import tsx scripts/publish-budget-requests.ts publish
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.acquisition-plan.outputs.run == 'true'
+        with:
+          name: budget-request-run-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/budget-requests/sources/last-run-2027.json
+            data/budget-requests/sources/checkpoint-2027.json.gz
+            public/data/budget-requests-2027.json.gz
+          retention-days: 30
