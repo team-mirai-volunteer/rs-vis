@@ -522,9 +522,13 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await expect(page).toHaveURL(/sel=project-budget-1335/);
     // カードは常にポインタの上側に出る（画面下端近くの行でも見切れない）
     const rows = panel.getByRole('tabpanel').getByRole('button');
-    const bottoms = await rows.evaluateAll(els => els.map(e => e.getBoundingClientRect().bottom));
-    const viewportHeight = page.viewportSize()!.height;
-    for (const index of [0, bottoms.findLastIndex(y => y < viewportHeight - 4)]) {
+    // 行はタブ領域（overflow-y: auto）に収まる範囲だけが見える。上段の中身や画面の高さでタブ領域の大きさは変わるので、
+    // 直前のホバーでスクロールした後のタブ領域に全体が入っている行の、最初と最後で確かめる
+    const tabpanel = (await panel.getByRole('tabpanel').boundingBox())!;
+    const boxes = await rows.evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; }));
+    const inside = boxes.map((box, index) => ({ box, index })).filter(({ box }) => box.top >= tabpanel.y && box.bottom <= tabpanel.y + tabpanel.height);
+    expect(inside.length).toBeGreaterThan(0);
+    for (const index of [inside[0].index, inside[inside.length - 1].index]) {
       const row = (await rows.nth(index).boundingBox())!;
       const pointerY = row.y + row.height / 2;
       await page.mouse.move(row.x + 40, pointerY);
