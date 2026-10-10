@@ -893,9 +893,9 @@ export function UnifiedSankeyChart({
 
               {hasOverview && <>
               {/* 上段（事業概要・評価・推移・概算要求・外部の検査・基金）の高さの配分は画面の高さで決める。フル HD では 60% で、
-                  意見を閉じた状態なら基金・外部の検査の1行があってもスクロールしない。760px 未満の低い画面では下段のタブ（支出先の表）が
-                  数行しか見えなくなるので 50% に抑える。文字の大きさはラベル文字サイズ（fontPx）に連動して各セクションが決める */}
-              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : '50%' }}>
+                  意見を閉じた状態なら基金・外部の検査・概算要求の1行があってもスクロールしない。viewport.height はキャンバス領域の高さ
+                  （窓の高さ − ヘッダー）。1366×768（約 700px）では 62% で上段を収め、720px 窓（約 650px）では下段のタブが数行しか見えなくなるので 50% に抑える。文字の大きさはラベル文字サイズ（fontPx）に連動して各セクションが決める */}
+              <div className="flex-shrink-0 overflow-y-auto p-4 pb-0" style={{ maxHeight: viewport.width < 640 ? '35%' : viewport.height >= 900 ? '60%' : viewport.height >= 760 ? '55%' : viewport.height >= 680 ? '62%' : '50%' }}>
                 <NodeFacts details={selectedDetails} />
                 {/* 支出先そのものの説明（法人番号・受注額・府省・契約方式）。支出先ノードは名前と金額しか持たないので API で引く */}
                 {selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null && selectedPanelNode &&

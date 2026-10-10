@@ -95,7 +95,7 @@ export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: 
   const labelEvery = Math.max(1, Math.ceil(28 / step));
   const active = points.find(point => point.fiscalYear === activeYear);
 
-  return <section className="py-2" aria-label="予算・執行額の推移">
+  return <section className="pb-1 pt-2" aria-label="予算・執行額の推移">
     {/* 見出し・凡例・出典を 1 行にまとめる（狭い幅では凡例が次の行へ折り返す） */}
     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
       <h3 className="font-bold text-mirai-text" style={{ fontSize: textPx }}>予算・執行額の推移</h3>

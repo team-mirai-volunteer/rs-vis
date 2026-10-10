@@ -3,7 +3,7 @@ import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes'
 import { loadBudgetRequests } from '@/app/lib/api/budget-requests-loader';
 import { budgetRequestResponse, parseBudgetRequestFilters } from '@/app/lib/budget-requests';
 
-/** GET /api/budget-requests?fy=2027&q=&ministry=&status=&type=&amount=&page=1&limit=50 */
+/** GET /api/budget-requests?fy=2027&q=&ministry=&status=&type=&kind=&page=1&limit=50 */
 export async function GET(request: NextRequest) {
   let filters;
   try { filters = parseBudgetRequestFilters(request.nextUrl.searchParams); }

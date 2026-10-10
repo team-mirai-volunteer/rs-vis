@@ -129,11 +129,10 @@ export default function BudgetRequestsView() {
           <label className="min-w-0 flex-1"><span className="sr-only">事業名・資料名を検索</span><input className={fieldClass} type="search" value={query} maxLength={200} onChange={event => setQuery(event.target.value)} placeholder="事業名・資料名・要求番号で検索" /></label>
           <Button type="submit">検索</Button>
         </form>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <Filter label="府省・機関等" value={params.get('ministry') ?? ''} onChange={value => change('ministry', value)} options={Object.fromEntries((data?.ministries ?? []).map(ministry => [ministry, ministry]))} all="全府省・機関等" />
           <Filter label="取得状況" value={params.get('status') ?? ''} onChange={value => change('status', value)} options={ACQUISITION_STATUS_LABELS} all="すべての状況" />
           <Filter label="資料の種類" value={params.get('kind') ?? ''} onChange={value => change('kind', value)} options={DOCUMENT_KIND_LABELS} all="すべての種類" />
-          <Filter label="記載のある金額区分" value={params.get('amount') ?? ''} onChange={value => change('amount', value)} options={AMOUNT_TYPE_LABELS} all="すべての金額区分" />
         </div>
         <Button variant="ghost" size="sm" onClick={reset}>条件をクリア</Button>
       </section>
@@ -174,7 +173,10 @@ function RecordCard({ record, document }: { record: BudgetRequestRecord; documen
     {document && ['fetch_failed', 'extraction_failed'].includes(document.status) && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">記録時の取得・抽出に失敗しています。以下は過去の取得時点（{date(record.provenance.retrievedAt)}）の記録です。</p>}
     {document?.validation.some(note => /再発見|再取得に失敗|今回未取得/.test(note)) && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">今回、この資料の最新版を確認できていません。取得日時と掲載ページを確認してください。</p>}
     {!!record.provenance.validation.length && <p className="mt-2 rounded bg-status-warn-bg p-2 text-xs text-status-warn-fg">検証上の注意が{record.provenance.validation.length}件あります。金額・名称は原文の確認が必要です。</p>}
-    <dl className="mt-3 grid gap-2 sm:grid-cols-3">{Object.entries(AMOUNT_TYPE_LABELS).map(([key, label]) => <div key={key} className="min-w-0 rounded-lg bg-mirai-surface p-3"><dt className="text-xs text-mirai-text-muted">{label}</dt><dd className="mt-1 break-words text-sm font-bold tabular-nums">{formatRequestAmount(record.amounts[key as keyof typeof AMOUNT_TYPE_LABELS])}</dd></div>)}</dl>
+    <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="min-w-0 rounded-lg bg-mirai-surface p-3"><dt className="text-xs text-mirai-text-muted">{AMOUNT_TYPE_LABELS.request}</dt><dd className="mt-1 break-words text-sm font-bold tabular-nums">{formatRequestAmount(record.amounts.request)}</dd></div>
+      <div className="min-w-0 rounded-lg bg-mirai-surface p-3"><dt className="text-xs text-mirai-text-muted">前年度予算額</dt><dd className="mt-1 break-words text-sm font-bold tabular-nums">{formatRequestAmount(record.previousYear)}</dd></div>
+    </dl>
     <p className="mt-3 text-xs"><SourceLink url={record.provenance.url} page={record.provenance.page}>原資料を開く</SourceLink><span className="ml-2 text-mirai-text-muted">{recordLocation(record)}</span></p>
     <details className="mt-3 text-xs leading-relaxed">
       <summary className="cursor-pointer font-medium text-primary-accent">原文・抽出根拠を見る</summary>
@@ -189,7 +191,8 @@ function RecordCard({ record, document }: { record: BudgetRequestRecord; documen
           <Detail label="取得日時">{date(record.provenance.retrievedAt)}</Detail>
           <Detail label="抽出方法">{record.provenance.extractionMethod}</Detail>
           <Detail label="RSとの対応（参考）">{{ exact: '完全一致', inferred: '推定対応', unmatched: '未照合' }[record.rsLink.status]}{record.rsLink.projectIds.length ? `・事業ID ${record.rsLink.projectIds.join('、')}` : ''}{record.rsLink.sheetFY ? `・${record.rsLink.sheetFY}年度シート` : ''}{record.rsLink.evidence ? `・${record.rsLink.evidence}` : ''}</Detail>
-          {Object.entries(AMOUNT_TYPE_LABELS).map(([key, label]) => <Detail key={key} label={`${label}の原文`}>{record.amounts[key as keyof typeof AMOUNT_TYPE_LABELS].raw || '記載なし'}</Detail>)}
+          <Detail label="要求額の原文">{record.amounts.request.raw || '記載なし'}</Detail>
+          {(['demand', 'specialInvestment'] as const).filter(key => record.amounts[key].status !== 'blank').map(key => <Detail key={key} label={`${AMOUNT_TYPE_LABELS[key]}（補足）`}>{formatRequestAmount(record.amounts[key])}・原文「{record.amounts[key].raw}」</Detail>)}
           <Detail label="資料ハッシュ">{record.provenance.hash || '未取得'}</Detail>
         </dl>
         {!!record.provenance.validation.length && <p>検証上の注意: {record.provenance.validation.join(' ／ ')}</p>}

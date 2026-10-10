@@ -6,7 +6,7 @@ import { GET } from '../app/api/budget-requests/route';
 const get = (query = '') => GET(new NextRequest(`http://localhost/api/budget-requests${query}`));
 
 test('概算要求APIはデータ読み込み前に不正な条件を拒否する', async () => {
-  for (const query of ['?fy=2026', '?fy=../2027', '?status=invalid', '?type=invalid', '?amount=invalid', '?page=0', '?limit=500']) {
+  for (const query of ['?fy=2026', '?fy=../2027', '?status=invalid', '?type=invalid', '?kind=invalid', '?page=0', '?limit=500']) {
     const response = await get(query);
     assert.equal(response.status, 400, query);
     assert.equal(typeof (await response.json()).error, 'string');

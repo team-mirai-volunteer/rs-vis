@@ -19,25 +19,25 @@ for (const width of [1440, 390]) {
     await expect(page.getByRole('heading', { name: '概算要求を原資料から探す' })).toBeVisible();
     const record = page.getByTestId('request-record');
     await expect(record).toHaveCount(1);
-    for (const label of ['府省・機関等', '取得状況', '資料の種類', '記載のある金額区分']) {
+    for (const label of ['府省・機関等', '取得状況', '資料の種類']) {
       await expect(page.getByRole('combobox', { name: label, exact: true })).toBeVisible();
     }
     await expect(record).toContainText('0円');
-    await expect(record).toContainText('事項要求（金額未定）');
-    await expect(record).toContainText('記載なし');
+    await expect(page.getByRole('combobox', { name: '記載のある金額区分' })).toHaveCount(0);
+    await expect(record).not.toContainText('特別投資枠');
     await record.getByText('原文・抽出根拠を見る', { exact: true }).click();
     await expect(record).toContainText('テスト研究推進事業 0 事項要求');
+    await expect(record).toContainText('要望額（補足）');
     await expect(record.getByRole('link', { name: '原資料を開く' })).toHaveAttribute('href', 'https://example.go.jp/test.pdf#page=3');
     await expect(record).toContainText('test-hash');
     await record.getByText('原文・抽出根拠を見る', { exact: true }).click();
     await expect(record.getByText('テスト研究推進事業 0 事項要求', { exact: true })).not.toBeVisible();
     await page.getByRole('button', { name: '次のページ', exact: true }).click();
     await expect(record).toContainText('テスト整備事業');
-    await expect(record).toContainText('抽出できず');
+    await expect(record).toContainText('120,000,000円');
+    await expect(record).toContainText('100,000,000円');
     await page.goBack();
     await expect(record).toContainText('テスト研究推進事業');
-    await page.getByLabel('記載のある金額区分').selectOption('specialInvestment');
-    await expect(record).toContainText('120,000,000円');
     await page.getByRole('button', { name: '条件をクリア' }).click();
     await page.getByRole('searchbox', { name: '事業名・資料名を検索' }).fill('研究');
     await page.getByRole('button', { name: '検索', exact: true }).click();

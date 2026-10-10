@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { budgetRequestResponse, DEFAULT_REQUEST_FILTERS, filterBudgetRequests, formatRequestAmount, parseBudgetRequestFilters, recordLocation, requestSourceUrl } from '../app/lib/budget-requests';
+import { budgetRequestResponse, DEFAULT_REQUEST_FILTERS, filterBudgetRequests, formatRequestAmount, hasRequestAmount, parseBudgetRequestFilters, recordLocation, requestSourceUrl } from '../app/lib/budget-requests';
+import type { RequestAmount } from '../types/budget-requests';
+
+const blank = (): RequestAmount => ({ valueYen: null, status: 'blank', raw: '' });
 import { requestDataset, requestDocument, requestRecord } from './fixtures/budget-requests-ui';
 import { PRIMARY_PAGES } from '../components/navigation/pages';
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
 
-test('概算要求の試作ナビは既存の主要ページの後に並ぶ', () => {
+test('主要ナビは サンキー図 … 事業者 → 基金 → 概算要求 → 税優遇 の順に並ぶ', () => {
   assert.equal(PRIMARY_PAGES[0].href, '/budget-sankey');
-  assert.ok(PRIMARY_PAGES.findIndex(page => page.href === '/budget-requests') > PRIMARY_PAGES.findIndex(page => page.href === '/tax-expenditures'));
+  const at = (href: string) => PRIMARY_PAGES.findIndex(page => page.href === href);
+  assert.ok(at('/vendors') < at('/funds') && at('/funds') < at('/budget-requests') && at('/budget-requests') < at('/tax-expenditures'));
   assert.equal(PRIMARY_PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
 });
 
@@ -53,11 +57,13 @@ test('事業名・資料名・科目コード検索は全角英数/大小文字�
   assert.equal(filterBudgetRequests(data, filters({ query: '別省の未取得資料' })).documents.length, 1);
 });
 
-test('金額区分ではゼロや事項要求・抽出失敗を消さず、空欄だけを除く', () => {
+test('要求額を読み取れた行だけを出す。0円・事項要求は残し、空欄・抽出失敗は出さない', () => {
   const data = requestDataset();
-  assert.equal(filterBudgetRequests(data, filters({ amountType: 'request' })).records.length, 2);
-  assert.deepEqual(filterBudgetRequests(data, filters({ amountType: 'demand' })).records.map(record => record.id), ['row-test']);
-  assert.deepEqual(filterBudgetRequests(data, filters({ amountType: 'specialInvestment' })).records.map(record => record.id), ['row-test-2']);
+  assert.deepEqual(filterBudgetRequests(data, filters()).records.map(record => record.id), ['row-test', 'row-test-2']);
+  assert.equal(hasRequestAmount({ amounts: { request: { valueYen: null, status: '事項要求', raw: '事項要求' }, demand: blank(), specialInvestment: blank() } }), true);
+  assert.equal(hasRequestAmount({ amounts: { request: blank(), demand: { valueYen: 1, status: 'numeric', raw: '1' }, specialInvestment: blank() } }), false, '要望額だけの行は要求額の一覧に出さない');
+  // 金額区分のパラメータは受け付けない（要望額・特別投資枠は項目として出さない）
+  assert.equal('amountType' in parseBudgetRequestFilters(new URLSearchParams('amount=demand')), false);
 });
 
 test('ページングは全体の取得範囲と一致件数を保持し、合計額を捏造しない', () => {
@@ -87,7 +93,7 @@ test('失敗後に保持した過去の行は、その資料の失敗状況を�
 test('対象年度・列挙値・ページ指定を厳密に検証する', () => {
   assert.deepEqual(parseBudgetRequestFilters(new URLSearchParams()), filters());
   assert.equal(parseBudgetRequestFilters(new URLSearchParams('fy=2027&q=%20test%20&limit=100')).query, 'test');
-  for (const query of ['fy=2026', 'fy=2027x', 'page=0', 'page=-1', 'page=1.5', 'page=1e2', 'limit=101', 'limit=0', 'status=toString', 'type=__proto__', 'amount=other', `q=${'a'.repeat(201)}`]) {
+  for (const query of ['fy=2026', 'fy=2027x', 'page=0', 'page=-1', 'page=1.5', 'page=1e2', 'limit=101', 'limit=0', 'status=toString', 'type=__proto__', 'kind=invalid', `q=${'a'.repeat(201)}`]) {
     assert.throws(() => parseBudgetRequestFilters(new URLSearchParams(query)), query);
   }
 });

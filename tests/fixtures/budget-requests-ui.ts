@@ -17,7 +17,12 @@ export const requestRecord = (overrides: Partial<BudgetRequestRecord> = {}): Bud
 });
 export const requestDataset = (): BudgetRequestDataset => ({
   schemaVersion: 1, requestedFY: 2027, generatedAt: '2026-10-02T00:00:00Z', indexUrl: 'https://example.go.jp/index.html',
-  coverage: { ministries: 2, discoveredDocuments: 3, fetchedDocuments: 2, extractedDocuments: 1, records: 2, warnings: ['テスト用の部分収録データ'] },
+  coverage: { ministries: 2, discoveredDocuments: 3, fetchedDocuments: 2, extractedDocuments: 1, records: 3, warnings: ['テスト用の部分収録データ'] },
   documents: [requestDocument({ recordCount: 2 }), requestDocument({ id: 'doc-fail', title: '別省の未取得資料', ministry: '別省', status: 'fetch_failed', recordCount: 0, retrievedAt: null, hash: null, revision: 0, revisions: [], error: 'テスト用取得失敗', documentType: 'demand_list' }), requestDocument({ id: 'doc-unsupported', title: '未対応の画像資料', status: 'unsupported', recordCount: 0 })],
-  records: [requestRecord(), requestRecord({ id: 'row-test-2', projectName: 'テスト整備事業', amounts: { request: { valueYen: null, status: 'extraction_failed', raw: '読取不能' }, demand: blank(), specialInvestment: { valueYen: 120000000, status: 'numeric', raw: '120' } } })],
+  records: [
+    requestRecord(),
+    requestRecord({ id: 'row-test-2', projectName: 'テスト整備事業', amounts: { request: { valueYen: 120000000, status: 'numeric', raw: '120' }, demand: blank(), specialInvestment: blank() }, previousYear: { valueYen: 100000000, status: 'numeric', raw: '100' } }),
+    // 要求額を読み取れていない行。一覧には出さない
+    requestRecord({ id: 'row-test-3', projectName: 'テスト読取不能事業', amounts: { request: { valueYen: null, status: 'extraction_failed', raw: '読取不能' }, demand: blank(), specialInvestment: blank() } }),
+  ],
 });
