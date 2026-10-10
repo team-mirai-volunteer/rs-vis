@@ -567,7 +567,7 @@ function InsightCard({ insight }: { insight: Insight }) {
         </div>
       </details>
       <div className="mt-auto flex flex-col gap-2 border-t border-mirai-border pt-4">
-        <p className="text-xs text-mirai-text-muted">{insight.source}</p>
+        <p className="text-xs text-mirai-text-muted [overflow-wrap:anywhere]">{insight.source}</p>
         <Link href={insight.href} className={TEXT_LINK}>
           {insight.linkLabel} <ArrowRight className="size-4" aria-hidden="true" />
         </Link>

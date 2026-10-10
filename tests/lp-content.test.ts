@@ -130,10 +130,13 @@ test('LP does not claim an NTA joint-research precedent for the R&D credit and c
   assert.match(card.facts[2], /令和8年度改正で3年延長/);
 });
 
-test('LP publicity card keeps the reported figure separate and reproduces the contract figures', () => {
+test('LP publicity card reconciles the reported figure with the official request documents and reproduces the contract figures', () => {
   const card = INSIGHTS.find(item => item.id === 'publicity')!;
-  assert.match(card.facts[0], /FNN.*2027年度概算要求は72\.3億円.*当サイトの集計ではない/);
-  assert.match(card.caveat, /当サイトでは追えず/);
+  assert.match(card.figure, /^64\.8億円$/);
+  assert.match(card.facts[0], /72\.3億円（7,228百万円）.*64\.8億円（6,484百万円）.*投資枠/);
+  assert.match(card.facts[1], /歳出概算要求額明細表.*ほぼ同額/);
+  assert.match(card.caveat, /報道（FNN 2026年9月11日）の72\.3億円・約10倍は概要の表と一致/);
+  assert.match(card.source, /r9_yosan_gaisan\.pdf/);
   const scores = readDataJson<{ pid: string; name: string; execAmount: number | null }[]>('project-quality-scores-2025.json', 'npm run score-quality-2025');
   const contracts = readDataJson<ContractMethodsByPid>('contract-methods-2025.json', 'npm run generate-contract-methods');
   const publicity = scores.filter(p => p.name.includes('広報'));
@@ -145,11 +148,10 @@ test('LP publicity card keeps the reported figure separate and reproduces the co
   const cabinet = contracts['45'] ?? [];
   assert.equal(cabinet.length, 3);
   assert.ok(cabinet.every(row => row.ap === 1 && contractCategory(row.m) === 'open'));
-  assert.match(card.figure, /^27%$/);
-  assert.match(card.facts[1], /契約3件はすべて一般競争で応札1者/);
-  assert.match(card.facts[2], /52事業・執行180億円/);
-  assert.match(card.facts[3], /264件のうち応札1者は70件（27%）/);
-  assert.equal(new URL(card.href, 'https://example.test').searchParams.get('detail'), '45');
+  assert.match(card.facts[4], /契約3件はすべて一般競争で応札1者/);
+  assert.match(card.facts[4], /52事業・執行180億円/);
+  assert.match(card.facts[4], /264件では応札1者が70件（27%）/);
+  assert.equal(new URL(card.href, 'https://example.test').pathname, '/budget-requests');
 });
 
 test('LP retains all fifteen parliamentary questions and twelve scripts', () => {

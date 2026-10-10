@@ -56,6 +56,7 @@
     "fetch-rs-segments": "node scripts/fetch-rs-api.mjs 2024 --sheet SS && node scripts/fetch-rs-api.mjs 2025 --sheet SS && node scripts/fetch-rs-api.mjs 2026 --sheet SS",
     "generate-funds": "npx tsx scripts/generate-funds.ts",
     "generate-vendors": "npx tsx scripts/generate-vendors.ts",
+    "generate-budget-request-links": "npx tsx scripts/generate-budget-request-links.ts --fy 2027 --sheet 2025",
     "generate-agency-segments": "npx tsx scripts/generate-agency-segments.ts",
     "generate-budget-execution-audit": "python scripts/generate-budget-execution-audit.py",
     "generate-audit-report": "python scripts/generate-audit-report.py",
