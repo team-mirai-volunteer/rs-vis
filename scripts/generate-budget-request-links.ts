@@ -31,7 +31,8 @@ export function normalizeName(value: string | null | undefined): string {
 
 interface PdfMoku { requestYen: number; previousYen: number | null; rows: number; url: string; page: number | null; documentTitle: string }
 /** byKouMoku: (所管,組織,項,目) → 合算。byMoku: (所管,組織,目) → 項ごとの合算（項が1つだけなら 目 の名前で引ける） */
-interface PdfIndex { byKouMoku: Map<string, PdfMoku>; byMoku: Map<string, Map<string, PdfMoku>>; ministries: Set<string> }
+/** bySubKouMoku / bySubMoku: 特別会計の (勘定, 項, 目)。共管の特会は複数府省の掲載から同じ資料が入るので、行は出典（URL・ページ・コード・名前）で重複排除する */
+interface PdfIndex { byKouMoku: Map<string, PdfMoku>; byMoku: Map<string, Map<string, PdfMoku>>; bySubKouMoku: Map<string, PdfMoku>; bySubMoku: Map<string, Map<string, PdfMoku>>; ministries: Set<string>; subaccounts: Set<string> }
 
 const key4 = (ministry: string, organization: string, kou: string, moku: string) => [ministry, organization, kou, moku].map(normalizeName).join('|');
 const key3 = (ministry: string, organization: string, moku: string) => [ministry, organization, moku].map(normalizeName).join('|');
@@ -60,20 +61,37 @@ export function indexRequestRecords(data: BudgetRequestDataset): PdfIndex {
   };
   const byKouMoku = new Map<string, PdfMoku>();
   const byMoku = new Map<string, Map<string, PdfMoku>>();
+  const bySubKouMoku = new Map<string, PdfMoku>();
+  const bySubMoku = new Map<string, Map<string, PdfMoku>>();
   const ministries = new Set<string>();
+  const subaccounts = new Set<string>();
+  const seenSubRows = new Set<string>();
   for (const record of data.records) {
     const code = record.itemCodes.at(-1);
     if (!code || !FULL_CODE.test(code) || record.amounts.request.status !== 'numeric' || record.amounts.request.valueYen === null) continue;
     ministries.add(record.ministry);
     const documentTitle = docs.get(record.documentId)?.title ?? '';
     const kou = kouOf(record) ?? '';
-    if (kou) accumulate(byKouMoku, key4(record.ministry, record.department ?? '', kou, record.projectName), record, documentTitle);
-    const k3 = key3(record.ministry, record.department ?? '', record.projectName);
+    if (record.subaccount) {
+      const rowKey = `${record.provenance.url}|${record.provenance.page}|${record.itemCodes.join('/')}|${record.projectName}|${record.amounts.request.valueYen}`;
+      if (!seenSubRows.has(rowKey)) {
+        seenSubRows.add(rowKey);
+        subaccounts.add(normalizeName(record.subaccount));
+        if (kou) accumulate(bySubKouMoku, [record.subaccount, kou, record.projectName].map(normalizeName).join('|'), record, documentTitle);
+        const subKey = [record.subaccount, record.projectName].map(normalizeName).join('|');
+        const perKou = bySubMoku.get(subKey) ?? new Map<string, PdfMoku>();
+        accumulate(perKou, normalizeName(kou), record, documentTitle);
+        bySubMoku.set(subKey, perKou);
+      }
+    }
+    const department = record.department || record.ministry;
+    if (kou) accumulate(byKouMoku, key4(record.ministry, department, kou, record.projectName), record, documentTitle);
+    const k3 = key3(record.ministry, department, record.projectName);
     const perKou = byMoku.get(k3) ?? new Map<string, PdfMoku>();
     accumulate(perKou, normalizeName(kou), record, documentTitle);
     byMoku.set(k3, perKou);
   }
-  return { byKouMoku, byMoku, ministries };
+  return { byKouMoku, byMoku, bySubKouMoku, bySubMoku, ministries, subaccounts };
 }
 
 interface RsLine { pid: string; ministry: string; organization: string; kou: string; moku: string; budgetYen: number; nextRequestYen: number }
@@ -103,12 +121,28 @@ export function buildLinks(data: BudgetRequestDataset, lines: RsLine[], sheetYea
   let keys = 0, matchedKeys = 0;
   for (const line of lines) {
     const entry = byPid[line.pid] ??= { coverage: 'no-line-items', items: [], unmatched: [] };
-    if (!crawled.has(normalizeName(line.ministry))) { if (entry.coverage === 'no-line-items') entry.coverage = 'not-crawled'; continue; }
+    // 明細表側の「府省」は財務省の索引の行名。RS の 所管（内閣・内閣府・国会）の下にある 組織（内閣官房・こども家庭庁・
+    // 警察庁・衆議院など）が索引では独立した行になっているので、所管 と 組織 の両方で引く
+    // 共管（「内閣府及び厚生労働省」「内閣府、文部科学省、経済産業省及び環境省」）は府省ごとに分けて引く
+    const ministryNames = line.ministry.split(/及び|、/).map(name => name.trim()).filter(Boolean);
+    const ministryKeys = [...new Set([...ministryNames, line.organization])].filter(name => crawled.has(normalizeName(name)));
+    // 特別会計: RS の 組織・勘定 は勘定名。明細表側は勘定名（subaccount）で引く（掲載府省は法的所管と一致しないことがある）
+    const subaccount = index.subaccounts.has(normalizeName(line.organization)) ? line.organization : null;
+    if (!ministryKeys.length && !subaccount) { if (entry.coverage === 'no-line-items') entry.coverage = 'not-crawled'; continue; }
     keys += 1;
-    let match = index.byKouMoku.get(key4(line.ministry, line.organization, line.kou, line.moku));
+    let match: PdfMoku | undefined;
     let matchedBy: BudgetRequestLinkItem['matchedBy'] = 'kou-moku';
-    if (!match) {
-      const candidates = index.byMoku.get(key3(line.ministry, line.organization, line.moku));
+    for (const ministry of ministryKeys) {
+      match = index.byKouMoku.get(key4(ministry, line.organization, line.kou, line.moku));
+      if (match) break;
+    }
+    if (!match && subaccount) match = index.bySubKouMoku.get([subaccount, line.kou, line.moku].map(normalizeName).join('|'));
+    if (!match) for (const ministry of ministryKeys) {
+      const candidates = index.byMoku.get(key3(ministry, line.organization, line.moku));
+      if (candidates && candidates.size === 1) { match = [...candidates.values()][0]; matchedBy = 'moku-unique'; break; }
+    }
+    if (!match && subaccount) {
+      const candidates = index.bySubMoku.get([subaccount, line.moku].map(normalizeName).join('|'));
       if (candidates && candidates.size === 1) { match = [...candidates.values()][0]; matchedBy = 'moku-unique'; }
     }
     if (match) {

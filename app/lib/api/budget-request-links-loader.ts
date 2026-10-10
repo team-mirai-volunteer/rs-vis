@@ -7,7 +7,8 @@ const FILE = `budget-request-links-${BUDGET_REQUEST_LINKS_FY}.json`;
 
 let cache: BudgetRequestLinksFile | null | undefined;
 export function loadBudgetRequestLinks(): BudgetRequestLinksFile | null {
-  if (cache !== undefined) return cache;
+  // 開発中は生成し直した結果をすぐ見たいので、本番だけモジュール内に保持する
+  if (cache !== undefined && process.env.NODE_ENV === 'production') return cache;
   if (!dataFileExists(FILE)) { cache = null; return cache; }
   const data = readDataJson<BudgetRequestLinksFile>(FILE, 'npm run generate-budget-request-links');
   if (data.schemaVersion !== 1 || !data.byPid || !Array.isArray(data.ministries)) throw new Error('Invalid budget request links dataset');
