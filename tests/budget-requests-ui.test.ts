@@ -10,9 +10,10 @@ import { PRIMARY_PAGES } from '../components/navigation/pages';
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
 
-test('概算要求の試作ナビは既存の主要ページの後に並ぶ', () => {
+test('主要ナビは サンキー図 … 事業者 → 基金 → 概算要求 → 税優遇 の順に並ぶ', () => {
   assert.equal(PRIMARY_PAGES[0].href, '/budget-sankey');
-  assert.ok(PRIMARY_PAGES.findIndex(page => page.href === '/budget-requests') > PRIMARY_PAGES.findIndex(page => page.href === '/tax-expenditures'));
+  const at = (href: string) => PRIMARY_PAGES.findIndex(page => page.href === href);
+  assert.ok(at('/vendors') < at('/funds') && at('/funds') < at('/budget-requests') && at('/budget-requests') < at('/tax-expenditures'));
   assert.equal(PRIMARY_PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
 });
 
