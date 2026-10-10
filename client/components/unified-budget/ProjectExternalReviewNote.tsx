@@ -29,10 +29,12 @@ export function ProjectExternalReviewNote({ pid, scaleFont, onOpen, loading, pad
   const audit = items?.length ?? 0;
   if (bea === 0 && audit === 0) return null;
   const parts = [bea > 0 && `財務省の予算執行調査 ${bea}件`, audit > 0 && `会計検査院の決算検査報告 ${audit}件`].filter(Boolean).join('・');
-  return <section aria-label="外部の検査結果" className={`flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border ${padding}`} style={{ fontSize: scaleFont(11) }}>
+  // 概算要求の段（ProjectBudgetRequest）と同じ強さ: 見出し 11px、件数と操作は 10px の控えめな色
+  const metaPx = scaleFont(10);
+  return <section aria-label="外部の検査結果" className={`flex flex-wrap items-baseline gap-x-[5px] gap-y-1 border-b border-border ${padding}`} style={{ fontSize: scaleFont(11) }}>
     <span className="font-bold text-mirai-text-subtle">外部の検査</span>
-    <span className="text-mirai-text-secondary">{parts}</span>
-    {onOpen && <Button variant="link" size="xs" onClick={onOpen} disabled={loading} className="font-medium" style={{ fontSize: scaleFont(11) }}>
+    <span className="text-mirai-text-muted" style={{ fontSize: metaPx }}>{parts}</span>
+    {onOpen && <Button variant="link" size="xs" onClick={onOpen} disabled={loading} className="h-auto p-0 font-normal text-mirai-text-muted" style={{ fontSize: metaPx }}>
       {loading ? '読み込み中…' : '政策評価の詳細で見る'}
     </Button>}
   </section>;
