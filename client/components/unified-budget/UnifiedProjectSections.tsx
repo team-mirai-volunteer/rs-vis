@@ -26,6 +26,7 @@ import { policyViewFor, useCached, usePolicySummary } from './policy-summary-cac
 import { ProjectBudgetHistory } from './ProjectBudgetHistory';
 import { LABEL_FONT_PX_FULL_HD } from '@/app/lib/unified-budget/label-font';
 import { ProjectFunds } from './ProjectFunds';
+import { ProjectRelatedPages } from './ProjectRelatedPages';
 import { ProjectBudgetRequest } from './ProjectBudgetRequest';
 import { ProjectAgencySegments } from './ProjectAgencySegments';
 import { ProjectExternalReviewNote } from './ProjectExternalReviewNote';
@@ -135,6 +136,7 @@ export function UnifiedProjectSections({
         <ProjectBudgetRequest pid={pid} scaleFont={scaleFont} padding="px-4 py-1" />
         <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} padding="px-4 py-1" />
         <ProjectFunds pid={pid} scaleFont={scaleFont} padding="px-4 py-1" />
+        <ProjectRelatedPages pid={pid} scaleFont={scaleFont} padding="px-4 py-1" />
       </div>}
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
