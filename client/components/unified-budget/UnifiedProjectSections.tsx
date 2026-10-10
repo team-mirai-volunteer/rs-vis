@@ -131,8 +131,8 @@ export function UnifiedProjectSections({
       </div>
       {/* 推移の下に、翌々年度の概算要求（原資料の明細表の 目 ごと）。取得できていない府省は 1 行の注記 */}
       {!isProvisional && <ProjectBudgetRequest pid={pid} scaleFont={scaleFont} padding="px-4 py-2" />}
-      {/* 外部の検査と関連する基金を件数だけの1行で。全文は政策評価の詳細（ScoreDetailDialog）と基金一覧に置く */}
-      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} onOpen={openScoreDialog} loading={scoreLoading} padding="px-4 py-2" />}
+      {/* 外部の検査は件数の1行のアコーディオン（開くと政策評価の詳細と同じ一覧）。基金は件数だけで全文は基金一覧に置く */}
+      {!isProvisional && <ProjectExternalReviewNote pid={pid} scaleFont={scaleFont} padding="px-4 py-2" />}
       {!isProvisional && <ProjectFunds pid={pid} scaleFont={scaleFont} padding="px-4 py-2" />}
 
       {scoreItem && typeof document !== 'undefined' && createPortal(<ScoreDetailDialog item={scoreItem} onClose={() => setScoreItem(null)} year={year} />, document.body)}
