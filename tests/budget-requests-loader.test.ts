@@ -27,7 +27,7 @@ test('loader returns null for ungenerated data and reads compressed server bundl
     writeFileSync(join(root, 'data', 'server', 'budget-requests-2027.json.gz'), gzipSync(JSON.stringify(requestDataset())));
     const dataset = loadIn(root);
     assert.equal(dataset.requestedFY, 2027);
-    assert.equal(dataset.records.length, 2);
+    assert.equal(dataset.records.length, 3);
     assert.equal(dataset.records[0].amounts.request.valueYen, 0);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
