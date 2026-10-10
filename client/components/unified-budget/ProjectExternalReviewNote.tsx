@@ -22,7 +22,7 @@ export function ProjectExternalReviewNote({ pid, scaleFont, padding = 'px-3.5 py
   if (bea === 0 && audit === 0) return null;
   const summary = [bea > 0 && `財務省の予算執行調査 ${bea}件`, audit > 0 && `会計検査院の決算検査報告 ${audit}件`].filter(Boolean).join('・');
   const metaPx = scaleFont(10);
-  return <section aria-label="外部の検査結果" className={`border-b border-border ${padding}`} style={{ fontSize: scaleFont(11) }}>
+  return <section aria-label="外部の検査結果" className={padding} style={{ fontSize: scaleFont(11) }}>
     <Button variant="ghost" size="xs" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen(v => !v)} title={open ? '外部の検査を閉じる' : '外部の検査の内容を開く'}
       className="h-auto justify-start gap-[5px] rounded-md p-0 font-normal hover:bg-transparent hover:text-mirai-text has-[>svg]:px-0">
       <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(11) }}>外部の検査</span>

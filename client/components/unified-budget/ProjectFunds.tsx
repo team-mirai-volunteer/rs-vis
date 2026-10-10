@@ -18,7 +18,7 @@ export function ProjectFunds({ pid, scaleFont, padding = 'px-3.5 py-2' }: { pid:
   const balance = funds.reduce((s, f) => s + (latestYear(f).balance ?? 0), 0);
   const sheetYear = Math.max(...funds.map(f => latestYear(f).sheetYear));
   const href = funds.length === 1 ? `/funds?fund=${encodeURIComponent(funds[0].key)}` : `/funds?pid=${pid}`;
-  return <section aria-label="この事業に関連する基金" className={`flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border ${padding}`} style={{ fontSize: scaleFont(11) }}>
+  return <section aria-label="この事業に関連する基金" className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${padding}`} style={{ fontSize: scaleFont(11) }}>
     <span className="font-bold text-mirai-text-subtle">関連する基金</span>
     <span className="text-mirai-text-secondary" title={funds.map(f => `${f.name}（${f.owner}）`).join('、')}>
       {funds.length === 1 ? funds[0].name : `${funds.length}基金`}

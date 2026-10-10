@@ -32,7 +32,7 @@ export function ProjectBudgetRequest({ pid, scaleFont, padding = 'px-3.5 py-2' }
   if (data === undefined || data === null || data.coverage !== 'linked') return null;
   const title = `${data.requestedFY}年度概算要求`;
   const metaPx = scaleFont(10);
-  const common = `border-b border-border ${padding}`;
+  const common = padding;
   const summary = `歳出予算項目${data.items.length}件が明細表と一致${data.unmatched.length ? `・${data.unmatched.length}件は一致なし` : ''}`;
   const explanation = `事業が使う歳出予算項目（目）ごとの、歳出概算要求額明細表に記載された 目 全体の${data.requestedFY}年度要求額。目は他の事業と共有されることがあり、この事業だけの額ではありません`;
   return <section aria-label={title} title={explanation} className={common} style={{ fontSize: scaleFont(11) }}>

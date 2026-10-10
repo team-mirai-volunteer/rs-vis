@@ -425,7 +425,7 @@ ${a.desc}`}>
         <div className="border-b border-mirai-border px-6">
           <ProjectBudgetHistory key={item.pid} pid={Number(item.pid)} />
         </div>
-        <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={px => px + 1} padding="px-6 py-2.5" />
+        <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={px => px + 1} padding="border-b border-border px-6 py-2.5" />
 
         {/* 政府・検査機関による調査（財務省 予算執行調査・会計検査院 決算検査報告）。推移の後に置き、見比べられるようにする */}
         <ProjectBudgetExecutionAudit pid={Number(item.pid)} scaleFont={px => px} padding="px-6 py-2.5" />
