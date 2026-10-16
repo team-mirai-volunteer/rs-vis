@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { LegalDocument, LegalSection } from '@/components/legal/LegalDocument';
-import { LEGAL_UPDATED } from '@/app/lib/legal';
+import { PRIVACY_UPDATED } from '@/app/lib/legal';
 
 export const metadata: Metadata = {
   title: `プライバシーポリシー｜${PRODUCT_NAME}`,
@@ -12,15 +12,17 @@ export const metadata: Metadata = {
 };
 
 /**
- * プライバシーポリシー。まるみえ・みらい議会のポリシーと同じ粒度（事業者名や保存方式の詳細は書かない）に揃える。
+ * プライバシーポリシー。まるみえ・みらい議会のポリシーと同じ粒度に揃える
+ * （ホスティング等の事業者名は書かない。アクセス解析は Google Analytics と明示する）。
  * 実装と食い違わないよう、取り扱いを変えるときは本文も更新する
- * （根拠: app/api/projects/[pid]/comments, app/api/ai, client/lib/ai/api-key-store.ts）。
+ * （根拠: app/api/projects/[pid]/comments, app/api/ai, client/lib/ai/api-key-store.ts,
+ * components/analytics/SiteGoogleAnalytics.tsx）。
  */
 export default function PrivacyPage() {
   return (
     <LegalDocument
       title="プライバシーポリシー"
-      updated={LEGAL_UPDATED}
+      updated={PRIVACY_UPDATED}
       lead={<p>チームみらい（以下「当団体」）は、運営するウェブサイト「{PRODUCT_NAME}」（{SITE_URL}。以下「本サービス」）における個人情報およびその他の利用情報を、次のとおり取り扱います。</p>}
     >
       <LegalSection id="definition" heading="1. 個人情報の定義">
@@ -34,6 +36,7 @@ export default function PrivacyPage() {
           <li><strong>AI 機能への入力。</strong>AI による絞り込みや対話に入力した内容は、応答を生成するために外部の AI サービスで処理します。意見投稿で送信された対話ログを除き、当団体はこれを保存しません。外部の AI サービスが自社の条件に基づいて入力内容を一時的に保持することがあります。</li>
           <li><strong>不正利用対策のための情報。</strong>短時間の大量投稿や荒らしを防ぐため、投稿時の IP アドレスを、当団体だけが持つ秘密の値を加えたハッシュ値に変換して保存します（生の IP アドレスは保存しません）。投稿回数の制限と不正利用への対応に利用します。</li>
           <li><strong>アクセス情報。</strong>本サービスの提供に用いるサーバーは、障害対応やセキュリティのためにアクセスログを一時的に記録します。当団体はこれを個人を特定する目的で利用しません。</li>
+          <li><strong>利用状況。</strong>本サービスの改善のため、閲覧したページ、参照元、おおよその地域、利用した端末の種類などの利用状況をアクセス解析ツールで取得します。個人を特定する目的では利用しません。</li>
           <li><strong>お問い合わせ。</strong>メールでお問い合わせいただいた場合、メールアドレスと内容を、回答と記録のために利用します。</li>
         </ul>
         <p>このほか、本サービスの運営・改善、本規約に反する利用への対応、法令に基づく対応のために、取得した情報を利用することがあります。</p>
@@ -50,7 +53,7 @@ export default function PrivacyPage() {
             </ul>
           </li>
           <li>投稿された意見は、匿名で本サービス上に公開されるほか、個人を識別できない形で集計し、報告書などで公表することがあります。対話ログは公開せず、次項の委託先を除き第三者に提供しません。</li>
-          <li>本サービスの提供にあたり、ホスティング、データの保管、AI による応答の生成を外部のサービスに委ねています。AI 機能に入力した内容は、応答の生成のために外部の AI サービスで処理されます。ユーザー自身の API キーを登録して AI 機能を利用する場合、入力した内容はユーザーのブラウザから直接その外部サービスに送られます。</li>
+          <li>本サービスの提供にあたり、ホスティング、データの保管、AI による応答の生成、アクセス解析を外部のサービスに委ねています。AI 機能に入力した内容は、応答の生成のために外部の AI サービスで処理されます。ユーザー自身の API キーを登録して AI 機能を利用する場合、入力した内容はユーザーのブラウザから直接その外部サービスに送られます。公開サイトの利用状況は、アクセス解析のために Google に送信します。</li>
         </ol>
       </LegalSection>
 
@@ -60,7 +63,7 @@ export default function PrivacyPage() {
 
       <LegalSection id="cookie" heading="5. Cookie とブラウザ内の保存">
         <ol>
-          <li>本サービスは、現時点でアクセス解析のための Cookie や外部の計測ツールを使用していません。導入する場合は本ポリシーを更新して明示します。</li>
+          <li>本サービスは、公開サイトの利用状況を把握するために Google Analytics を使用します。Google Analytics は Cookie を用いて、閲覧したページ、参照元、おおよその地域、端末の種類などを Google に送信します。この計測は本番の公開サイトでのみ行い、プレビューや開発環境では行いません。Cookie はブラウザの設定から拒否できます。</li>
           <li>表示の設定や AI 機能の設定（ユーザー自身の API キーを含む）は、ユーザーのブラウザ内に保存します。これらは当団体のサーバーには送信されず、ブラウザの設定や画面の操作で削除できます。</li>
         </ol>
       </LegalSection>
@@ -69,6 +72,7 @@ export default function PrivacyPage() {
         <ol>
           <li>取得した個人情報および対話ログは、原則として 7 年間保管した後、適切な方法で廃棄・削除します。投稿した本人が意見の削除を希望する場合は、第8項の連絡先までお知らせください。匿名投稿のため、投稿日時や内容を伺って本人を確認し、意見文と対話ログをあわせて削除します。</li>
           <li>公表済みの集計結果や統計など、個人を識別できない形に加工した情報は、削除の対象になりません。</li>
+          <li>アクセス解析のために Google に送った利用状況は、当団体のサーバーには保存しません。</li>
         </ol>
       </LegalSection>
 
