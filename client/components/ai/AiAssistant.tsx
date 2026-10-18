@@ -160,7 +160,10 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     const context = { year: yearKey, page };
     try {
       let reply: { message: string; result?: SankeyChatResult; suggestions?: string[] };
-      if (mode === 'byok' && settings) {
+      // 例文 3 つはサーバーに 24 時間の応答キャッシュがあるので、BYOK でもサイト提供 AI が使える環境ならそちらを引く
+      // （例文は固定の文言なので、会話をサーバーに送らない BYOK の約束は破らない）。それ以外の BYOK はブラウザ直のまま
+      const useServerCache = serverEnabled === true && messages.length === 0 && EXAMPLES.includes(trimmed);
+      if (mode === 'byok' && settings && !useServerCache) {
         reply = await runByokChat({ messages: history, context, settings, getGraph, signal: aborter.signal,
           onProgress: ev => setProgress(ev.kind === 'retry' ? `混雑のため ${Math.ceil((ev as { waitMs: number }).waitMs / 1000)} 秒待って再試行しています` : ev.kind === 'tool' ? '公開データを検索しています' : null) });
       } else {

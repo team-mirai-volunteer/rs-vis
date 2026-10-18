@@ -14,6 +14,11 @@ import {
 } from '@/types/sankey-ai-chat';
 
 import { createServerLlmCaller, isServerAiEnabled, LlmUpstreamError, newUsage, serverModel, type LlmUsage } from '@/app/api/ai/_lib/server-llm';
+import { responseCacheKey, runWithResponseCache } from '@/app/api/ai/_lib/response-cache';
+import { isGiveUpMessage } from '@/app/lib/ai/chat-core';
+
+/** 応答キャッシュに保存する応答か（解釈できなかった応答は保存しない） */
+const isCacheable = (result: { message: string }) => !isGiveUpMessage(result.message);
 
 /** appendUsageLog 呼び出しの共通次元（非ストリーミング・ストリーミング両経路で使う） */
 interface AiChatLogBase {
@@ -107,9 +112,11 @@ export async function POST(req: Request) {
       return buildStreamResponse(messages, context, buildCallLlm, model, logBase, started, req.signal);
     }
 
+    const cacheKey = responseCacheKey(messages, context);
     let agentResult;
+    let cached = false;
     try {
-      agentResult = await runSankeyChatAgent(messages, context, buildCallLlm());
+      ({ result: agentResult, cached } = await runWithResponseCache(cacheKey, () => runSankeyChatAgent(messages, context, buildCallLlm()), isCacheable));
     } catch (e) {
       if (e instanceof LlmUpstreamError || (e instanceof Error && e.name === 'TimeoutError')) {
         console.error('[ai/sankey-chat] upstream error:', e);
@@ -124,6 +131,7 @@ export async function POST(req: Request) {
 
     appendUsageLog({
       ...logBase,
+      cached,
       // result なし = 聞き返し・解釈不能（未充足需要のシグナル）。text 行の userText を集計して活用する
       outcome: agentResult.result ? 'result' : 'text',
       ...(agentResult.result ? { projectCount: agentResult.result.summary.projects.count } : {}),
@@ -202,9 +210,15 @@ function buildStreamResponse(
         );
         const onProgress = (ev: SankeyChatProgressEvent) => send('progress', ev);
         try {
-          const agentResult = await runSankeyChatAgent(messages, context, callLlm, onProgress);
+          // キャッシュに当たれば progress イベントは出ず、すぐ result が届く
+          const { result: agentResult, cached } = await runWithResponseCache(
+            responseCacheKey(messages, context),
+            () => runSankeyChatAgent(messages, context, callLlm, onProgress),
+            isCacheable,
+          );
           appendUsageLog({
             ...logBase,
+            cached,
             outcome: agentResult.result ? 'result' : 'text',
             ...(agentResult.result ? { projectCount: agentResult.result.summary.projects.count } : {}),
             toolCalls: agentResult.toolCalls,

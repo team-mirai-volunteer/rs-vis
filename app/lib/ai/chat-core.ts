@@ -104,6 +104,8 @@ const SUGGESTIONS_MAX = 3;
 
 const GIVE_UP_MESSAGE =
   'ご要望をフィルタ条件として解釈できませんでした。「再エネ関連で予算100億円以上」「経済産業省の事業だけ」のように、事業名・支出先名・府省庁・金額範囲を含めて具体的にお試しください。';
+/** 「解釈できなかった」応答か（応答キャッシュはこれを保存しない） */
+export const isGiveUpMessage = (message: string): boolean => message === GIVE_UP_MESSAGE;
 
 // ── ツール定義（JSON Schema） ──
 
