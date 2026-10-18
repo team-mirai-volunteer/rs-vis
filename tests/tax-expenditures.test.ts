@@ -27,7 +27,7 @@ test('source rows are unique and all registered RS relations resolve to the stat
     assert.match(projects[String(m.rsProjectId)].purpose, /企業版ふるさと納税/);
     assert.match(projects[String(m.rsProjectId)].projectName, /普及促進/);
   }
-  // 補助ビュー（基金・概算要求・租税特別措置・国民負担・財政余力）は主なビューの後ろに並び、試作バッジは補助ビューにだけ付く
+  // 補助ビュー（概算要求・租税特別措置・国民負担・財政余力）は主なビューの後ろに並び、試作バッジは補助ビューにだけ付く
   const lastPrimary = PAGES.map(p => p.primary).lastIndexOf(true);
   const firstSecondary = PAGES.findIndex(p => p.secondary);
   assert.ok(firstSecondary > lastPrimary);

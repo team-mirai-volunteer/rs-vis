@@ -10,11 +10,11 @@ import { PAGES, PRIMARY_PAGES, SECONDARY_PAGES } from '../components/navigation/
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
 
-test('主要ナビは サンキー図 … 事業者、補助ビューは 基金 → 概算要求 → 税優遇 の順に並ぶ', () => {
+test('主要ナビは サンキー図 … 事業者、補助ビューは 概算要求 → 税優遇 の順に並ぶ', () => {
   assert.equal(PRIMARY_PAGES[0].href, '/budget-sankey');
-  assert.equal(PRIMARY_PAGES[PRIMARY_PAGES.length - 1].href, '/vendors');
+  assert.equal(PRIMARY_PAGES[PRIMARY_PAGES.length - 1].href, '/funds');
   const at = (href: string) => (SECONDARY_PAGES as readonly { href: string }[]).findIndex(page => page.href === href);
-  assert.ok(at('/funds') >= 0 && at('/funds') < at('/budget-requests') && at('/budget-requests') < at('/tax-expenditures'));
+  assert.ok(at('/budget-requests') >= 0 && at('/budget-requests') < at('/tax-expenditures'));
   assert.equal(PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
   assert.ok(!PRIMARY_PAGES.some(page => (page.href as string) === '/budget-requests'), '概算要求は主要ナビに出さない');
 });
