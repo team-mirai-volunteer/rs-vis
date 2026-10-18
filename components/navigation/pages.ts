@@ -6,7 +6,7 @@
  * - `navLabel`: ヘッダーの主要ナビ・メニュー・トップのカードに出す短い名前。試作であることは `prototype` のバッジで示す
  */
 export const PAGES = [
-  { href: '/budget-sankey', label: 'サンキー図', navLabel: 'サンキー図', prototype: false, description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れを 1 本のサンキーで追う。「RSのみ」で省庁 → 事業 → 支出先だけにも絞れる', primary: true, secondary: false },
+  { href: '/budget-sankey', label: 'サンキー図', navLabel: 'サンキー図', prototype: false, description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れを 1 本のサンキーで追う', primary: true, secondary: false },
   { href: '/project-bubble', label: 'バブルチャート', navLabel: 'バブル図', prototype: false, description: '5,000 超の事業を内容の近さで配置し、予算規模やAI評価を切り替えて比較する', primary: true, secondary: false },
   { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '公開資料に基づく独自基準のAI評価（試行）と執行透明性を、事業ごとに一覧で見る', primary: true, secondary: false },
   { href: '/subcontracts', label: '委託構造', navLabel: '委託構造', prototype: false, description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true, secondary: false },
