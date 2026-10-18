@@ -30,6 +30,7 @@ import { AppHeader } from '@/components/navigation/AppHeader';
 import { LegalLinks } from '@/components/legal/LegalLinks';
 import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
+import { DATA_SOURCES } from '@/app/lib/data-sources';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 import { Badge } from '@/components/ui/badge';
 import { PolicyCases } from '@/components/lp/PolicyCases';
@@ -366,7 +367,7 @@ export default function LandingPage() {
                 <span className="font-bold text-mirai-text">出典と利用条件。</span>
                 各データは次の公開元から取得し、出典を明記して加工しています。集計日は{DATA_ASOF}、対象は{DATA_VERSIONS}。
                 <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-                  {SOURCES.map(src => (
+                  {DATA_SOURCES.map(src => (
                     <li key={src.name} className="flex flex-col">
                       <SourceLink href={src.href}>{src.name}</SourceLink>
                       <span className="text-xs text-mirai-text-muted">{src.terms}</span>
@@ -432,17 +433,6 @@ export default function LandingPage() {
     </div>
   );
 }
-
-/** 出典と利用条件。利用規約は公開元の表示に従う（確認日 2026-10-08） */
-const SOURCES = [
-  { name: '行政事業レビュー見える化サイト（RSシステム）', href: 'https://rssystem.go.jp/terms', terms: 'レビューシート・基金シート・セグメントシート・公開API。公共データ利用規約（PDL1.0）。出典「行政事業レビュー見える化サイト」を明記し、編集・加工した旨を表示' },
-  { name: '財務省 予算書・決算書データベース', href: 'https://www.bb.mof.go.jp/', terms: '政府標準利用規約（第2.0版）。出典を明記し、編集・加工した旨を表示' },
-  { name: '会計検査院 検査報告データベース', href: 'https://report.jbaudit.go.jp/', terms: '政府標準利用規約（PDL1.0相当）。出典「会計検査院Webサイト」、加工時は明記' },
-  { name: '財務省 予算執行調査', href: 'https://www.mof.go.jp/policy/budget/topics/budget_execution_audit/', terms: '政府標準利用規約（PDL1.0相当）。出典を明記' },
-  { name: '財務省 租税特別措置の適用実態調査', href: 'https://www.mof.go.jp/tax_policy/reference/stm_report/', terms: '政府標準利用規約。原表Excelの行番号と原本のハッシュを保持' },
-  { name: '総務省 家計調査（e-Stat）', href: 'https://www.e-stat.go.jp/', terms: '政府統計の総合窓口の利用規約。出典を明記' },
-  { name: '国税庁 法人番号公表サイト／Wikidata／Wikipedia', href: 'https://www.houjin-bangou.nta.go.jp/', terms: '法人番号は公表情報。Wikidata は CC0、Wikipedia の冒頭文は CC BY-SA 4.0 で出典とリンクを表示' },
-] as const;
 
 const STEPS = [
   { icon: Search, title: '探す', body: '評価一覧・基金一覧・委託構造で、1者応札率・残高÷支出・「その他」比率などの論点で絞り込み、並べ替える。' },
