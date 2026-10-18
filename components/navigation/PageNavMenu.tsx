@@ -9,9 +9,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PAGES, type NavPageHref } from './pages';
 
+/** メニューに出すのは主なビューだけ。財務省予算書の各ページ（primary: false）は URL 直打ち・トップの一覧からのみ（メニューから外した） */
 const MENU_GROUPS = [
   { heading: '主なビュー', pages: PAGES.filter(p => p.primary) },
-  { heading: '財務省予算書', pages: PAGES.filter(p => !p.primary) },
 ];
 
 export type { NavPageHref } from './pages';
