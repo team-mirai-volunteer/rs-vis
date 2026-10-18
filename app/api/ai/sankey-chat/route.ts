@@ -150,6 +150,7 @@ export async function POST(req: Request) {
       message: agentResult.message,
       ...(agentResult.result ? { result: agentResult.result } : {}),
       ...(agentResult.suggestions ? { suggestions: agentResult.suggestions } : {}),
+      ...(agentResult.navigate ? { navigate: agentResult.navigate } : {}),
       usage: { model, toolCalls: agentResult.toolCalls },
     };
     // チャット応答はキャッシュ不可
@@ -236,6 +237,7 @@ function buildStreamResponse(
             message: agentResult.message,
             ...(agentResult.result ? { result: agentResult.result } : {}),
             ...(agentResult.suggestions ? { suggestions: agentResult.suggestions } : {}),
+            ...(agentResult.navigate ? { navigate: agentResult.navigate } : {}),
             usage: { model, toolCalls: agentResult.toolCalls },
           };
           send('result', response);

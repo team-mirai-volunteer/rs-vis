@@ -22,6 +22,7 @@ import type { ProjectSearchScope } from '@/app/lib/search/project-search';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { HIGHLIGHT_METRIC_NAMES } from '@/app/lib/highlights';
 import { QUALITY_SCORES_PID_LIMIT, type QueryExecution } from '@/app/lib/ai/tool-shaping';
+import { NAV_TARGETS, NAV_TARGET_KEYS, findNavTarget } from '@/app/lib/ai/nav-targets';
 
 // ── OpenAI 互換の LLM メッセージ・ツール型（OpenRouter の chat.completions と1対1） ──
 
@@ -86,6 +87,8 @@ export interface SankeyChatAgentResult {
   result?: SankeyChatResult;
   /** 次に聞ける質問の提案（最大3件）。submit_result 経由のみ（テキスト回答モードは対象外） */
   suggestions?: string[];
+  /** ページ遷移の指示（navigate_page 経由）。クライアントが href へ移動し、result があれば移動先に適用する */
+  navigate?: { key: string; href: string; label: string };
   toolCalls: number;
 }
 
@@ -432,6 +435,25 @@ export const TOOLS: LlmToolDef[] = [
   {
     type: 'function',
     function: {
+      name: 'navigate_page',
+      description:
+        'ユーザーが「〜に移動して」「〜を開いて」「〜で見たい」のようにページの移動を求めたときに呼ぶ。呼ぶと会話はそこで終わり、画面がそのページへ移る。' +
+        '条件（query）を一緒に渡すと、移動先がサンキー図・評価一覧・委託構造・バブル図ならその条件で絞り込んだ状態で開く。' +
+        `page の候補: ${NAV_TARGETS.map(t => `${t.key}=${t.label}${t.aliases.length ? `（${t.aliases.join('・')}）` : ''}`).join(' / ')}`,
+      parameters: {
+        type: 'object',
+        properties: {
+          page: { type: 'string', enum: [...NAV_TARGET_KEYS], description: '移動先のページ' },
+          query: { ...SANKEY_QUERY_SCHEMA, description: '移動先に適用する条件（任意）。直前に確定した条件を引き継ぐときはそれをそのまま渡す' },
+          message: { type: 'string', description: 'ユーザーへの一言（例: 「サンキー図に移動します」）' },
+        },
+        required: ['page'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'submit_result',
       description:
         '検証済みの最終フィルタ条件を確定する。run_sankey_query で結果を確認してから呼ぶこと。message にはユーザー向けの短い説明（何をどう絞ったか・何件マッチしたか）を日本語で書く。',
@@ -505,6 +527,10 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '- 契約方式（1者応札・随意契約・落札率）や「誰にいくら払ったか」は get_project_recipients。事業者（法人）側から「どこから受注しているか」「1者応札が続く事業」は get_vendor。基金（残高・国庫返納・終了予定）は search_funds → get_fund。来年度の概算要求は get_budget_request',
     '- 品質スコアについて回答する際の語彙規律: スコアは「事業レビューシートに書かれた説明の質（支出先の特定可能性・使途の説明性・成果設計の明確さ等）」を評価したものであり、事業そのものの善悪・要不要・無駄の有無を判定するものではない。「この事業は無駄」のような断定はせず、「レビューシートの記載としては〜」のように表現する',
     '- ツール実行に失敗した・データが見つからない場合はその旨を正直に伝える（存在しないふりをしない）',
+    '',
+    '### C. ページの移動（「サンキー図に移動して」「委託構造で見たい」「トップに戻って」など）',
+    '- navigate_page を呼ぶ。移動先は page の候補から選ぶ。直前に確定した条件があり「この条件のまま」「これを」のように引き継ぐ意図が読めるときは、同じ query を渡す。条件の指定が無ければ query は渡さない',
+    '- 「〜の事業をサンキー図で見せて」のように条件と移動が同時に来たら、run_sankey_query で条件を確かめてから navigate_page に query を付けて呼ぶ（submit_result は呼ばない）',
     '',
     '### 共通',
     '- 要求がこのデータのフィルタ条件にもデータ質問にも該当しない場合（雑談・データにない切り口等）は、ツールを呼ばずに、解釈できなかった旨と指定できる条件・質問の例を日本語のテキストで返す',
@@ -617,8 +643,9 @@ function buildToolProgressEvent(tool: string, payload: unknown): SankeyChatProgr
 
 // ── ツール実行（エージェントループと MCP サーバーの共通部） ──
 
-/** submit_result を除いた、外部にも公開できるデータ取得ツール名 */
-export const DATA_TOOL_NAMES = TOOLS.map(t => t.function.name).filter(name => name !== 'submit_result');
+/** 会話を終える操作系（submit_result・navigate_page）を除いた、外部にも公開できるデータ取得ツール名 */
+export const ACTION_TOOL_NAMES: readonly string[] = ['submit_result', 'navigate_page'];
+export const DATA_TOOL_NAMES = TOOLS.map(t => t.function.name).filter(name => !ACTION_TOOL_NAMES.includes(name));
 
 /**
  * ツール 1 件を実行して LLM・MCP クライアントへ返す payload を作る。
@@ -760,6 +787,21 @@ export async function runSankeyChatAgentCore(
         const { args, error } = parseToolArgs(call.function.arguments || '{}');
         if (error || !args) {
           payload = { error: error ?? 'ツール引数を解釈できませんでした' };
+        } else if (call.function.name === 'navigate_page') {
+          // ページ遷移。会話を終え、クライアントが href へ移動する。条件があれば検証して移動先に適用する
+          const target = findNavTarget(args.page);
+          if (!target) {
+            payload = { error: `page は ${NAV_TARGET_KEYS.join(' / ')} のいずれかで指定してください` };
+          } else {
+            let result: SankeyChatResult | undefined;
+            if (args.query && typeof args.query === 'object') {
+              const executed = await executor.executeQuery(args.query as SankeyQuery, year);
+              if (!executed.errors && executed.result) result = executed.result;
+            }
+            const message = typeof args.message === 'string' && args.message.trim() ? args.message.trim() : `${target.label}に移動します。`;
+            emitProgress(onProgress, buildToolProgressEvent('navigate_page', { page: target.key }));
+            return { message, ...(result ? { result } : {}), navigate: { key: target.key, href: target.href, label: target.label }, toolCalls };
+          }
         } else if (call.function.name === 'submit_result') {
           // 確定はエージェントループ固有（会話を終える）。MCP など他の呼び出し元には公開しない
           const { errors, result } = await executor.executeQuery((args.query ?? {}) as SankeyQuery, year);

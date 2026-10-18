@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Check, ExternalLink, History, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -156,6 +157,16 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     return data;
   }, []);
 
+  // navigate_page で移動したあと、移動先のページが受け取り手を登録したら条件を渡す
+  const router = useRouter();
+  const pendingResultRef = useRef<SankeyChatResult | null>(null);
+  useEffect(() => {
+    if (!target || !pendingResultRef.current) return;
+    const pending = pendingResultRef.current;
+    pendingResultRef.current = null;
+    target.handler(pending);
+  }, [target]);
+
   /** 結果をページに渡す。受け取り手が無いページでは案内リンクに任せる（false） */
   const applyResult = (result: SankeyChatResult): boolean => {
     if (!dispatch) return false;
@@ -172,7 +183,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     const aborter = new AbortController(); abortRef.current = aborter;
     const context = { year: yearKey, page };
     try {
-      let reply: { message: string; result?: SankeyChatResult; suggestions?: string[] };
+      let reply: { message: string; result?: SankeyChatResult; suggestions?: string[]; navigate?: SankeyChatResponse['navigate'] };
       // 例文 3 つはサーバーに 24 時間の応答キャッシュがあるので、BYOK でもサイト提供 AI が使える環境ならそちらを引く
       // （例文は固定の文言なので、会話をサーバーに送らない BYOK の約束は破らない）。それ以外の BYOK はブラウザ直のまま
       const useServerCache = serverEnabled === true && messages.length === 0 && EXAMPLES.includes(trimmed);
@@ -184,6 +195,15 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
           body: JSON.stringify({ messages: history, context, stream: false }), signal: aborter.signal });
         if (!res.ok) { const b = await res.json().catch(() => null) as { error?: string } | null; throw new Error(b?.error ?? `HTTP ${res.status}`); }
         reply = await res.json() as SankeyChatResponse;
+      }
+      if (reply.navigate) {
+        // ページ遷移。サンキー図は条件を URL に写して開く（ページ側が URL から適用する）。
+        // 一覧型のページは移動後に受け取り手が登録されてから dispatch する（pendingResult）
+        const navHref = reply.navigate.key === 'sankey' && reply.result ? sankeyUrlForQuery(reply.result.query, yearKey) : reply.navigate.href;
+        pendingResultRef.current = reply.navigate.key === 'sankey' ? null : reply.result ?? null;
+        setMessages(prev => [...prev, { role: 'assistant', content: reply.message, result: reply.result, applied: true, suggestions: reply.suggestions }]);
+        router.push(navHref);
+        return;
       }
       const applied = reply.result ? applyResult(reply.result) : undefined;
       setMessages(prev => [...prev, { role: 'assistant', content: reply.message, result: reply.result, applied, suggestions: reply.suggestions }]);

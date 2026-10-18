@@ -1,13 +1,13 @@
 /**
  * MCP サーバー（/api/mcp）に公開するツールのカタログ。
  *
- * チャットのエージェント（chat-core.ts）と同じ `TOOLS` を元にし、会話の文脈で決まっていた年度を
+ * チャットのエージェント（chat-core.ts）と同じ `TOOLS` を元にし（会話を終える submit_result・navigate_page は除く）、会話の文脈で決まっていた年度を
  * 明示の引数 `year` に変えて公開する。確定用の `submit_result` は会話を終えるための道具なので出さない。
  * 実行は chat-core の `executeToolCall`（検証込み）に委ね、ここは定義（名前・説明・JSON Schema）だけを持つ Pure 層。
  */
 import { SANKEY_QUERY_DEFAULTS } from '@/app/lib/sankey-query';
 import { SUPPORTED_YEARS, type SupportedYear } from '@/types/rs-year';
-import { TOOLS } from '@/app/lib/ai/chat-core';
+import { ACTION_TOOL_NAMES, TOOLS } from '@/app/lib/ai/chat-core';
 import { PRODUCT_ATTRIBUTION } from '@/app/lib/product';
 
 /** MCP クライアントへ送る 1 ツールの定義（JSON Schema はそのまま inputSchema として渡す） */
@@ -42,7 +42,7 @@ function withYear(parameters: Record<string, unknown>): Record<string, unknown> 
 }
 
 export const MCP_TOOLS: readonly McpToolSpec[] = TOOLS
-  .filter(t => t.function.name !== 'submit_result')
+  .filter(t => !ACTION_TOOL_NAMES.includes(t.function.name))
   .map(t => ({
     name: t.function.name,
     description: t.function.description,

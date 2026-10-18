@@ -38,7 +38,8 @@ test('MCP のカタログはチャットのツールから submit_result を除�
   const names = MCP_TOOLS.map(t => t.name);
   assert.deepEqual(names, DATA_TOOL_NAMES);
   assert.ok(!names.includes('submit_result'));
-  assert.equal(names.length, TOOLS.length - 1);
+  assert.equal(names.length, TOOLS.length - 2, 'submit_result と navigate_page は MCP に出さない');
+  assert.ok(!names.includes('navigate_page'));
   for (const tool of MCP_TOOLS) {
     const props = tool.inputSchema.properties as Record<string, { enum?: string[] }>;
     assert.deepEqual(props.year.enum, ['2024', '2025'], `${tool.name} に year が無い`);
