@@ -558,7 +558,8 @@ function SidePane({
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto">
+      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 58% までにして中でスクロールさせる */}
+      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[58%] sm:overflow-y-auto">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
       <div className="border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex items-start gap-1.5">
@@ -645,6 +646,22 @@ function SidePane({
       {/* 再委託（構造サマリ）— メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
       <div className="border-b border-border px-4 pb-[9px] pt-[7px]">
         <div className="font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_META_FONT_PX }}>再委託</div>
+        {/* 1 行要約: 階層・支出に占める再委託分の割合・最大の再委託先。数字の羅列より先に「この事業の委託構造の要点」を読めるようにする */}
+        {(() => {
+          const downstream = Math.max(0, graph.totalExpense - graph.directExpenseTotal);
+          const share = graph.totalExpense > 0 ? Math.round((downstream / graph.totalExpense) * 100) : null;
+          const largest = graph.blocks
+            .filter(b => b.originKind === 'subcontract' && b.totalAmount > 0)
+            .sort((a, b) => b.totalAmount - a.totalAmount)[0];
+          const largestName = largest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
+          const parts: string[] = [];
+          parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
+          if (share !== null && graph.maxDepth >= 2) parts.push(`支出の ${share}% が再委託先へ`);
+          if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
+          return (
+            <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+          );
+        })()}
         <div className="mt-[5px] flex flex-wrap gap-1.5" style={{ fontSize: PANEL_META_FONT_PX }}>
           <span className="rounded-full bg-mirai-surface-light px-1.5 py-0.5 text-mirai-text-subtle">ブロック {graph.totalBlockCount}</span>
           <span className="rounded-full bg-mirai-surface-light px-1.5 py-0.5 text-mirai-text-subtle">支出先 {graph.totalRecipientCount.toLocaleString()}</span>
