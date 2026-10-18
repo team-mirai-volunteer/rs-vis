@@ -7,11 +7,12 @@ import { Check, Menu } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { PAGES, type NavPageHref } from './pages';
+import { PRIMARY_PAGES, SECONDARY_PAGES, type NavPageHref } from './pages';
 
-/** メニューに出すのは主なビューだけ。財務省予算書の各ページ（primary: false）は URL 直打ち・トップの一覧からのみ（メニューから外した） */
+/** メニューに出すのは主なビューと補助ビュー。財務省予算書の各ページ（どちらでもない）は URL 直打ち・トップの一覧からのみ */
 const MENU_GROUPS = [
-  { heading: '主なビュー', pages: PAGES.filter(p => p.primary) },
+  { heading: '主なビュー', pages: PRIMARY_PAGES },
+  { heading: '補助ビュー', pages: SECONDARY_PAGES },
 ];
 
 export type { NavPageHref } from './pages';

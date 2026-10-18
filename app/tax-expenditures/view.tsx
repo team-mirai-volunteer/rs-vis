@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BarChart3, ChevronRight, ClipboardCheck, Info, ListFilter, RotateCcw, Search, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { PAGES } from '@/components/navigation/pages';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +45,7 @@ export default function TaxExpenditures() {
     <AppHeader current="/tax-expenditures"><Button variant="outline" size="sm" onClick={() => dialog.current?.showModal()}><Info aria-hidden="true" />データについて</Button></AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-10 pt-5">
       <header className="rounded-2xl bg-mirai-gradient p-6 sm:p-8">
-        <p className="mb-2 text-xs font-bold">租税特別措置(試作)</p>
+        <p className="mb-2 text-xs font-bold">{PAGES.find(p => p.href === '/tax-expenditures')?.label}</p>
         <h1 className="text-2xl font-bold tracking-normal sm:text-3xl">税優遇は、どこに届いている？</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed">法人税の租税特別措置を、適用額・政策評価・制度の詳細から調べます。関連する行政事業レビュー（RS）もたどれます。</p>
       </header>

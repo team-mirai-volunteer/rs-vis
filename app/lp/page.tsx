@@ -28,7 +28,10 @@ import {
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { LegalLinks } from '@/components/legal/LegalLinks';
-import { PRIMARY_PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
+import { PRIMARY_PAGES, PRODUCT_NAME, SECONDARY_PAGES } from '@/components/navigation/pages';
+
+/** LP で紹介する見方。主なビューと補助ビューの両方（財務省予算書の補助ページは除く） */
+const VIEW_PAGES = [...PRIMARY_PAGES, ...SECONDARY_PAGES];
 import { SITE_URL } from '@/app/lib/site-url';
 import { DATA_SOURCES } from '@/app/lib/data-sources';
 import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
@@ -330,10 +333,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl space-y-4">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[4].label}</p>
-              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{PRIMARY_PAGES.length}つの見方で</h2>
+              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}つの見方で</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {PRIMARY_PAGES.map(page => {
+              {VIEW_PAGES.map(page => {
                 const Icon = PAGE_ICONS[page.href] ?? Workflow;
                 return (
                   <Link

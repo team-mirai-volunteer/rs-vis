@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { LegalLinks } from '@/components/legal/LegalLinks';
-import { PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
+import { PAGES, PRIMARY_PAGES, PRODUCT_NAME, SECONDARY_PAGES } from '@/components/navigation/pages';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,9 @@ const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
  * ツール本体は各ビューに任せ、ここは「何が見られるか」を説明するだけにする。
  */
 export default function Home() {
-  const primary = PAGES.filter(p => p.primary);
-  const secondary = PAGES.filter(p => !p.primary);
+  const primary = PRIMARY_PAGES;
+  const secondary = SECONDARY_PAGES;
+  const mof = PAGES.filter(p => !p.primary && !p.secondary);
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
@@ -99,13 +100,35 @@ export default function Home() {
           </div>
         </section>
 
+        <section aria-labelledby="secondary-heading" className="space-y-3">
+          <div>
+            <h2 id="secondary-heading" className="text-lg font-bold tracking-normal">補助ビュー</h2>
+            <p className="text-sm text-mirai-text-muted">基金・概算要求・租税特別措置・国民負担・財政余力。事業の外側（資金の置き場・来年度の要求・税の優遇・負担・余力）から予算を見る試作です。</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {secondary.map(p => (
+              <Link
+                key={p.href}
+                href={p.href}
+                className="group flex items-start justify-between gap-3 rounded-xl border border-mirai-border bg-card px-4 py-3 transition-colors hover:border-primary hover:bg-mirai-surface-teal/60"
+              >
+                <span>
+                  <span className="flex items-center gap-2 text-sm font-bold">{p.navLabel}{p.prototype && <Badge variant="light" className="rounded-full text-[10px]">試作</Badge>}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-mirai-text-subtle">{p.description}</span>
+                </span>
+                <ArrowRight className="mt-0.5 size-4 shrink-0 text-mirai-text-muted transition-colors group-hover:text-primary-accent" aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        </section>
+
         <section aria-labelledby="mof-heading" className="space-y-3">
           <div>
             <h2 id="mof-heading" className="text-lg font-bold tracking-normal">財務省予算書のビュー</h2>
             <p className="text-sm text-mirai-text-muted">予算書・決算書データベースの会計・所管・項・目を、そのまま一覧やフローで確かめるための補助ビューです。</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {secondary.map(p => (
+            {mof.map(p => (
               <Link
                 key={p.href}
                 href={p.href}

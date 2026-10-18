@@ -27,8 +27,10 @@ test('source rows are unique and all registered RS relations resolve to the stat
     assert.match(projects[String(m.rsProjectId)].purpose, /企業版ふるさと納税/);
     assert.match(projects[String(m.rsProjectId)].projectName, /普及促進/);
   }
-  // 試作のページ（基金・租税特別措置など）は、正式なページ（委託構造まで）の後ろに並ぶ
-  const subcontracts = PAGES.findIndex(p => p.href === '/subcontracts');
-  assert.ok(PAGES.findIndex(p => p.href === '/tax-expenditures') > subcontracts);
-  assert.ok(PAGES.slice(subcontracts + 1).filter(p => p.primary).every(p => p.prototype));
+  // 補助ビュー（基金・概算要求・租税特別措置・国民負担・財政余力）は主なビューの後ろに並び、試作バッジは補助ビューにだけ付く
+  const lastPrimary = PAGES.map(p => p.primary).lastIndexOf(true);
+  const firstSecondary = PAGES.findIndex(p => p.secondary);
+  assert.ok(firstSecondary > lastPrimary);
+  assert.ok(PAGES.findIndex(p => p.href === '/tax-expenditures') > lastPrimary);
+  assert.ok(PAGES.every(p => !p.prototype || p.secondary));
 });
