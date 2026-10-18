@@ -3,7 +3,7 @@
 import { QualityHelp } from '@/client/components/quality/QualityHelp';
 import { fiscalYear, fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -17,10 +17,9 @@ import type { QualityYear } from '@/app/lib/api/quality-year';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { useQualityLocation } from '@/client/hooks/useQualityLocation';
-import { useAiResultHandler } from '@/client/lib/ai/result-handler';
-import { aiListFilterFrom, matchesAiListFilter, type AiListFilter } from '@/client/lib/ai/list-filter';
+import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
+import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
 import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
-import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
 import { scoreBand, scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
@@ -179,8 +178,7 @@ export default function QualityPage() {
   });
   const [selectedMinistry, setSelectedMinistry] = useState<string>('');
   // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
-  const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
-  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []), '一覧');
+  const { aiFilter, clearAiFilter } = useAiListFilter('一覧');
   const [scoreRange, setScoreRange] = useState<ScoreRange>('all');
   const [selectedRecommendation, setSelectedRecommendation] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] = useState<string[]>([]);
@@ -386,7 +384,7 @@ export default function QualityPage() {
     || selectedAction.length || selectedCategory || yearsFilter.min || yearsFilter.max
     || Object.values(amountFilters).some(f => f.min || f.max) || Object.values(scoreFilters).some(f => f.min || f.max));
   function clearAllFilters() {
-    setAiFilter(null);
+    clearAiFilter();
     setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
     setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
     setScoreFilters(EMPTY_SCORE_FILTERS());
@@ -726,7 +724,7 @@ ${a.desc}` })),
                           </div>
                         ))}
                     {/* AI ナビの条件。代替困難性の右に「AI の条件 ×」だけを置く（説明はホバー。行内で折り返すとずれるため） */}
-                    {aiFilter && <AiFilterChip compact filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="ml-1" />}
+                    {aiFilter && <AiFilterChip compact filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} className="ml-1" />}
                   </div>
                 )}
                 {/* 金額の範囲フィルタ */}
@@ -832,7 +830,7 @@ ${a.desc}` })),
           <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-mirai-border bg-card p-2 text-sm" />
           <Button variant="outline" size="sm" onClick={clearAllFilters} disabled={!hasFilters} className="shrink-0 border-mirai-border text-xs font-normal text-mirai-text-subtle disabled:opacity-40">条件をクリア</Button>
         </div>
-        {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} />}
+        {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} />}
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">

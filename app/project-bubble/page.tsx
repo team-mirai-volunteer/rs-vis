@@ -1,10 +1,9 @@
 'use client';
 
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
-import { useAiResultHandler } from '@/client/lib/ai/result-handler';
-import { aiListFilterFrom, matchesAiListFilter, type AiListFilter } from '@/client/lib/ai/list-filter';
+import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
+import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
 import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
-import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
@@ -116,8 +115,7 @@ export default function ProjectMapPage() {
   const [budgetFilter, setBudgetFilter] = useState({ min: '', max: '' });
   const [query, setQuery] = useState('');
   // AI ナビ（ヘッダー）の結果をこの図に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
-  const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
-  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []));
+  const { aiFilter, clearAiFilter } = useAiListFilter('図');
 
   // 対話状態
   const [hover, setHover] = useState<{ p: ProjectMapPoint; x: number; y: number } | null>(null);
@@ -507,7 +505,7 @@ export default function ProjectMapPage() {
     || budgetFilter.min || budgetFilter.max;
 
   const clearFilters = () => {
-    setAiFilter(null);
+    clearAiFilter();
     setMinistries([]);
     setRecommendations([]);
     setScoreFilter({ min: '', max: '' });
@@ -683,7 +681,7 @@ export default function ProjectMapPage() {
               <RangeInput label="総合点" value={scoreFilter} onChange={setScoreFilter} width={58} />
               <RangeInput label="継続年数" value={yearsFilter} onChange={setYearsFilter} width={58} />
               <RangeInput label="予算(億円)" value={budgetFilter} onChange={setBudgetFilter} width={58} />
-              {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="max-w-full" />}
+              {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} className="max-w-full" />}
               <div className="flex items-center justify-between">
                 {hasFilter ? (
                   <Button

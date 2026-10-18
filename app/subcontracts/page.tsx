@@ -2,10 +2,9 @@
 
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
-import { useAiResultHandler } from '@/client/lib/ai/result-handler';
-import { aiListFilterFrom, matchesAiListFilter, type AiListFilter } from '@/client/lib/ai/list-filter';
+import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
+import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
 import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
-import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 
 /**
  * /subcontracts（一覧） URL=状態パラメータ一覧。
@@ -247,8 +246,7 @@ function SubcontractsPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
   // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
-  const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
-  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []), '一覧');
+  const { aiFilter, clearAiFilter } = useAiListFilter('一覧');
   const [sortKey, setSortKey] = useState<SortKey>(() => {
     const s = searchParams.get('sort');
     return s && isSortKey(s) ? s : 'projectId';
@@ -774,7 +772,7 @@ function SubcontractsPageInner() {
       <div className="w-full shrink-0 p-3">
         {/* コントロール（/sankey-svg と同じトーン） */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="basis-full" />}
+          {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} className="basis-full" />}
 
           {/* 検索 */}
           <div className="relative min-w-[180px] flex-1">

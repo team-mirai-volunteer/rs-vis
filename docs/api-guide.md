@@ -277,3 +277,17 @@ curl -s -X POST http://localhost:3000/api/mcp \
 ```
 
 応答は `event: message` / `data: {...}` の SSE 形式（1 メッセージで終わる）。ツールの結果は `result.content[0].text` に JSON 文字列で入る。引数の検証エラーは `isError: true`。
+
+---
+
+## POST /api/sankey/matches
+
+SankeyQuery の条件に合う事業 ID（pid）の一覧だけを返す。AI ナビの結果を評価一覧・委託構造・バブル図に当てるとき、一覧の行に無い条件（支出先名・支出額・再委託・会計区分）をサーバー側でサンキー図のグラフに対して評価するために使う。判定は `/budget-sankey`・AI ツールと同じ `buildFilterExcludedIds`。LLM は呼ばない。
+
+- body: `{ "query": SankeyQuery }`（`year` 省略時は既定年度）
+- 200: `{ year, count, projectIds: string[] }` ／ 400: 条件が不正
+
+```bash
+curl -s -X POST http://localhost:3000/api/sankey/matches -H 'Content-Type: application/json' \
+  -d '{"query":{"year":"2025","filter":{"recipientName":{"query":"NTTデータ","includeSubcontract":true}}}}'
+```

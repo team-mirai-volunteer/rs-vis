@@ -20,6 +20,25 @@ export interface AiListFilter {
   unsupported: string[];
   /** 事業名の判定器（正規表現が不正なら部分一致に落とす） */
   matchName: ((name: string) => boolean) | null;
+  /**
+   * 一覧では判定できない条件をサーバー（/api/sankey/matches）で評価した結果の事業 ID 集合。
+   * これがあれば行の判定はこの集合だけで行う（全条件を反映済み）
+   */
+  resolvedPids?: ReadonlySet<string>;
+  /** サーバーで評価中（unsupported がある間だけ true） */
+  resolving?: boolean;
+}
+
+/** 一覧では判定できない条件をサーバーで評価し、条件に合う事業 ID の集合を得る。失敗時は null（部分適用のまま） */
+export async function resolveAiListFilterPids(query: ResolvedSankeyQuery): Promise<Set<string> | null> {
+  try {
+    const res = await fetch('/api/sankey/matches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
+    if (!res.ok) return null;
+    const data = await res.json() as { projectIds?: string[] };
+    return Array.isArray(data.projectIds) ? new Set(data.projectIds) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** 一覧の 1 行から判定に必要な値だけを取り出した形 */
@@ -62,6 +81,8 @@ export function aiListFilterFrom(result: SankeyChatResult): AiListFilter {
 }
 
 export function matchesAiListFilter(ai: AiListFilter, item: AiListItem): boolean {
+  // サーバーで全条件を評価済みなら、その集合だけで判定する
+  if (ai.resolvedPids) return ai.resolvedPids.has(item.pid);
   const f = ai.query.filter;
   if (f.projectIds.length > 0 && !f.projectIds.includes(item.pid)) return false;
   if (f.ministries.length > 0 && !f.ministries.includes(item.ministry)) return false;
