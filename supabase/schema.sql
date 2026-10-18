@@ -83,3 +83,23 @@ grant select on public.published_project_comments to anon, authenticated;
 revoke all on public.rate_limits from anon, authenticated;
 revoke execute on function public.bump_rate_limit(text, int) from public, anon, authenticated;
 grant  execute on function public.bump_rate_limit(text, int) to service_role;
+
+-- ── AI ナビの対話ログ（サイト提供 AI のみ。BYOK は対象外。個人を特定する情報は持たない） ──
+-- 正典は supabase/migrations/20261019_ai_nav_logs.sql（同じ定義。冪等）
+create table if not exists public.ai_nav_logs (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz not null default now(),
+  year        text not null,
+  page        text,
+  model       text not null,
+  messages    jsonb not null,
+  response    jsonb,
+  outcome     text not null check (outcome in ('result', 'text', 'upstream_error')),
+  tool_calls  int  not null default 0,
+  cached      boolean not null default false,
+  latency_ms  int
+);
+create index if not exists ai_nav_logs_created_at_idx on public.ai_nav_logs (created_at desc);
+create index if not exists ai_nav_logs_outcome_idx on public.ai_nav_logs (outcome, created_at desc);
+alter table public.ai_nav_logs enable row level security;
+revoke all on table public.ai_nav_logs from anon, authenticated;

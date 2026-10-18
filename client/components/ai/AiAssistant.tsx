@@ -283,6 +283,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
             ? '条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。'
             : '条件を自然文で聞くと、公開データから当てはまる事業を探します。結果はサンキー図で開くリンクと、事業ごとの詳細へのリンクで案内します。'}
         </p>
+        {mode === 'server' && <p className="m-0 text-[11px] leading-relaxed text-mirai-text-muted">サイト提供の AI では、入力と応答を当団体が保存し、運営・改善、政策の検討、不正対策に使います（個人を特定する情報とは結びつけません）。ご自身の API キーを使う場合は保存しません。</p>}
         <div className="flex flex-wrap gap-1.5">
           {EXAMPLES.map(x => <Button key={x} variant="outline" size="xs" disabled={!canSend} onClick={() => void send(x)} className="h-auto whitespace-normal rounded-full py-1.5 text-left font-medium">{x}</Button>)}
         </div>
