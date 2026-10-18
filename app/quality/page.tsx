@@ -3,7 +3,7 @@
 import { QualityHelp } from '@/client/components/quality/QualityHelp';
 import { fiscalYear, fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -17,6 +17,10 @@ import type { QualityYear } from '@/app/lib/api/quality-year';
 import type { ExecutionHistoryResponse } from '@/app/api/execution-history/route';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import { useQualityLocation } from '@/client/hooks/useQualityLocation';
+import { useAiResultHandler } from '@/client/lib/ai/result-handler';
+import { aiListFilterFrom, matchesAiListFilter, type AiListFilter } from '@/client/lib/ai/list-filter';
+import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
+import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 import { MobileQualityList } from '@/client/components/quality/MobileQualityList';
 import { scoreBand, scoreColor, formatAmount, pct } from '@/client/components/quality/score-format';
 import {
@@ -174,6 +178,9 @@ export default function QualityPage() {
     return new URLSearchParams(window.location.search).get('pid') ?? '';
   });
   const [selectedMinistry, setSelectedMinistry] = useState<string>('');
+  // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
+  const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
+  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []));
   const [scoreRange, setScoreRange] = useState<ScoreRange>('all');
   const [selectedRecommendation, setSelectedRecommendation] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] = useState<string[]>([]);
@@ -264,6 +271,10 @@ export default function QualityPage() {
   const filtered = useMemo<QualityScoreItem[]>(() => {
     if (!data) return [];
     let items = data.items;
+
+    if (aiFilter) {
+      items = items.filter(i => matchesAiListFilter(aiFilter, { pid: i.pid, name: i.name, ministry: i.ministry, budget: i.budgetAmount }));
+    }
 
     if (selectedMinistry) {
       items = items.filter(i => i.ministry === selectedMinistry);
@@ -363,7 +374,7 @@ export default function QualityPage() {
 
     return items;
   }, [data, policyByPid, metricValue, selectedRecommendation, selectedAction, selectedCategory,
-      selectedMinistry, scoreRange, distMetric, searchQuery, scoreFilters, yearsFilter, amountFilters, sortField, sortDir]);
+      selectedMinistry, scoreRange, distMetric, searchQuery, scoreFilters, yearsFilter, amountFilters, sortField, sortDir, aiFilter]);
 
   // Reset page on filter change
   const amountFilterKey = Object.values(amountFilters).map(f => `${f.min}-${f.max}`).join(',')
@@ -371,10 +382,11 @@ export default function QualityPage() {
   const filterKey = `${selectedMinistry}|${scoreRange}|${distMetric}|${searchQuery}|${amountFilterKey}|${sortField}|${sortDir}`
     + `|${selectedRecommendation}|${selectedAction}|${selectedCategory}|${yearsFilter.min}-${yearsFilter.max}`;
   const [lastFilterKey, setLastFilterKey] = useState(filterKey);
-  const hasFilters = Boolean(searchQuery || selectedMinistry || scoreRange !== 'all' || selectedRecommendation.length
+  const hasFilters = Boolean(aiFilter || searchQuery || selectedMinistry || scoreRange !== 'all' || selectedRecommendation.length
     || selectedAction.length || selectedCategory || yearsFilter.min || yearsFilter.max
     || Object.values(amountFilters).some(f => f.min || f.max) || Object.values(scoreFilters).some(f => f.min || f.max));
   function clearAllFilters() {
+    setAiFilter(null);
     setSearchQuery(''); setSelectedMinistry(''); setScoreRange('all');
     setSelectedRecommendation([]); setSelectedAction([]); setSelectedCategory('');
     setScoreFilters(EMPTY_SCORE_FILTERS());
@@ -777,6 +789,7 @@ ${a.desc}` })),
                         className="ml-1 shrink-0 border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
                         条件をクリア
                       </Button>
+                      {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="ml-1 max-w-full" />}
                       {/* 指標の説明。足きり行は6組で最も詰まるので、余裕のある金額行の末尾に置く */}
                       {/* 指標の説明なので、指標そのものが並ぶこの行の末尾に置く */}
                       <Button
@@ -818,6 +831,7 @@ ${a.desc}` })),
           <input aria-label="事業を検索" placeholder="事業名・PIDで検索" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-mirai-border bg-card p-2 text-sm" />
           <Button variant="outline" size="sm" onClick={clearAllFilters} disabled={!hasFilters} className="shrink-0 border-mirai-border text-xs font-normal text-mirai-text-subtle disabled:opacity-40">条件をクリア</Button>
         </div>
+        {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} />}
         <div className="flex items-center gap-2 text-xs">
           <label htmlFor="mobile-quality-sort">並び順</label>
           <select id="mobile-quality-sort" value={sortField} onChange={e => handleSort(e.target.value as SortField)} className="min-w-0 flex-1 rounded border border-mirai-border bg-card p-2">

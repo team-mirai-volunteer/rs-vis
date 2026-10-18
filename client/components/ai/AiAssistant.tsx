@@ -215,6 +215,11 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
           {dispatch ? '・結果はこの図に適用' : `・${page}を表示中`}
         </div>
       </div>
+      {/* 新しい会話。今の会話は「過去の会話」に残る。入力欄の横だと気づかれにくかったので帯に置く */}
+      <Button variant="ghost" size="icon-sm" aria-label="新しい会話を始める" title="新しい会話を始める（今の会話は過去の会話に残る）" disabled={messages.length === 0}
+        className="shrink-0 text-mirai-text-subtle hover:bg-card disabled:opacity-40" onClick={startNewSession}>
+        <RotateCcw aria-hidden="true" />
+      </Button>
       <Button variant="ghost" size="icon-sm" aria-label="過去の会話" aria-pressed={showHistory} title="過去の会話（このブラウザに保存）"
         className={cn('shrink-0 text-mirai-text-subtle hover:bg-card', showHistory && 'bg-card text-primary-accent')}
         onClick={() => void openHistory()}>
@@ -313,9 +318,6 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-mirai-text-muted">
           {dispatch ? '事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。' : '事業名・支出先・所管・金額・再委託の条件で探します。'}
         </span>
-        <Button variant="ghost" size="xs" disabled={messages.length === 0} onClick={startNewSession} title="新しい会話を始める（今の会話は「過去の会話」に残る）" aria-label="新しい会話を始める">
-          <RotateCcw aria-hidden="true" />
-        </Button>
         <Button variant="default" size="sm" disabled={!input.trim() || !canSend} onClick={() => void send(input)}>
           <Send aria-hidden="true" />送信する
         </Button>

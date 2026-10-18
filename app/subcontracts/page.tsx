@@ -2,6 +2,10 @@
 
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+import { useAiResultHandler } from '@/client/lib/ai/result-handler';
+import { aiListFilterFrom, matchesAiListFilter, type AiListFilter } from '@/client/lib/ai/list-filter';
+import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
+import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 
 /**
  * /subcontracts（一覧） URL=状態パラメータ一覧。
@@ -23,7 +27,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  *   dmin/dmax : 直接支出合計 Min/Max
  *   tmin/tmax : 支出額合計 Min/Max
  */
-import { useState, useEffect, useMemo, useRef, Suspense, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Search, X } from 'lucide-react';
@@ -171,6 +175,9 @@ function SubcontractsPageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
+  const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
+  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []));
   const [sortKey, setSortKey] = useState<SortKey>(() => {
     const s = searchParams.get('sort');
     return s && isSortKey(s) ? s : 'projectId';
@@ -342,6 +349,8 @@ function SubcontractsPageInner() {
     const projectQ = filterProjectName.trim().toLocaleLowerCase();
     const bureauQ = filterBureau.trim().toLocaleLowerCase();
     return graphs.filter((g) => {
+      // AI ナビの条件
+      if (aiFilter && !matchesAiListFilter(aiFilter, { pid: String(g.projectId), name: g.projectName, ministry: g.ministry, budget: g.budget })) return false;
       // 府省庁
       if (selectedMinistries.length > 0 && !selectedMinistries.includes(g.ministry)) return false;
       // 会計区分（複数選択 OR）
@@ -384,7 +393,7 @@ function SubcontractsPageInner() {
       );
     });
   }, [
-    graphs, query, selectedMinistries, selectedAccountCategories,
+    graphs, query, aiFilter, selectedMinistries, selectedAccountCategories,
     filterProjectName, filterBureau, selectedStructures,
     budgetMinYen, budgetMaxYen, executionMinYen, executionMaxYen,
     directMinYen, directMaxYen, totalExpenseMinYen, totalExpenseMaxYen,
@@ -578,6 +587,7 @@ function SubcontractsPageInner() {
       <div className="w-full shrink-0 p-3">
         {/* コントロール（/sankey-svg と同じトーン） */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="basis-full" />}
 
           {/* 検索 */}
           <div className="relative min-w-[180px] flex-1">
