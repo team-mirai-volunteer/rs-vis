@@ -2,7 +2,7 @@
 
 /**
  * 統合ビューの絞り込み入力欄。
- * 上段は `/mof-sankey` の FilterFields と同じ（表示・会計・所管・名前）、
+ * 上段は `/mof-sankey` の FilterFields と同じ（会計・所管・名前。表示オプションはギアの UnifiedSettings へ移した）、
  * 下段は `/sankey-svg` から移植した事業・支出先単位の絞り込み（事業名・予算額・支出額・再委託・支出先名・政策評価スコア）。
  * 判定は app/lib/unified-budget/transform.ts の applyFilter（純関数）。ここは入力欄だけ。
  */
@@ -53,24 +53,7 @@ export function UnifiedFilterFields({
 
   return (
     <div className="flex flex-col gap-3 p-3 text-xs text-mirai-text-subtle">
-      <div>
-        <div className="mb-1 font-medium">表示</div>
-        <div className="flex flex-col gap-1">
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={filter.showNonRs} onChange={() => set({ showNonRs: !filter.showNonRs })} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-            <span>非事業支出・未突合のノードを出す（繰入・国債費・地方財政移転・予備費・人件費）</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={filter.includeCollapsedAccounts}
-              onChange={() => set({ includeCollapsedAccounts: !filter.includeCollapsedAccounts })}
-              className="h-3.5 w-3.5 cursor-pointer accent-primary"
-            />
-            <span>国債整理基金特会・交付税特会を含める（他が見えなくなるほど大きいため既定で除外）</span>
-          </label>
-        </div>
-      </div>
+      {/* 「非事業支出・未突合のノードを出す」「国債整理基金特会・交付税特会を含める」は表示設定（ギア）へ移した */}
       <div>
         <div className="mb-1 font-medium">会計</div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">

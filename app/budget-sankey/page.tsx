@@ -377,6 +377,10 @@ function UnifiedBudgetSankeyContent() {
       onLabelDensityChange={setLabelDensity}
       focusRelated={focusRelated}
       onFocusRelatedChange={setFocusRelated}
+      showNonRs={filter.showNonRs}
+      onShowNonRsChange={showNonRs => setFilter(f => ({ ...f, showNonRs }))}
+      includeCollapsedAccounts={filter.includeCollapsedAccounts}
+      onIncludeCollapsedAccountsChange={includeCollapsedAccounts => setFilter(f => ({ ...f, includeCollapsedAccounts }))}
       visibleColumns={effectiveColumns}
       availableColumns={availableColumns}
       onVisibleColumnsChange={columns => setVisibleColumns(previous => UNIFIED_COLUMNS.filter(c =>

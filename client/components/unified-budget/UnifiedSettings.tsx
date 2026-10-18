@@ -31,6 +31,10 @@ export function UnifiedSettings({
   onLabelDensityChange,
   focusRelated,
   onFocusRelatedChange,
+  showNonRs = true,
+  onShowNonRsChange,
+  includeCollapsedAccounts = false,
+  onIncludeCollapsedAccountsChange,
   visibleColumns,
   availableColumns,
   onVisibleColumnsChange,
@@ -49,6 +53,12 @@ export function UnifiedSettings({
   onLabelDensityChange: (value: LabelDensity) => void;
   focusRelated: boolean;
   onFocusRelatedChange: (value: boolean) => void;
+  /** 非事業支出・未突合のノードを出すか（絞り込み状態の showNonRs。渡さなければ項目を出さない） */
+  showNonRs?: boolean;
+  onShowNonRsChange?: (value: boolean) => void;
+  /** 国債整理基金特会・交付税特会を含めるか（絞り込み状態の includeCollapsedAccounts） */
+  includeCollapsedAccounts?: boolean;
+  onIncludeCollapsedAccountsChange?: (value: boolean) => void;
   visibleColumns: UnifiedColumn[];
   availableColumns: UnifiedColumn[];
   onVisibleColumnsChange: (columns: UnifiedColumn[]) => void;
@@ -145,6 +155,19 @@ export function UnifiedSettings({
             <input type="checkbox" checked={focusRelated} onChange={e => onFocusRelatedChange(e.target.checked)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
             <span>選択時に関連ノードのみ表示</span>
           </label>
+          {/* 何を図に出すかの表示オプション。絞り込み（条件で事業を残す）ではなく図の既定の見せ方なので、絞り込みパネルではなくここに置く */}
+          {onShowNonRsChange && (
+            <label className="flex cursor-pointer items-start gap-2">
+              <input type="checkbox" checked={showNonRs} onChange={e => onShowNonRsChange(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary" />
+              <span>非事業支出・未突合のノードを出す<span className="block text-[11px] leading-relaxed text-mirai-text-subtle">繰入・国債費・地方財政移転・予備費・人件費</span></span>
+            </label>
+          )}
+          {onIncludeCollapsedAccountsChange && (
+            <label className="flex cursor-pointer items-start gap-2">
+              <input type="checkbox" checked={includeCollapsedAccounts} onChange={e => onIncludeCollapsedAccountsChange(e.target.checked)} className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary" />
+              <span>国債整理基金特会・交付税特会を含める<span className="block text-[11px] leading-relaxed text-mirai-text-subtle">他が見えなくなるほど大きいため既定で除外</span></span>
+            </label>
+          )}
           {onProgramSortChange && <div>
             <label htmlFor="unified-program-sort" className="mb-1 block font-semibold">事業の並び順</label>
             <select id="unified-program-sort" value={programSort} onChange={e => onProgramSortChange(e.target.value as UnifiedProgramSort)}
