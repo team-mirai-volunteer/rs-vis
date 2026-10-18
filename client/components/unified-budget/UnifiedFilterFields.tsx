@@ -10,6 +10,7 @@
 import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter } from '@/types/unified-budget-view';
 import { Button } from '@/components/ui/button';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { RegexTextFilter } from '@/client/components/mof-kou/RegexTextFilter';
 import { cn } from '@/lib/utils';
 
@@ -49,8 +50,6 @@ export function UnifiedFilterFields({
   const set = (patch: Partial<UnifiedViewFilter>) => onFilterChange({ ...filter, ...patch });
   const toggleAccount = (value: 'general' | 'special') =>
     set({ accountTypes: filter.accountTypes.includes(value) ? filter.accountTypes.filter(a => a !== value) : [...filter.accountTypes, value] });
-  const toggleMinistry = (name: string) =>
-    set({ ministries: filter.ministries.includes(name) ? filter.ministries.filter(m => m !== name) : [...filter.ministries, name] });
 
   return (
     <div className="flex flex-col gap-3 p-3 text-xs text-mirai-text-subtle">
@@ -85,13 +84,19 @@ export function UnifiedFilterFields({
       </div>
       <div>
         <div className="mb-1 font-medium">所管</div>
-        <div className="flex max-h-40 flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
-          {ministryOptions.map(name => (
-            <label key={name} className="flex cursor-pointer items-center gap-1.5">
-              <input type="checkbox" checked={filter.ministries.includes(name)} onChange={() => toggleMinistry(name)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-              <span>{name}</span>
-            </label>
-          ))}
+        {/* 評価一覧・バブルチャートと同じドロップダウン。チェックボックスの一覧を並べると 40 件近くで縦スクロールが要り、
+            まとめて外す手段も無かった。ドロップダウンは「すべて解除」と × のクリアを持つ */}
+        <div className="flex">
+          <MultiSelectDropdown
+            options={ministryOptions}
+            selected={filter.ministries}
+            onChange={ministries => set({ ministries })}
+            allLabel="所管"
+            placeholder="所管：すべて"
+            placeholderTone="strong"
+            minWidth={0}
+            triggerClassName="h-7 w-full border-mirai-border text-xs"
+          />
         </div>
       </div>
       <div>
