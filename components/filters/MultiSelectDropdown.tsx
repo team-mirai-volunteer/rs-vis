@@ -107,6 +107,8 @@ export function MultiSelectDropdown({
           role="listbox"
           aria-label={allLabel}
           aria-multiselectable="true"
+          // body 直下に描くので、親のポップオーバー（絞り込みパネルなど）の「外側を押したら閉じる」判定から除外してもらう目印
+          data-keep-open="true"
           className="fixed z-[9999] overflow-y-auto rounded-xl border border-mirai-border bg-card shadow-soft"
           style={{ top: rect.top, left: rect.left, width: rect.width, maxHeight: rect.maxHeight }}
           onMouseDown={(e) => e.stopPropagation()}

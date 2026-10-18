@@ -86,6 +86,7 @@ export function UnifiedSettings({
     if (!open) return;
     const onPointerDown = (e: MouseEvent) => {
       if (rootRef.current?.contains(e.target as Node)) return;
+      if ((e.target as Element).closest?.('[data-keep-open="true"]')) return;
       setOpen(false);
     };
     // capture 段階で拾う。図のノードは mousedown の伝播を止めるので、バブリングでは document に届かない

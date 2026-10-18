@@ -50,6 +50,8 @@ export function UnifiedSearch({
     if (!filterOpen) return;
     const onPointerDown = (e: MouseEvent) => {
       if (rootRef.current?.contains(e.target as Node)) return;
+      // 所管のドロップダウンは body 直下（portal）に描かれるので contains では拾えない。中を押しても閉じない
+      if ((e.target as Element).closest?.('[data-keep-open="true"]')) return;
       onToggleFilter();
     };
     // capture 段階で拾う。図のノードは mousedown の伝播を止めるので、バブリングでは document に届かない
