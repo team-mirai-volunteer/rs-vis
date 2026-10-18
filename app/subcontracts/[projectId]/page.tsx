@@ -367,10 +367,10 @@ type ViewMode = 'block' | 'ribbon';
 
 // ─── サイドパネル（タブ式） ──────────────────────────────────────────────
 
-type PaneTab = 'flow' | 'blocks' | 'recipients' | 'indirect-cost';
+type PaneTab = 'flow' | 'blocks' | 'recipients' | 'budget' | 'indirect-cost';
 
-const TAB_TO_CODE: Record<PaneTab, string> = { flow: 'fl', blocks: 'bl', recipients: 'rc', 'indirect-cost': 'ic' };
-const CODE_TO_TAB: Record<string, PaneTab> = { fl: 'flow', bl: 'blocks', rc: 'recipients', ic: 'indirect-cost' };
+const TAB_TO_CODE: Record<PaneTab, string> = { flow: 'fl', blocks: 'bl', recipients: 'rc', budget: 'bg', 'indirect-cost': 'ic' };
+const CODE_TO_TAB: Record<string, PaneTab> = { fl: 'flow', bl: 'blocks', rc: 'recipients', bg: 'budget', ic: 'indirect-cost' };
 
 /**
  * API が返す再委託グラフ（+ サンキーグラフから合成した予算・執行）。
@@ -453,7 +453,6 @@ function SidePane({
   const PANEL_META_FONT_PX = scaleFont(PANEL_META_FONT_PX_DEFAULT);
   const [expandedRecipients, setExpandedRecipients] = useState<Set<number>>(new Set());
   const [overviewOpen, setOverviewOpen] = useState(false); // 既定は折りたたみ＝プレビュー表示（メイン同様）
-  const [budgetOpen, setBudgetOpen] = useState(false);
   // 品質スコア詳細ダイアログ（/quality と共通の ScoreDetailDialog。メイン画面と同型）
   const [scoreDialogItem, setScoreDialogItem] = useState<QualityScoreItem | null>(null);
   const [scoreDialogLoading, setScoreDialogLoading] = useState(false);
@@ -546,12 +545,12 @@ function SidePane({
   // タブ定義。フローを入口（初期選択）に置く。
   // 支出先はブロック未選択なら事業全体、選択中はそのブロック内訳を出す。
   // 間接経費は0件でも押せるようにする（「無い」ことも情報。図に現れない支出の唯一の受け皿）。
-  // 予算・執行タブは一旦廃止（S1 でメイン画面と同型のパネル表示に統合済み。
-  // データ（graph.budgetSummary/budgetBreakdown）は API 側で保持）。
+  // 予算・執行はサンキー図の詳細パネルと同じく上の要約ではなくタブに置く（上部が長くなりタブの中身が見えなくなるため）。
   const tabs: Array<{ key: PaneTab; label: string; count?: number; disabled?: boolean }> = [
     { key: 'flow', label: 'フロー', count: graph.flows.length },
     { key: 'blocks', label: 'ブロック', count: graph.blocks.length },
     { key: 'recipients', label: '支出先', count: block ? block.recipients.length : graph.totalRecipientCount },
+    { key: 'budget', label: '予算', count: graph.budgetBreakdown?.length ?? 0 },
     { key: 'indirect-cost', label: '間接経費', count: indirectCount },
   ];
 
@@ -676,15 +675,7 @@ function SidePane({
         </div>
       </div>
 
-      {/* 予算・執行（共有コンポーネント。メイン画面と同一の会計集計・歳出項目カード表示） */}
-      <BudgetExecutionSection
-        budgetSummary={graph.budgetSummary}
-        budgetBreakdown={graph.budgetBreakdown ?? []}
-        scaleFont={scaleFont}
-        expanded={budgetOpen}
-        onToggleExpanded={() => setBudgetOpen(o => !o)}
-        listHeight={260}
-      />
+      {/* 予算・執行は下の「予算」タブへ移した（サンキー図の詳細パネルと同じ置き方） */}
 
       {/* ブロックインスペクター（Phase 4）は一旦非表示（ユーザー要望）。選択自体は
           タブ内容（支出先＝ブロック内訳）とフロー図のハイライトに反映される。復活時は
@@ -974,6 +965,16 @@ function SidePane({
               </>
             )}
           </>
+        )}
+
+        {activeTab === 'budget' && (
+          // 予算・執行（共有コンポーネント。メイン画面と同一の会計集計・歳出項目カード表示）。タブ内なので見出しと内部スクロールは省く
+          <BudgetExecutionSection
+            budgetSummary={graph.budgetSummary}
+            budgetBreakdown={graph.budgetBreakdown ?? []}
+            scaleFont={scaleFont}
+            presentation="tab"
+          />
         )}
 
         {activeTab === 'indirect-cost' && (

@@ -79,7 +79,7 @@ const COLUMN_DEFS: ReadonlyArray<{ key: SortKey; label: string; title: string; a
   { key: 'projectName', label: '事業名', title: '事業名。クリックするとその事業の委託構造（ブロックと資金の流れ）を開きます', align: 'left', tier: 'base' },
   { key: 'ministry', label: '省庁', title: '事業を所管する府省庁', align: 'left', tier: 'base' },
   { key: 'bureau', label: '担当組織', title: '事業を担当する局・庁／部／課', align: 'left', tier: 'xwide' },
-  { key: 'accountCategory', label: '会計区分', title: '一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）', align: 'left', tier: 'xwide' },
+  { key: 'accountCategory', label: '会計区分', title: '一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）', align: 'left', tier: 'wide' },
   { key: 'budget', label: '予算額', title: '歳出予算現額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
   { key: 'execution', label: '執行額', title: '実際に執行された額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
   { key: 'directExpenseTotal', label: '直接支出合計', title: '事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません', align: 'right', tier: 'wide' },
@@ -100,7 +100,7 @@ const COLUMN_DEFS: ReadonlyArray<{ key: SortKey; label: string; title: string; a
   { key: 'maxMergeWidth', label: '最大合流', title: '1つのブロックに流れ込む委託元ブロックの最大数', align: 'right' },
   { key: 'institutional', label: '構造', title: '全ブロックが金額0・支出先なしの「制度上の流れ」だけを記載した事業か（交付先の制度を示すだけの記載）', align: 'center' },
 ];
-/** 画面幅に応じた既定の列。1280px 未満は 9 列、1280px 以上で 11 列、1700px 以上（フル HD）で 15 列（合計幅 約 1,630px） */
+/** 画面幅に応じた既定の列。1280px 未満は 9 列、1280px 以上で 12 列（約 1,230px）、1700px 以上（フル HD）で 15 列（約 1,630px） */
 function defaultVisibleFor(width: number): SortKey[] {
   const tiers: Array<'base' | 'wide' | 'xwide'> = width >= 1700 ? ['base', 'wide', 'xwide'] : width >= 1280 ? ['base', 'wide'] : ['base'];
   return COLUMN_DEFS.filter(c => c.tier && tiers.includes(c.tier)).map(c => c.key);
