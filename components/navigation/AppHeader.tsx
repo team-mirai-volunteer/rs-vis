@@ -149,7 +149,7 @@ function HeaderFrame({ current, config, slotRef, aiOpen, onToggleAi }: {
           <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-mirai-gradient text-mirai-text">
             <Landmark className="size-4" strokeWidth={2.25} />
           </span>
-          <span className="text-sm font-bold text-mirai-text">{PRODUCT_NAME}</span>
+          <span className="text-[15px] font-bold tracking-normal text-mirai-text">{PRODUCT_NAME}</span>
         </Link>
 
         <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden md:flex">
