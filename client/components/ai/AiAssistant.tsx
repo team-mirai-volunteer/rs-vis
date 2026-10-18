@@ -25,7 +25,7 @@ import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { deleteByokSettings, loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
 import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openrouter-caller';
 import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
-import { useAiResultDispatch } from '@/client/lib/ai/result-handler';
+import { useAiResultTarget } from '@/client/lib/ai/result-handler';
 import { projectLinks, sankeyUrlForQuery } from '@/client/lib/ai/result-links';
 import {
   deleteAllChatSessions, listChatSessions, loadChatSession, saveChatSession,
@@ -57,7 +57,10 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   /** いま開いているページの名前（AI の案内の優先と、見出しの表示に使う） */
   page: string;
 }) {
-  const dispatch = useAiResultDispatch();
+  // このページの受け取り手（無ければ案内リンク）。label は「図」「一覧」など適用先の呼び名
+  const target = useAiResultTarget();
+  const dispatch = target?.handler ?? null;
+  const targetLabel = target?.label ?? '図';
   const [settings, setSettings] = useState<ByokSettings | null>(null);
   const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -225,7 +228,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         <div className="text-sm font-bold tracking-normal">AIに聞く</div>
         <div className="truncate text-[11px] text-mirai-text-muted">
           {mode === 'byok' ? `あなたのキー・${settings?.model}` : mode === 'server' ? 'サイト提供のAI' : 'APIキーが未設定'}
-          {dispatch ? '・結果はこの図に適用' : `・${page}を表示中`}
+          {dispatch ? `・結果は${page}の${targetLabel}に適用` : `・${page}を表示中`}
         </div>
       </div>
       {/* 新しい会話。今の会話は「過去の会話」に残る。入力欄の横だと気づかれにくかったので帯に置く */}
@@ -290,7 +293,9 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
       {messages.length === 0 && <div className="space-y-3">
         <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">
           {dispatch
-            ? '条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。'
+            ? (targetLabel === '一覧'
+              ? `条件を自然文で聞くと、${page}の一覧を当てはまる事業だけに絞り込みます。一覧で判定できない条件（支出先・支出額・再委託）は未適用として示し、サンキー図へのリンクで補います。`
+              : '条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。')
             : '条件を自然文で聞くと、公開データから当てはまる事業を探します。結果はサンキー図で開くリンクと、事業ごとの詳細へのリンクで案内します。'}
         </p>
         {mode === 'server' && <p className="m-0 text-[11px] leading-relaxed text-mirai-text-muted">サイト提供の AI では、入力と応答を当団体が保存し、運営・改善、政策の検討、不正対策に使います（個人を特定する情報とは結びつけません）。ご自身の API キーを使う場合は保存しません。</p>}
@@ -308,7 +313,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         {/* 復元した会話を別のページで見ているときは、適用済みでも案内リンクを出す（この図には適用できないため） */}
         {m.result && m.applied && dispatch && <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-stance-for-bg px-2.5 py-0.5 text-xs font-medium text-primary-accent">
-            <Check aria-hidden="true" className="size-3.5" />図に適用しました
+            <Check aria-hidden="true" className="size-3.5" />{targetLabel}に適用しました
           </span>
           {m.result.interpretation && <span className="text-xs text-mirai-text-muted">{m.result.interpretation}</span>}
           <Button variant="link" size="xs" className="text-xs" onClick={() => applyResult(m.result!)}>再適用する</Button>
@@ -330,7 +335,9 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         placeholder={mode ? '例: 再エネ関連で予算100億円以上（Ctrl+Enter で送信）' : 'APIキーを設定すると利用できます'} className={cn(INPUT_CLASS, 'resize-y')} />
       <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-mirai-text-muted">
-          {dispatch ? '事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。' : '事業名・支出先・所管・金額・再委託の条件で探します。'}
+          {dispatch
+            ? (targetLabel === '一覧' ? '事業名・所管・金額・AI が選んだ事業で一覧を絞り込みます。' : '事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。')
+            : '事業名・支出先・所管・金額・再委託の条件で探します。'}
         </span>
         <Button variant="default" size="sm" disabled={!input.trim() || !canSend} onClick={() => void send(input)}>
           <Send aria-hidden="true" />送信する

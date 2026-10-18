@@ -12,34 +12,44 @@ import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 
 export type AiResultHandler = (result: SankeyChatResult) => void;
 
+/** 受け取り手と、結果が何に適用されるかの呼び名（「図」「一覧」）。文言とシステムプロンプトに使う */
+export interface AiResultTarget {
+  handler: AiResultHandler;
+  /** 適用先の呼び名。サンキー図・バブル図は「図」、評価一覧・委託構造は「一覧」 */
+  label: string;
+}
+
 interface AiResultContextValue {
-  handler: AiResultHandler | null;
-  register: (handler: AiResultHandler) => () => void;
+  target: AiResultTarget | null;
+  register: (target: AiResultTarget) => () => void;
 }
 
 const AiResultContext = createContext<AiResultContextValue | null>(null);
 
 export function AiResultProvider({ children }: { children: ReactNode }) {
-  const [handler, setHandler] = useState<AiResultHandler | null>(null);
-  const register = useCallback((next: AiResultHandler) => {
-    setHandler(() => next);
-    return () => setHandler((current: AiResultHandler | null) => (current === next ? null : current));
+  const [target, setTarget] = useState<AiResultTarget | null>(null);
+  const register = useCallback((next: AiResultTarget) => {
+    setTarget(next);
+    return () => setTarget((current: AiResultTarget | null) => (current === next ? null : current));
   }, []);
-  const value = useMemo(() => ({ handler, register }), [handler, register]);
+  const value = useMemo(() => ({ target, register }), [target, register]);
   return <AiResultContext.Provider value={value}>{children}</AiResultContext.Provider>;
 }
 
-/** ページが結果の受け取り手を登録する。アンマウントで解除。handler は useCallback で安定させること */
-export function useAiResultHandler(handler: AiResultHandler): void {
+/**
+ * ページが結果の受け取り手を登録する。アンマウントで解除。handler は useCallback で安定させること。
+ * @param label 適用先の呼び名（既定「図」）。一覧型のページは「一覧」
+ */
+export function useAiResultHandler(handler: AiResultHandler, label = '図'): void {
   const context = useContext(AiResultContext);
   const register = context?.register;
   useEffect(() => {
     if (!register) return;
-    return register(handler);
-  }, [register, handler]);
+    return register({ handler, label });
+  }, [register, handler, label]);
 }
 
 /** AI ナビが現在ページの受け取り手を得る（無ければ null） */
-export function useAiResultDispatch(): AiResultHandler | null {
-  return useContext(AiResultContext)?.handler ?? null;
+export function useAiResultTarget(): AiResultTarget | null {
+  return useContext(AiResultContext)?.target ?? null;
 }

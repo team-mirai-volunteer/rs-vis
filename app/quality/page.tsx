@@ -180,7 +180,7 @@ export default function QualityPage() {
   const [selectedMinistry, setSelectedMinistry] = useState<string>('');
   // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
   const [aiFilter, setAiFilter] = useState<AiListFilter | null>(null);
-  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []));
+  useAiResultHandler(useCallback((result: SankeyChatResult) => setAiFilter(aiListFilterFrom(result)), []), '一覧');
   const [scoreRange, setScoreRange] = useState<ScoreRange>('all');
   const [selectedRecommendation, setSelectedRecommendation] = useState<string[]>([]);
   const [selectedAction, setSelectedAction] = useState<string[]>([]);

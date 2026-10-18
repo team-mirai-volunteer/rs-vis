@@ -9,7 +9,7 @@
 import { createHash } from 'node:crypto';
 import { unstable_cache } from 'next/cache';
 import type { SankeyChatContext, SankeyChatMessage } from '@/types/sankey-ai-chat';
-import type { SankeyChatAgentResult } from '@/app/lib/ai/chat-core';
+import { PROMPT_VERSION, type SankeyChatAgentResult } from '@/app/lib/ai/chat-core';
 import { loadSankeyGraph } from '@/app/lib/api/sankey-graph-loader';
 import { SANKEY_QUERY_DEFAULTS } from '@/app/lib/sankey-query';
 
@@ -42,6 +42,7 @@ export function responseCacheKey(messages: SankeyChatMessage[], context: SankeyC
     currentQuery: context.currentQuery ?? null,
     page: context.page ?? null,
     version: dataVersion(context.year),
+    prompt: PROMPT_VERSION,
   });
   return createHash('sha256').update(payload).digest('hex');
 }
