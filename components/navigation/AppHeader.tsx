@@ -11,7 +11,13 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageNavMenu } from './PageNavMenu';
 import { PAGES, PRIMARY_PAGES, PRODUCT_NAME, type NavPageHref } from './pages';
-import { AiAssistant } from '@/client/components/ai/AiAssistant';
+import dynamic from 'next/dynamic';
+
+/**
+ * AI ナビは開いたときだけ読み込む。ルートレイアウトに置いたことで、エージェント・ツール実行層・基金／事業者の
+ * ライブラリが全ページの初期バンドルに乗っていたため（開かない人には不要な数百 KB）。SSR も不要
+ */
+const AiAssistant = dynamic(() => import('@/client/components/ai/AiAssistant').then(m => m.AiAssistant), { ssr: false });
 import { AiResultProvider } from '@/client/lib/ai/result-handler';
 
 /** AI ナビが条件を解釈するのに使う RS シート年度の既定（最新の実績年度 2024 のシート） */
