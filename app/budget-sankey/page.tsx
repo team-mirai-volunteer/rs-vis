@@ -50,6 +50,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useMediaQuery } from '@/client/hooks/useMediaQuery';
 import { applySankeyQueryToUnifiedFilter } from '@/client/lib/unified-ai-filter';
 import { parseFilter, serializeFilter } from '@/app/lib/unified-budget/filter-url';
+import { atomicMinistryOptions } from '@/app/lib/unified-budget/ministry-names';
 import { useAiResultHandler } from '@/client/lib/ai/result-handler';
 import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 import { cn } from '@/lib/utils';
@@ -286,7 +287,8 @@ function UnifiedBudgetSankeyContent() {
     const patch = offsetToReveal(collapsed, topN, offset, selectedId, programRanking);
     if (patch) setOffset(o => ({ ...o, ...patch }));
   }, [selectedId, collapsed, display, topN, offset, programRanking]);
-  const ministries = useMemo(() => (base ? [...new Set(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name))] : []), [base]);
+  // 絞り込みの選択肢は共管（「内閣府及び厚生労働省」など）を分解した単独の省庁だけ。判定側（applyFilter）が共管を含めて残す
+  const ministries = useMemo(() => (base ? atomicMinistryOptions(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name)) : []), [base]);
 
   // URL 同期
   useEffect(() => {

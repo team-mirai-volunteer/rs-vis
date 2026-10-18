@@ -81,6 +81,7 @@ export function UnifiedFilterFields({
             triggerClassName="h-7 w-full border-mirai-border text-xs"
           />
         </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">共管の所管（「内閣府及び厚生労働省」など）は、いずれかの省庁を選ぶと含まれます。</p>
       </div>
       <div>
         <div className="mb-1 font-medium">名前（部分一致。一致したノードとその上流・下流だけを残す）</div>
