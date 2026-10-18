@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { NoRecipientsNote } from '@/client/components/unified-budget/UnifiedProjectBlocks';
 import { ScoreBlockFilterHeader, ScoreProjectStructure, type ScoreRecipientTab } from './ScoreProjectStructure';
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { Link2, Loader2, X } from 'lucide-react';
+import { ChevronDown, Link2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { QualityScoreItem } from '@/app/lib/api/quality-scores-loader';
 import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
@@ -38,8 +38,21 @@ import {
   RecommendationBadge, ActionBadge, fmtRaw,
 } from '@/client/components/quality/score-meta';
 
-/** ヘッダ下の「▼ 事業内容」等の開閉リンク。Button の link variant を細字に寄せる（デスクトップは 13px） */
-const TOGGLE_LINK_CLS = 'text-[11px] lg:text-[13px] font-normal no-underline hover:underline hover:text-primary-accent';
+/**
+ * 「事業内容」「政策評価」の見出し。クリックでそのセクションをその場で開閉する（アコーディオン）。
+ * 以前はダイアログ上部のリンクで開閉していたが、開閉する場所と表示される場所が離れていて分かりにくかった。
+ */
+function SectionToggle({ id, label, open, onToggle }: { id: string; label: string; open: boolean; onToggle: () => void }) {
+  return (
+    <h3 id={`${id}-heading`} className="m-0">
+      <button type="button" aria-expanded={open} aria-controls={open ? id : undefined} onClick={onToggle}
+        className="inline-flex min-h-11 items-center gap-1.5 -ml-1 px-1 text-sm lg:text-base font-bold text-mirai-text hover:text-primary-accent">
+        <ChevronDown className={`size-4 lg:size-5 shrink-0 text-mirai-text-muted transition-transform ${open ? '' : '-rotate-90'}`} aria-hidden="true" />
+        {label}
+      </button>
+    </h3>
+  );
+}
 
 /**
  * デスクトップ（Tailwind の `lg` = 1024px 以上）では画面を贅沢に使う 2 列レイアウトにする。
@@ -164,6 +177,23 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const axis1Total = item.validCount + item.govAgencyCount + item.suppValidCount + item.invalidCount;
   const axis1Num = item.validCount + item.govAgencyCount + item.suppValidCount;
 
+  // みんなの意見。Supabase 未配布環境では ProjectComments が何も描かない（親の empty:hidden で枠ごと消える）
+  const commentsBlock = recipientsAvailable ? (
+    <ProjectComments
+      bare
+      scaleFont={scaleFont}
+      context={{
+        pid: item.pid,
+        year,
+        projectName: item.name,
+        ministry: item.ministry,
+        detail: projectInfo ?? undefined,
+        budget: item.budgetAmount,
+        execution: item.execAmount,
+      }}
+    />
+  ) : <p className="text-xs lg:text-sm text-mirai-text-muted">{year}年度は予算要求の表示です。この年度の意見投稿・一覧はまだ対応していません。</p>;
+
   function RSortIcon({ field }: { field: typeof recipientSortField }) {
     if (recipientSortField !== field) return <span className="text-mirai-text-placeholder ml-0.5">↕</span>;
     return <span className="text-primary ml-0.5">{recipientSortDir === 'desc' ? '↓' : '↑'}</span>;
@@ -210,8 +240,9 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
           </Button>
         </div>
 
-        {/* Score summary — single compact row */}
-        <div className="px-6 py-2.5 lg:px-8 lg:py-4 border-b border-mirai-border shrink-0">
+        {/* Score summary — single compact row。デスクトップは右にみんなの意見の枠を並べる */}
+        <div className="px-6 py-2.5 lg:px-8 lg:py-4 border-b border-mirai-border shrink-0 lg:flex lg:items-start lg:gap-8">
+          <div className="min-w-0 lg:flex-1">
           <div className="flex flex-wrap items-center gap-4 lg:gap-8">
             <div className="shrink-0 text-center">
               <div className={`text-2xl lg:text-6xl font-bold tabular-nums leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
@@ -263,25 +294,13 @@ ${a.desc}`}>
               </div>
             </div>
           </div>
-          {/* 何を評価した結果なのかを先に読めるよう、事業内容 → 政策評価 の順に並べる。計算根拠の開閉は政策評価の直下に置く */}
-          <div className="mt-1 lg:mt-2 flex items-center gap-4">
-            <Button
-              variant="link"
-              onClick={() => setShowProjectInfo(d => !d)}
-              className={TOGGLE_LINK_CLS}
-            >
-              {showProjectInfo ? '▲ 事業内容を閉じる' : '▼ 事業内容'}
-            </Button>
-            {policy && (
-              <Button
-                variant="link"
-                onClick={() => setShowPolicy(d => !d)}
-                className={TOGGLE_LINK_CLS}
-              >
-                {showPolicy ? '▲ 政策評価を閉じる' : '▼ 政策評価'}
-              </Button>
-            )}
           </div>
+          {/* みんなの意見（AIインタビューで集めた匿名意見）の別枠。点数と並べて、評価と市民の声を一緒に見られるようにする */}
+          {desktop && (
+            <aside aria-label="みんなの意見" className="w-[38%] shrink-0 rounded-2xl border border-mirai-border bg-mirai-surface px-5 py-4 empty:hidden">
+              {commentsBlock}
+            </aside>
+          )}
         </div>
 
         {/*
@@ -293,15 +312,16 @@ ${a.desc}`}>
           {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs lg:text-sm text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
 
         {/*
-          デスクトップ（lg）は 2 列: 左に読む情報（事業内容・みんなの意見・政策評価）、右に数字（推移グラフ・概算要求・外部の検査）。
+          デスクトップ（lg）は 2 列: 左に読む情報（事業内容 → 政策評価を縦に）、右に数字と外部資料（推移グラフ・概算要求・外部の検査）。みんなの意見は上の点数の右の別枠。
           1 列で横いっぱいに流すと 1,500px 幅に小さな文字が並び、推移グラフが細長く潰れていたため。
           lg 未満は従来どおり縦 1 列（左列 → 右列の順）。
         */}
         <div className="lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:divide-x lg:divide-mirai-border">
         <div className="min-w-0">
-        {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料 */}
-        {showProjectInfo && (
-          <div className="px-6 py-3 lg:px-8 lg:py-6 border-b border-mirai-border bg-mirai-surface-gray">
+        {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料。見出しをクリックでその場で開閉 */}
+        <section aria-labelledby="score-project-info-heading" className="px-6 py-3 lg:px-8 lg:py-4 border-b border-mirai-border bg-mirai-surface-gray">
+          <SectionToggle id="score-project-info" label="事業内容" open={showProjectInfo} onToggle={() => setShowProjectInfo(d => !d)} />
+          {showProjectInfo && <div id="score-project-info" className="mt-2 lg:mt-3">
             {projectInfo === undefined && (
               <div className="flex items-center gap-2 text-xs lg:text-sm text-mirai-text-muted">
                 <Loader2 className="size-3 animate-spin text-mirai-text-muted" aria-hidden="true" />
@@ -310,30 +330,8 @@ ${a.desc}`}>
             )}
             {projectInfo === null && <div className="text-xs lg:text-sm text-mirai-text-muted">事業内容データなし</div>}
             {projectInfo && <ProjectDescription detail={projectInfo} sheetYear={year} size={desktop ? 'large' : 'default'} />}
-          </div>
-        )}
-
-        {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-        <div className="px-6 py-3 lg:px-8 lg:py-4 border-b border-mirai-border empty:hidden">
-          {recipientsAvailable ? <ProjectComments
-            bare
-            scaleFont={scaleFont}
-            context={{
-              pid: item.pid,
-              year,
-              projectName: item.name,
-              ministry: item.ministry,
-              detail: projectInfo ?? undefined,
-              budget: item.budgetAmount,
-              execution: item.execAmount,
-            }}
-          /> : <p className="text-xs lg:text-sm text-mirai-text-muted">{year}年度は予算要求の表示です。この年度の意見投稿・一覧はまだ対応していません。</p>}
-        </div>
-
-        </div>
-
-        {/* 右列（lg）: 数字で見る情報。上の点数の続きとして政策評価を先に、その下に推移グラフ（デスクトップは size="large" で高く描く）、概算要求・外部の検査 */}
-        <div className="min-w-0">
+          </div>}
+        </section>
         {/* 政策評価の取得に失敗したときは黙って消さず、失敗したと分かるようにする */}
         {policyError && !policy && (
           <div className="px-6 py-2 lg:px-8 border-b border-mirai-border text-xs lg:text-sm text-destructive">
@@ -341,10 +339,11 @@ ${a.desc}`}>
           </div>
         )}
 
-        {/* 政策評価 — 推奨判断・改善アクションとその根拠 */}
-        {policy && showPolicy && (
-          <div className="px-6 py-3 lg:px-8 lg:py-6 border-b border-mirai-border bg-mirai-surface-teal/40">
+        {/* 政策評価 — 推奨判断・改善アクションとその根拠。見出しをクリックでその場で開閉（推奨バッジは閉じていても見せる） */}
+        {policy && (
+          <section aria-labelledby="score-policy-heading" className="px-6 py-3 lg:px-8 lg:py-4 border-b border-mirai-border bg-mirai-surface-teal/40">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              <SectionToggle id="score-policy" label="政策評価" open={showPolicy} onToggle={() => setShowPolicy(d => !d)} />
               <div className="flex items-center gap-2 flex-wrap">
                 <RecommendationBadge policy={policy} />
                 {policy.improvementAction && <ActionBadge action={policy.improvementAction} />}
@@ -361,6 +360,7 @@ ${a.desc}`}>
               </div>
             </div>
 
+            {showPolicy && <div id="score-policy">
             <div className="mt-2 lg:mt-4 grid gap-3 lg:gap-5 sm:grid-cols-3 text-xs lg:text-sm">
               <div>
                 <div className="font-bold text-mirai-text-secondary">AI評価の生値（0-10）</div>
@@ -440,32 +440,17 @@ ${a.desc}`}>
               )}
               <div className="text-[11px] lg:text-xs leading-4 lg:leading-5 text-status-warn">{policy.provisionalReason}</div>
             </div>
-          </div>
-        )}
-        {/* 予算・執行額の 5 年推移（サンキー図の詳細パネルと同じ部品）。評価の文脈として AI 評価の直後に置く */}
-        <div className="border-b border-mirai-border px-6 lg:px-8 lg:py-3">
-          <ProjectBudgetHistory key={`${item.pid}-${desktop ? 'large' : 'default'}`} pid={Number(item.pid)} size={desktop ? 'large' : 'default'} />
-        </div>
-        <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
-        <ProjectRelatedPages pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
-
-        {/* 政府・検査機関による調査（財務省 予算執行調査・会計検査院 決算検査報告）。推移の後に置き、見比べられるようにする */}
-        <ProjectBudgetExecutionAudit pid={Number(item.pid)} scaleFont={desktop ? scaleFont : px => px} padding="px-6 py-2.5 lg:px-8 lg:py-3" />
-        <ProjectAuditReport pid={Number(item.pid)} scaleFont={desktop ? scaleFont : px => px} padding="px-6 py-2.5 lg:px-8 lg:py-3" />
-        </div>
-        </div>
-
-        {/* スコア計算根拠の開閉。上部の切替列に置くと、開いた中身がずっと下に出て開いたことに気づけないので、中身の直上に置く */}
-        <section className="border-b border-mirai-border px-6 py-2 lg:px-8 lg:py-3" aria-label="スコア計算根拠">
+        {/* スコア計算根拠（政策評価の内訳なので政策評価の中に置く）。開くと直下に出る */}
+        <section className="mt-3 lg:mt-4" aria-label="スコア計算根拠">
           <Button variant="ghost" size="xs" aria-expanded={showAxisDetail} aria-controls="score-axis-detail"
             onClick={() => setShowAxisDetail(v => !v)} className="px-0 text-primary-accent lg:text-sm">
             {showAxisDetail ? '▾' : '▸'} スコア計算根拠
           </Button>
         </section>
 
-        {/* Axis detail (collapsible)。デスクトップは本文を 13px に、左右余白を広げる */}
+        {/* Axis detail (collapsible)。政策評価の中のカードとして描く。デスクトップは本文を 13px に */}
         {showAxisDetail && (
-          <div id="score-axis-detail" className="border-b border-mirai-border divide-y divide-border lg:[&_.text-xs]:text-[13px] lg:[&_.text-\[11px\]]:text-xs lg:[&>div]:px-8 lg:[&>div]:py-4">
+          <div id="score-axis-detail" className="mt-2 rounded-xl border border-mirai-border bg-card divide-y divide-border lg:[&_.text-xs]:text-[13px] lg:[&_.text-\[11px\]]:text-xs lg:[&>div]:px-6 lg:[&>div]:py-3">
             <div className="px-5 py-1.5 bg-mirai-surface-teal/60 text-[11px] text-mirai-text-muted">
               欠測した項目は重みごと除外して再正規化します（0点扱いにはしません）。
             </div>
@@ -647,6 +632,34 @@ ${a.desc}`}>
             </div>
           </div>
         )}
+            </div>}
+          </section>
+        )}
+
+        {/* みんなの意見。デスクトップでは上の点数の右に別枠で出すので、ここ（左列）は lg 未満だけ */}
+        {!desktop && (
+          <div className="px-6 py-3 border-b border-mirai-border empty:hidden">
+            {commentsBlock}
+          </div>
+        )}
+
+        </div>
+
+        {/* 右列（lg）: 数字と外部資料。推移グラフ（デスクトップは size="large" で高く描く）、概算要求、関連ページ、予算執行調査、決算検査報告 */}
+        <div className="min-w-0">
+        {/* 予算・執行額の 5 年推移（サンキー図の詳細パネルと同じ部品）。評価の文脈として AI 評価の直後に置く */}
+        <div className="border-b border-mirai-border px-6 lg:px-8 lg:py-3">
+          <ProjectBudgetHistory key={`${item.pid}-${desktop ? 'large' : 'default'}`} pid={Number(item.pid)} size={desktop ? 'large' : 'default'} />
+        </div>
+        <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
+        <ProjectRelatedPages pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
+
+        {/* 政府・検査機関による調査（財務省 予算執行調査・会計検査院 決算検査報告）。推移の後に置き、見比べられるようにする */}
+        <ProjectBudgetExecutionAudit pid={Number(item.pid)} scaleFont={desktop ? scaleFont : px => px} padding="px-6 py-2.5 lg:px-8 lg:py-3" />
+        <ProjectAuditReport pid={Number(item.pid)} scaleFont={desktop ? scaleFont : px => px} padding="px-6 py-2.5 lg:px-8 lg:py-3" />
+        </div>
+        </div>
+
 
         {/* Recipients */}
         <div className="flex flex-col">
