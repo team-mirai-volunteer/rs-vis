@@ -69,6 +69,16 @@ export interface ChatToolExecutor {
   getSubcontractChain(year: SupportedYear, pid: string): Promise<unknown> | unknown;
   getHighlights(year: SupportedYear, metricRaw: unknown): Promise<unknown> | unknown;
   compareYears(query: SankeyQuery | undefined, baseYear: SupportedYear, compareYear: SupportedYear): Promise<unknown> | unknown;
+  /** 事業の支出先一覧（契約方式・応札者数・落札率つき） */
+  getProjectRecipients(year: SupportedYear, pid: string): Promise<unknown> | unknown;
+  /** 基金の検索（名前・保有法人・府省）。q が空なら事業 pid に紐づく基金 */
+  searchFunds(q: string, pid: string | null): Promise<unknown> | unknown;
+  /** 基金 1 件の詳細（key = lineage_id） */
+  getFund(key: string): Promise<unknown> | unknown;
+  /** 事業者（支出先の法人）の検索と詳細。key（法人番号）があれば 1 件、無ければ q で検索 */
+  getVendor(q: string, key: string | null): Promise<unknown> | unknown;
+  /** 事業の来年度概算要求（財務省の明細表との突き合わせ） */
+  getBudgetRequest(pid: string): Promise<unknown> | unknown;
 }
 
 export interface SankeyChatAgentResult {
@@ -344,6 +354,76 @@ export const TOOLS: LlmToolDef[] = [
   {
     type: 'function',
     function: {
+      name: 'get_project_recipients',
+      description:
+        '事業の支出先一覧（金額の大きい順・上位20件）。各支出先の金額・法人番号・契約方式（一般競争・随意契約・補助金等）・応札者数・落札率・役割・再委託の階層を返す。' +
+        '「1者応札か」「随意契約か」「誰にいくら払ったか」「再委託先は」の問いに使う。',
+      parameters: {
+        type: 'object',
+        properties: { pid: { type: 'string', description: '事業ID' } },
+        required: ['pid'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_funds',
+      description:
+        '基金（国が法人に積んだ資金）を名前・保有法人・府省で検索し、残高・国庫返納・終了予定・点検結果の要点を返す（上位10件）。' +
+        'pid を指定すると、その事業が造成した／関連する基金を返す。詳細は get_fund。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '基金名・保有法人名・府省名の部分一致。pid 指定時は省略可' },
+          pid: { type: 'string', description: '事業ID。この事業に関連する基金だけを返す' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_fund',
+      description: '基金 1 件の詳細（年度ごとの残高・収支・国庫返納・保有割合、造成の経緯、必要性の記載、点検結果、関連事業）。key は search_funds の結果の key。',
+      parameters: {
+        type: 'object',
+        properties: { key: { type: 'string', description: '基金のキー（search_funds の key）' } },
+        required: ['key'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_vendor',
+      description:
+        '事業者（支出先の法人）の全府省での受注状況。年度ごとの受注額・件数、競争入札と1者応札の件数、主な支出元の府省、2年度以上1者応札が続く事業の一覧を返す。' +
+        '「この会社はどこから受注しているか」「1者応札が続いている事業者は」の問いに使う。q で名前・法人番号を検索（上位10件）、key（法人番号）で1件の詳細。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '事業者名・法人番号の部分一致' },
+          key: { type: 'string', description: '事業者のキー（法人番号13桁。検索結果の key）' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_budget_request',
+      description: '事業の来年度（2027年度）概算要求。レビューシートの要求額と、財務省の概算要求明細表の 目 ごとの要求額・前年度額との突き合わせ結果を返す。「来年度いくら要求しているか」「増える／減るか」の問いに使う。',
+      parameters: {
+        type: 'object',
+        properties: { pid: { type: 'string', description: '事業ID' } },
+        required: ['pid'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'submit_result',
       description:
         '検証済みの最終フィルタ条件を確定する。run_sankey_query で結果を確認してから呼ぶこと。message にはユーザー向けの短い説明（何をどう絞ったか・何件マッチしたか）を日本語で書く。',
@@ -411,6 +491,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '- 数値・事実は必ずツール応答から転記する。ツールで確認していない数値を推測で書かない',
     '- **0件・除外の理由を推測で説明しない**: 「なぜこの事業がマッチしなかったのか」を述べるときは、条件を変えた run_sankey_query（金額下限を外す等）や search_projects で実測してから、トークンごとに「名前不一致 / 金額条件で除外 / マッチ」を切り分けて答える（実例: 事業名の表記ゆれで0件だったものを「予算未満で除外」と誤説明した事故がある）',
     '- pid はユーザーには分からない前提。事業名から聞かれたら、まず search_projects でpidを特定してから深掘りツールを呼ぶ。支出先も同様に search_recipients でキーを特定する',
+    '- 契約方式（1者応札・随意契約・落札率）や「誰にいくら払ったか」は get_project_recipients。事業者（法人）側から「どこから受注しているか」「1者応札が続く事業」は get_vendor。基金（残高・国庫返納・終了予定）は search_funds → get_fund。来年度の概算要求は get_budget_request',
     '- 品質スコアについて回答する際の語彙規律: スコアは「事業レビューシートに書かれた説明の質（支出先の特定可能性・使途の説明性・成果設計の明確さ等）」を評価したものであり、事業そのものの善悪・要不要・無駄の有無を判定するものではない。「この事業は無駄」のような断定はせず、「レビューシートの記載としては〜」のように表現する',
     '- ツール実行に失敗した・データが見つからない場合はその旨を正直に伝える（存在しないふりをしない）',
     '',
@@ -584,6 +665,30 @@ export async function executeToolCall(
     }
     case 'get_highlights':
       return { payload: await executor.getHighlights(year, args.metric) };
+    case 'get_project_recipients': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getProjectRecipients(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'search_funds': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      const pid = typeof args.pid === 'string' && args.pid.trim() ? args.pid.trim() : null;
+      if (!q && !pid) return { payload: { error: 'q（検索語）か pid（事業ID）のどちらかを指定してください' } };
+      return { payload: await executor.searchFunds(q, pid) };
+    }
+    case 'get_fund': {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return { payload: key ? await executor.getFund(key) : { error: 'key（基金のキー）を指定してください' } };
+    }
+    case 'get_vendor': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      const key = typeof args.key === 'string' && args.key.trim() ? args.key.trim() : null;
+      if (!q && !key) return { payload: { error: 'q（事業者名・法人番号）か key のどちらかを指定してください' } };
+      return { payload: await executor.getVendor(q, key) };
+    }
+    case 'get_budget_request': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getBudgetRequest(pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
     case 'compare_years': {
       const baseYear = args.baseYear === '2024' || args.baseYear === '2025' ? args.baseYear : null;
       const compareYear = args.compareYear === '2024' || args.compareYear === '2025' ? args.compareYear : null;

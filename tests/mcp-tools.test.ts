@@ -25,6 +25,11 @@ function stubExecutor(): { executor: ChatToolExecutor; calls: string[] } {
     getSubcontractChain: record('getSubcontractChain'),
     getHighlights: record('getHighlights'),
     compareYears: record('compareYears'),
+    getProjectRecipients: record('getProjectRecipients'),
+    searchFunds: record('searchFunds'),
+    getFund: record('getFund'),
+    getVendor: record('getVendor'),
+    getBudgetRequest: record('getBudgetRequest'),
   };
   return { executor, calls };
 }
@@ -75,6 +80,37 @@ test('executeToolCall: 必須引数の検証と委譲先', async () => {
     'getSubcontractChain:["2024","6498"]',
     'compareYears:[null,"2024","2025"]',
   ]);
+});
+
+test('executeToolCall: 段階 C のツール（支出先・基金・事業者・概算要求）の引数検証と委譲先', async () => {
+  const { executor, calls } = stubExecutor();
+  assert.ok('error' in ((await executeToolCall('get_project_recipients', {}, executor, '2025')).payload as object));
+  assert.ok('error' in ((await executeToolCall('search_funds', {}, executor, '2025')).payload as object), 'q も pid も無ければエラー');
+  assert.ok('error' in ((await executeToolCall('get_fund', { key: '' }, executor, '2025')).payload as object));
+  assert.ok('error' in ((await executeToolCall('get_vendor', {}, executor, '2025')).payload as object), 'q も key も無ければエラー');
+  assert.ok('error' in ((await executeToolCall('get_budget_request', {}, executor, '2025')).payload as object));
+  assert.equal(calls.length, 0);
+
+  await executeToolCall('get_project_recipients', { pid: ' 6498 ' }, executor, '2025');
+  await executeToolCall('search_funds', { pid: '100' }, executor, '2025');
+  await executeToolCall('search_funds', { q: '蓄電池' }, executor, '2025');
+  await executeToolCall('get_fund', { key: 'lineage-1' }, executor, '2025');
+  await executeToolCall('get_vendor', { q: 'NTT' }, executor, '2025');
+  await executeToolCall('get_vendor', { key: '1010001000001' }, executor, '2025');
+  await executeToolCall('get_budget_request', { pid: '1' }, executor, '2025');
+  assert.deepEqual(calls, [
+    'getProjectRecipients:["2025","6498"]',
+    'searchFunds:["","100"]',
+    'searchFunds:["蓄電池",null]',
+    'getFund:["lineage-1"]',
+    'getVendor:["NTT",null]',
+    'getVendor:["","1010001000001"]',
+    'getBudgetRequest:["1"]',
+  ]);
+  // MCP のカタログにも載る（submit_result 以外）
+  for (const name of ['get_project_recipients', 'search_funds', 'get_fund', 'get_vendor', 'get_budget_request']) {
+    assert.ok(MCP_TOOLS.some(t => t.name === name), `${name} が MCP カタログに無い`);
+  }
 });
 
 test('executeToolCall: run_sankey_query は 1 件以上マッチしたとき result（確定候補）を返す', async () => {

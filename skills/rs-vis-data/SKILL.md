@@ -58,6 +58,11 @@ claude mcp add --transport http rs-vis-local http://localhost:3000/api/mcp
 | 注目事業（指標別の上位） | `get_highlights` | `metric`: `spendingChange` 支出の増減 / `otherRatio` 「その他」比率 / `concentration` 支出先の集中 / `lowScoreHighBudget` 低評価×高予算 / `execBudgetGap` 予算と執行の乖離 / `subcontractDepth` 再委託の深さ |
 | 条件に合う事業の件数・金額・上位（府省・名前・金額・再委託・支出先） | `run_sankey_query` | `query`（下記） |
 | 条件に合う事業の年度間比較 | `compare_years` | `query`、`baseYear`、`compareYear` |
+| 事業の支出先一覧（契約方式・応札者数・落札率・役割・再委託の階層） | `get_project_recipients` | `pid` |
+| 基金を探す（残高・国庫返納・終了予定・点検の要点） | `search_funds` | `q`（基金名・保有法人・府省）または `pid`（事業に関連する基金） |
+| 基金 1 件の詳細（年度別の残高・収支・保有割合・造成の経緯・必要性の記載） | `get_fund` | `key`（`search_funds` の key） |
+| 事業者（法人）の全府省での受注状況、1 者応札が続く事業 | `get_vendor` | `q`（名前・法人番号で検索）または `key`（法人番号で 1 件） |
+| 事業の来年度（2027 年度）概算要求と財務省明細表の突き合わせ | `get_budget_request` | `pid` |
 
 `run_sankey_query` の `query` は次の形（条件は AND）。
 
@@ -105,7 +110,9 @@ claude mcp add --transport http rs-vis-local http://localhost:3000/api/mcp
 - **「子育て支援で自治体への支出が多い事業」**: 上の JSON のとおり `projectName`（正規表現）と `recipientName`（正規表現）を組み合わせる。
 - **「この事業は再委託されているか」**: `get_subcontract_chain`。深さ 2 以上なら再々委託。
 - **「支出先が偏っている事業」「『その他』が多い事業」**: `get_highlights` の `concentration` / `otherRatio`。
-- **契約方式（1 者応札・随意契約）や落札率**: このツール群にはまだ無い。サイトの事業詳細（評価一覧のダイアログ）と委託構造ページに支出先ごとの契約方式・応札者数があるので、その URL を案内する。
+- **「○○省で 1 者応札が続いている事業は」**: `get_vendor`（q で事業者を特定 → key で詳細）の `repeatSingle` に 2 年度以上 1 者応札が続く事業が載る。事業側からは `get_project_recipients` で支出先ごとの契約方式・応札者数（`applicants` が 1 なら 1 者応札）・落札率を見る。
+- **「この基金は余っていないか」**: `search_funds` → `get_fund`。残高（`balance`）と前年度の支出（`expense`）、国庫返納（`returned`）、保有割合（`ownership` が 1 を超えると必要額より多く持っている）、終了予定日を見る。
+- **「来年度はいくら要求しているか」**: `get_budget_request`。`rsNextRequestYen` がレビューシートの要求額、`requestYen` は財務省明細表の 目 全体（複数事業で共有）の額なので、事業単体の額と混同しない。
 
 ## 答え方の注意
 

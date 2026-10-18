@@ -16,9 +16,15 @@ import { loadQualityScores, getQualityScore, toQualityScoreProjection } from '@/
 import { loadRecipientIndex, resolveRecipient } from '@/app/lib/api/recipient-index-loader';
 import { getProjectDetail, loadProjectDetails } from '@/app/lib/api/project-details-loader';
 import { loadSubcontracts } from '@/app/lib/api/subcontracts-loader';
-import { loadSpendingSearchRows } from '@/app/lib/api/quality-recipients-loader';
+import { loadRecipientRows, loadSpendingSearchRows } from '@/app/lib/api/quality-recipients-loader';
 import { loadHighlights } from '@/app/lib/api/highlights-loader';
 import type { ChatToolExecutor } from '@/app/lib/ai/chat-core';
+import { withContractMethods } from '@/app/lib/api/contract-methods-loader';
+import { loadFunds } from '@/app/lib/api/funds-loader';
+import { loadVendors } from '@/app/lib/api/vendors-loader';
+import { BUDGET_REQUEST_LINKS_FY, budgetRequestLinksFor } from '@/app/lib/api/budget-request-links-loader';
+import { toVendorRow } from '@/app/lib/vendors';
+import { shapeBudgetRequest, shapeFund, shapeFundSearch, shapeProjectRecipients, shapeVendor, shapeVendorSearch } from '@/app/lib/ai/tool-shaping-extra';
 import {
   SEARCH_LIMIT,
   DETAIL_TOP_LIMIT,
@@ -192,5 +198,37 @@ export const serverToolExecutor: ChatToolExecutor = {
 
   compareYears(query, baseYear, compareYear) {
     return executeCompareYearsWithGraph(loadSankeyGraph, query, baseYear, compareYear);
+  },
+
+  // ── 段階 C: 支出先一覧・基金・事業者・概算要求（整形は tool-shaping-extra に委譲） ──
+  getProjectRecipients(year, pid) {
+    const rows = loadRecipientRows(year)[pid];
+    if (!rows) return { error: `pid=${pid} の支出先データが見つかりません`, hint: 'search_projects で事業名からpidを特定してください' };
+    return shapeProjectRecipients(pid, withContractMethods(rows, pid, year));
+  },
+
+  searchFunds(q, pid) {
+    const data = loadFunds();
+    if (!data) return { error: '基金データがありません' };
+    return shapeFundSearch(data.funds, q, pid);
+  },
+
+  getFund(key) {
+    const fund = loadFunds()?.funds.find(f => f.key === key);
+    return fund ? shapeFund(fund) : { error: `key=${key} の基金が見つかりません`, hint: 'search_funds で基金名からキーを特定してください' };
+  },
+
+  getVendor(q, key) {
+    const data = loadVendors();
+    if (!data) return { error: '事業者データがありません' };
+    if (key) {
+      const vendor = data.vendors.find(v => v.key === key);
+      return vendor ? shapeVendor(vendor) : { error: `key=${key} の事業者が見つかりません`, hint: 'get_vendor を q（事業者名）で呼んでキーを特定してください' };
+    }
+    return shapeVendorSearch(data.vendors.map(toVendorRow), q);
+  },
+
+  getBudgetRequest(pid) {
+    return shapeBudgetRequest(pid, budgetRequestLinksFor(pid), BUDGET_REQUEST_LINKS_FY);
   },
 };

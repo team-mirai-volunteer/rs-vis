@@ -244,6 +244,11 @@ Streamable HTTP（ステートレス・セッション無し）。認証なし�
 | `get_highlights` | `metric`（`spendingChange` `otherRatio` `concentration` `lowScoreHighBudget` `execBudgetGap` `subcontractDepth`） | 指標ごとの注目事業 |
 | `compare_years` | `query`、`baseYear`、`compareYear` | 条件に合う事業の年度間比較 |
 | `run_sankey_query` | `query`（SankeyQuery） | 条件に合う事業・支出先の件数・金額・上位 10 件 |
+| `get_project_recipients` | `pid` | 支出先一覧（上位 20 件。金額・法人番号・契約方式・応札者数・落札率・役割・再委託の階層） |
+| `search_funds` | `q` または `pid` | 基金の検索（残高・国庫返納・終了予定・点検シグナル。上位 10 件） |
+| `get_fund` | `key` | 基金 1 件の詳細（年度別の残高・収支・保有割合、造成の経緯、必要性・点検の記載、関連事業） |
+| `get_vendor` | `q` または `key` | 事業者の検索（上位 10 件）／ 1 件の詳細（年度別の受注額、1 者応札の件数、主な府省、1 者応札が続く事業） |
+| `get_budget_request` | `pid` | 来年度（2027 年度）概算要求。レビューシートの要求額と財務省明細表の 目 ごとの額の突き合わせ |
 
 すべてのツールに `year`（RS シート年度 `"2024"` / `"2025"`。省略時 `"2024"`）がある。シート年度 N には N-1 年度の執行・支出先が載る。
 サーバーの `instructions` でデータの約束事（金額は 1 円単位、「その他」と「その他の支出先」の違い、AI 評価は試行、出典の明記）を渡している。
