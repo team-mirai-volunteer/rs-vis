@@ -4,6 +4,7 @@ import { PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { ExternalLink, LegalDocument, LegalSection } from '@/components/legal/LegalDocument';
 import { LEGAL_UPDATED } from '@/app/lib/legal';
+import { DATA_SOURCES, PUBLIC_DATA_LICENSE_URL } from '@/app/lib/data-sources';
 
 export const metadata: Metadata = {
   title: `利用規約｜${PRODUCT_NAME}`,
@@ -74,7 +75,18 @@ export default function TermsPage() {
       <LegalSection id="ip" heading="第6条（知的財産権と利用の条件）">
         <ol>
           <li>本サービスを構成するプログラム、文章、図表、画像、加工後のデータに関する権利は、当団体または正当な権利者に帰属します。本サービスのソースコードは <ExternalLink href="https://github.com/team-mirai-volunteer/rs-vis">AGPL-3.0 ライセンス</ExternalLink>のもとで公開しており、その利用は同ライセンスに従います。</li>
-          <li>本サービスの元データは、<ExternalLink href="https://rssystem.go.jp/terms">行政事業レビュー見える化サイトの利用規約（公共データ利用規約 PDL1.0）</ExternalLink>や政府標準利用規約など、各公開元の条件に従って利用しています。元データの再利用は、各公開元の条件に従ってください。</li>
+          <li>本サービスの元データは、次の公開元から取得し、<ExternalLink href={PUBLIC_DATA_LICENSE_URL}>公共データ利用規約（PDL1.0）</ExternalLink>や政府標準利用規約など各公開元の条件に従い、当団体が編集・加工して利用しています。元データの再利用は、各公開元の条件に従ってください。
+            <ul>
+              {DATA_SOURCES.map(src => (
+                <li key={src.href}>
+                  {src.name}（<ExternalLink href={src.href}>{src.href}</ExternalLink>）
+                  {src.termsHref && <>・<ExternalLink href={src.termsHref}>利用規約</ExternalLink></>}
+                  <span className="block text-xs text-mirai-text-muted">{src.terms}</span>
+                </li>
+              ))}
+            </ul>
+          </li>
+          <li>財政余力や税・社会保険料の負担比較などのシミュレーションで個別に用いた統計・資料は、その画面に出典と URL を記載しています。</li>
           <li>ユーザーは、出典として「チームみらい {PRODUCT_NAME}」と本サービスの URL、および元データの公開元を明記し、当団体が編集・加工したデータである旨を示すことを条件に、本サービスの画面、図表、集計結果を引用・転載できます。内容を改変して当団体の表示であるかのように示すことはできません。</li>
         </ol>
       </LegalSection>
