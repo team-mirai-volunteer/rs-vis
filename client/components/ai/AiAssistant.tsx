@@ -35,6 +35,10 @@ import {
 type UiMessage = AiChatUiMessage;
 
 const newSessionId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+/** このタブで開いている会話の ID（sessionStorage。タブを閉じると消えるので、開き直したときは新しい会話になる） */
+const OPEN_SESSION_KEY = 'ai-nav-open-session';
+const readOpenSessionId = (): string | null => { try { return window.sessionStorage.getItem(OPEN_SESSION_KEY); } catch { return null; } };
+const writeOpenSessionId = (id: string | null) => { try { if (id) window.sessionStorage.setItem(OPEN_SESSION_KEY, id); else window.sessionStorage.removeItem(OPEN_SESSION_KEY); } catch { /* 保存できない環境では毎回新規 */ } };
 const formatSessionTime = (ts: number) => new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const AI_YEARS = new Set(['2024', '2025']);
@@ -90,14 +94,17 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   }, []);
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [messages, progress]);
 
-  // 起動時に直近の会話を復元する（保存はこの復元が終わってから。空の初期状態で上書きしないため）
+  // 起動時の復元は「このタブで開いていた会話」だけ（sessionStorage はタブを閉じると消える）。
+  // ページ移動・リロードでは続きから、タブやブラウザを閉じて開き直したときは新しい会話から始める。
+  // 過去の会話は IndexedDB に残り、「過去の会話」から開ける。保存はこの復元が終わってから（空の初期状態で上書きしないため）
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const list = await listChatSessions();
-      const latest = list[0] ? await loadChatSession(list[0].id) : null;
+      const openId = readOpenSessionId();
+      const current = openId ? await loadChatSession(openId) : null;
       if (cancelled) return;
-      if (latest && latest.messages.length > 0) { setSessionId(latest.id); setMessages(latest.messages); }
+      if (current && current.messages.length > 0) { setSessionId(current.id); setMessages(current.messages); }
+      else if (openId) writeOpenSessionId(null);
       setRestored(true);
     })();
     return () => { cancelled = true; };
@@ -105,6 +112,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   useEffect(() => {
     if (!restored || messages.length === 0) return;
     void saveChatSession(sessionId, messages);
+    writeOpenSessionId(sessionId);
   }, [restored, sessionId, messages]);
 
   const openHistory = async () => {
@@ -117,12 +125,14 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     abortRef.current?.abort();
     setSessionId(id);
     setMessages(session?.messages ?? []);
+    writeOpenSessionId(id);
     setShowHistory(false);
   };
   const startNewSession = () => {
     abortRef.current?.abort();
     setSessionId(newSessionId());
     setMessages([]);
+    writeOpenSessionId(null);
     setShowHistory(false);
   };
 
