@@ -417,9 +417,50 @@ export default function QualityPage() {
     return <span className="text-primary ml-0.5">{sortDir === 'desc' ? '↓' : '↑'}</span>;
   }
 
-  if (!ready || loading || (!error && !data)) return <LoadingSpinner />;
+  // ヘッダーは読み込み中・エラー時も出す（年度切替や他ページへの移動を止めないため）
+  const header = (
+    <AppHeader fiscalYear={fiscalYear(year)} current="/quality">
+      <QualityHelp sheetYear={Number(year)} />
+      {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
+      <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
+        {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (
+          <Button
+            key={m}
+            variant="ghost"
+            size="sm"
+            aria-pressed={mode === m}
+            onClick={() => setMode(m)}
+            className={cn('h-[34px] rounded-none px-3 text-xs', mode === m ? 'bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'text-mirai-text-subtle')}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+      <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
+      {/* 事業表示では sm 未満のヒストグラム・絞り込み列をここから開く */}
+      {mode === 'project' && <Button
+        variant="outline"
+        size="icon"
+        aria-label="絞り込みと分布"
+        aria-expanded={filterOpen}
+        onClick={() => setFilterOpen(v => !v)}
+        className={cn('shrink-0 border-mirai-border sm:hidden', filterOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
+      >
+        <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
+      </Button>}
+    </AppHeader>
+  );
+
+  if (!ready || loading || (!error && !data)) return (
+    <div className="h-screen flex flex-col bg-background">
+      {header}
+      <LoadingSpinner className="flex-1" />
+    </div>
+  );
 
   if (error || !data) return (
+    <div className="h-screen flex flex-col bg-background">
+      {header}
     <div role="alert" className="mx-auto max-w-xl space-y-3 p-8">
       <p className="font-bold text-destructive">評価データを読み込めませんでした</p>
       <p className="text-sm leading-relaxed text-mirai-text-subtle">
@@ -427,6 +468,7 @@ export default function QualityPage() {
       </p>
       {error && <p className="text-xs text-mirai-text-muted">詳細: {error}</p>}
       <Button variant="outline" size="sm" onClick={() => setLoadAttempt(value => value + 1)}>再読み込みする</Button>
+    </div>
     </div>
   );
 
@@ -440,36 +482,7 @@ export default function QualityPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <AppHeader fiscalYear={fiscalYear(year)} current="/quality">
-        <QualityHelp sheetYear={Number(year)} />
-        {/* 表示単位: 事業 / 項（予算書の項ごとに配下事業の評価を金額加重平均） */}
-        <div role="group" aria-label="表示単位" className="flex overflow-hidden rounded-full border border-mirai-border bg-card shadow-xs">
-          {([['project', '事業'], ['section', '項']] as const).map(([m, label]) => (
-            <Button
-              key={m}
-              variant="ghost"
-              size="sm"
-              aria-pressed={mode === m}
-              onClick={() => setMode(m)}
-              className={cn('h-[34px] rounded-none px-3 text-xs', mode === m ? 'bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'text-mirai-text-subtle')}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-        <YearSelect labelForYear={fiscalYearLabel} value={year} onChange={y => setYear(y as QualityYear)} years={[2026, 2025, 2024]} />
-        {/* 事業表示では sm 未満のヒストグラム・絞り込み列をここから開く */}
-        {mode === 'project' && <Button
-          variant="outline"
-          size="icon"
-          aria-label="絞り込みと分布"
-          aria-expanded={filterOpen}
-          onClick={() => setFilterOpen(v => !v)}
-          className={cn('shrink-0 border-mirai-border sm:hidden', filterOpen ? 'bg-mirai-surface text-mirai-text' : 'text-mirai-text-subtle')}
-        >
-          <SlidersHorizontal className="size-[18px]" aria-hidden="true" />
-        </Button>}
-      </AppHeader>
+      {header}
       {dialogItem && <ScoreDetailDialog item={dialogItem} policy={policyByPid?.get(dialogItem.pid)} onClose={closeDetail} year={year} />}
       {detailPid && data && !dialogItem && <div role="status" className="border-b border-mirai-border bg-card px-4 py-3 text-sm">
         {fiscalYear(year)}年度に指定された事業（PID {detailPid}）は見つかりませんでした。
