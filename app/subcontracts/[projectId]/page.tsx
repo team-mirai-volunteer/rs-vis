@@ -1,5 +1,6 @@
 'use client';
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
 import { ContractMethodBadge } from '@/client/components/quality/ContractMethodBadge';
@@ -1778,9 +1779,7 @@ function SubcontractDetailPageInner() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-mirai-text-muted">読み込み中...</p>
-      </div>
+      <LoadingSpinner fullscreen />
     );
   }
 
@@ -2944,7 +2943,7 @@ function SubcontractDetailPageInner() {
 
 export default function SubcontractDetailPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-mirai-text-muted">読み込み中...</div>}>
+    <Suspense fallback={<LoadingSpinner />}>
       <SubcontractDetailPageInner />
     </Suspense>
   );

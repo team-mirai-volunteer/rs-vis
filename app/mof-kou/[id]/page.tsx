@@ -9,6 +9,7 @@
  * 詳細: docs/tasks/20260904_0759_項単位の目RS事業支出先サンキー設計.md
  */
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { Suspense, use, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -26,7 +27,7 @@ function CenterMessage({ text, error }: { text: string; error?: boolean }) {
 
 export default function MOFKouSankeyPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<CenterMessage text="読み込み中…" />}>
+    <Suspense fallback={<LoadingSpinner fullscreen />}>
       <MOFKouSankeyContent params={params} />
     </Suspense>
   );
@@ -77,7 +78,7 @@ function MOFKouSankeyContent({ params }: { params: Promise<{ id: string }> }) {
   };
 
   if (error) return <CenterMessage text={`読み込みに失敗しました: ${error}`} error />;
-  if (!data) return <CenterMessage text="読み込み中…" />;
+  if (!data) return <LoadingSpinner fullscreen />;
 
   return (
     <>

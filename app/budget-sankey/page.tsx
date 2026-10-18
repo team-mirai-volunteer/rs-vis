@@ -15,6 +15,7 @@
  * （設計 5.2）。
  */
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
@@ -111,7 +112,7 @@ function parsePerColumn(params: URLSearchParams, prefix: 't' | 'o'): Partial<Rec
 
 export default function UnifiedBudgetSankeyPage() {
   return (
-    <Suspense fallback={<CenterMessage text="読み込み中…" />}>
+    <Suspense fallback={<LoadingSpinner fullscreen />}>
       <UnifiedBudgetSankeyContent />
     </Suspense>
   );
@@ -351,7 +352,7 @@ function UnifiedBudgetSankeyContent() {
     [selectedId]
   );
 
-  if (loading && !graph) return <CenterMessage text="読み込み中…" />;
+  if (loading && !graph) return <LoadingSpinner fullscreen />;
   if (error && !graph) return <CenterMessage text={error} error />;
   if (!graph || !display || !collapsed) return <CenterMessage text="データを取得できませんでした" error />;
 

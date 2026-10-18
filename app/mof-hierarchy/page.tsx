@@ -11,6 +11,7 @@
  * 図の中をパン・ズームして見る。
  */
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -56,7 +57,7 @@ const TOP_N_KEYS: Array<{
 
 export default function MOFHierarchyPage() {
   return (
-    <Suspense fallback={<CenterMessage text="読み込み中…" />}>
+    <Suspense fallback={<LoadingSpinner fullscreen />}>
       <MOFHierarchyContent />
     </Suspense>
   );
@@ -265,7 +266,7 @@ function MOFHierarchyContent() {
     [data]
   );
 
-  if (loading && !data) return <CenterMessage text="読み込み中…" />;
+  if (loading && !data) return <LoadingSpinner fullscreen />;
   if (error || !data) {
     // data だけが無い場合もここに来る。error が null のまま埋め込むと "null" と出る
     return (

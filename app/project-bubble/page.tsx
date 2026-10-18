@@ -1,5 +1,6 @@
 'use client';
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
 import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
 import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
@@ -609,11 +610,7 @@ export default function ProjectMapPage() {
           </>
         )}
 
-        {loading && (
-          <div className="flex h-full items-center justify-center text-sm text-mirai-text-muted">
-            読み込み中…
-          </div>
-        )}
+        {loading && <LoadingSpinner className="h-full" />}
 
         {notGenerated && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-mirai-text-subtle">

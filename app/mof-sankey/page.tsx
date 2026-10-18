@@ -12,6 +12,7 @@
  * 年度の選択肢はその年度に絞る（API 側が返す availableYears も同じ絞り込み）。
  */
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { MOFAccountType, MOFBudgetType } from '@/types/mof-jikou';
@@ -56,7 +57,7 @@ const TOP_N_KEYS: Array<{
 
 export default function MOFSectionRsSankeyPage() {
   return (
-    <Suspense fallback={<CenterMessage text="読み込み中…" />}>
+    <Suspense fallback={<LoadingSpinner fullscreen />}>
       <MOFSectionRsSankeyContent />
     </Suspense>
   );
@@ -203,7 +204,7 @@ function MOFSectionRsSankeyContent() {
     [data]
   );
 
-  if (loading && !data) return <CenterMessage text="読み込み中…" />;
+  if (loading && !data) return <LoadingSpinner fullscreen />;
   if (error || !data) {
     return <CenterMessage text={error ? `読み込みに失敗しました: ${error}` : 'データを取得できませんでした'} error />;
   }

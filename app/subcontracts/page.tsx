@@ -1,5 +1,6 @@
 'use client';
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
@@ -944,7 +945,7 @@ function SubcontractsPageInner() {
 
       {/* ── 中部: スクロールテーブル ── */}
       <div className="flex min-h-0 w-full flex-1 flex-col px-3">
-        {loading && <p className="text-sm text-mirai-text-muted">読み込み中...</p>}
+        {loading && <LoadingSpinner />}
         {error && <p className="text-sm text-destructive">エラー: {error}</p>}
         {!loading && !error && (
           <div ref={tableContainerRef} className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-xs">
@@ -1018,7 +1019,7 @@ function SubcontractsPageInner() {
 
 export default function SubcontractsPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-mirai-text-muted">読み込み中...</div>}>
+    <Suspense fallback={<LoadingSpinner />}>
       <SubcontractsPageInner />
     </Suspense>
   );
