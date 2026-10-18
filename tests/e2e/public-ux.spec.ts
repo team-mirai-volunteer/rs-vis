@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { PRODUCT_NAME } from '../../app/lib/product';
 
 for (const width of [1440, 390]) {
   test(`navigation preserves the header and replaces page controls (${width}px)`, async ({ page }) => {
@@ -26,7 +27,7 @@ for (const width of [1440, 390]) {
     await page.goBack();
     await expect(page.getByRole('heading', { name: '事業別 AI評価（独自基準・試行）・執行透明性スコア' })).toBeVisible();
     expect(await header!.evaluate(el => el.isConnected)).toBe(true);
-    await page.getByRole('link', { name: '行政事業レビュー可視化 トップ', exact: true }).click();
+    await page.getByRole('link', { name: `${PRODUCT_NAME} トップ`, exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
     expect(await menu!.evaluate(el => el.isConnected)).toBe(true);
     await expect(page.getByLabel('年度', { exact: true })).toHaveCount(0);

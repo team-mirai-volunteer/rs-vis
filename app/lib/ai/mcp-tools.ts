@@ -8,6 +8,7 @@
 import { SANKEY_QUERY_DEFAULTS } from '@/app/lib/sankey-query';
 import { SUPPORTED_YEARS, type SupportedYear } from '@/types/rs-year';
 import { TOOLS } from '@/app/lib/ai/chat-core';
+import { PRODUCT_ATTRIBUTION } from '@/app/lib/product';
 
 /** MCP クライアントへ送る 1 ツールの定義（JSON Schema はそのまま inputSchema として渡す） */
 export interface McpToolSpec {
@@ -27,7 +28,7 @@ export const MCP_INSTRUCTIONS = [
   '支出先名「その他」は公開データ側の記載で、「その他の支出先」は上位 N 件以外の集計です。別物として扱ってください。',
   'year は RS のシート年度で、N 年版のシートには N-1 年度の執行・支出先が載ります。',
   'AI 評価（get_quality_scores）は公開資料に基づく独自基準の試行であり、政府の公式評価ではありません。結論ではなく参考情報として示してください。',
-  '回答で数字を示すときは出典として「行政事業レビュー見える化サイト（内閣官房）ほか、チームみらい 行政事業レビュー可視化による編集・加工」と明記してください。',
+  `回答で数字を示すときは出典として「行政事業レビュー見える化サイト（内閣官房）ほか、${PRODUCT_ATTRIBUTION}による編集・加工」と明記してください。`,
   '進め方: search_projects / search_recipients で候補を探し、get_project_detail・get_subcontract_chain・get_quality_scores で深掘りし、条件が固まったら run_sankey_query で件数・金額を確かめます。',
 ].join('\n');
 

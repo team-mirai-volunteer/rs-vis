@@ -29,5 +29,5 @@ export type NavPageHref = (typeof PAGES)[number]['href'];
 /** ヘッダーの主要ナビに出すページ（残りは PageNavMenu の全件メニューへ） */
 export const PRIMARY_PAGES = PAGES.filter(p => p.primary);
 
-/** ヘッダー・トップページで使う製品名 */
-export const PRODUCT_NAME = '行政事業レビュー可視化';
+/** ヘッダー・トップページで使う製品名（正典は app/lib/product.ts。既存の import 先として再 export） */
+export { PRODUCT_NAME } from '@/app/lib/product';

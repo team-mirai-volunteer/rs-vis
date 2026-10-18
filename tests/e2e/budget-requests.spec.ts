@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { PRODUCT_NAME } from '../../app/lib/product';
 import { budgetRequestResponse, parseBudgetRequestFilters } from '../../app/lib/budget-requests';
 import { requestDataset } from '../fixtures/budget-requests-ui';
 
@@ -15,7 +16,7 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await mockDataset(page);
     await page.goto('/budget-requests?limit=1');
-    await expect(page).toHaveTitle('概算要求（試作）｜行政事業レビュー可視化');
+    await expect(page).toHaveTitle(`概算要求（試作）｜${PRODUCT_NAME}`);
     await expect(page.getByRole('heading', { name: '概算要求を原資料から探す' })).toBeVisible();
     const record = page.getByTestId('request-record');
     await expect(record).toHaveCount(1);
@@ -91,7 +92,7 @@ test('概算要求の公開メタ情報と共有画像をJavaScriptなしで読�
   const response = await request.get('/budget-requests');
   expect(response.ok()).toBe(true);
   const html = await response.text();
-  expect(html).toContain('<title>概算要求（試作）｜行政事業レビュー可視化</title>');
+  expect(html).toContain(`<title>概算要求（試作）｜${PRODUCT_NAME}</title>`);
   expect(html).toContain('概算要求を原資料から探す');
   const image = await request.get('/og/budget-requests.png');
   expect(image.ok()).toBe(true);

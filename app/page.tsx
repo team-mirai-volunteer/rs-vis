@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { LegalLinks } from '@/components/legal/LegalLinks';
-import { PAGES } from '@/components/navigation/pages';
+import { PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,7 @@ export default function Home() {
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <section className="flex flex-col justify-between gap-6 rounded-2xl bg-mirai-gradient p-6 sm:flex-row sm:items-end sm:p-10">
           <div className="max-w-2xl">
-            <p className="mb-2 text-xs font-bold tracking-normal">行政事業レビュー可視化</p>
+            <p className="mb-2 text-xs font-bold tracking-normal">{PRODUCT_NAME}</p>
             <h1 className="text-2xl/8 font-bold tracking-normal sm:text-3xl/10">国の予算は、どこから来て、どこへ行くのか。</h1>
             <p className="mt-3 text-[15px] leading-relaxed font-medium">
               行政事業レビューシステムの 5,000 超の事業と 2 万超の支出先、財務省予算書の会計・項・目、
