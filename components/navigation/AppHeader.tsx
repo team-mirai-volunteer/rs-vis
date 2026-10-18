@@ -1,12 +1,11 @@
 'use client';
 
 import { fiscalNavigationUrl } from '@/app/lib/rs-fiscal-year';
-import Image from 'next/image';
 import Link from 'next/link';
 import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { Sparkles } from 'lucide-react';
+import { Landmark, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageNavMenu } from './PageNavMenu';
@@ -145,9 +144,12 @@ function HeaderFrame({ current, config, slotRef, aiOpen, onToggleAi }: {
       )}
     >
       <div className="pointer-events-auto flex flex-wrap items-center gap-x-3 rounded-2xl border border-mirai-border bg-card px-4 shadow-xs sm:h-12 sm:flex-nowrap">
-        <Link href="/" className="flex h-12 shrink-0 items-center gap-3 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
-          <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} className="h-[17px] w-auto" priority />
-          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text lg:inline">{PRODUCT_NAME}</span>
+        {/* ブランドマーク。チームみらいのワードマークはいったん外し、丸地のアイコン＋製品名にする */}
+        <Link href="/" className="flex h-12 shrink-0 items-center gap-2 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
+          <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-mirai-gradient text-mirai-text">
+            <Landmark className="size-4" strokeWidth={2.25} />
+          </span>
+          <span className="text-sm font-bold text-mirai-text">{PRODUCT_NAME}</span>
         </Link>
 
         <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden md:flex">
