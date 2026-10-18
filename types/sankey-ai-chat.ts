@@ -23,6 +23,8 @@ export interface SankeyChatContext {
   year?: '2024' | '2025';
   /** 現在ページに適用中のクエリ（未フィルタなら省略可） */
   currentQuery?: SankeyQuery;
+  /** ユーザーがいま見ているページの名前（例: 「評価一覧」）。AI ナビがヘッダーから開かれたとき、案内の優先に使う（60 文字まで） */
+  page?: string;
 }
 
 export interface SankeyChatRequest {

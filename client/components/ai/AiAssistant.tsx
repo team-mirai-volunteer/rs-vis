@@ -1,44 +1,60 @@
 'use client';
 
 /**
- * 統合ビュー用の AI 絞り込みチャット（試作）。
+ * AI ナビ（ヘッダーの AI ボタンから開く、全ページ共通の会話パネル）。
  *
- * 自然文で聞くと、既存の AI エージェント（app/lib/ai/chat-core）が SankeyQuery を組み立て、
- * その結果を統合ビューのフィルターへ写す。検索ピルの「AI」から、検索クラスタの直下に開く。
- * 実行モードは BYOK（訪問者の OpenRouter キー・ブラウザ直）を優先し、無ければサイト提供の
- * /api/ai/sankey-chat を使う（環境変数で有効な場合のみ）。
+ * 自然文で聞くと、AI エージェント（app/lib/ai/chat-core）が公開データをツールで調べ、条件（SankeyQuery）を組み立てる。
+ * 結果の扱いはページ次第:
+ *   - サンキー図（/budget-sankey）は useAiResultHandler で受け取り手を登録しているので、その場で絞り込みに写す
+ *   - 登録の無いページでは「サンキー図で見る」と上位事業の詳細へのリンクで案内する
+ * 実行モードは BYOK（訪問者の OpenRouter キー・ブラウザ直）を優先し、無ければサイト提供の /api/ai/sankey-chat（環境変数で有効な場合のみ）。
+ * パネルは root layout（AppHeaderProvider）に 1 つだけあるので、ページを移動しても会話は消えない。
  *
- * 見た目はチームみらいデザインシステム（.claude/skills/design-system）。カードは rounded-2xl +
- * border-mirai-border + shadow-soft、ヘッダー帯は bg-mirai-surface-teal、主 CTA（送信）は
- * <Button variant="default">（グラデ + 黒ボーダー）、補助操作は outline / ghost / link。
- * 位置は親（UnifiedSankeyChart の searchPopover）が決める。
+ * 見た目はチームみらいデザインシステム。カードは rounded-2xl + border-mirai-border + shadow-soft、ヘッダー帯は bg-mirai-surface-teal、
+ * 主 CTA（送信）は <Button variant="default">、補助操作は outline / ghost / link。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
+import Link from 'next/link';
+import { Check, ExternalLink, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SankeyChatMessage, SankeyChatResponse, SankeyChatResult } from '@/types/sankey-ai-chat';
 import type { GraphData } from '@/types/sankey-svg';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
+import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { deleteByokSettings, loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
 import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openrouter-caller';
 import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
+import { useAiResultDispatch } from '@/client/lib/ai/result-handler';
+import { projectLinks, sankeyUrlForQuery } from '@/client/lib/ai/result-links';
 
-interface UiMessage { role: 'user' | 'assistant'; content: string; result?: SankeyChatResult; suggestions?: string[]; isError?: boolean }
+interface UiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  result?: SankeyChatResult;
+  /** 結果をそのページで適用したか（サンキー図）。false なら案内リンクを出す */
+  applied?: boolean;
+  suggestions?: string[];
+  isError?: boolean;
+}
 
 const AI_YEARS = new Set(['2024', '2025']);
 const EXAMPLES = ['再エネ関連で予算100億円以上の事業', '子育て支援で支出先に自治体が多い事業', 'NTTデータが受注している事業'];
+/** 案内リンクに出す上位事業の数 */
+const LINKED_PROJECTS = 5;
 /** テキスト入力の共通クラス（InterviewDialog と同系統） */
 const INPUT_CLASS =
   'w-full min-w-0 rounded-xl border border-mirai-border bg-card px-3 py-2 text-[13px] leading-relaxed text-mirai-text placeholder:text-mirai-text-placeholder transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40';
 
-export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
-  open: boolean; onClose: () => void;
-  /** RS シート年度（グラフの metadata.rsSheetYear）。予算年度 N の支出は N+1 年版シートにあるので、予算年度をそのまま渡さない */
+export function AiAssistant({ open, onClose, sheetYear, page }: {
+  open: boolean;
+  onClose: () => void;
+  /** RS シート年度。予算年度 N の支出は N+1 年版シートにあるので、予算年度をそのまま渡さない */
   sheetYear: number;
-  /** 結果をフィルターへ写す */
-  onApply: (result: SankeyChatResult) => void;
+  /** いま開いているページの名前（AI の案内の優先と、見出しの表示に使う） */
+  page: string;
 }) {
+  const dispatch = useAiResultDispatch();
   const [settings, setSettings] = useState<ByokSettings | null>(null);
   const [serverEnabled, setServerEnabled] = useState<boolean | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -55,6 +71,12 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +90,7 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
   // AI が条件を考えるのに使う支出データの年度。支出データの無い年度（予算年度2025以降）は最も近い年度で代用し、
   // できた条件（府省・事業名・金額・スコアなど）を表示中の年度の図に当てる
   const ownData = AI_YEARS.has(String(sheetYear));
-  const yearKey = ownData ? String(sheetYear) : String(sheetYear > 2025 ? 2025 : 2024);
+  const yearKey = (ownData ? String(sheetYear) : String(sheetYear > 2025 ? 2025 : 2024)) as SupportedYear;
   const canSend = !!mode && !sending;
 
   const getGraph = useCallback(async (y: SupportedYear): Promise<GraphData> => {
@@ -81,6 +103,13 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
     return data;
   }, []);
 
+  /** 結果をページに渡す。受け取り手が無いページでは案内リンクに任せる（false） */
+  const applyResult = (result: SankeyChatResult): boolean => {
+    if (!dispatch) return false;
+    dispatch(result);
+    return true;
+  };
+
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || !canSend) return;
@@ -88,20 +117,20 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
     setMessages(prev => [...prev, { role: 'user', content: trimmed }]);
     setInput(''); setSending(true); setProgress(null);
     const aborter = new AbortController(); abortRef.current = aborter;
+    const context = { year: yearKey, page };
     try {
+      let reply: { message: string; result?: SankeyChatResult; suggestions?: string[] };
       if (mode === 'byok' && settings) {
-        const r = await runByokChat({ messages: history, context: { year: yearKey as '2024' | '2025' }, settings, getGraph, signal: aborter.signal,
+        reply = await runByokChat({ messages: history, context, settings, getGraph, signal: aborter.signal,
           onProgress: ev => setProgress(ev.kind === 'retry' ? `混雑のため ${Math.ceil((ev as { waitMs: number }).waitMs / 1000)} 秒待って再試行しています` : ev.kind === 'tool' ? '公開データを検索しています' : null) });
-        setMessages(prev => [...prev, { role: 'assistant', content: r.message, result: r.result, suggestions: r.suggestions }]);
-        if (r.result) onApply(r.result);
       } else {
         const res = await fetch('/api/ai/sankey-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ messages: history, context: { year: yearKey }, stream: false }), signal: aborter.signal });
+          body: JSON.stringify({ messages: history, context, stream: false }), signal: aborter.signal });
         if (!res.ok) { const b = await res.json().catch(() => null) as { error?: string } | null; throw new Error(b?.error ?? `HTTP ${res.status}`); }
-        const data = await res.json() as SankeyChatResponse;
-        setMessages(prev => [...prev, { role: 'assistant', content: data.message, result: data.result, suggestions: data.suggestions }]);
-        if (data.result) onApply(data.result);
+        reply = await res.json() as SankeyChatResponse;
       }
+      const applied = reply.result ? applyResult(reply.result) : undefined;
+      setMessages(prev => [...prev, { role: 'assistant', content: reply.message, result: reply.result, applied, suggestions: reply.suggestions }]);
     } catch (e) {
       if (aborter.signal.aborted) return;
       const text = e instanceof LlmUpstreamError ? e.message : e instanceof Error ? e.message : 'AIが応答できませんでした';
@@ -131,15 +160,16 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
   };
 
   if (!open) return null;
-  return <section role="dialog" aria-label="AIに聞いて絞り込む" onMouseDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()}
-    className="flex h-[min(72vh,640px)] w-[min(440px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-mirai-border bg-card text-[13px] leading-relaxed text-mirai-text shadow-soft">
+  return <section role="dialog" aria-label="AIに聞く" data-pan-disabled="true" onMouseDown={e => e.stopPropagation()} onWheel={e => e.stopPropagation()}
+    className="fixed right-3 top-[var(--app-header-h)] z-[250] flex h-[min(72vh,640px)] w-[min(440px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-mirai-border bg-card text-[13px] leading-relaxed text-mirai-text shadow-soft max-sm:inset-x-3 max-sm:bottom-3 max-sm:h-auto max-sm:w-auto">
     {/* ヘッダー帯 */}
     <div className="flex items-center gap-2.5 border-b border-mirai-border bg-mirai-surface-teal px-4 py-3">
       <Sparkles aria-hidden="true" className="size-4 shrink-0 text-primary-accent" />
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-bold tracking-normal">AIに聞いて絞り込む</div>
+        <div className="text-sm font-bold tracking-normal">AIに聞く</div>
         <div className="truncate text-[11px] text-mirai-text-muted">
           {mode === 'byok' ? `あなたのキー・${settings?.model}` : mode === 'server' ? 'サイト提供のAI' : 'APIキーが未設定'}
+          {dispatch ? '・結果はこの図に適用' : `・${page}を表示中`}
         </div>
       </div>
       <Button variant="ghost" size="icon-sm" aria-label="キーとモデルの設定" aria-pressed={showSettings} title="キーとモデルの設定"
@@ -177,9 +207,13 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
 
     {/* 会話ログ */}
     <div ref={logRef} className="flex flex-1 flex-col gap-2.5 overflow-y-auto bg-mirai-surface px-4 py-3">
-      {!ownData && <p className="m-0 rounded-xl border border-mirai-border bg-card px-3 py-2 text-xs leading-relaxed text-mirai-text-secondary">この年度はまだ支出データがないため、条件は{Number(yearKey) - 1}年度の実績データで解釈して、表示中の図に当てます。府省・事業名・予算額の条件は効きます。AIが事業を選んだ場合はその年度にある事業だけが対象で、支出先・支出額の条件は効きません。</p>}
+      {!ownData && <p className="m-0 rounded-xl border border-mirai-border bg-card px-3 py-2 text-xs leading-relaxed text-mirai-text-secondary">この年度はまだ支出データがないため、条件は{Number(yearKey) - 1}年度の実績データで解釈します。府省・事業名・予算額の条件は効きます。AIが事業を選んだ場合はその年度にある事業だけが対象で、支出先・支出額の条件は効きません。</p>}
       {messages.length === 0 && <div className="space-y-3">
-        <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。</p>
+        <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">
+          {dispatch
+            ? '条件を自然文で聞くと、当てはまる事業だけを図に残します。適用した条件は検索ピルの「絞込」に反映され、× で外せます。'
+            : '条件を自然文で聞くと、公開データから当てはまる事業を探します。結果はサンキー図で開くリンクと、事業ごとの詳細へのリンクで案内します。'}
+        </p>
         <div className="flex flex-wrap gap-1.5">
           {EXAMPLES.map(x => <Button key={x} variant="outline" size="xs" disabled={!canSend} onClick={() => void send(x)} className="h-auto whitespace-normal rounded-full py-1.5 text-left font-medium">{x}</Button>)}
         </div>
@@ -191,13 +225,14 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
             : 'self-start rounded-bl-md border-mirai-border bg-card',
       )}>
         {m.content}
-        {m.result && <div className="mt-2 flex flex-wrap items-center gap-2">
+        {m.result && m.applied && <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-stance-for-bg px-2.5 py-0.5 text-xs font-medium text-primary-accent">
             <Check aria-hidden="true" className="size-3.5" />図に適用しました
           </span>
           {m.result.interpretation && <span className="text-xs text-mirai-text-muted">{m.result.interpretation}</span>}
-          <Button variant="link" size="xs" className="text-xs" onClick={() => onApply(m.result!)}>再適用する</Button>
+          <Button variant="link" size="xs" className="text-xs" onClick={() => applyResult(m.result!)}>再適用する</Button>
         </div>}
+        {m.result && !m.applied && <ResultLinks result={m.result} sheetYear={yearKey} onNavigate={onClose} />}
         {m.suggestions && m.suggestions.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">
           {m.suggestions.map(sg => <Button key={sg} variant="outline" size="xs" disabled={sending} onClick={() => void send(sg)} className="h-auto whitespace-normal rounded-full py-1 text-left text-[11px] font-medium">{sg}</Button>)}
         </div>}
@@ -213,7 +248,9 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
         onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void send(input); } }}
         placeholder={mode ? '例: 再エネ関連で予算100億円以上（Ctrl+Enter で送信）' : 'APIキーを設定すると利用できます'} className={cn(INPUT_CLASS, 'resize-y')} />
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-mirai-text-muted">事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。</span>
+        <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-mirai-text-muted">
+          {dispatch ? '事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。' : '事業名・支出先・所管・金額・再委託の条件で探します。'}
+        </span>
         <Button variant="ghost" size="xs" disabled={messages.length === 0} onClick={() => { abortRef.current?.abort(); setMessages([]); }} title="新しい会話を始める" aria-label="新しい会話を始める">
           <RotateCcw aria-hidden="true" />
         </Button>
@@ -223,4 +260,30 @@ export function AiFilterChat({ open, onClose, sheetYear, onApply }: {
       </div>
     </div>
   </section>;
+}
+
+/** 結果を適用できないページでの案内: サンキー図で開くリンクと、上位事業の詳細へのリンク */
+function ResultLinks({ result, sheetYear, onNavigate }: { result: SankeyChatResult; sheetYear: SupportedYear; onNavigate: () => void }) {
+  const { projects } = result.summary;
+  const top = projects.top.filter(p => p.projectId !== null).slice(0, LINKED_PROJECTS);
+  return <div className="mt-2 space-y-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <Button asChild variant="outline" size="xs" className="rounded-full font-medium">
+        <Link href={sankeyUrlForQuery(result.query, sheetYear)} onClick={onNavigate}>
+          <ExternalLink aria-hidden="true" className="size-3.5" />サンキー図で見る（{projects.count.toLocaleString()}事業・{formatBudgetFromYen(projects.budgetTotal)}）
+        </Link>
+      </Button>
+      {result.interpretation && <span className="text-xs text-mirai-text-muted">{result.interpretation}</span>}
+    </div>
+    {top.length > 0 && <ul className="m-0 list-none space-y-1 p-0 text-xs">
+      {top.map(p => {
+        const links = projectLinks(p.projectId!, sheetYear);
+        return <li key={p.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <Link href={links.quality} onClick={onNavigate} className="min-w-0 font-medium text-primary-accent underline-offset-4 hover:underline">{p.name}</Link>
+          <span className="text-mirai-text-muted">{p.ministry ?? ''}・{formatBudgetFromYen(p.budget)}</span>
+          <Link href={links.subcontracts} onClick={onNavigate} className="text-[11px] text-mirai-text-muted underline-offset-4 hover:text-primary-accent hover:underline">委託構造</Link>
+        </li>;
+      })}
+    </ul>}
+  </div>;
 }

@@ -65,6 +65,7 @@ function validateContext(input: unknown): SankeyChatContext {
   if (raw.currentQuery !== null && typeof raw.currentQuery === 'object' && !Array.isArray(raw.currentQuery)) {
     context.currentQuery = raw.currentQuery;
   }
+  if (typeof raw.page === 'string' && raw.page.trim()) context.page = raw.page.trim().slice(0, 60);
   return context;
 }
 

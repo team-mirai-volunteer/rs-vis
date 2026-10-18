@@ -372,13 +372,14 @@ export const TOOLS: LlmToolDef[] = [
 
 // ── システムプロンプト ──
 
-function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[]): string {
+function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[], page?: string): string {
   const lines = [
     // サイト名は出さない（開発リポジトリ名由来の「まるみえ」が応答文に漏れた実績あり。公開版は別名のため一般名称で自称する）
     'あなたは、日本の行政事業レビューの予算・支出データをサンキー図で可視化するサイトのAIアシスタントです。サイト名やシステム名は応答に含めないこと。',
     'ユーザーの自然言語の要求を SankeyQuery（フィルタ条件）に翻訳し、ツールで検証してから submit_result で確定します。',
     '',
     '## データの前提',
+    ...(page ? [`- ユーザーはいま「${page}」のページを見ている。そのページで見られる情報を優先して案内し、サンキー図でしか見られない条件はその旨を添える`] : []),
     `- 対象年度: ${year}（事業年度${year}のデータは予算年度${Number(year) - 1}の執行実績）`,
     '- 対象は行政事業レビュー対象事業のみ（国の全予算の約27%。国債費・地方交付税等は含まない）',
     '- 全金額は1円単位（「100億円」= 10000000000、「1兆円」= 1000000000000）',
@@ -607,7 +608,7 @@ export async function runSankeyChatAgentCore(
   const ministryNames = await executor.getMinistryNames(year);
 
   const messages: LlmMessage[] = [
-    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames) },
+    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames, context.page) },
     ...chatMessages.map((m): LlmMessage => ({ role: m.role, content: m.content })),
   ];
 
