@@ -2,6 +2,8 @@
 
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { BlockSources } from '@/client/components/subcontract/BlockSources';
+import { ContractMethodBadge } from '@/client/components/quality/ContractMethodBadge';
+import { contractCategory, findContract, type ContractMethodCode, type ContractMethodEntry } from '@/app/lib/contract-method';
 import { subcontractSources } from '@/app/lib/subcontracts/block-sources';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 
@@ -430,6 +432,8 @@ function SidePane({
   year,
   activeTab,
   indirect,
+  contractEntries,
+  prevGraph,
   onChangeTab,
   onSelectBlock,
   scaleFont,
@@ -444,6 +448,10 @@ function SidePane({
   activeTab: PaneTab;
   /** 間接経費の集計（フロー図と同じ値を使うため親から受け取る） */
   indirect: IndirectCostSummary;
+  /** 契約方式（突き合わせできた行だけ）。null = 取得中 */
+  contractEntries: ContractMethodEntry[] | null;
+  /** 前年度の同じ事業。undefined = 取得中、null = 無し */
+  prevGraph: SubcontractGraph | null | undefined;
   onChangeTab: (tab: PaneTab) => void;
   onSelectBlock: (block: BlockNode) => void;
   scaleFont: (px: number) => number;
@@ -659,6 +667,26 @@ function SidePane({
           if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
           return (
             <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+          );
+        })()}
+        {/* 年度比較: 前年度の同じ事業との違い（段数・再委託先への割合・最大の再委託先）。2024 年度実績を見ているときだけ */}
+        {prevGraph && (() => {
+          const prevDown = Math.max(0, prevGraph.totalExpense - prevGraph.directExpenseTotal);
+          const prevShare = prevGraph.totalExpense > 0 ? Math.round((prevDown / prevGraph.totalExpense) * 100) : null;
+          const curDown = Math.max(0, graph.totalExpense - graph.directExpenseTotal);
+          const curShare = graph.totalExpense > 0 ? Math.round((curDown / graph.totalExpense) * 100) : null;
+          const prevLargest = prevGraph.blocks.filter(b => b.originKind === 'subcontract' && b.totalAmount > 0).sort((a, b) => b.totalAmount - a.totalAmount)[0];
+          const prevLargestName = prevLargest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
+          const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
+          const parts = [
+            `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
+            prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
+            prevLargestName ? `最大は ${prevLargestName}（${formatYen(prevLargest.totalAmount)}）` : '再委託なし',
+          ].filter(Boolean);
+          return (
+            <p className="mt-0.5 leading-relaxed text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }} title="前年度（2023 年度実績）の同じ事業の委託構造との比較">
+              前年度: {parts.join('・')}
+            </p>
           );
         })()}
         <div className="mt-[5px] flex flex-wrap gap-1.5" style={{ fontSize: PANEL_META_FONT_PX }}>
@@ -886,6 +914,11 @@ function SidePane({
                         <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold" style={{ background: badge.bg, color: badge.fg }}>
                           {originKindLabel(originKind)}
                         </span>
+                        {/* 契約方式（RS 公開 API との突き合わせ）。1者応札・随意契約が委託の深さと一緒に読める */}
+                        {(() => {
+                          const c = findContract(contractEntries ?? undefined, { b: blockId, n: r.name, a2: r.amount });
+                          return c ? <span className="shrink-0"><ContractMethodBadge method={c.m} text={c.mt} applicants={c.ap} bidRate={c.br} /></span> : null;
+                        })()}
                         {meta && (
                           <span className="min-w-0 truncate text-[10.5px] text-mirai-text-muted">{meta}</span>
                         )}
@@ -1243,6 +1276,19 @@ function SubcontractDetailPageInner() {
   const suppressViewportWriteRef = useRef(false);
 
   const [graph, setGraph] = useState<SubcontractGraph | null>(null);
+  // 契約方式（RS 公開 API との突き合わせ。評価一覧の詳細と同じ /api/quality-scores/recipients）。支出先タブとフロー図に重ねる
+  const [contractEntries, setContractEntries] = useState<ContractMethodEntry[] | null>(null);
+  // 前年度（実績年度 −1）の同じ事業。年度比較の 1 行に使う。undefined = 取得中、null = 無し
+  const [prevGraph, setPrevGraph] = useState<SubcontractGraph | null | undefined>(undefined);
+  // フロー図のブロックに付ける契約方式の印: 1者応札（応札者 1）があれば赤、競争なしの随意契約があれば黄
+  const blockContractFlags = useMemo(() => {
+    const flags = new Map<string, 'single' | 'sole'>();
+    for (const e of contractEntries ?? []) {
+      if (e.ap === 1) flags.set(e.b, 'single');
+      else if (contractCategory(e.m) === 'negotiated-sole' && !flags.has(e.b)) flags.set(e.b, 'sole');
+    }
+    return flags;
+  }, [contractEntries]);
   const [projectDetail, setProjectDetail] = useState<ProjectDetail | null>(null);
   const [orgChain, setOrgChain] = useState<string[]>([]);
   // undefined = fetch中（ブロックは非表示）、null = スコアなし確定。メイン画面と同じ作法
@@ -1390,6 +1436,25 @@ function SubcontractDetailPageInner() {
     setHoveredNodeRaw(null);
     setProjectDetail(null);
     setOrgChain([]);
+    setContractEntries(null);
+    setPrevGraph(undefined);
+    // 契約方式: 突き合わせできた行（m あり）だけを ContractMethodEntry の形にする。失敗しても図は出す
+    fetch(`/api/quality-scores/recipients?pid=${projectId}&year=${year}`, { signal: controller.signal })
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows: Array<{ b: string; n: string; cn: string; a2: number | null; m?: ContractMethodCode; mt?: string; ap?: number; br?: number }>) => {
+        if (controller.signal.aborted) return;
+        setContractEntries(rows.filter(r => r.m).map(r => ({ b: r.b, n: r.n, cn: r.cn, a: r.a2, m: r.m!, ...(r.mt ? { mt: r.mt } : {}), ...(r.ap !== undefined ? { ap: r.ap } : {}), ...(r.br !== undefined ? { br: r.br } : {}) })));
+      })
+      .catch(() => { if (!controller.signal.aborted) setContractEntries([]); });
+    // 前年度の同じ事業（年度比較）。2024 年度実績（year 2025）のときだけ前年（year 2024）を引く
+    if (year === 2025) {
+      fetch(`/api/subcontracts/${projectId}?year=2024`, { signal: controller.signal })
+        .then(r => (r.ok ? r.json() : null))
+        .then((data: SubcontractGraph | null) => { if (!controller.signal.aborted) setPrevGraph(data); })
+        .catch(() => { if (!controller.signal.aborted) setPrevGraph(null); });
+    } else {
+      setPrevGraph(null);
+    }
     fetch(`/api/subcontracts/${projectId}?year=${year}`, { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -2513,6 +2578,18 @@ function SubcontractDetailPageInner() {
                     vectorEffect="non-scaling-stroke"
                     style={{ opacity: barOpacity, transition: 'opacity 0.12s ease' }}
                   />
+                  {/* 契約方式の印（1者応札=赤 / 競争なしの随意契約=黄）。委託の深さと一緒に読めるようノードの左上に置く */}
+                  {(() => {
+                    const flag = blockContractFlags.get(bar.blockId);
+                    if (!flag || bar.h < 8) return null;
+                    return (
+                      <circle cx={ix(bar.x) + 5} cy={barY + 5} r={3.5}
+                        fill={flag === 'single' ? 'var(--status-bad)' : 'var(--status-warn)'} stroke="var(--card)" strokeWidth={1.5}
+                        style={{ opacity: barOpacity, pointerEvents: 'none' }}>
+                        <title>{flag === 'single' ? 'このブロックに1者応札の契約があります' : 'このブロックに競争なしの随意契約があります'}</title>
+                      </circle>
+                    );
+                  })()}
                   <text
                     x={ix(bar.x + bar.w + 6)}
                     y={barY + bar.h / 2}
@@ -2853,6 +2930,8 @@ function SubcontractDetailPageInner() {
             year={year}
             activeTab={activeTab}
             indirect={indirectSummary}
+            contractEntries={contractEntries}
+            prevGraph={prevGraph}
             onChangeTab={(tab) => { setActiveTab(tab); pushSelTabUrl(selectedBlock?.blockId ?? null, tab); }}
             onSelectBlock={handleSelectFromList}
             scaleFont={scaleFont}
