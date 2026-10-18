@@ -725,6 +725,8 @@ ${a.desc}` })),
                             </Button>
                           </div>
                         ))}
+                    {/* AI ナビの条件。代替困難性の右に「AI の条件 ×」だけを置く（説明はホバー。行内で折り返すとずれるため） */}
+                    {aiFilter && <AiFilterChip compact filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="ml-1" />}
                   </div>
                 )}
                 {/* 金額の範囲フィルタ */}
@@ -789,7 +791,6 @@ ${a.desc}` })),
                         className="ml-1 shrink-0 border-mirai-border text-[11px] font-normal text-mirai-text-subtle disabled:opacity-40">
                         条件をクリア
                       </Button>
-                      {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => setAiFilter(null)} className="ml-1 max-w-full" />}
                       {/* 指標の説明。足きり行は6組で最も詰まるので、余裕のある金額行の末尾に置く */}
                       {/* 指標の説明なので、指標そのものが並ぶこの行の末尾に置く */}
                       <Button
