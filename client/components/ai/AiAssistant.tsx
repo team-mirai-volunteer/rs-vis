@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Check, ExternalLink, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
+import { Check, ExternalLink, History, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { SankeyChatMessage, SankeyChatResponse, SankeyChatResult } from '@/types/sankey-ai-chat';
@@ -27,16 +27,15 @@ import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openroute
 import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
 import { useAiResultDispatch } from '@/client/lib/ai/result-handler';
 import { projectLinks, sankeyUrlForQuery } from '@/client/lib/ai/result-links';
+import {
+  deleteAllChatSessions, listChatSessions, loadChatSession, saveChatSession,
+  type AiChatUiMessage, type ChatSessionMeta,
+} from '@/client/lib/ai/chat-history-store';
 
-interface UiMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  result?: SankeyChatResult;
-  /** 結果をそのページで適用したか（サンキー図）。false なら案内リンクを出す */
-  applied?: boolean;
-  suggestions?: string[];
-  isError?: boolean;
-}
+type UiMessage = AiChatUiMessage;
+
+const newSessionId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+const formatSessionTime = (ts: number) => new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 const AI_YEARS = new Set(['2024', '2025']);
 const EXAMPLES = ['再エネ関連で予算100億円以上の事業', '子育て支援で支出先に自治体が多い事業', 'NTTデータが受注している事業'];
@@ -63,6 +62,11 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   const [keyMsg, setKeyMsg] = useState<string | null>(null);
   const [keyTesting, setKeyTesting] = useState(false);
   const [messages, setMessages] = useState<UiMessage[]>([]);
+  // 会話の永続化（このブラウザの IndexedDB）。起動時に直近の会話を復元し、以後は変化のたびに保存する
+  const [sessionId, setSessionId] = useState<string>(() => newSessionId());
+  const [restored, setRestored] = useState(false);
+  const [sessions, setSessions] = useState<ChatSessionMeta[] | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
@@ -85,6 +89,42 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     return () => { cancelled = true; };
   }, []);
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [messages, progress]);
+
+  // 起動時に直近の会話を復元する（保存はこの復元が終わってから。空の初期状態で上書きしないため）
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const list = await listChatSessions();
+      const latest = list[0] ? await loadChatSession(list[0].id) : null;
+      if (cancelled) return;
+      if (latest && latest.messages.length > 0) { setSessionId(latest.id); setMessages(latest.messages); }
+      setRestored(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!restored || messages.length === 0) return;
+    void saveChatSession(sessionId, messages);
+  }, [restored, sessionId, messages]);
+
+  const openHistory = async () => {
+    if (showHistory) { setShowHistory(false); return; }
+    setSessions(await listChatSessions());
+    setShowHistory(true);
+  };
+  const switchSession = async (id: string) => {
+    const session = await loadChatSession(id);
+    abortRef.current?.abort();
+    setSessionId(id);
+    setMessages(session?.messages ?? []);
+    setShowHistory(false);
+  };
+  const startNewSession = () => {
+    abortRef.current?.abort();
+    setSessionId(newSessionId());
+    setMessages([]);
+    setShowHistory(false);
+  };
 
   const mode: 'byok' | 'server' | null = settings ? 'byok' : serverEnabled ? 'server' : null;
   // AI が条件を考えるのに使う支出データの年度。支出データの無い年度（予算年度2025以降）は最も近い年度で代用し、
@@ -156,7 +196,10 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   };
   const forgetKey = async () => {
     try { await deleteByokSettings(); } catch { /* 保存されていなければ何もしない */ }
+    // BYOK 中の会話が後からサイト提供 AI（サーバー経由）へ送られないよう、キー削除時は会話も全部消す
+    try { await deleteAllChatSessions(); } catch { /* 非対応環境は何もしない */ }
     setSettings(null); setModelInput(''); setKeyInput(''); setKeyMsg(null);
+    startNewSession();
   };
 
   if (!open) return null;
@@ -172,6 +215,11 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
           {dispatch ? '・結果はこの図に適用' : `・${page}を表示中`}
         </div>
       </div>
+      <Button variant="ghost" size="icon-sm" aria-label="過去の会話" aria-pressed={showHistory} title="過去の会話（このブラウザに保存）"
+        className={cn('shrink-0 text-mirai-text-subtle hover:bg-card', showHistory && 'bg-card text-primary-accent')}
+        onClick={() => void openHistory()}>
+        <History aria-hidden="true" />
+      </Button>
       <Button variant="ghost" size="icon-sm" aria-label="キーとモデルの設定" aria-pressed={showSettings} title="キーとモデルの設定"
         className={cn('shrink-0 text-mirai-text-subtle hover:bg-card', showSettings && 'bg-card text-primary-accent')}
         onClick={() => { setModelInput(settings?.model ?? ''); setShowSettings(v => !v); }}>
@@ -181,6 +229,19 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         <X aria-hidden="true" />
       </Button>
     </div>
+
+    {/* 過去の会話（このブラウザの IndexedDB に保存。サーバーには送らない） */}
+    {showHistory && <div className="max-h-56 overflow-y-auto border-b border-mirai-border bg-mirai-surface p-2" role="listbox" aria-label="過去の会話">
+      <Button variant="ghost" size="xs" className="w-full justify-start font-medium text-primary-accent" onClick={startNewSession}>＋ 新しい会話を始める</Button>
+      {sessions && sessions.length === 0 && <p className="m-0 px-2 py-1.5 text-xs text-mirai-text-muted">保存された会話はありません。</p>}
+      {sessions?.map(s => (
+        <Button key={s.id} variant="ghost" size="xs" role="option" aria-selected={s.id === sessionId} onClick={() => void switchSession(s.id)}
+          className={cn('h-auto w-full justify-start gap-2 whitespace-normal py-1.5 text-left font-normal', s.id === sessionId && 'bg-mirai-surface-teal text-primary-accent')}>
+          <span className="min-w-0 flex-1 truncate">{s.title}</span>
+          <span className="shrink-0 text-[11px] text-mirai-text-muted">{formatSessionTime(s.ts)}・{s.messageCount}件</span>
+        </Button>
+      ))}
+    </div>}
 
     {/* キー・モデル設定 */}
     {(showSettings || mode === null) && <div className="flex flex-col gap-2.5 border-b border-mirai-border bg-mirai-surface p-4">
@@ -225,14 +286,15 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
             : 'self-start rounded-bl-md border-mirai-border bg-card',
       )}>
         {m.content}
-        {m.result && m.applied && <div className="mt-2 flex flex-wrap items-center gap-2">
+        {/* 復元した会話を別のページで見ているときは、適用済みでも案内リンクを出す（この図には適用できないため） */}
+        {m.result && m.applied && dispatch && <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-stance-for-bg px-2.5 py-0.5 text-xs font-medium text-primary-accent">
             <Check aria-hidden="true" className="size-3.5" />図に適用しました
           </span>
           {m.result.interpretation && <span className="text-xs text-mirai-text-muted">{m.result.interpretation}</span>}
           <Button variant="link" size="xs" className="text-xs" onClick={() => applyResult(m.result!)}>再適用する</Button>
         </div>}
-        {m.result && !m.applied && <ResultLinks result={m.result} sheetYear={yearKey} onNavigate={onClose} />}
+        {m.result && !(m.applied && dispatch) && <ResultLinks result={m.result} sheetYear={yearKey} onNavigate={onClose} />}
         {m.suggestions && m.suggestions.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">
           {m.suggestions.map(sg => <Button key={sg} variant="outline" size="xs" disabled={sending} onClick={() => void send(sg)} className="h-auto whitespace-normal rounded-full py-1 text-left text-[11px] font-medium">{sg}</Button>)}
         </div>}
@@ -251,7 +313,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
         <span className="min-w-0 flex-1 text-[11px] leading-relaxed text-mirai-text-muted">
           {dispatch ? '事業名・支出先・所管・金額・再委託の条件に写します。表示数やピンは変えません。' : '事業名・支出先・所管・金額・再委託の条件で探します。'}
         </span>
-        <Button variant="ghost" size="xs" disabled={messages.length === 0} onClick={() => { abortRef.current?.abort(); setMessages([]); }} title="新しい会話を始める" aria-label="新しい会話を始める">
+        <Button variant="ghost" size="xs" disabled={messages.length === 0} onClick={startNewSession} title="新しい会話を始める（今の会話は「過去の会話」に残る）" aria-label="新しい会話を始める">
           <RotateCcw aria-hidden="true" />
         </Button>
         <Button variant="default" size="sm" disabled={!input.trim() || !canSend} onClick={() => void send(input)}>
