@@ -218,3 +218,57 @@ ministryName あり  → presetType: 'ministry'
 **クエリパラメータ**: なし（各エンドポイントにより異なる）
 
 **データソース**: `rs2024-structured.json`（インメモリ加工）
+
+---
+
+## MCP サーバー: POST /api/mcp
+
+外部の AI（Claude Code・claude.ai・その他の MCP クライアント）が、このサイトのデータをツールとして引くための入口。
+Streamable HTTP（ステートレス・セッション無し）。認証なし（公開データのみ）。LLM は呼ばないので従量課金は発生しない。
+
+- ツールの定義: `app/lib/ai/mcp-tools.ts`（チャットのエージェント `app/lib/ai/chat-core.ts` の `TOOLS` から `submit_result` を除き、各ツールに `year` を足したもの）
+- 実行: `app/lib/ai/chat-core.ts` の `executeToolCall`（引数検証）→ `app/lib/ai/tool-executor-server.ts`（ローダ直呼び）
+- ルート: `app/api/mcp/route.ts`（`mcp-handler` + `@modelcontextprotocol/server`）
+
+### ツール一覧
+
+| ツール | 主な引数 | 返すもの |
+|---|---|---|
+| `search_projects` | `q`、`scope`（`name` / `details`） | 事業名（または概要）に一致する事業の上位 10 件と総件数 |
+| `search_recipients` | `q` | 支出先名に一致する支出先 |
+| `search_spending` | `q`（2 文字以上） | 支出の役割・契約概要の全文検索 |
+| `get_project_detail` | `pid` | 事業の概要・予算・執行・AI 評価・上位の支出先 |
+| `get_quality_scores` | `pids`（最大 10 件） | AI 評価（試行）の内訳 |
+| `get_recipient_detail` | `key` | 支出先の受注事業一覧 |
+| `get_subcontract_chain` | `pid` | 再委託の連鎖（ブロック構造） |
+| `get_highlights` | `metric`（`spendingChange` `otherRatio` `concentration` `lowScoreHighBudget` `execBudgetGap` `subcontractDepth`） | 指標ごとの注目事業 |
+| `compare_years` | `query`、`baseYear`、`compareYear` | 条件に合う事業の年度間比較 |
+| `run_sankey_query` | `query`（SankeyQuery） | 条件に合う事業・支出先の件数・金額・上位 10 件 |
+
+すべてのツールに `year`（RS シート年度 `"2024"` / `"2025"`。省略時 `"2024"`）がある。シート年度 N には N-1 年度の執行・支出先が載る。
+サーバーの `instructions` でデータの約束事（金額は 1 円単位、「その他」と「その他の支出先」の違い、AI 評価は試行、出典の明記）を渡している。
+
+### 接続
+
+```bash
+# Claude Code
+claude mcp add --transport http rs-vis https://rs-vis.team-mir.ai/api/mcp
+# ローカル開発
+claude mcp add --transport http rs-vis-local http://localhost:3000/api/mcp
+```
+
+### 動作確認（curl）
+
+日本語を含む本文はシェルの文字コードで化けることがあるので、UTF-8 のファイルから送る。
+
+```bash
+cat > body.json <<'JSON'
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search_projects","arguments":{"q":"子育て","year":"2025"}}}
+JSON
+curl -s -X POST http://localhost:3000/api/mcp \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  --data-binary @body.json
+# tools/list は {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+```
+
+応答は `event: message` / `data: {...}` の SSE 形式（1 メッセージで終わる）。ツールの結果は `result.content[0].text` に JSON 文字列で入る。引数の検証エラーは `isError: true`。

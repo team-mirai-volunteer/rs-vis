@@ -522,6 +522,78 @@ function buildToolProgressEvent(tool: string, payload: unknown): SankeyChatProgr
   return { kind: 'tool', tool };
 }
 
+// ── ツール実行（エージェントループと MCP サーバーの共通部） ──
+
+/** submit_result を除いた、外部にも公開できるデータ取得ツール名 */
+export const DATA_TOOL_NAMES = TOOLS.map(t => t.function.name).filter(name => name !== 'submit_result');
+
+/**
+ * ツール 1 件を実行して LLM・MCP クライアントへ返す payload を作る。
+ * 引数の検証（必須項目・年度・文字数下限）はここで一度だけ行い、呼び出し元（チャットのループ・/api/mcp）で揃える。
+ * `result` は run_sankey_query が 1 件以上マッチしたときの確定候補（ループが安全網として保持する）。
+ */
+export async function executeToolCall(
+  name: string,
+  args: Record<string, unknown>,
+  executor: ChatToolExecutor,
+  year: SupportedYear,
+): Promise<{ payload: unknown; result?: SankeyChatResult }> {
+  switch (name) {
+    case 'run_sankey_query': {
+      const { errors, result } = await executor.executeQuery((args.query ?? args) as SankeyQuery, year);
+      if (errors) return { payload: { errors } };
+      const matched = result!.summary.projects.count > 0;
+      return {
+        payload: {
+          appliedQuery: result!.query, summary: result!.summary,
+          hint: matched
+            ? 'この結果が要求に合っていれば、追加の探索はせず submit_result で確定してください。'
+            : '0件です。条件を緩めて（正規表現の別表記・金額下限を外す等）もう一度 run_sankey_query してください。',
+        },
+        ...(matched ? { result: result! } : {}),
+      };
+    }
+    case 'search_projects':
+    case 'search_recipients':
+    case 'search_spending': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      if (!q) return { payload: { error: 'q（検索キーワード）を指定してください' } };
+      // API route（/api/search/spending）と同じ下限。1文字は総当たりに近くなるため弾く
+      if (name === 'search_spending' && q.length < 2) return { payload: { error: 'search_spending の q は2文字以上で指定してください' } };
+      if (name === 'search_projects') {
+        const scope: ProjectSearchScope = args.scope === 'details' ? 'details' : 'name';
+        return { payload: await executor.searchProjects(year, q, scope) };
+      }
+      if (name === 'search_recipients') return { payload: await executor.searchRecipients(year, q) };
+      return { payload: await executor.searchSpending(year, q) };
+    }
+    case 'get_project_detail': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getProjectDetail(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'get_quality_scores':
+      return { payload: await executor.getQualityScores(year, args.pids) };
+    case 'get_recipient_detail': {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return { payload: key ? await executor.getRecipientDetail(year, key) : { error: 'key（支出先キー）を指定してください' } };
+    }
+    case 'get_subcontract_chain': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getSubcontractChain(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'get_highlights':
+      return { payload: await executor.getHighlights(year, args.metric) };
+    case 'compare_years': {
+      const baseYear = args.baseYear === '2024' || args.baseYear === '2025' ? args.baseYear : null;
+      const compareYear = args.compareYear === '2024' || args.compareYear === '2025' ? args.compareYear : null;
+      if (!baseYear || !compareYear) return { payload: { error: 'baseYear・compareYear には "2024" または "2025" を指定してください' } };
+      return { payload: await executor.compareYears(args.query as SankeyQuery | undefined, baseYear, compareYear) };
+    }
+    default:
+      return { payload: { error: `未知のツールです: ${name}` } };
+  }
+}
+
 // ── エージェントループ本体 ──
 
 export async function runSankeyChatAgentCore(
@@ -571,93 +643,29 @@ export async function runSankeyChatAgentCore(
         const { args, error } = parseToolArgs(call.function.arguments || '{}');
         if (error || !args) {
           payload = { error: error ?? 'ツール引数を解釈できませんでした' };
-        } else {
-          switch (call.function.name) {
-            case 'run_sankey_query': {
-              const { errors, result } = await executor.executeQuery((args.query ?? args) as SankeyQuery, year);
-              if (!errors && result && result.summary.projects.count > 0) lastGood = result;
-              payload = errors
-                ? { errors }
-                : { appliedQuery: result!.query, summary: result!.summary,
-                  hint: result!.summary.projects.count > 0
-                    ? 'この結果が要求に合っていれば、追加の探索はせず submit_result で確定してください。'
-                    : '0件です。条件を緩めて（正規表現の別表記・金額下限を外す等）もう一度 run_sankey_query してください。' };
-              break;
-            }
-            case 'search_projects':
-            case 'search_recipients':
-            case 'search_spending': {
-              const q = typeof args.q === 'string' ? args.q.trim() : '';
-              if (!q) {
-                payload = { error: 'q（検索キーワード）を指定してください' };
-              } else if (call.function.name === 'search_spending' && q.length < 2) {
-                // API route（/api/search/spending）と同じ下限。1文字は総当たりに近くなるため弾く
-                payload = { error: 'search_spending の q は2文字以上で指定してください' };
-              } else if (call.function.name === 'search_projects') {
-                const scope: ProjectSearchScope = args.scope === 'details' ? 'details' : 'name';
-                payload = await executor.searchProjects(year, q, scope);
-              } else if (call.function.name === 'search_recipients') {
-                payload = await executor.searchRecipients(year, q);
-              } else {
-                payload = await executor.searchSpending(year, q);
-              }
-              break;
-            }
-            case 'get_project_detail': {
-              const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
-              payload = pid ? await executor.getProjectDetail(year, pid) : { error: 'pid（事業ID）を指定してください' };
-              break;
-            }
-            case 'get_quality_scores': {
-              payload = await executor.getQualityScores(year, args.pids);
-              break;
-            }
-            case 'get_recipient_detail': {
-              const key = typeof args.key === 'string' ? args.key.trim() : '';
-              payload = key ? await executor.getRecipientDetail(year, key) : { error: 'key（支出先キー）を指定してください' };
-              break;
-            }
-            case 'get_subcontract_chain': {
-              const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
-              payload = pid ? await executor.getSubcontractChain(year, pid) : { error: 'pid（事業ID）を指定してください' };
-              break;
-            }
-            case 'get_highlights': {
-              payload = await executor.getHighlights(year, args.metric);
-              break;
-            }
-            case 'compare_years': {
-              const baseYear = args.baseYear === '2024' || args.baseYear === '2025' ? args.baseYear : null;
-              const compareYear = args.compareYear === '2024' || args.compareYear === '2025' ? args.compareYear : null;
-              if (!baseYear || !compareYear) {
-                payload = { error: 'baseYear・compareYear には "2024" または "2025" を指定してください' };
-              } else {
-                payload = await executor.compareYears(args.query as SankeyQuery | undefined, baseYear, compareYear);
-              }
-              break;
-            }
-            case 'submit_result': {
-              const { errors, result } = await executor.executeQuery((args.query ?? {}) as SankeyQuery, year);
-              if (errors) {
-                payload = { errors, hint: 'クエリを修正して run_sankey_query で再検証してから submit_result してください' };
-                break;
-              }
-              const message = typeof args.message === 'string' && args.message.trim()
-                ? args.message.trim()
-                : `${result!.summary.projects.count}事業がマッチしました。`;
-              const interpretation = clampInterpretation(args.interpretation);
-              const suggestions = clampSuggestions(args.suggestions);
-              emitProgress(onProgress, buildToolProgressEvent('submit_result', { summary: result!.summary }));
-              return {
-                message,
-                result: interpretation ? { ...result!, interpretation } : result!,
-                ...(suggestions ? { suggestions } : {}),
-                toolCalls,
-              };
-            }
-            default:
-              payload = { error: `未知のツールです: ${call.function.name}` };
+        } else if (call.function.name === 'submit_result') {
+          // 確定はエージェントループ固有（会話を終える）。MCP など他の呼び出し元には公開しない
+          const { errors, result } = await executor.executeQuery((args.query ?? {}) as SankeyQuery, year);
+          if (errors) {
+            payload = { errors, hint: 'クエリを修正して run_sankey_query で再検証してから submit_result してください' };
+          } else {
+            const message = typeof args.message === 'string' && args.message.trim()
+              ? args.message.trim()
+              : `${result!.summary.projects.count}事業がマッチしました。`;
+            const interpretation = clampInterpretation(args.interpretation);
+            const suggestions = clampSuggestions(args.suggestions);
+            emitProgress(onProgress, buildToolProgressEvent('submit_result', { summary: result!.summary }));
+            return {
+              message,
+              result: interpretation ? { ...result!, interpretation } : result!,
+              ...(suggestions ? { suggestions } : {}),
+              toolCalls,
+            };
           }
+        } else {
+          const executed = await executeToolCall(call.function.name, args, executor, year);
+          payload = executed.payload;
+          if (executed.result) lastGood = executed.result;
         }
       }
 
