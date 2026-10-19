@@ -24,8 +24,8 @@ const ACCOUNT_OPTIONS: Array<{ value: 'general' | 'special'; label: string }> = 
 
 const SUBCONTRACT_OPTIONS: Array<{ value: UnifiedViewFilter['subcontract']; label: string; title: string }> = [
   { value: 'any', label: '指定なし', title: '再委託の有無で絞り込まない' },
-  { value: 'has', label: '再委託あり', title: '再委託（支出先からさらに先への委託）の記載がある事業だけを残す' },
-  { value: 'none', label: '再委託なし', title: '再委託の記載が無い（直接支出のみ）事業だけを残す' },
+  { value: 'has', label: 'あり', title: '再委託（支出先からさらに先への委託）の記載がある事業だけを残す' },
+  { value: 'none', label: 'なし', title: '再委託の記載が無い（直接支出のみ）事業だけを残す' },
 ];
 
 const INPUT_CLASS =
@@ -120,8 +120,8 @@ export function UnifiedFilterFields({
             <MinMaxInput minVal={filter.spendingMin} maxVal={filter.spendingMax} onMinChange={v => set({ spendingMin: v })} onMaxChange={v => set({ spendingMax: v })} />
           </AmountRow>
         )}
-        {hasSpending && (
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {hasSpending && (<>
             <span className="w-14 shrink-0 font-medium" title="再委託（支出先からさらに先への委託）の記載の有無">
               再委託
             </span>
@@ -162,8 +162,15 @@ export function UnifiedFilterFields({
                 <span>以上</span>
               </label>
             )}
-          </div>
-        )}
+          </>)}
+          {/* 継続年数。再委託と同じ行にまとめる（政策評価サマリの値。範囲を指定すると開始年度の記載が無い事業は落ちる） */}
+          <label className={cn('flex items-center gap-1', hasSpending && 'ml-1')} title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる">
+            <span className="shrink-0 font-medium">継続年数</span>
+            <input type="number" min={0} max={200} step={1} value={filter.years.min} onChange={e => set({ years: { ...filter.years, min: e.target.value } })} placeholder="下限" aria-label="継続年数の下限" className={SMALL_NUMBER_CLASS} />
+            <span className="text-[11px] text-mirai-text-muted">~</span>
+            <input type="number" min={0} max={200} step={1} value={filter.years.max} onChange={e => set({ years: { ...filter.years, max: e.target.value } })} placeholder="上限" aria-label="継続年数の上限" className={SMALL_NUMBER_CLASS} />
+          </label>
+        </div>
       </div>
 
       {hasSpending && (
@@ -202,7 +209,6 @@ export function UnifiedFilterFields({
           {UNIFIED_SCORE_FIELDS.map(s => (
             <ScoreRow key={s.field} label={s.label} title={s.title} range={filter[s.field]} onChange={r => set({ [s.field]: r })} />
           ))}
-          <ScoreRow label="継続年数" title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる" range={filter.years} onChange={r => set({ years: r })} max={200} />
         </div>
         {scoreStatus === 'loading' && <p className="text-[10px] text-mirai-text-muted">政策評価を読み込み中…（取得できるまでスコアの絞り込みは効きません）</p>}
         {scoreStatus === 'unavailable' && <p className="text-[10px] text-destructive">政策評価を取得できませんでした。スコアの絞り込みは効いていません</p>}
