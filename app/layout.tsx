@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Lexend_Giga, Noto_Sans_JP } from "next/font/google";
+import { googleAnalyticsMeasurementId, isProductionAnalytics } from "@/app/lib/google-analytics";
 import { SITE_URL } from "@/app/lib/site-url";
 import { pageMetadata } from '@/app/lib/page-metadata';
+import { SiteGoogleAnalytics } from '@/components/analytics/SiteGoogleAnalytics';
 import { AppHeaderProvider } from '@/components/navigation/AppHeader';
 import "./globals.css";
 
@@ -44,6 +46,9 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AppHeaderProvider>{children}</AppHeaderProvider>
+        {isProductionAnalytics() ? (
+          <SiteGoogleAnalytics gaId={googleAnalyticsMeasurementId()} />
+        ) : null}
       </body>
     </html>
   );
