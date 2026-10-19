@@ -175,7 +175,7 @@ export function UnifiedFilterFields({
 
       {hasSpending && (
         <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
-          <div className="font-medium">支出先（一致しない支出先や支出先が残らない事業を落とす）</div>
+          <div className="font-medium">支出先（支出先が残らない事業は落とす）</div>
           <RegexTextFilter
             label="支出先名"
             note="支出先の名前で絞り込む。`.*` で正規表現（大文字小文字を区別しない）"
