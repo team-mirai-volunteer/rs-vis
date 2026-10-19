@@ -22,17 +22,25 @@ export interface AiResultTarget {
 interface AiResultContextValue {
   target: AiResultTarget | null;
   register: (target: AiResultTarget) => () => void;
+  /** ページが AI に見せる「いまの画面の状態」の要約（財政余力の計算結果など）。無ければ null */
+  pageState: string | null;
+  setPageState: (text: string | null) => void;
 }
+
+/** ページの状態として AI に渡す要約の上限（文字）。プロンプトに入るので短く保つ */
+export const AI_PAGE_STATE_MAX = 4000;
 
 const AiResultContext = createContext<AiResultContextValue | null>(null);
 
 export function AiResultProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<AiResultTarget | null>(null);
+  const [pageState, setPageStateRaw] = useState<string | null>(null);
   const register = useCallback((next: AiResultTarget) => {
     setTarget(next);
     return () => setTarget((current: AiResultTarget | null) => (current === next ? null : current));
   }, []);
-  const value = useMemo(() => ({ target, register }), [target, register]);
+  const setPageState = useCallback((text: string | null) => setPageStateRaw(text ? text.slice(0, AI_PAGE_STATE_MAX) : null), []);
+  const value = useMemo(() => ({ target, register, pageState, setPageState }), [target, register, pageState, setPageState]);
   return <AiResultContext.Provider value={value}>{children}</AiResultContext.Provider>;
 }
 
@@ -47,6 +55,26 @@ export function useAiResultHandler(handler: AiResultHandler, label = '図'): voi
     if (!register) return;
     return register({ handler, label });
   }, [register, handler, label]);
+}
+
+/**
+ * ページが「いまの画面の状態」を AI に見せる。計算結果や選択中の条件を短い日本語（または JSON）の要約にして渡す。
+ * アンマウントで消える。要約は useMemo で安定させること（変わるたびに更新される）。
+ * サイト提供 AI ではこの要約がサーバー経由で LLM に渡る（会話と同じ扱い）。個人情報を入れない。
+ */
+export function useAiPageState(summary: string | null): void {
+  const context = useContext(AiResultContext);
+  const setPageState = context?.setPageState;
+  useEffect(() => {
+    if (!setPageState) return;
+    setPageState(summary);
+    return () => setPageState(null);
+  }, [setPageState, summary]);
+}
+
+/** AI ナビが現在ページの状態の要約を得る（無ければ null） */
+export function useAiPageStateText(): string | null {
+  return useContext(AiResultContext)?.pageState ?? null;
 }
 
 /** AI ナビが現在ページの受け取り手を得る（無ければ null） */

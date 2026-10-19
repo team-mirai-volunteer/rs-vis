@@ -73,6 +73,7 @@ function validateContext(input: unknown): SankeyChatContext {
     context.currentQuery = raw.currentQuery;
   }
   if (typeof raw.page === 'string' && raw.page.trim()) context.page = raw.page.trim().slice(0, 60);
+  if (typeof raw.pageState === 'string' && raw.pageState.trim()) context.pageState = raw.pageState.trim().slice(0, 4000);
   return context;
 }
 

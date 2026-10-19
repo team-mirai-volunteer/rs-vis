@@ -25,6 +25,8 @@ export interface SankeyChatContext {
   currentQuery?: SankeyQuery;
   /** ユーザーがいま見ているページの名前（例: 「評価一覧」）。AI ナビがヘッダーから開かれたとき、案内の優先に使う（60 文字まで） */
   page?: string;
+  /** ページが AI に見せる「いまの画面の状態」の要約（財政余力の計算結果、国民負担の試算など。4000 文字まで）。ブラウザで計算した結果を AI が読めるようにする */
+  pageState?: string;
 }
 
 export interface SankeyChatRequest {

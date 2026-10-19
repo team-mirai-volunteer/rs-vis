@@ -5,6 +5,7 @@ import { ArrowRight, CalendarRange, ChartNoAxesCombined, ClipboardCheck, Databas
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { useAiPageState } from '@/client/lib/ai/result-handler';
 import { HOUSEHOLDS, initialTaxState, isReformed } from '@/app/lib/tax-burden/households';
 import { simulate, statutoryBasicAllowance } from '@/app/lib/tax-burden/simulate';
 import { heatmapGrid, lifecycleSeries } from '@/app/lib/tax-burden/simulate-lifecycle';
@@ -80,6 +81,21 @@ export default function TaxBurdenPage() {
   const before = useMemo(() => params ? simulate(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence]);
   const after = useMemo(() => params ? simulate(state, params, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const impact = before && after ? fiscalImpact(before, after, state, consumption) : null;
+  // AI ナビに見せる「いまの画面の状態」。画面の入力（仮定の世帯）と現行法の試算、改革案があればその差
+  const aiPageState = useMemo(() => {
+    if (!before) return null;
+    const household = HOUSEHOLDS.find(h => h.id === state.household)?.label ?? state.household;
+    const rate = (v: number | null) => (v === null ? '—' : `${(v * 100).toFixed(1)}%`);
+    const lines = [
+      `歳入・国民負担シミュレータ（2025年度制度のモデル計算。給与所得のみ等の仮定で、実際の課税とは異なる）`,
+      `画面の条件: 世帯 ${household}、年収 ${yen(state.income)}、年齢 ${state.age}歳${state.household.startsWith('two-earners') ? `、第1就労者の収入割合 ${state.share}%` : ''}${state.includeConsumption ? '、消費税の推計を含む' : ''}。表示 ${state.view}`,
+      `現行法の年額: 所得税 ${yen(before.incomeTax)}、住民税 ${yen(before.residentTax)}、年金保険料 ${yen(before.pension)}、医療保険料 ${yen(before.health)}、介護保険料 ${yen(before.care)}、雇用保険料 ${yen(before.employment)}、給付（児童手当等） ${yen(before.benefits)}、純負担 ${yen(before.netBurden)}（負担率 ${rate(before.netRate)}${state.includeConsumption ? `、消費税込み ${rate(before.netRateWithConsumption)}` : ''}）`,
+      ...(before.outOfScope ? [`注意: ${before.scopeReasons.join('、')}`] : []),
+      ...(reformed && after ? [`改革案（画面のスライダー）適用後: 純負担 ${yen(after.netBurden)}（負担率 ${rate(after.netRate)}）、差額 ${yen(after.netBurden - before.netBurden)}`] : []),
+    ];
+    return lines.join('\n');
+  }, [before, after, reformed, state]);
+  useAiPageState(aiPageState);
   // The age and heat-map views answer to the same policy sliders; the age view keeps a current-law series to compare against.
   const lifecycle = useMemo(() => params && state.view === 'age' ? lifecycleSeries(state, params, state.reform, consumption, incidence) : null, [state, params, consumption, incidence]);
   const lifecycleBase = useMemo(() => params && state.view === 'age' && reformed ? lifecycleSeries(state, params, undefined, consumption, incidence) : null, [state, params, consumption, incidence, reformed]);

@@ -19,14 +19,14 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Check, ExternalLink, History, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { SankeyChatMessage, SankeyChatResponse, SankeyChatResult } from '@/types/sankey-ai-chat';
+import type { SankeyChatContext, SankeyChatMessage, SankeyChatResponse, SankeyChatResult } from '@/types/sankey-ai-chat';
 import type { GraphData } from '@/types/sankey-svg';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
 import { deleteByokSettings, loadByokSettings, saveByokSettings, type ByokSettings } from '@/client/lib/ai/api-key-store';
 import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openrouter-caller';
 import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
-import { useAiResultTarget } from '@/client/lib/ai/result-handler';
+import { useAiPageStateText, useAiResultTarget } from '@/client/lib/ai/result-handler';
 import { projectLinks, sankeyUrlForQuery } from '@/client/lib/ai/result-links';
 import { navigateHref, samePath } from '@/client/lib/ai/nav-href';
 import {
@@ -61,6 +61,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
 }) {
   // このページの受け取り手（無ければ案内リンク）。label は「図」「一覧」など適用先の呼び名
   const target = useAiResultTarget();
+  const pageState = useAiPageStateText();
   const dispatch = target?.handler ?? null;
   const targetLabel = target?.label ?? '図';
   const [settings, setSettings] = useState<ByokSettings | null>(null);
@@ -183,7 +184,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
     setMessages(prev => [...prev, { role: 'user', content: trimmed }]);
     setInput(''); setSending(true); setProgress(null);
     const aborter = new AbortController(); abortRef.current = aborter;
-    const context = { year: yearKey, page };
+    const context: SankeyChatContext = { year: yearKey, page, ...(pageState ? { pageState } : {}) };
     try {
       let reply: { message: string; result?: SankeyChatResult; suggestions?: string[]; navigate?: SankeyChatResponse['navigate'] };
       // 例文 3 つはサーバーに 24 時間の応答キャッシュがあるので、BYOK でもサイト提供 AI が使える環境ならそちらを引く
