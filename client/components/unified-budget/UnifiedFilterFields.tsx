@@ -164,11 +164,11 @@ export function UnifiedFilterFields({
             )}
           </>)}
           {/* 継続年数。再委託と同じ行にまとめる（政策評価サマリの値。範囲を指定すると開始年度の記載が無い事業は落ちる） */}
-          <label className={cn('flex items-center gap-1', hasSpending && 'ml-1')} title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる">
+          <label className="flex items-center gap-1" title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる">
             <span className="shrink-0 font-medium">継続年数</span>
-            <input type="number" min={0} max={200} step={1} value={filter.years.min} onChange={e => set({ years: { ...filter.years, min: e.target.value } })} placeholder="下限" aria-label="継続年数の下限" className={SMALL_NUMBER_CLASS} />
+            <input type="number" min={0} max={200} step={1} value={filter.years.min} onChange={e => set({ years: { ...filter.years, min: e.target.value } })} placeholder="下限" aria-label="継続年数の下限" className={cn(SMALL_NUMBER_CLASS, 'w-[3.25rem]')} />
             <span className="text-[11px] text-mirai-text-muted">~</span>
-            <input type="number" min={0} max={200} step={1} value={filter.years.max} onChange={e => set({ years: { ...filter.years, max: e.target.value } })} placeholder="上限" aria-label="継続年数の上限" className={SMALL_NUMBER_CLASS} />
+            <input type="number" min={0} max={200} step={1} value={filter.years.max} onChange={e => set({ years: { ...filter.years, max: e.target.value } })} placeholder="上限" aria-label="継続年数の上限" className={cn(SMALL_NUMBER_CLASS, 'w-[3.25rem]')} />
           </label>
         </div>
       </div>
