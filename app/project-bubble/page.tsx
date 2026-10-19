@@ -1,6 +1,10 @@
 'use client';
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams } from '@/app/lib/rs-fiscal-year';
+import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
+import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
+import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, SlidersHorizontal, X } from 'lucide-react';
@@ -111,6 +115,8 @@ export default function ProjectMapPage() {
   const [yearsFilter, setYearsFilter] = useState({ min: '', max: '' });
   const [budgetFilter, setBudgetFilter] = useState({ min: '', max: '' });
   const [query, setQuery] = useState('');
+  // AI ナビ（ヘッダー）の結果をこの図に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
+  const { aiFilter, clearAiFilter } = useAiListFilter('図');
 
   // 対話状態
   const [hover, setHover] = useState<{ p: ProjectMapPoint; x: number; y: number } | null>(null);
@@ -313,6 +319,9 @@ export default function ProjectMapPage() {
 
   const filtered = useMemo(() => {
     let items = allPoints;
+    if (aiFilter) {
+      items = items.filter(p => matchesAiListFilter(aiFilter, { pid: p.pid, name: p.name, ministry: p.ministry, budget: p.budget }));
+    }
     if (ministries.length > 0) {
       const set = new Set(ministries);
       items = items.filter(p => set.has(p.ministry));
@@ -348,7 +357,7 @@ export default function ProjectMapPage() {
       items = items.filter(p => normalize(p.name).includes(q) || p.pid.includes(q));
     }
     return items;
-  }, [allPoints, ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query]);
+  }, [allPoints, aiFilter, ministries, recommendations, scoreFilter, yearsFilter, budgetFilter, query]);
 
   // ブロック差額は事業マップの生成物に無いので、その指標を選んだときだけ別に取る
   const blockDiffMetric = BLOCK_DIFF_METRICS.has(sizeMetric);
@@ -492,11 +501,12 @@ export default function ProjectMapPage() {
     setLockedRecipientId(null);
   };
 
-  const hasFilter = ministries.length > 0 || recommendations.length > 0 || query.trim() !== ''
+  const hasFilter = aiFilter !== null || ministries.length > 0 || recommendations.length > 0 || query.trim() !== ''
     || scoreFilter.min || scoreFilter.max || yearsFilter.min || yearsFilter.max
     || budgetFilter.min || budgetFilter.max;
 
   const clearFilters = () => {
+    clearAiFilter();
     setMinistries([]);
     setRecommendations([]);
     setScoreFilter({ min: '', max: '' });
@@ -600,11 +610,7 @@ export default function ProjectMapPage() {
           </>
         )}
 
-        {loading && (
-          <div className="flex h-full items-center justify-center text-sm text-mirai-text-muted">
-            読み込み中…
-          </div>
-        )}
+        {loading && <LoadingSpinner className="h-full" />}
 
         {notGenerated && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-mirai-text-subtle">
@@ -672,6 +678,7 @@ export default function ProjectMapPage() {
               <RangeInput label="総合点" value={scoreFilter} onChange={setScoreFilter} width={58} />
               <RangeInput label="継続年数" value={yearsFilter} onChange={setYearsFilter} width={58} />
               <RangeInput label="予算(億円)" value={budgetFilter} onChange={setBudgetFilter} width={58} />
+              {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} className="max-w-full" />}
               <div className="flex items-center justify-between">
                 {hasFilter ? (
                   <Button

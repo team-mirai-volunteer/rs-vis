@@ -4,6 +4,7 @@ import { PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
 import { ExternalLink, LegalDocument, LegalSection } from '@/components/legal/LegalDocument';
 import { LEGAL_UPDATED } from '@/app/lib/legal';
+import { DATA_SOURCES, PUBLIC_DATA_LICENSE_URL } from '@/app/lib/data-sources';
 
 export const metadata: Metadata = {
   title: `利用規約｜${PRODUCT_NAME}`,
@@ -65,7 +66,7 @@ export default function TermsPage() {
 
       <LegalSection id="ai" heading="第5条（AI 機能と外部サービス）">
         <ol>
-          <li>AI 機能は、外部の AI サービスを利用して提供します。AI に入力した内容は、応答を生成するために外部の AI サービスで処理されます。第4条の意見投稿で送信された対話ログを除き、当団体はこれを保存しません。外部の AI サービスが自社の条件に基づいて入力内容を一時的に保持することがあります。</li>
+          <li>AI 機能は、外部の AI サービスを利用して提供します。AI に入力した内容は、応答を生成するために外部の AI サービスで処理されます。入力した内容と AI の応答（対話ログ）は、当団体がサービスの運営・改善、政策の検討、不正対策その他本サービスの運営上必要な目的で利用し、プライバシーポリシー第3項に定める場合を除き第三者に公開または提供しません。ユーザー自身の API キーを登録して利用する場合、入力した内容はユーザーのブラウザから直接外部の AI サービスに送られ、当団体は取得しません。外部の AI サービスが自社の条件に基づいて入力内容を一時的に保持することがあります。</li>
           <li>ユーザー自身の API キーを登録して AI 機能を利用する場合、キーの管理と利用料金はユーザーの責任で行ってください。キーはユーザーのブラウザ内にのみ保存され、当団体には送信されません。</li>
           <li>当団体は、外部サービスの提供状況、応答の内容、料金について責任を負いません。</li>
         </ol>
@@ -74,7 +75,18 @@ export default function TermsPage() {
       <LegalSection id="ip" heading="第6条（知的財産権と利用の条件）">
         <ol>
           <li>本サービスを構成するプログラム、文章、図表、画像、加工後のデータに関する権利は、当団体または正当な権利者に帰属します。本サービスのソースコードは <ExternalLink href="https://github.com/team-mirai-volunteer/rs-vis">AGPL-3.0 ライセンス</ExternalLink>のもとで公開しており、その利用は同ライセンスに従います。</li>
-          <li>本サービスの元データは、<ExternalLink href="https://rssystem.go.jp/terms">行政事業レビュー見える化サイトの利用規約（公共データ利用規約 PDL1.0）</ExternalLink>や政府標準利用規約など、各公開元の条件に従って利用しています。元データの再利用は、各公開元の条件に従ってください。</li>
+          <li>本サービスの元データは、次の公開元から取得し、<ExternalLink href={PUBLIC_DATA_LICENSE_URL}>公共データ利用規約（PDL1.0）</ExternalLink>や政府標準利用規約など各公開元の条件に従い、当団体が編集・加工して利用しています。元データの再利用は、各公開元の条件に従ってください。
+            <ul>
+              {DATA_SOURCES.map(src => (
+                <li key={src.href}>
+                  {src.name}（<ExternalLink href={src.href}>{src.href}</ExternalLink>）
+                  {src.termsHref && <>・<ExternalLink href={src.termsHref}>利用規約</ExternalLink></>}
+                  <span className="block text-xs text-mirai-text-muted">{src.terms}</span>
+                </li>
+              ))}
+            </ul>
+          </li>
+          <li>財政余力や税・社会保険料の負担比較などのシミュレーションで個別に用いた統計・資料は、その画面に出典と URL を記載しています。</li>
           <li>ユーザーは、出典として「チームみらい {PRODUCT_NAME}」と本サービスの URL、および元データの公開元を明記し、当団体が編集・加工したデータである旨を示すことを条件に、本サービスの画面、図表、集計結果を引用・転載できます。内容を改変して当団体の表示であるかのように示すことはできません。</li>
         </ol>
       </LegalSection>

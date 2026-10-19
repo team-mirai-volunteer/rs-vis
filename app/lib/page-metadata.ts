@@ -3,7 +3,7 @@ import { PAGES, PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from './site-url';
 
 export const SHARE_PAGES = [
-  { href: '/', label: '国の予算を、もっと身近に。', description: '国の予算・支出先・事業評価をたどり、税や政策の選択を考える。チームみらいの行政事業レビュー可視化。' },
+  { href: '/', label: '国の予算を、もっと身近に。', description: `国の予算・支出先・事業評価をたどり、税や政策の選択を考える。チームみらいの${PRODUCT_NAME}。` },
   ...PAGES,
 ];
 export const socialImagePath = (path: string) => `/og/${path === '/' ? 'home' : path.slice(1)}.png`;

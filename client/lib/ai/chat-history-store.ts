@@ -8,7 +8,21 @@
  *   送られるプライバシー境界の変化を防ぐ。page.tsx 側の合意事項）
  * - v1（単一 'current' レコード）からは初回オープン時に1セッションとして移行する
  */
-import type { AiChatUiMessage } from '@/client/components/SankeySvg/AiChatPanel';
+import type { SankeyChatResult } from '@/types/sankey-ai-chat';
+
+/** 保存する表示用メッセージ（AI ナビの UiMessage と同じ形。ここが正典で、UI 側はこれを import する） */
+export interface AiChatUiMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  /** フィルタ条件が確定した assistant 応答に付く */
+  result?: SankeyChatResult;
+  /** 結果をそのページで適用したか（サンキー図）。false なら案内リンクを出す */
+  applied?: boolean;
+  /** 次に聞ける質問の提案（最大3件）。assistant 応答に付く */
+  suggestions?: string[];
+  /** 送信失敗などのエラー表示 */
+  isError?: boolean;
+}
 
 const DB_NAME = 'ai-chat-history';
 const DB_VERSION = 2;

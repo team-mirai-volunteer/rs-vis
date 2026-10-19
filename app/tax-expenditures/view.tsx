@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { BarChart3, ChevronRight, ClipboardCheck, Info, ListFilter, RotateCcw, Search, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { PAGES } from '@/components/navigation/pages';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +33,31 @@ export default function TaxExpenditures() {
   const [query, setQuery] = useState('');
   const [year, setYear] = useState<Year>('2024');
   const [linkedOnly, setLinkedOnly] = useState(false);
+  const [ready, setReady] = useState(false);
+  // URL の q・year・linked・view を読む（共有リンクと AI ナビからの移動のため）。戻る／進むと AI の同一ページ移動は popstate で知らせる
+  useEffect(() => {
+    const restore = () => {
+      const p = new URLSearchParams(window.location.search);
+      setQuery(p.get('q') ?? '');
+      setYear(['2022', '2023', '2024'].includes(p.get('year') ?? '') ? p.get('year') as Year : '2024');
+      setLinkedOnly(p.get('linked') === '1');
+      setView(['amount', 'assessment', 'measures'].includes(p.get('view') ?? '') ? p.get('view') as 'amount' | 'assessment' | 'measures' : 'amount');
+      setReady(true);
+    };
+    restore();
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const p = new URLSearchParams();
+    if (query) p.set('q', query);
+    if (year !== '2024') p.set('year', year);
+    if (linkedOnly) p.set('linked', '1');
+    if (view !== 'amount') p.set('view', view);
+    const next = p.size ? `?${p}` : '';
+    if (next !== window.location.search) window.history.replaceState(null, '', `${window.location.pathname}${next}${window.location.hash}`);
+  }, [ready, query, year, linkedOnly, view]);
   const measures = useMemo(() => data.measures.filter(m =>
     (!linkedOnly || m.rsProjectId !== null) && normalize(`${m.name}${m.article}${m.overview}${m.aliases}`).includes(normalize(query))
   ), [query, linkedOnly]);
@@ -44,7 +70,7 @@ export default function TaxExpenditures() {
     <AppHeader current="/tax-expenditures"><Button variant="outline" size="sm" onClick={() => dialog.current?.showModal()}><Info aria-hidden="true" />データについて</Button></AppHeader>
     <main className="mx-auto max-w-screen-2xl space-y-5 px-3 pb-10 pt-5">
       <header className="rounded-2xl bg-mirai-gradient p-6 sm:p-8">
-        <p className="mb-2 text-xs font-bold">租税特別措置(試作)</p>
+        <p className="mb-2 text-xs font-bold">{PAGES.find(p => p.href === '/tax-expenditures')?.label}</p>
         <h1 className="text-2xl font-bold tracking-normal sm:text-3xl">税優遇は、どこに届いている？</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed">法人税の租税特別措置を、適用額・政策評価・制度の詳細から調べます。関連する行政事業レビュー（RS）もたどれます。</p>
       </header>

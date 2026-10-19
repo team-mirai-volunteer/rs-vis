@@ -19,18 +19,22 @@ const format = (amount: number | null) => amount === null ? '—' : formatBudget
  * 下の「予算・ブロック・支出先」タブの領域を圧迫するため、高さはパネル幅に連動させない。
  * 画面が小さいとき（ラベル文字サイズが 13px 未満のとき）だけ `scale` で縦方向と文字を縮める。
  */
-const CHART_H = 96;
-const PLOT_TOP = 6;
-const PLOT_BOTTOM = 76;
-const AXIS_LABEL_Y = 90;
-const PLOT_LEFT = 66;
+/**
+ * 寸法セット。`default` はサイドパネル（高さ 96px）。`large` は評価一覧の詳細ダイアログの
+ * デスクトップ表示用で、2 列レイアウトの右列いっぱいに高く描き、目盛りを 5 本に増やす。
+ */
+const SIZES = {
+  default: { chartH: 96, plotTop: 6, plotBottom: 76, axisLabelY: 90, plotLeft: 66, tickPx: 9, textPx: 12, legendPx: 10, strokeWidth: 1.5, dotR: 2, activeDotR: 3.5, gridRatios: [0, 0.5, 1] },
+  large: { chartH: 260, plotTop: 12, plotBottom: 228, axisLabelY: 250, plotLeft: 84, tickPx: 12, textPx: 15, legendPx: 12, strokeWidth: 2.25, dotR: 3.5, activeDotR: 5.5, gridRatios: [0, 0.25, 0.5, 0.75, 1] },
+} as const;
 const PLOT_RIGHT_PAD = 14;
 
 /**
  * Mount with key={pid}, so changing projects cannot retain another project's selection/data.
  * @param scale 縦方向と文字の倍率（1 がフル HD の既定。小さい画面で 1 未満）
+ * @param size 寸法セット。`large` は詳細ダイアログのデスクトップ表示
  */
-export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: number }) {
+export function ProjectBudgetHistory({ pid, scale = 1, size = 'default' }: { pid: number; scale?: number; size?: keyof typeof SIZES }) {
   const [data, setData] = useState(() => cache.get(pid));
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -79,14 +83,16 @@ export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: 
   const points = Array.from({ length: lastYear - firstYear + 1 }, (_, i) => data.points.find(point => point.fiscalYear === firstYear + i)
     ?? { fiscalYear: firstYear + i, initialBudget: null, totalBudget: null, executedAmount: null });
   const max = Math.max(1, ...points.flatMap(point => series.map(item => point[item.key] ?? 0)));
+  const dims = SIZES[size];
+  const PLOT_LEFT = dims.plotLeft;
   const k = Math.min(1, Math.max(0.6, scale));
-  const chartH = Math.round(CHART_H * k);
-  const plotTop = Math.round(PLOT_TOP * k);
-  const plotBottom = Math.round(PLOT_BOTTOM * k);
-  const axisLabelY = Math.round(AXIS_LABEL_Y * k);
-  const tickPx = Math.max(8, Math.round(9 * k));
-  const textPx = Math.max(10, Math.round(12 * k));
-  const legendPx = Math.max(9, Math.round(10 * k));
+  const chartH = Math.round(dims.chartH * k);
+  const plotTop = Math.round(dims.plotTop * k);
+  const plotBottom = Math.round(dims.plotBottom * k);
+  const axisLabelY = Math.round(dims.axisLabelY * k);
+  const tickPx = Math.max(8, Math.round(dims.tickPx * k));
+  const textPx = Math.max(10, Math.round(dims.textPx * k));
+  const legendPx = Math.max(9, Math.round(dims.legendPx * k));
   const plotWidth = width - PLOT_LEFT - PLOT_RIGHT_PAD;
   const step = points.length === 1 ? plotWidth : plotWidth / (points.length - 1);
   const x = (index: number) => points.length === 1 ? PLOT_LEFT + plotWidth / 2 : PLOT_LEFT + index * step;
@@ -106,7 +112,7 @@ export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: 
     </div>
     <div ref={chartRef} className="relative mt-1" onMouseLeave={() => setActiveYear(null)} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setActiveYear(null); } }}>
     <svg width={width} height={chartH} viewBox={`0 0 ${width} ${chartH}`} className="block" role="group" aria-label={`${firstYear}〜${lastYear}年度の予算・執行額。グラフに触れると金額を表示します。`}>
-      {[0, 0.5, 1].map(ratio => <g key={ratio}>
+      {dims.gridRatios.map(ratio => <g key={ratio}>
         <line x1={PLOT_LEFT} x2={width - PLOT_RIGHT_PAD} y1={y(max * ratio)} y2={y(max * ratio)} stroke="currentColor" className="text-mirai-border" />
         <text x={PLOT_LEFT - 5} y={y(max * ratio) + 3} textAnchor="end" fontSize={tickPx} fill="currentColor" className="text-mirai-text-muted">{formatBudgetFromYen(max * ratio)}</text>
       </g>)}
@@ -120,8 +126,8 @@ export function ProjectBudgetHistory({ pid, scale = 1 }: { pid: number; scale?: 
           return command;
         }).join(' ');
         return <g key={item.key}>
-          <path d={path} fill="none" stroke={item.color} strokeWidth={1.5} strokeDasharray={item.dash} />
-          {points.map((point, i) => point[item.key] !== null && <circle key={point.fiscalYear} cx={x(i)} cy={y(point[item.key]!)} r={point.fiscalYear === activeYear ? 3.5 : 2} fill={item.color} />)}
+          <path d={path} fill="none" stroke={item.color} strokeWidth={dims.strokeWidth} strokeDasharray={item.dash} />
+          {points.map((point, i) => point[item.key] !== null && <circle key={point.fiscalYear} cx={x(i)} cy={y(point[item.key]!)} r={point.fiscalYear === activeYear ? dims.activeDotR : dims.dotR} fill={item.color} />)}
         </g>;
       })}
       {points.map((point, i) => <g key={point.fiscalYear}>

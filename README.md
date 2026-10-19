@@ -158,6 +158,16 @@ git push origin main
 
 ---
 
+## 外部の AI から使う（MCP・スキル）
+
+- **MCP サーバー**: `POST /api/mcp`（Streamable HTTP・認証なし・公開データのみ）。事業検索・支出先検索・事業詳細・AI 評価・再委託チェーン・年度比較・注目事業の 10 ツール。仕様は [docs/api-guide.md](docs/api-guide.md) の「MCP サーバー」
+  ```bash
+  claude mcp add --transport http rs-vis https://rs-vis.team-mir.ai/api/mcp
+  ```
+- **スキル**: [skills/rs-vis-data/SKILL.md](skills/rs-vis-data/SKILL.md)。データの約束事（1 円単位・シート年度・「その他」の違い・AI 評価の位置づけ・出典表示）、ツールの使い分け、典型的な問いの手順。Claude Code では `.claude/skills/` にコピーするか、リポジトリの `skills/` を指して取り込む
+
+---
+
 ## データソース
 
 - [行政事業レビューシステム](https://rssystem.go.jp/)（CSVデータ取得元）

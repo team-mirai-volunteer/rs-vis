@@ -1,14 +1,26 @@
 'use client';
 
 import { fiscalNavigationUrl } from '@/app/lib/rs-fiscal-year';
-import Image from 'next/image';
 import Link from 'next/link';
-import { createContext, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createContext, useCallback, useContext, useId, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
+import { Landmark, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { PageNavMenu } from './PageNavMenu';
 import { PAGES, PRIMARY_PAGES, PRODUCT_NAME, type NavPageHref } from './pages';
+import dynamic from 'next/dynamic';
+
+/**
+ * AI ナビは開いたときだけ読み込む。ルートレイアウトに置いたことで、エージェント・ツール実行層・基金／事業者の
+ * ライブラリが全ページの初期バンドルに乗っていたため（開かない人には不要な数百 KB）。SSR も不要
+ */
+const AiAssistant = dynamic(() => import('@/client/components/ai/AiAssistant').then(m => m.AiAssistant), { ssr: false });
+import { AiResultProvider } from '@/client/lib/ai/result-handler';
+
+/** AI ナビが条件を解釈するのに使う RS シート年度の既定（最新の実績年度 2024 のシート） */
+const DEFAULT_AI_SHEET_YEAR = 2025;
 
 type HeaderConfig = { fiscalYear?: number; owner: string; position: 'static' | 'fixed'; hasControls: boolean; className?: string };
 const DEFAULT_CONFIG: HeaderConfig = { owner: '', position: 'static', hasControls: false };
@@ -24,10 +36,19 @@ export function AppHeaderProvider({ children }: { children: ReactNode }) {
   const [config, configure] = useState(DEFAULT_CONFIG);
   const [slot, setSlot] = useState<HTMLDivElement | null>(null);
   const context = useMemo(() => ({ slot, configure }), [slot]);
+  // AI ナビ（全ページ共通）。ここに 1 つだけ置くので、ページを移動しても会話は消えない
+  const [aiOpen, setAiOpen] = useState(false);
+  const closeAi = useCallback(() => setAiOpen(false), []);
+  const pageLabel = PAGES.find(page => page.href === current)?.navLabel ?? 'トップ';
+  // 年度を持つページはその実績年度のシート（実績年度 + 1）、持たないページは最新
+  const aiSheetYear = config.fiscalYear !== undefined ? config.fiscalYear + 1 : DEFAULT_AI_SHEET_YEAR;
 
   return <HeaderContext.Provider value={context}>
-    <HeaderFrame current={current} config={config} slotRef={setSlot} />
-    {children}
+    <AiResultProvider>
+      <HeaderFrame current={current} config={config} slotRef={setSlot} aiOpen={aiOpen} onToggleAi={() => setAiOpen(v => !v)} />
+      <AiAssistant open={aiOpen} onClose={closeAi} sheetYear={aiSheetYear} page={pageLabel} />
+      {children}
+    </AiResultProvider>
   </HeaderContext.Provider>;
 }
 
@@ -74,10 +95,12 @@ export function AppHeader({
 /** 主要ナビのホバーカードの幅（px） */
 const HINT_WIDTH = 280;
 
-function HeaderFrame({ current, config, slotRef }: {
+function HeaderFrame({ current, config, slotRef, aiOpen, onToggleAi }: {
   current: NavPageHref | '/';
   config: HeaderConfig;
   slotRef: (element: HTMLDivElement | null) => void;
+  aiOpen: boolean;
+  onToggleAi: () => void;
 }) {
   // 主要ナビは右スロットの幅しだいで入り切らなくなる。文字の途中で切れないよう、
   // 収まらない項目は丸ごと隠す（全件は右端のメニューから辿れる）。768px 以上なら幅に応じて出せる分だけ出す（以前は 1280px 未満で全部隠していた）
@@ -121,9 +144,12 @@ function HeaderFrame({ current, config, slotRef }: {
       )}
     >
       <div className="pointer-events-auto flex flex-wrap items-center gap-x-3 rounded-2xl border border-mirai-border bg-card px-4 shadow-xs sm:h-12 sm:flex-nowrap">
-        <Link href="/" className="flex h-12 shrink-0 items-center gap-3 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
-          <Image src="/logos/team-mirai-wordmark.svg" alt="チームみらい" width={110} height={17} className="h-[17px] w-auto" priority />
-          <span className="hidden border-l border-mirai-border pl-3 text-sm font-bold text-mirai-text lg:inline">{PRODUCT_NAME}</span>
+        {/* ブランドマーク。チームみらいのワードマークはいったん外し、丸地のアイコン＋製品名にする */}
+        <Link href="/" className="flex h-12 shrink-0 items-center gap-2 transition-opacity hover:opacity-80" aria-label={`${PRODUCT_NAME} トップ`}>
+          <span aria-hidden="true" className="flex size-7 items-center justify-center rounded-full bg-mirai-gradient text-mirai-text">
+            <Landmark className="size-4" strokeWidth={2.25} />
+          </span>
+          <span className="text-[15px] font-bold tracking-normal text-mirai-text">{PRODUCT_NAME}</span>
         </Link>
 
         <nav ref={navRef} aria-label="主要ビュー" className="relative ml-2 hidden min-w-0 items-center gap-0.5 overflow-hidden md:flex">
@@ -171,7 +197,20 @@ function HeaderFrame({ current, config, slotRef }: {
         <div ref={slotRef} className={cn('order-last h-[46px] basis-full items-center gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:order-none sm:ml-auto sm:h-12 sm:basis-auto sm:overflow-visible sm:pb-0', config.hasControls ? 'flex' : 'hidden')} />
         {/* 右スロットがあれば sm 以上ではそちらが ml-auto を持つ（両方に持たせると余白が二分され中央に寄る）。
             右スロットが無いページ（トップなど）は自身で右端へ寄せる */}
-        <div className={cn('ml-auto flex h-12 shrink-0 items-center', config.hasControls && 'sm:ml-0')}>
+        <div className={cn('ml-auto flex h-12 shrink-0 items-center gap-1.5', config.hasControls && 'sm:ml-0')}>
+          {/* AI ナビ。全件メニューの左に、同じ体裁の丸ボタンで置く */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleAi}
+            aria-label="AIに聞く"
+            aria-pressed={aiOpen}
+            title="AIに聞く（公開データから事業を探す）"
+            data-testid="ai-assistant-open"
+            className={cn('gap-1 border-mirai-border px-2.5 text-xs font-bold', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-subtle')}
+          >
+            <Sparkles className="size-4" />AI
+          </Button>
           <PageNavMenu current={current} fiscalYear={config.fiscalYear} />
         </div>
       </div>

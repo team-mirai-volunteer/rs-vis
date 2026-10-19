@@ -1,7 +1,11 @@
 'use client';
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { SubcontractsHelp } from '@/client/components/subcontract/SubcontractsHelp';
 import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/app/lib/rs-fiscal-year';
+import { useAiListFilter } from '@/client/lib/ai/use-ai-list-filter';
+import { matchesAiListFilter } from '@/client/lib/ai/list-filter';
+import { AiFilterChip } from '@/client/components/ai/AiFilterChip';
 
 /**
  * /subcontracts（一覧） URL=状態パラメータ一覧。
@@ -23,7 +27,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  *   dmin/dmax : 直接支出合計 Min/Max
  *   tmin/tmax : 支出額合計 Min/Max
  */
-import { useState, useEffect, useMemo, useRef, Suspense, type CSSProperties, type ReactNode } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback, Suspense, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Search, X } from 'lucide-react';
@@ -63,7 +67,77 @@ type SortKey =
   | 'maxBranchWidth'
   | 'mergeTargetCount'
   | 'maxMergeWidth'
-  | 'institutional';
+  | 'institutional'
+  | 'subcontractShare';
+
+/**
+ * 列の定義（表示順）。見出し・説明・寄せ・既定で出すかをここで一元管理し、
+ * 列幅の配列（DEFAULT_COL_WIDTHS / MIN_COL_WIDTHS）はこの順に対応する。
+ */
+const COLUMN_DEFS: ReadonlyArray<{ key: SortKey; label: string; title: string; align: 'left' | 'right' | 'center'; /** 既定で出す画面幅の段。base = 常に、wide = 1280px 以上、xwide = 1700px 以上（フル HD）。無しは手で足す列 */ tier?: 'base' | 'wide' | 'xwide' }> = [
+  { key: 'projectId', label: 'PID', title: '予算事業ID（RSシステムの事業番号）。年度をまたいで同じ事業を指します', align: 'left', tier: 'base' },
+  { key: 'projectName', label: '事業名', title: '事業名。クリックするとその事業の委託構造（ブロックと資金の流れ）を開きます', align: 'left', tier: 'base' },
+  { key: 'ministry', label: '省庁', title: '事業を所管する府省庁', align: 'left', tier: 'base' },
+  { key: 'bureau', label: '担当組織', title: '事業を担当する局・庁／部／課', align: 'left', tier: 'xwide' },
+  { key: 'accountCategory', label: '会計区分', title: '一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）', align: 'left', tier: 'wide' },
+  { key: 'budget', label: '予算額', title: '歳出予算現額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
+  { key: 'execution', label: '執行額', title: '実際に執行された額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
+  { key: 'directExpenseTotal', label: '直接支出合計', title: '事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません', align: 'right', tier: 'wide' },
+  { key: 'totalExpense', label: '支出額合計', title: '全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります', align: 'right', tier: 'base' },
+  { key: 'subcontractShare', label: '再委託率', title: '支出額合計のうち再委託先（直接支出より下流のブロック）への支払いが占める割合', align: 'right', tier: 'base' },
+  { key: 'totalMinusDirect', label: '支出額合計 − 直接支出合計', title: '支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）', align: 'right' },
+  { key: 'executionMinusDirect', label: '執行額 − 直接支出合計', title: '執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり', align: 'right' },
+  { key: 'totalBlockCount', label: 'ブロック', title: 'ブロック（同じ役割の支出先のまとまり。A・B・C…）の数', align: 'right', tier: 'wide' },
+  { key: 'directBlockCount', label: '直接支出', title: '事業（国）から直接支払っているブロックの数', align: 'right' },
+  { key: 'subcontractBlockCount', label: '再委託', title: '他のブロックから再委託・再々委託を受けているブロックの数', align: 'right' },
+  { key: 'indirectCostCount', label: '間接経費', title: '国自らが支出する間接経費（職員旅費・事務費など）の記載件数', align: 'right', tier: 'xwide' },
+  { key: 'separateOriginCount', label: '別財源', title: '別財源のブロック数。事業から直接も再委託でもつながりを確認できない起点ブロック（接続未確認の財源。財源データで確かめたものではない）', align: 'right', tier: 'xwide' },
+  { key: 'totalRecipientCount', label: '支出先', title: '全ブロックに記載された支出先の数', align: 'right', tier: 'base' },
+  { key: 'maxDepth', label: '階層', title: '再委託の最も深い段数（直接支出だけなら1）', align: 'right', tier: 'base' },
+  { key: 'branchingBlockCount', label: '分岐', title: '1つのブロックから2つ以上のブロックへ再委託している「分岐元」の数', align: 'right' },
+  { key: 'maxBranchWidth', label: '最大分岐', title: '1つのブロックから出ている再委託先ブロックの最大数', align: 'right' },
+  { key: 'mergeTargetCount', label: '合流', title: '2つ以上のブロックから資金を受けている「合流先」ブロックの数', align: 'right' },
+  { key: 'maxMergeWidth', label: '最大合流', title: '1つのブロックに流れ込む委託元ブロックの最大数', align: 'right' },
+  { key: 'institutional', label: '構造', title: '全ブロックが金額0・支出先なしの「制度上の流れ」だけを記載した事業か（交付先の制度を示すだけの記載）', align: 'center' },
+];
+/** 画面幅に応じた既定の列。1280px 未満は 9 列、1280px 以上で 12 列（約 1,230px）、1700px 以上（フル HD）で 15 列（約 1,630px） */
+function defaultVisibleFor(width: number): SortKey[] {
+  const tiers: Array<'base' | 'wide' | 'xwide'> = width >= 1700 ? ['base', 'wide', 'xwide'] : width >= 1280 ? ['base', 'wide'] : ['base'];
+  return COLUMN_DEFS.filter(c => c.tier && tiers.includes(c.tier)).map(c => c.key);
+}
+const BASE_VISIBLE_KEYS = defaultVisibleFor(0);
+// v2: 以前は表示のたびに自動保存していたため、画面幅による既定が効かなくなっていた。利用者が列メニューで変えたときだけ保存する
+const VISIBLE_COLUMNS_STORAGE_KEY = 'subcontracts-visible-columns-v2';
+
+/** 検索バー横のクイック絞り込み（AND で重ねる）。件数は年度の全事業に対して出す */
+const QUICK_FILTERS: ReadonlyArray<{ key: string; label: string; title: string; test: (g: SubcontractGraph) => boolean }> = [
+  { key: 'sub', label: '再委託あり', title: '再委託（階層 2 以上）がある事業', test: g => g.maxDepth >= 2 },
+  { key: 'deep', label: '再々委託以深', title: '再々委託（階層 3 以上）まである事業', test: g => g.maxDepth >= 3 },
+  { key: 'single', label: '支出先1社', title: '記載された支出先が 1 者だけの事業', test: g => g.totalRecipientCount === 1 },
+  { key: 'origin', label: '別財源あり', title: '事業からのつながりを確認できない起点ブロック（別財源）がある事業', test: g => g.separateOriginCount > 0 },
+  { key: 'indirect', label: '間接経費あり', title: '国自らが支出する間接経費の記載がある事業', test: g => g.indirectCosts.length > 0 },
+];
+
+/** 支出額合計に占める再委託先（下流ブロック）分の割合（0〜1）。支出額合計が 0 なら null */
+function subcontractShare(g: SubcontractGraph): number | null {
+  if (g.totalExpense <= 0) return null;
+  return Math.min(1, Math.max(0, (g.totalExpense - g.directExpenseTotal) / g.totalExpense));
+}
+
+/** 利用者が列メニューで変えた保存値。無ければ null（画面幅の既定を使う） */
+function loadVisibleColumns(): SortKey[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = window.localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return null;
+    const keys = parsed.filter((k): k is SortKey => typeof k === 'string' && isSortKey(k));
+    return keys.length > 0 ? keys : null;
+  } catch {
+    return null;
+  }
+}
 
 const STRING_SORT_KEYS: ReadonlySet<SortKey> = new Set<SortKey>([
   'projectName',
@@ -80,7 +154,7 @@ const SORT_KEY_SET: ReadonlySet<string> = new Set<SortKey>([
   'totalBlockCount', 'directBlockCount', 'subcontractBlockCount',
   'indirectCostCount', 'separateOriginCount', 'totalRecipientCount',
   'branchingBlockCount', 'maxBranchWidth', 'mergeTargetCount', 'maxMergeWidth',
-  'institutional',
+  'institutional', 'subcontractShare',
 ]);
 function isSortKey(v: string): v is SortKey {
   return SORT_KEY_SET.has(v);
@@ -92,18 +166,18 @@ function defaultSortDir(key: SortKey): SortDir {
 
 const PAGE_SIZE = 50;
 const COLUMN_WIDTH_STORAGE_KEY = 'subcontracts-column-widths';
-const COLUMN_LABELS = ['PID', '事業名', '省庁', '担当組織', '会計区分', '予算額', '執行額', '直接支出合計', '支出額合計',
-  '支出額合計 − 直接支出合計', '執行額 − 直接支出合計', 'ブロック', '直接支出', '再委託', '間接経費', '別財源', '支出先', '階層', '分岐', '最大分岐', '合流', '最大合流', '構造'];
+const COLUMN_LABELS = COLUMN_DEFS.map(c => c.label);
 const DEFAULT_COL_WIDTHS = [
-  56,    // PID
+  44,    // PID
   280,   // 事業名
-  160,   // 省庁（正式名称を表示）
+  112,   // 省庁（RS の府省庁名。最長でも 6 文字程度）
   240,   // 担当組織
   88,    // 会計区分
   88,    // 予算額
   88,    // 執行額
   112,   // 直接支出合計
   96,    // 支出額合計
+  92,    // 再委託率（バー＋％）
   108,   // 支出計−直接
   96,    // 執行−直接
   88,    // ブロック
@@ -120,7 +194,7 @@ const DEFAULT_COL_WIDTHS = [
   64,    // 構造
 ];
 const MIN_COL_WIDTHS = [
-  48,
+  40,
   160,
   60,
   160,
@@ -129,6 +203,7 @@ const MIN_COL_WIDTHS = [
   76,
   96,
   88,
+  96,
   92,
   88,
   68,
@@ -143,7 +218,7 @@ const MIN_COL_WIDTHS = [
   48,
   72,
   56,
-].map((width, index) => Math.max(width, [...COLUMN_LABELS[index]].length * 12 + 36));
+].map((width, index) => Math.max(width, [...COLUMN_LABELS[index]].length * 11 + 24));
 
 function loadColumnWidths(): number[] {
   if (typeof window === 'undefined') return DEFAULT_COL_WIDTHS;
@@ -171,6 +246,8 @@ function SubcontractsPageInner() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState(() => searchParams.get('q') ?? '');
+  // AI ナビ（ヘッダー）の結果をこの一覧に当てる。事業名・府省庁・予算額・AI が選んだ事業 ID だけを判定し、他の条件はチップで案内
+  const { aiFilter, clearAiFilter } = useAiListFilter('一覧');
   const [sortKey, setSortKey] = useState<SortKey>(() => {
     const s = searchParams.get('sort');
     return s && isSortKey(s) ? s : 'projectId';
@@ -206,6 +283,45 @@ function SubcontractsPageInner() {
     return Number.isInteger(p) && p >= 1 ? p : 1;
   });
   const [columnWidths, setColumnWidths] = useState(loadColumnWidths);
+  // 表示する列（URL の cols が最優先、無ければ利用者の保存値、無ければ画面幅に応じた既定）。
+  // SSR では幅が分からないので最小の既定で描き、マウント後に幅で決め直す（URL・保存値があるときは変えない）
+  const [visibleKeys, setVisibleKeys] = useState<SortKey[]>(() => {
+    const fromUrl = (searchParams.get('cols') ?? '').split(',').filter((k): k is SortKey => isSortKey(k));
+    return fromUrl.length > 0 ? fromUrl : BASE_VISIBLE_KEYS;
+  });
+  const columnsPinnedRef = useRef<boolean>((searchParams.get('cols') ?? '') !== '');
+  useEffect(() => {
+    if (columnsPinnedRef.current) return;
+    const saved = loadVisibleColumns();
+    setVisibleKeys(saved ?? defaultVisibleFor(window.innerWidth));
+  }, []);
+  /** 列メニューからの変更。以後はこのブラウザでその列を使う */
+  const updateVisibleKeys = useCallback((next: SortKey[] | null) => {
+    columnsPinnedRef.current = next !== null;
+    if (next === null) {
+      try { window.localStorage.removeItem(VISIBLE_COLUMNS_STORAGE_KEY); } catch { /* 無視 */ }
+      setVisibleKeys(defaultVisibleFor(window.innerWidth));
+      return;
+    }
+    try { window.localStorage.setItem(VISIBLE_COLUMNS_STORAGE_KEY, JSON.stringify(next)); } catch { /* 保存できない環境では毎回既定 */ }
+    setVisibleKeys(next);
+  }, []);
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
+  // 表の入れ物の幅（余りを事業名に足すため）。スクロールバー分を除いた clientWidth
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  useLayoutEffect(() => {
+    const element = tableContainerRef.current;
+    if (!element) return;
+    const measure = () => setContainerWidth(element.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [loading, error]);
+  // クイック絞り込み（AND）
+  const [quickFilters, setQuickFilters] = useState<string[]>(() => (searchParams.get('qf') ?? '').split(',').filter(k => QUICK_FILTERS.some(d => d.key === k)));
+  const quickCounts = useMemo(() => QUICK_FILTERS.map(d => graphs.filter(d.test).length), [graphs]);
   const resizingColumnRef = useRef<{ index: number; startX: number; startWidth: number } | null>(null);
   const savedColumnWidthsRef = useRef<string | null>(null);
 
@@ -315,6 +431,8 @@ function SubcontractsPageInner() {
       if (filterDirectMax) p.set('dmax', filterDirectMax);
       if (filterTotalExpenseMin) p.set('tmin', filterTotalExpenseMin);
       if (filterTotalExpenseMax) p.set('tmax', filterTotalExpenseMax);
+      if (quickFilters.length > 0) p.set('qf', quickFilters.join(','));
+      if (visibleKeys.join(',') !== defaultVisibleFor(window.innerWidth).join(',')) p.set('cols', visibleKeys.join(','));
       const qs = p.toString();
       window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
     }, 200);
@@ -325,6 +443,7 @@ function SubcontractsPageInner() {
     filterProjectName, filterBureau,
     filterBudgetMin, filterBudgetMax, filterExecutionMin, filterExecutionMax,
     filterDirectMin, filterDirectMax, filterTotalExpenseMin, filterTotalExpenseMax,
+    quickFilters, visibleKeys,
   ]);
 
   // 金額フィルタの解析
@@ -342,6 +461,13 @@ function SubcontractsPageInner() {
     const projectQ = filterProjectName.trim().toLocaleLowerCase();
     const bureauQ = filterBureau.trim().toLocaleLowerCase();
     return graphs.filter((g) => {
+      // AI ナビの条件
+      if (aiFilter && !matchesAiListFilter(aiFilter, { pid: String(g.projectId), name: g.projectName, ministry: g.ministry, budget: g.budget })) return false;
+      // クイック絞り込み（AND）
+      for (const key of quickFilters) {
+        const def = QUICK_FILTERS.find(d => d.key === key);
+        if (def && !def.test(g)) return false;
+      }
       // 府省庁
       if (selectedMinistries.length > 0 && !selectedMinistries.includes(g.ministry)) return false;
       // 会計区分（複数選択 OR）
@@ -384,7 +510,7 @@ function SubcontractsPageInner() {
       );
     });
   }, [
-    graphs, query, selectedMinistries, selectedAccountCategories,
+    graphs, query, aiFilter, quickFilters, selectedMinistries, selectedAccountCategories,
     filterProjectName, filterBureau, selectedStructures,
     budgetMinYen, budgetMaxYen, executionMinYen, executionMaxYen,
     directMinYen, directMaxYen, totalExpenseMinYen, totalExpenseMaxYen,
@@ -431,6 +557,7 @@ function SubcontractsPageInner() {
       else if (sortKey === 'mergeTargetCount') { va = a.mergeTargetCount; vb = b.mergeTargetCount; }
       else if (sortKey === 'maxMergeWidth') { va = a.maxMergeWidth; vb = b.maxMergeWidth; }
       else if (sortKey === 'institutional') { va = a.isInstitutionalFlowOnly ? 1 : 0; vb = b.isInstitutionalFlowOnly ? 1 : 0; }
+      else if (sortKey === 'subcontractShare') { va = subcontractShare(a) ?? -1; vb = subcontractShare(b) ?? -1; }
       else { va = a.totalRecipientCount; vb = b.totalRecipientCount; }
       return (va - vb) * dir;
     });
@@ -438,7 +565,7 @@ function SubcontractsPageInner() {
 
   // フィルタ・ソート・年度変更時はページ1へ戻す
   const filterKey = [
-    year, query, selectedMinistries.join(','), selectedAccountCategories.join(','),
+    year, query, quickFilters.join(','), selectedMinistries.join(','), selectedAccountCategories.join(','),
     selectedStructures.join(','), filterProjectName, filterBureau,
     filterBudgetMin, filterBudgetMax, filterExecutionMin, filterExecutionMax,
     filterDirectMin, filterDirectMax, filterTotalExpenseMin, filterTotalExpenseMax,
@@ -564,9 +691,77 @@ function SubcontractsPageInner() {
   const dash = <span className="text-mirai-text-placeholder">—</span>;
 
   // 旧保存値や手動リサイズでも見出し・省庁名が欠けない幅を確保する。
-  const ministryWidth = Math.max(160, ...graphs.map(g => [...g.ministry].length * 12 + 20));
+  const ministryWidth = Math.max(MIN_COL_WIDTHS[2], ...graphs.map(g => [...g.ministry].length * 12 + 20));
   const displayColumnWidths = columnWidths.map((width, i) => Math.max(width, MIN_COL_WIDTHS[i], i === 2 ? ministryWidth : 0));
-  const tableWidth = displayColumnWidths.reduce((sum, width) => sum + width, 0);
+  // 表示する列の添字（定義順）。幅・リサイズは元の添字で管理する
+  const visibleIndexes = COLUMN_DEFS.map((c, i) => (visibleKeys.includes(c.key) ? i : -1)).filter(i => i >= 0);
+  const columnsWidth = visibleIndexes.reduce((sum, i) => sum + displayColumnWidths[i], 0);
+  // 列の合計が画面より狭いとき、余りは事業名の列だけに足す（全列を均等に伸ばすと PID や省庁が無駄に広がる）
+  const nameExtra = Math.max(0, containerWidth - columnsWidth);
+  const tableWidth = columnsWidth + nameExtra;
+  const colWidth = (i: number) => displayColumnWidths[i] + (COLUMN_DEFS[i].key === 'projectName' ? nameExtra : 0);
+
+  /** 1 セルの中身。列の定義（COLUMN_DEFS）の key ごとに描く */
+  function renderCell(key: SortKey, g: SubcontractGraph): ReactNode {
+    switch (key) {
+      case 'projectId': return <span className="text-mirai-text-muted">{g.projectId}</span>;
+      case 'projectName': return (
+        <div className="flex min-w-0 items-center gap-1">
+          <Link href={rsViewUrl(`/subcontracts/${g.projectId}`, year)} title={g.projectName}
+            className="block min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:text-primary-accent hover:underline">
+            {g.projectName}
+          </Link>
+          <ProjectReferenceLinks projectId={g.projectId} projectName={g.projectName} year={year} compact />
+        </div>
+      );
+      case 'ministry': return <span title={g.ministry}>{g.ministry}</span>;
+      case 'bureau': return <span title={g.bureau || undefined}>{bureauLeaf(g.bureau) || dash}</span>;
+      case 'accountCategory': return g.accountCategory ? accountCategoryLabel(g.accountCategory) : dash;
+      case 'budget': return g.budget > 0 ? formatYen(g.budget) : '—';
+      case 'execution': return g.execution > 0 ? formatYen(g.execution) : '—';
+      case 'directExpenseTotal': return g.directExpenseTotal > 0 ? formatYen(g.directExpenseTotal) : '—';
+      case 'totalExpense': return g.totalExpense > 0 ? formatYen(g.totalExpense) : '—';
+      case 'subcontractShare': {
+        const share = subcontractShare(g);
+        if (share === null) return dash;
+        const pct = Math.round(share * 100);
+        return (
+          <div className="flex items-center gap-1.5" title={`支出額合計 ${formatYen(g.totalExpense)} のうち再委託先分 ${formatYen(Math.max(0, g.totalExpense - g.directExpenseTotal))}`}>
+            <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mirai-surface-light">
+              <div className={cn('h-full rounded-full', pct >= 50 ? 'bg-status-warn' : 'bg-primary')} style={{ width: `${pct}%` }} />
+            </div>
+            <span className={cn('w-8 shrink-0 text-right tabular-nums', pct === 0 && 'text-mirai-text-placeholder')}>{pct}%</span>
+          </div>
+        );
+      }
+      case 'totalMinusDirect': {
+        const v = g.totalExpense - g.directExpenseTotal;
+        if (!(g.totalExpense > 0 || g.directExpenseTotal > 0)) return dash;
+        return v === 0 ? <span className="text-mirai-text-placeholder">0</span> : formatYen(v);
+      }
+      case 'executionMinusDirect': {
+        const v = g.execution - g.directExpenseTotal;
+        if (!(g.execution > 0 || g.directExpenseTotal > 0)) return dash;
+        return v === 0 ? <span className="text-mirai-text-placeholder">0</span> : formatYen(v);
+      }
+      case 'totalBlockCount': return g.totalBlockCount;
+      case 'directBlockCount': return g.directBlockCount > 0 ? g.directBlockCount : dash;
+      case 'subcontractBlockCount': return subcontractBlockCount(g) > 0 ? subcontractBlockCount(g) : dash;
+      case 'indirectCostCount': return g.indirectCosts.length > 0 ? g.indirectCosts.length.toLocaleString() : dash;
+      case 'separateOriginCount': return g.separateOriginCount > 0 ? g.separateOriginCount : dash;
+      case 'totalRecipientCount': return g.totalRecipientCount.toLocaleString();
+      case 'maxDepth': return (
+        <span className={cn('inline-block min-w-5 rounded-md px-1 text-center font-bold tabular-nums', g.maxDepth >= 3 ? 'bg-status-warn-bg text-status-warn-fg' : g.maxDepth === 2 ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>{g.maxDepth}</span>
+      );
+      case 'branchingBlockCount': return g.branchingBlockCount > 0 ? g.branchingBlockCount : dash;
+      case 'maxBranchWidth': return g.maxBranchWidth >= 2 ? g.maxBranchWidth : dash;
+      case 'mergeTargetCount': return g.mergeTargetCount > 0 ? g.mergeTargetCount : dash;
+      case 'maxMergeWidth': return g.maxMergeWidth >= 2 ? g.maxMergeWidth : dash;
+      case 'institutional': return g.isInstitutionalFlowOnly
+        ? <span className="inline-block rounded-full bg-stance-against-bg px-1 py-0.5 text-[10px] font-bold text-stance-against">制度</span>
+        : dash;
+    }
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background">
@@ -578,6 +773,7 @@ function SubcontractsPageInner() {
       <div className="w-full shrink-0 p-3">
         {/* コントロール（/sankey-svg と同じトーン） */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
+          {aiFilter && <AiFilterChip filter={aiFilter} sheetYear={year} onClear={() => clearAiFilter()} className="basis-full" />}
 
           {/* 検索 */}
           <div className="relative min-w-[180px] flex-1">
@@ -618,16 +814,70 @@ function SubcontractsPageInner() {
           <span className="shrink-0 text-xs text-mirai-text-subtle">
             {filtered.length.toLocaleString()}件表示
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setColumnWidths(DEFAULT_COL_WIDTHS)}
-            title="列幅を初期値に戻す"
-            className="shrink-0 border-mirai-border text-xs"
-          >
-            列幅リセット
-          </Button>
+          {/* 列の選択。既定は 9 列で、残りはここから足す。列幅のリセットもここに置く */}
+          <div className="relative shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowColumnMenu(v => !v)}
+              aria-expanded={showColumnMenu}
+              aria-haspopup="dialog"
+              title="表示する列を選ぶ"
+              className={cn('text-xs', showColumnMenu ? 'border-primary bg-primary/10 text-primary-accent' : 'border-mirai-border')}
+            >
+              列 <span className="tabular-nums text-mirai-text-muted">{visibleIndexes.length}/{COLUMN_DEFS.length}</span>
+              <ChevronDown aria-hidden="true" className={cn('size-3.5 transition-transform', showColumnMenu && 'rotate-180')} />
+            </Button>
+            {showColumnMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowColumnMenu(false)} aria-hidden="true" />
+                <div role="dialog" aria-label="表示する列" className="absolute right-0 top-full z-50 mt-1 w-[32rem] max-w-[calc(100vw-1.5rem)] rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="font-bold text-mirai-text">表示する列</span>
+                    <span className="text-mirai-text-muted">見出しをドラッグすると幅を変えられます</span>
+                    <Button variant="link" size="xs" className="ml-auto" onClick={() => updateVisibleKeys(null)}>既定に戻す</Button>
+                    <Button variant="link" size="xs" onClick={() => updateVisibleKeys(COLUMN_DEFS.map(c => c.key))}>すべて表示</Button>
+                    <Button variant="link" size="xs" onClick={() => setColumnWidths(DEFAULT_COL_WIDTHS)}>列幅リセット</Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 sm:grid-cols-3">
+                    {COLUMN_DEFS.map(c => {
+                      const checked = visibleKeys.includes(c.key);
+                      const locked = c.key === 'projectName';
+                      return (
+                        <label key={c.key} className={cn('flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 hover:bg-mirai-surface', locked && 'cursor-default')} title={c.title}>
+                          <input type="checkbox" checked={checked || locked} disabled={locked}
+                            onChange={() => updateVisibleKeys(checked ? visibleKeys.filter(k => k !== c.key) : COLUMN_DEFS.map(d => d.key).filter(k => k === c.key || visibleKeys.includes(k)))}
+                            className="size-3 accent-primary" />
+                          <span className={cn(locked && 'text-mirai-text-muted')}>{c.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
+        </div>
+
+        {/* クイック絞り込み。押すだけで重ねられる（AND）。件数は年度の全事業に対するもの */}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="クイック絞り込み">
+          {QUICK_FILTERS.map((d, i) => {
+            const active = quickFilters.includes(d.key);
+            return (
+              <Button key={d.key} variant="outline" size="xs" aria-pressed={active} title={d.title}
+                onClick={() => setQuickFilters(prev => active ? prev.filter(k => k !== d.key) : [...prev, d.key])}
+                className={cn('h-7 rounded-full px-2.5 text-xs font-medium', active ? 'border-primary bg-mirai-surface-teal text-primary-accent' : 'border-mirai-border text-mirai-text-subtle')}>
+                {d.label}
+                <span className={cn('tabular-nums', active ? 'text-primary-accent/80' : 'text-mirai-text-muted')}>{quickCounts[i].toLocaleString()}</span>
+              </Button>
+            );
+          })}
+          {quickFilters.length > 0 && (
+            <Button variant="ghost" size="xs" onClick={() => setQuickFilters([])} className="h-7 text-xs text-mirai-text-muted">
+              <X aria-hidden="true" className="size-3" />解除
+            </Button>
+          )}
         </div>
 
         {/* 折りたたみフィルタパネル（/sankey-svg ライク） */}
@@ -695,139 +945,38 @@ function SubcontractsPageInner() {
 
       {/* ── 中部: スクロールテーブル ── */}
       <div className="flex min-h-0 w-full flex-1 flex-col px-3">
-        {loading && <p className="text-sm text-mirai-text-muted">読み込み中...</p>}
+        {loading && <LoadingSpinner />}
         {error && <p className="text-sm text-destructive">エラー: {error}</p>}
         {!loading && !error && (
-          <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-xs">
-            <table className="border-collapse text-xs" style={{ width: tableWidth, minWidth: '100%', tableLayout: 'fixed' }}>
+          <div ref={tableContainerRef} className="min-h-0 flex-1 overflow-auto rounded-xl border border-mirai-border bg-card shadow-xs">
+            <table className="border-collapse text-xs" style={{ width: tableWidth, tableLayout: 'fixed' }}>
               <colgroup>
-                {displayColumnWidths.map((width, i) => (
-                  <col key={i} style={{ width }} />
+                {visibleIndexes.map(i => (
+                  <col key={COLUMN_DEFS[i].key} style={{ width: colWidth(i) }} />
                 ))}
               </colgroup>
               <thead>
                 <tr className="bg-mirai-surface">
-                  <SortHeader sort="projectId" title="予算事業ID（RSシステムの事業番号）。年度をまたいで同じ事業を指します" columnIndex={0}>PID</SortHeader>
-                  <SortHeader sort="projectName" title="事業名。クリックするとその事業の委託構造（ブロックと資金の流れ）を開きます" columnIndex={1}>事業名</SortHeader>
-                  <SortHeader sort="ministry" title="事業を所管する府省庁" columnIndex={2}>省庁</SortHeader>
-                  <SortHeader sort="bureau" title="事業を担当する局・庁／部／課" columnIndex={3}>担当組織</SortHeader>
-                  <SortHeader sort="accountCategory" title="一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）" columnIndex={4}>会計区分</SortHeader>
-                  <SortHeader sort="budget" title="歳出予算現額の合計（レビューシート 2-1）" columnIndex={5} align="right">予算額</SortHeader>
-                  <SortHeader sort="execution" title="実際に執行された額の合計（レビューシート 2-1）" columnIndex={6} align="right">執行額</SortHeader>
-                  <SortHeader sort="directExpenseTotal" title="事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません" columnIndex={7} align="right">直接支出合計</SortHeader>
-                  <SortHeader sort="totalExpense" title="全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります" columnIndex={8} align="right">支出額合計</SortHeader>
-                  <SortHeader sort="totalMinusDirect" columnIndex={9} align="right" title="支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）">支出額合計 − 直接支出合計</SortHeader>
-                  <SortHeader sort="executionMinusDirect" columnIndex={10} align="right" title="執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり">執行額 − 直接支出合計</SortHeader>
-                  <SortHeader sort="totalBlockCount" title="ブロック（同じ役割の支出先のまとまり。A・B・C…）の数" columnIndex={11} align="right">ブロック</SortHeader>
-                  <SortHeader sort="directBlockCount" title="事業（国）から直接支払っているブロックの数" columnIndex={12} align="right">直接支出</SortHeader>
-                  <SortHeader sort="subcontractBlockCount" title="他のブロックから再委託・再々委託を受けているブロックの数" columnIndex={13} align="right">再委託</SortHeader>
-                  <SortHeader sort="indirectCostCount" title="国自らが支出する間接経費（職員旅費・事務費など）の記載件数" columnIndex={14} align="right">間接経費</SortHeader>
-                  <SortHeader sort="separateOriginCount" title="別財源のブロック数。事業から直接も再委託でもつながりを確認できない起点ブロック（接続未確認の財源。財源データで確かめたものではない）" columnIndex={15} align="right">別財源</SortHeader>
-                  <SortHeader sort="totalRecipientCount" title="全ブロックに記載された支出先の数" columnIndex={16} align="right">支出先</SortHeader>
-                  <SortHeader sort="maxDepth" title="再委託の最も深い段数（直接支出だけなら1）" columnIndex={17} align="right">階層</SortHeader>
-                  <SortHeader sort="branchingBlockCount" title="1つのブロックから2つ以上のブロックへ再委託している「分岐元」の数" columnIndex={18} align="right">分岐</SortHeader>
-                  <SortHeader sort="maxBranchWidth" title="1つのブロックから出ている再委託先ブロックの最大数" columnIndex={19} align="right">最大分岐</SortHeader>
-                  <SortHeader sort="mergeTargetCount" title="2つ以上のブロックから資金を受けている「合流先」ブロックの数" columnIndex={20} align="right">合流</SortHeader>
-                  <SortHeader sort="maxMergeWidth" title="1つのブロックに流れ込む委託元ブロックの最大数" columnIndex={21} align="right">最大合流</SortHeader>
-                  <SortHeader sort="institutional" title="全ブロックが金額0・支出先なしの「制度上の流れ」だけを記載した事業か（交付先の制度を示すだけの記載）" columnIndex={22} align="center">構造</SortHeader>
+                  {visibleIndexes.map(i => {
+                    const c = COLUMN_DEFS[i];
+                    return <SortHeader key={c.key} sort={c.key} title={c.title} columnIndex={i} align={c.align}>{c.label}</SortHeader>;
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {pageItems.map((g, i) => (
+                {pageItems.map((g, rowIndex) => (
                   <tr
                     key={g.projectId}
                     className={cn(
                       'border-b border-border transition-colors hover:bg-mirai-surface-teal/60',
-                      i % 2 === 0 ? 'bg-card' : 'bg-mirai-surface-gray',
+                      rowIndex % 2 === 0 ? 'bg-card' : 'bg-mirai-surface-gray',
                     )}
                   >
-                    <td style={tdTextStyle} className="text-mirai-text-muted">{g.projectId}</td>
-                    <td style={tdTextStyle} className={TD_CLASS}>
-                      <div className="flex min-w-0 items-center gap-1">
-                        <Link
-                          href={rsViewUrl(`/subcontracts/${g.projectId}`, year)}
-                          title={g.projectName}
-                          className="block min-w-0 flex-1 truncate font-medium text-primary underline-offset-4 hover:text-primary-accent hover:underline"
-                        >
-                          {g.projectName}
-                        </Link>
-                        <ProjectReferenceLinks projectId={g.projectId} projectName={g.projectName} year={year} compact />
-                      </div>
-                    </td>
-                    <td style={tdTextStyle} className={TD_CLASS} title={g.ministry}>{g.ministry}</td>
-                    <td style={tdTextStyle} className={TD_CLASS} title={g.bureau || undefined}>
-                      {bureauLeaf(g.bureau) || dash}
-                    </td>
-                    <td style={tdTextStyle} className={TD_CLASS}>
-                      {g.accountCategory ? accountCategoryLabel(g.accountCategory) : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.budget > 0 ? formatYen(g.budget) : '—'}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.execution > 0 ? formatYen(g.execution) : '—'}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.directExpenseTotal > 0 ? formatYen(g.directExpenseTotal) : '—'}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.totalExpense > 0 ? formatYen(g.totalExpense) : '—'}
-                    </td>
-                    {(() => {
-                      const totalMinusDirect = g.totalExpense - g.directExpenseTotal;
-                      const executionMinusDirect = g.execution - g.directExpenseTotal;
-                      const fmtDiff = (v: number, hasBase: boolean) => {
-                        if (!hasBase) return dash;
-                        if (v === 0) return <span className="text-mirai-text-placeholder">0</span>;
-                        return formatYen(v);
-                      };
-                      return (
-                        <>
-                          <td style={tdNumStyle} className={TD_CLASS}>
-                            {fmtDiff(totalMinusDirect, g.totalExpense > 0 || g.directExpenseTotal > 0)}
-                          </td>
-                          <td style={tdNumStyle} className={TD_CLASS}>
-                            {fmtDiff(executionMinusDirect, g.execution > 0 || g.directExpenseTotal > 0)}
-                          </td>
-                        </>
-                      );
-                    })()}
-                    <td style={tdNumStyle} className={TD_CLASS}>{g.totalBlockCount}</td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.directBlockCount > 0 ? g.directBlockCount : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {subcontractBlockCount(g) > 0 ? subcontractBlockCount(g) : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.indirectCosts.length > 0 ? g.indirectCosts.length.toLocaleString() : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.separateOriginCount > 0 ? g.separateOriginCount : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>{g.totalRecipientCount.toLocaleString()}</td>
-                    <td style={tdNumStyle} className={TD_CLASS}>{g.maxDepth}</td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.branchingBlockCount > 0 ? g.branchingBlockCount : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.maxBranchWidth >= 2 ? g.maxBranchWidth : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.mergeTargetCount > 0 ? g.mergeTargetCount : dash}
-                    </td>
-                    <td style={tdNumStyle} className={TD_CLASS}>
-                      {g.maxMergeWidth >= 2 ? g.maxMergeWidth : dash}
-                    </td>
-                    <td style={{ ...tdTextStyle, textAlign: 'center' }} className={TD_CLASS}>
-                      {g.isInstitutionalFlowOnly ? (
-                        <span className="inline-block rounded-full bg-stance-against-bg px-1 py-0.5 text-[10px] font-bold text-stance-against">
-                          制度
-                        </span>
-                      ) : (
-                        dash
-                      )}
-                    </td>
+                    {visibleIndexes.map(i => {
+                      const c = COLUMN_DEFS[i];
+                      const style = c.align === 'right' ? tdNumStyle : c.align === 'center' ? { ...tdTextStyle, textAlign: 'center' as const } : tdTextStyle;
+                      return <td key={c.key} style={style} className={TD_CLASS}>{renderCell(c.key, g)}</td>;
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -870,7 +1019,7 @@ function SubcontractsPageInner() {
 
 export default function SubcontractsPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-sm text-mirai-text-muted">読み込み中...</div>}>
+    <Suspense fallback={<LoadingSpinner />}>
       <SubcontractsPageInner />
     </Suspense>
   );

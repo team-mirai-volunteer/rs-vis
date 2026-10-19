@@ -50,6 +50,8 @@ export function UnifiedSearch({
     if (!filterOpen) return;
     const onPointerDown = (e: MouseEvent) => {
       if (rootRef.current?.contains(e.target as Node)) return;
+      // 所管のドロップダウンは body 直下（portal）に描かれるので contains では拾えない。中を押しても閉じない
+      if ((e.target as Element).closest?.('[data-keep-open="true"]')) return;
       onToggleFilter();
     };
     // capture 段階で拾う。図のノードは mousedown の伝播を止めるので、バブリングでは document に届かない
@@ -155,7 +157,7 @@ export function UnifiedSearch({
         </div>
       )}
       {filterOpen && (
-        <div className="absolute left-0 top-9 z-40 max-h-[calc(100vh-var(--app-header-h)-5rem)] w-[28rem] overflow-y-auto sm:left-auto sm:right-0 rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
+        <div className="absolute left-0 top-9 z-40 max-h-[calc(100dvh-var(--app-header-h)-1.5rem)] w-[28rem] overflow-y-auto sm:left-auto sm:right-0 rounded-xl border border-mirai-border bg-card p-1 shadow-soft" data-pan-disabled="true">
           {filterFields}
         </div>
       )}

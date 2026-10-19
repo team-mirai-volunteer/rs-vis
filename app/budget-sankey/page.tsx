@@ -15,20 +15,18 @@
  * （設計 5.2）。
  */
 
+import LoadingSpinner from '@/client/components/LoadingSpinner';
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
 import {
-  UNIFIED_FILTER_DEFAULT,
   UNIFIED_PRESET_COLUMNS,
   UNIFIED_PROGRAM_SORT_SHORT,
-  UNIFIED_SCORE_RANGE_EMPTY,
   hasScoreRange,
   type UnifiedOffset,
   type UnifiedPolicyScores,
   type UnifiedProgramSort,
-  type UnifiedScoreRange,
   type UnifiedTopN,
   type UnifiedViewFilter,
 } from '@/types/unified-budget-view';
@@ -49,10 +47,13 @@ import { UnifiedViewSelect } from '@/client/components/unified-budget/UnifiedVie
 import { UnifiedBasisSelect } from '@/client/components/unified-budget/UnifiedBasisSelect';
 import { UnifiedSettings } from '@/client/components/unified-budget/UnifiedSettings';
 import { Button } from '@/components/ui/button';
-import { SlidersHorizontal, Sparkles } from 'lucide-react';
-import { AiFilterChat } from '@/client/components/unified-budget/AiFilterChat';
+import { SlidersHorizontal } from 'lucide-react';
 import { useMediaQuery } from '@/client/hooks/useMediaQuery';
 import { applySankeyQueryToUnifiedFilter } from '@/client/lib/unified-ai-filter';
+import { parseFilter, serializeFilter } from '@/app/lib/unified-budget/filter-url';
+import { atomicMinistryOptions } from '@/app/lib/unified-budget/ministry-names';
+import { useAiResultHandler } from '@/client/lib/ai/result-handler';
+import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 import { cn } from '@/lib/utils';
 import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT, parseFlowScale } from '@/client/lib/unified-flow-scale';
 
@@ -108,85 +109,10 @@ function parsePerColumn(params: URLSearchParams, prefix: 't' | 'o'): Partial<Rec
   return out;
 }
 
-/** スコア範囲の URL 表現 "min-max"（片方だけなら "60-" / "-40"） */
-function parseScoreRange(v: string | null): UnifiedScoreRange {
-  if (!v) return UNIFIED_SCORE_RANGE_EMPTY;
-  const i = v.indexOf('-');
-  return i < 0 ? { min: v, max: '' } : { min: v.slice(0, i), max: v.slice(i + 1) };
-}
-const serializeScoreRange = (r: UnifiedScoreRange): string | null => (r.min || r.max ? `${r.min}-${r.max}` : null);
-
-/**
- * 絞り込みの URL パラメータ。
- *   fbig=1 巨大特会を含める / fnrs=0 非事業ノードを隠す / fmi 所管（複数）/ fac 会計区分（複数）/ fq 名前
- *   fbmin・fbmax 予算額の下限・上限 / fsmin・fsmax 支出額の下限・上限
- *   fpq 事業名・fpr=1 正規表現 / frq 支出先名・frr=1 正規表現・frs=1 再委託先を含む
- *   fsub=has|none 再委託の有無・fsd 階層の下限 / fso・fsx・fsn スコア範囲 "lo-hi"
- */
-function parseFilter(params: URLSearchParams): UnifiedViewFilter {
-  const fsub = params.get('fsub');
-  const fsd = Number(params.get('fsd'));
-  return {
-    includeCollapsedAccounts: params.get('fbig') === '1',
-    showNonRs: params.get('fnrs') !== '0',
-    ministries: params.getAll('fmi'),
-    accountTypes: params.getAll('fac').filter((v): v is 'general' | 'special' => v === 'general' || v === 'special'),
-    nameQuery: params.get('fq') ?? '',
-    budgetMin: params.get('fbmin') ?? '',
-    budgetMax: params.get('fbmax') ?? '',
-    spendingMin: params.get('fsmin') ?? '',
-    spendingMax: params.get('fsmax') ?? '',
-    projectIds: (params.get('fpid') ?? '').split(',').map(v => v.trim()).filter(Boolean),
-    projectQuery: params.get('fpq') ?? '',
-    projectRegex: params.get('fpr') === '1',
-    recipientQuery: params.get('frq') ?? '',
-    recipientRegex: params.get('frr') === '1',
-    recipientIncludeSub: params.get('frs') === '1',
-    subcontract: fsub === 'has' || fsub === 'none' ? fsub : 'any',
-    subcontractMinDepth: Number.isInteger(fsd) && fsd >= 2 ? fsd : UNIFIED_FILTER_DEFAULT.subcontractMinDepth,
-    scoreO: parseScoreRange(params.get('fso')),
-    scoreX: parseScoreRange(params.get('fsx')),
-    scoreN: parseScoreRange(params.get('fsn')),
-  };
-}
-
-function serializeFilter(params: URLSearchParams, filter: UnifiedViewFilter): void {
-  if (filter.includeCollapsedAccounts) params.set('fbig', '1');
-  if (!filter.showNonRs) params.set('fnrs', '0');
-  for (const m of filter.ministries) params.append('fmi', m);
-  for (const a of filter.accountTypes) params.append('fac', a);
-  if (filter.nameQuery.trim()) params.set('fq', filter.nameQuery.trim());
-  if (filter.budgetMin.trim()) params.set('fbmin', filter.budgetMin.trim());
-  if (filter.budgetMax.trim()) params.set('fbmax', filter.budgetMax.trim());
-  if (filter.spendingMin.trim()) params.set('fsmin', filter.spendingMin.trim());
-  if (filter.spendingMax.trim()) params.set('fsmax', filter.spendingMax.trim());
-  if (filter.projectQuery.trim()) {
-    params.set('fpq', filter.projectQuery.trim());
-    if (filter.projectRegex) params.set('fpr', '1');
-  }
-  if (filter.projectIds.length > 0) {
-    params.set('fpid', filter.projectIds.join(','));
-  }
-  if (filter.recipientQuery.trim()) {
-    params.set('frq', filter.recipientQuery.trim());
-    if (filter.recipientRegex) params.set('frr', '1');
-    if (filter.recipientIncludeSub) params.set('frs', '1');
-  }
-  if (filter.subcontract !== 'any') {
-    params.set('fsub', filter.subcontract);
-    if (filter.subcontract === 'has' && filter.subcontractMinDepth !== UNIFIED_FILTER_DEFAULT.subcontractMinDepth) params.set('fsd', String(filter.subcontractMinDepth));
-  }
-  const fso = serializeScoreRange(filter.scoreO);
-  const fsx = serializeScoreRange(filter.scoreX);
-  const fsn = serializeScoreRange(filter.scoreN);
-  if (fso) params.set('fso', fso);
-  if (fsx) params.set('fsx', fsx);
-  if (fsn) params.set('fsn', fsn);
-}
 
 export default function UnifiedBudgetSankeyPage() {
   return (
-    <Suspense fallback={<CenterMessage text="読み込み中…" />}>
+    <Suspense fallback={<LoadingSpinner fullscreen />}>
       <UnifiedBudgetSankeyContent />
     </Suspense>
   );
@@ -234,9 +160,12 @@ function UnifiedBudgetSankeyContent() {
   const [flowScale, setFlowScale] = useState(() => parseFlowScale(searchParams.get('th')));
   const [labelDensity, setLabelDensity] = useState<LabelDensity>(() => (searchParams.get('ld') === 'major' ? 'major' : 'all'));
   const [filterOpen, setFilterOpen] = useState(searchParams.get('ffp') === '1');
-  // AI 絞り込み（試作）: パネルの開閉。絞り込みパネルと同じ場所に重なるため排他（片方を開くと他方は閉じる）。
+  // AI ナビ（ヘッダーの AI ボタン）の結果をこのページで受け取り、絞り込みに写す。
   // 手動の絞り込み条件そのものは保持し、AI が設定した条件も同じ状態として既存の × で消す
-  const [aiOpen, setAiOpen] = useState(false);
+  useAiResultHandler(useCallback((result: SankeyChatResult) => {
+    setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
+    setFilterOpen(false);
+  }, []));
   // sm 以上: 表示数カードは左上、設定は右上の検索クラスタ内。sm 未満: 右上の 1 ボタンに両方を畳む。
   // CSS で隠すだけだと同じボタンが DOM に二重に存在するので、メディアクエリで出し分ける
   const wideControls = useMediaQuery('(min-width: 640px)');
@@ -359,7 +288,8 @@ function UnifiedBudgetSankeyContent() {
     const patch = offsetToReveal(collapsed, topN, offset, selectedId, programRanking);
     if (patch) setOffset(o => ({ ...o, ...patch }));
   }, [selectedId, collapsed, display, topN, offset, programRanking]);
-  const ministries = useMemo(() => (base ? [...new Set(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name))] : []), [base]);
+  // 絞り込みの選択肢は共管（「内閣府及び厚生労働省」など）を分解した単独の省庁だけ。判定側（applyFilter）が共管を含めて残す
+  const ministries = useMemo(() => (base ? atomicMinistryOptions(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name)) : []), [base]);
 
   // URL 同期
   useEffect(() => {
@@ -422,7 +352,7 @@ function UnifiedBudgetSankeyContent() {
     [selectedId]
   );
 
-  if (loading && !graph) return <CenterMessage text="読み込み中…" />;
+  if (loading && !graph) return <LoadingSpinner fullscreen />;
   if (error && !graph) return <CenterMessage text={error} error />;
   if (!graph || !display || !collapsed) return <CenterMessage text="データを取得できませんでした" error />;
 
@@ -450,6 +380,10 @@ function UnifiedBudgetSankeyContent() {
       onLabelDensityChange={setLabelDensity}
       focusRelated={focusRelated}
       onFocusRelatedChange={setFocusRelated}
+      showNonRs={filter.showNonRs}
+      onShowNonRsChange={showNonRs => setFilter(f => ({ ...f, showNonRs }))}
+      includeCollapsedAccounts={filter.includeCollapsedAccounts}
+      onIncludeCollapsedAccountsChange={includeCollapsedAccounts => setFilter(f => ({ ...f, includeCollapsedAccounts }))}
       visibleColumns={effectiveColumns}
       availableColumns={availableColumns}
       onVisibleColumnsChange={columns => setVisibleColumns(previous => UNIFIED_COLUMNS.filter(c =>
@@ -500,19 +434,9 @@ function UnifiedBudgetSankeyContent() {
         filter={filter}
         onFilterChange={setFilter}
         filterOpen={filterOpen}
-        onToggleFilterOpen={() => { const next = !filterOpen; setFilterOpen(next); if (next) setAiOpen(false); }}
-        searchPopover={!metadata.apiCoverage && <AiFilterChat open={aiOpen} sheetYear={metadata.rsSheetYear} onClose={() => setAiOpen(false)}
-          onApply={result => {
-            setFilter(f => applySankeyQueryToUnifiedFilter(f, result.query).filter);
-            setFilterOpen(false);
-          }} />}
+        onToggleFilterOpen={() => setFilterOpen(v => !v)}
         searchTrailing={wideControls ? settingsPanel('top-right') : undefined}
         sidePanelTopOffset={wideControls && controlsBottom > 0 ? controlsBottom + SIDE_PANEL_GAP_PX : undefined}
-        searchAddon={!metadata.apiCoverage && <Button variant="ghost" size="xs" data-testid="ai-filter-open" aria-pressed={aiOpen} title="AIに聞いて絞り込む" aria-label="AIに聞いて絞り込む"
-          onClick={() => { const next = !aiOpen; setAiOpen(next); if (next) setFilterOpen(false); }}
-          className={cn('h-6 gap-1 px-1.5 text-[11px]', aiOpen ? 'bg-mirai-surface-teal text-primary-accent' : 'text-mirai-text-muted')}>
-          <Sparkles aria-hidden="true" className="size-3" />AI
-        </Button>}
         fontPx={fontPx}
         flowScale={flowScale}
         labelDensity={labelDensity}

@@ -118,10 +118,12 @@ export const UNIFIED_FILTER_DEFAULT: UnifiedViewFilter = {
 
 export const hasScoreRange = (r: UnifiedScoreRange) => r.min.trim() !== '' || r.max.trim() !== '';
 
+/**
+ * 絞り込み条件が有効か（検索ピルの「絞込」の強調と解除 × の表示に使う）。
+ * showNonRs・includeCollapsedAccounts は図の表示オプション（ギアの設定）で、条件で事業を落とすものではないので数えない。
+ */
 export function hasActiveUnifiedFilter(f: UnifiedViewFilter): boolean {
   return (
-    f.includeCollapsedAccounts !== UNIFIED_FILTER_DEFAULT.includeCollapsedAccounts ||
-    f.showNonRs !== UNIFIED_FILTER_DEFAULT.showNonRs ||
     f.ministries.length > 0 ||
     f.accountTypes.length > 0 ||
     f.nameQuery.trim() !== '' ||

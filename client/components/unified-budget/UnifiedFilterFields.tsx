@@ -2,7 +2,7 @@
 
 /**
  * 統合ビューの絞り込み入力欄。
- * 上段は `/mof-sankey` の FilterFields と同じ（表示・会計・所管・名前）、
+ * 上段は `/mof-sankey` の FilterFields と同じ（会計・所管・名前。表示オプションはギアの UnifiedSettings へ移した）、
  * 下段は `/sankey-svg` から移植した事業・支出先単位の絞り込み（事業名・予算額・支出額・再委託・支出先名・政策評価スコア）。
  * 判定は app/lib/unified-budget/transform.ts の applyFilter（純関数）。ここは入力欄だけ。
  */
@@ -10,6 +10,7 @@
 import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter } from '@/types/unified-budget-view';
 import { Button } from '@/components/ui/button';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { RegexTextFilter } from '@/client/components/mof-kou/RegexTextFilter';
 import { cn } from '@/lib/utils';
 
@@ -49,29 +50,10 @@ export function UnifiedFilterFields({
   const set = (patch: Partial<UnifiedViewFilter>) => onFilterChange({ ...filter, ...patch });
   const toggleAccount = (value: 'general' | 'special') =>
     set({ accountTypes: filter.accountTypes.includes(value) ? filter.accountTypes.filter(a => a !== value) : [...filter.accountTypes, value] });
-  const toggleMinistry = (name: string) =>
-    set({ ministries: filter.ministries.includes(name) ? filter.ministries.filter(m => m !== name) : [...filter.ministries, name] });
 
   return (
     <div className="flex flex-col gap-3 p-3 text-xs text-mirai-text-subtle">
-      <div>
-        <div className="mb-1 font-medium">表示</div>
-        <div className="flex flex-col gap-1">
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input type="checkbox" checked={filter.showNonRs} onChange={() => set({ showNonRs: !filter.showNonRs })} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-            <span>非事業支出・未突合のノードを出す（繰入・国債費・地方財政移転・予備費・人件費）</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={filter.includeCollapsedAccounts}
-              onChange={() => set({ includeCollapsedAccounts: !filter.includeCollapsedAccounts })}
-              className="h-3.5 w-3.5 cursor-pointer accent-primary"
-            />
-            <span>国債整理基金特会・交付税特会を含める（他が見えなくなるほど大きいため既定で除外）</span>
-          </label>
-        </div>
-      </div>
+      {/* 「非事業支出・未突合のノードを出す」「国債整理基金特会・交付税特会を含める」は表示設定（ギア）へ移した */}
       <div>
         <div className="mb-1 font-medium">会計</div>
         <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -85,14 +67,21 @@ export function UnifiedFilterFields({
       </div>
       <div>
         <div className="mb-1 font-medium">所管</div>
-        <div className="flex max-h-40 flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
-          {ministryOptions.map(name => (
-            <label key={name} className="flex cursor-pointer items-center gap-1.5">
-              <input type="checkbox" checked={filter.ministries.includes(name)} onChange={() => toggleMinistry(name)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-              <span>{name}</span>
-            </label>
-          ))}
+        {/* 評価一覧・バブルチャートと同じドロップダウン。チェックボックスの一覧を並べると 40 件近くで縦スクロールが要り、
+            まとめて外す手段も無かった。ドロップダウンは「すべて解除」と × のクリアを持つ */}
+        <div className="flex">
+          <MultiSelectDropdown
+            options={ministryOptions}
+            selected={filter.ministries}
+            onChange={ministries => set({ ministries })}
+            allLabel="所管"
+            placeholder="所管：すべて"
+            placeholderTone="strong"
+            minWidth={0}
+            triggerClassName="h-7 w-full border-mirai-border text-xs"
+          />
         </div>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">共管の所管（「内閣府及び厚生労働省」など）は、いずれかの省庁を選ぶと含まれます。</p>
       </div>
       <div>
         <div className="mb-1 font-medium">名前（部分一致。一致したノードとその上流・下流だけを残す）</div>

@@ -6,15 +6,17 @@ import type { RequestAmount } from '../types/budget-requests';
 
 const blank = (): RequestAmount => ({ valueYen: null, status: 'blank', raw: '' });
 import { requestDataset, requestDocument, requestRecord } from './fixtures/budget-requests-ui';
-import { PRIMARY_PAGES } from '../components/navigation/pages';
+import { PAGES, PRIMARY_PAGES, SECONDARY_PAGES } from '../components/navigation/pages';
 
 const filters = (overrides: Partial<typeof DEFAULT_REQUEST_FILTERS> = {}) => ({ ...DEFAULT_REQUEST_FILTERS, ...overrides });
 
-test('主要ナビは サンキー図 … 事業者 → 基金 → 概算要求 → 税優遇 の順に並ぶ', () => {
+test('主要ナビは サンキー図 … 事業者、補助ビューは 概算要求 → 税優遇 の順に並ぶ', () => {
   assert.equal(PRIMARY_PAGES[0].href, '/budget-sankey');
-  const at = (href: string) => PRIMARY_PAGES.findIndex(page => page.href === href);
-  assert.ok(at('/vendors') < at('/funds') && at('/funds') < at('/budget-requests') && at('/budget-requests') < at('/tax-expenditures'));
-  assert.equal(PRIMARY_PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
+  assert.equal(PRIMARY_PAGES[PRIMARY_PAGES.length - 1].href, '/funds');
+  const at = (href: string) => (SECONDARY_PAGES as readonly { href: string }[]).findIndex(page => page.href === href);
+  assert.ok(at('/budget-requests') >= 0 && at('/budget-requests') < at('/tax-expenditures'));
+  assert.equal(PAGES.find(page => page.href === '/budget-requests')?.prototype, true);
+  assert.ok(!PRIMARY_PAGES.some(page => (page.href as string) === '/budget-requests'), '概算要求は主要ナビに出さない');
 });
 
 test('無変更の再確認を公開データの更新や最新取得と誤表示しない', () => {

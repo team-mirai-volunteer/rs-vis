@@ -31,6 +31,15 @@ import {
   shapeHighlights,
 } from '@/app/lib/ai/tool-shaping';
 import type { HighlightsResult } from '@/app/lib/highlights';
+import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
+import type { Fund } from '@/types/funds';
+import type { Vendor } from '@/types/vendors';
+import type { BudgetRequestProjectLinks } from '@/types/budget-request-links';
+import type { VendorRow } from '@/app/lib/vendors';
+import { BUDGET_REQUEST_FY, shapeBudgetRequest, shapeFund, shapeFundSearch, shapeProjectRecipients, shapeVendor, shapeVendorSearch } from '@/app/lib/ai/tool-shaping-extra';
+import { estimateTaxBurdenWith, searchTaxExpenditures, shapeBudgetRequestSearch } from '@/app/lib/ai/tool-shaping-secondary';
+import type { BudgetRequestRecord } from '@/types/budget-requests';
+import type { ConsumptionDataset, TaxParameters } from '@/types/tax-burden';
 
 export type ClientGraphSource = (year: SupportedYear) => Promise<GraphData>;
 
@@ -282,6 +291,79 @@ export function createClientToolExecutor(getGraph: ClientGraphSource): ChatToolE
       // API 応答は HighlightsResult と同形（+ links/metadata）。links を落として共有整形に委譲する
       const stripped = stripLinks(r.json) as HighlightsResult;
       return shapeHighlights(stripped, validated.metric);
+    },
+
+    // ── 段階 C: 支出先一覧・基金・事業者・概算要求。公開 API を fetch し、整形はサーバー実装と同じ関数に委譲 ──
+    async getProjectRecipients(year, pid) {
+      const r = await fetchApi(`/api/quality-scores/recipients?pid=${encodeURIComponent(pid)}&year=${year}`);
+      if ('fetchError' in r || r.status !== 200) return apiError(r);
+      const rows = Array.isArray(r.json) ? (r.json as RecipientRow[]) : [];
+      if (rows.length === 0) return { error: `pid=${pid} の支出先データが見つかりません`, hint: 'search_projects で事業名からpidを特定してください' };
+      return shapeProjectRecipients(pid, rows);
+    },
+
+    async searchFunds(q, pid) {
+      const r = await fetchApi(pid ? `/api/funds?pid=${encodeURIComponent(pid)}` : '/api/funds');
+      if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '基金データがありません' });
+      const funds = ((r.json as { funds?: Fund[] } | null)?.funds ?? []);
+      return shapeFundSearch(funds, q, null);
+    },
+
+    async getFund(key) {
+      const r = await fetchApi('/api/funds');
+      if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '基金データがありません' });
+      const fund = ((r.json as { funds?: Fund[] } | null)?.funds ?? []).find(f => f.key === key);
+      return fund ? shapeFund(fund) : { error: `key=${key} の基金が見つかりません`, hint: 'search_funds で基金名からキーを特定してください' };
+    },
+
+    async getVendor(q, key) {
+      if (key) {
+        const r = await fetchApi(`/api/vendors?key=${encodeURIComponent(key)}`);
+        if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '事業者データがありません' });
+        const vendor = (r.json as { vendor?: Vendor | null } | null)?.vendor ?? null;
+        return vendor ? shapeVendor(vendor) : { error: `key=${key} の事業者が見つかりません`, hint: 'get_vendor を q（事業者名）で呼んでキーを特定してください' };
+      }
+      const r = await fetchApi(`/api/vendors?q=${encodeURIComponent(q)}`);
+      if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '事業者データがありません' });
+      return shapeVendorSearch((r.json as { rows?: VendorRow[] } | null)?.rows ?? [], q);
+    },
+
+    async getBudgetRequest(pid) {
+      const r = await fetchApi(`/api/budget-request-links/${encodeURIComponent(pid)}`);
+      if ('fetchError' in r) return apiError(r);
+      if (r.status === 404) return shapeBudgetRequest(pid, null, BUDGET_REQUEST_FY);
+      if (r.status !== 200) return apiError(r);
+      const json = r.json as { requestedFY?: number } & BudgetRequestProjectLinks;
+      return shapeBudgetRequest(pid, { coverage: json.coverage, items: json.items, unmatched: json.unmatched }, json.requestedFY ?? BUDGET_REQUEST_FY);
+    },
+
+    // ── 補助ビュー: 公開 API と静的データで、サーバ実装と同じ形に整形する ──
+    async searchBudgetRequests(q, ministry) {
+      const qs = new URLSearchParams({ limit: '10' });
+      if (q) qs.set('q', q);
+      if (ministry) qs.set('ministry', ministry);
+      const r = await fetchApi(`/api/budget-requests?${qs}`);
+      if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '2027年度の概算要求データはまだ取得されていません' });
+      const json = r.json as { requestedFY?: number; records?: BudgetRequestRecord[]; pagination?: { matchingRecords?: number } } | null;
+      const records = json?.records ?? [];
+      return shapeBudgetRequestSearch(records, json?.pagination?.matchingRecords ?? records.length, json?.requestedFY ?? BUDGET_REQUEST_FY, q, ministry);
+    },
+
+    async searchTaxExpenditures(q, year) {
+      // 租税特別措置のデータは静的（約 230KB）。必要になったときだけ読む
+      const [{ default: data }, { assessments }] = await Promise.all([import('@/app/lib/tax-expenditures/data.json'), import('@/app/lib/tax-expenditures/assessments')]);
+      return searchTaxExpenditures(data.measures, assessments, q, year);
+    },
+
+    async estimateTaxBurden(input) {
+      const p = await fetchApi('/api/tax-burden/params?fy=2025');
+      if ('fetchError' in p || p.status !== 200) return apiError(p, { error: '国民負担の計算データがありません' });
+      let consumption: ConsumptionDataset | null = null;
+      if (input.includeConsumption) {
+        const c = await fetchApi('/api/tax-burden/consumption?year=2024');
+        if (!('fetchError' in c) && c.status === 200) consumption = c.json as ConsumptionDataset;
+      }
+      return estimateTaxBurdenWith(input, p.json as TaxParameters, consumption);
     },
   };
 }

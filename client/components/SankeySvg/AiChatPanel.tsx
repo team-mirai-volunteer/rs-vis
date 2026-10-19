@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { SankeyChatProgressEvent, SankeyChatResult } from '@/types/sankey-ai-chat';
-import type { ChatSessionMeta } from '@/client/lib/ai/chat-history-store';
+import type { ChatSessionMeta, AiChatUiMessage } from '@/client/lib/ai/chat-history-store';
+export type { AiChatUiMessage } from '@/client/lib/ai/chat-history-store';
 import { relativeTime } from '@/client/lib/relative-time';
 import { formatYen } from '@/app/lib/sankey-svg-constants';
 import { CHAT_MARKDOWN_STYLES } from './chat-markdown-styles';
@@ -26,17 +27,6 @@ import { CHAT_MARKDOWN_STYLES } from './chat-markdown-styles';
 // （メッセージはユーザー操作後にのみ存在するため、この lazy が SSR で評価されることはない）
 const ChatMarkdown = lazy(() => import('./ChatMarkdown'));
 
-/** ページが保持するチャット表示用メッセージ（API の履歴形式 + 表示用の付加情報） */
-export interface AiChatUiMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  /** フィルタ条件が確定した assistant 応答に付く */
-  result?: SankeyChatResult;
-  /** 次に聞ける質問の提案（最大3件）。assistant 応答に付く */
-  suggestions?: string[];
-  /** 送信失敗などのエラー表示 */
-  isError?: boolean;
-}
 
 interface AiChatPanelProps {
   open: boolean;

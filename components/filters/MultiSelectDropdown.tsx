@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FILTER_INPUT_CLASS } from './FilterTextInput';
 
+/** この件数を超えたら 2 列で並べる（統合ビューの所管は 23 件で、1 列だとフル HD のブラウザでも下が切れてスクロールが出る） */
+const TWO_COLUMN_MIN_OPTIONS = 16;
+const TWO_COLUMN_WIDTH = 560;
+
 interface MultiSelectDropdownProps {
   options: string[];
   selected: string[];
@@ -31,6 +35,7 @@ export function MultiSelectDropdown({
 }: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+  const twoColumns = options.length > TWO_COLUMN_MIN_OPTIONS;
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -64,7 +69,8 @@ export function MultiSelectDropdown({
         onClick={() => {
           if (buttonRef.current) {
             const r = buttonRef.current.getBoundingClientRect();
-            const width = Math.min(Math.max(r.width, 200), window.innerWidth - 16);
+            // 項目が多いとき（府省庁 40 件など）は幅を広げて 2 列にし、フル HD でスクロールなしに収める
+            const width = Math.min(Math.max(r.width, twoColumns ? TWO_COLUMN_WIDTH : 200), window.innerWidth - 16);
             setRect({
               top: r.bottom + 2,
               left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
@@ -107,6 +113,8 @@ export function MultiSelectDropdown({
           role="listbox"
           aria-label={allLabel}
           aria-multiselectable="true"
+          // body 直下に描くので、親のポップオーバー（絞り込みパネルなど）の「外側を押したら閉じる」判定から除外してもらう目印
+          data-keep-open="true"
           className="fixed z-[9999] overflow-y-auto rounded-xl border border-mirai-border bg-card shadow-soft"
           style={{ top: rect.top, left: rect.left, width: rect.width, maxHeight: rect.maxHeight }}
           onMouseDown={(e) => e.stopPropagation()}
@@ -120,6 +128,7 @@ export function MultiSelectDropdown({
             />
             <span>すべて解除</span>
           </label>
+          <div className={cn(twoColumns && 'grid grid-cols-2')}>
           {options.map((opt) => (
             <label
               key={opt}
@@ -136,6 +145,7 @@ export function MultiSelectDropdown({
               <span>{optionLabel ? optionLabel(opt) : opt}</span>
             </label>
           ))}
+          </div>
         </div>,
         document.body
       )}

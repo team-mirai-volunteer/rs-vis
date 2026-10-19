@@ -16,9 +16,22 @@ import { loadQualityScores, getQualityScore, toQualityScoreProjection } from '@/
 import { loadRecipientIndex, resolveRecipient } from '@/app/lib/api/recipient-index-loader';
 import { getProjectDetail, loadProjectDetails } from '@/app/lib/api/project-details-loader';
 import { loadSubcontracts } from '@/app/lib/api/subcontracts-loader';
-import { loadSpendingSearchRows } from '@/app/lib/api/quality-recipients-loader';
+import { loadRecipientRows, loadSpendingSearchRows } from '@/app/lib/api/quality-recipients-loader';
 import { loadHighlights } from '@/app/lib/api/highlights-loader';
 import type { ChatToolExecutor } from '@/app/lib/ai/chat-core';
+import { withContractMethods } from '@/app/lib/api/contract-methods-loader';
+import { loadFunds } from '@/app/lib/api/funds-loader';
+import { loadVendors } from '@/app/lib/api/vendors-loader';
+import { BUDGET_REQUEST_LINKS_FY, budgetRequestLinksFor } from '@/app/lib/api/budget-request-links-loader';
+import { toVendorRow } from '@/app/lib/vendors';
+import { shapeBudgetRequest, shapeFund, shapeFundSearch, shapeProjectRecipients, shapeVendor, shapeVendorSearch } from '@/app/lib/ai/tool-shaping-extra';
+import { estimateTaxBurdenWith, searchTaxExpenditures, shapeBudgetRequestSearch } from '@/app/lib/ai/tool-shaping-secondary';
+import { loadBudgetRequests } from '@/app/lib/api/budget-requests-loader';
+import { DEFAULT_REQUEST_FILTERS, filterBudgetRequests } from '@/app/lib/budget-requests';
+import { tryReadDataJson } from '@/app/lib/api/data-file';
+import taxExpenditureData from '@/app/lib/tax-expenditures/data.json';
+import { assessments as taxExpenditureAssessments } from '@/app/lib/tax-expenditures/assessments';
+import type { ConsumptionDataset, TaxParameters } from '@/types/tax-burden';
 import {
   SEARCH_LIMIT,
   DETAIL_TOP_LIMIT,
@@ -192,5 +205,56 @@ export const serverToolExecutor: ChatToolExecutor = {
 
   compareYears(query, baseYear, compareYear) {
     return executeCompareYearsWithGraph(loadSankeyGraph, query, baseYear, compareYear);
+  },
+
+  // ── 段階 C: 支出先一覧・基金・事業者・概算要求（整形は tool-shaping-extra に委譲） ──
+  getProjectRecipients(year, pid) {
+    const rows = loadRecipientRows(year)[pid];
+    if (!rows) return { error: `pid=${pid} の支出先データが見つかりません`, hint: 'search_projects で事業名からpidを特定してください' };
+    return shapeProjectRecipients(pid, withContractMethods(rows, pid, year));
+  },
+
+  searchFunds(q, pid) {
+    const data = loadFunds();
+    if (!data) return { error: '基金データがありません' };
+    return shapeFundSearch(data.funds, q, pid);
+  },
+
+  getFund(key) {
+    const fund = loadFunds()?.funds.find(f => f.key === key);
+    return fund ? shapeFund(fund) : { error: `key=${key} の基金が見つかりません`, hint: 'search_funds で基金名からキーを特定してください' };
+  },
+
+  getVendor(q, key) {
+    const data = loadVendors();
+    if (!data) return { error: '事業者データがありません' };
+    if (key) {
+      const vendor = data.vendors.find(v => v.key === key);
+      return vendor ? shapeVendor(vendor) : { error: `key=${key} の事業者が見つかりません`, hint: 'get_vendor を q（事業者名）で呼んでキーを特定してください' };
+    }
+    return shapeVendorSearch(data.vendors.map(toVendorRow), q);
+  },
+
+  getBudgetRequest(pid) {
+    return shapeBudgetRequest(pid, budgetRequestLinksFor(pid), BUDGET_REQUEST_LINKS_FY);
+  },
+
+  // ── 補助ビュー: 概算要求の検索・租税特別措置・国民負担（整形は tool-shaping-secondary に委譲） ──
+  searchBudgetRequests(q, ministry) {
+    const data = loadBudgetRequests();
+    if (!data) return { error: '2027年度の概算要求データはまだ取得されていません' };
+    const { records } = filterBudgetRequests(data, { ...DEFAULT_REQUEST_FILTERS, query: q, ministry });
+    return shapeBudgetRequestSearch(records, records.length, data.requestedFY, q, ministry);
+  },
+
+  searchTaxExpenditures(q, year) {
+    return searchTaxExpenditures(taxExpenditureData.measures, taxExpenditureAssessments, q, year);
+  },
+
+  estimateTaxBurden(input) {
+    const params = tryReadDataJson<TaxParameters>('tax-burden-params-2025.json');
+    if (!params) return { error: '国民負担の計算データがありません' };
+    const consumption = input.includeConsumption ? tryReadDataJson<ConsumptionDataset>('tax-burden-consumption-2024.json') : null;
+    return estimateTaxBurdenWith(input, params, consumption);
   },
 };

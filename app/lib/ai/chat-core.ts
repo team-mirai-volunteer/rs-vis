@@ -22,6 +22,8 @@ import type { ProjectSearchScope } from '@/app/lib/search/project-search';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { HIGHLIGHT_METRIC_NAMES } from '@/app/lib/highlights';
 import { QUALITY_SCORES_PID_LIMIT, type QueryExecution } from '@/app/lib/ai/tool-shaping';
+import { NAV_TARGETS, NAV_TARGET_KEYS, FISCAL_POLICIES, HOUSEHOLD_IDS, TAX_EXPENDITURE_YEARS, TAX_EXPENDITURE_VIEWS, findNavTarget, navTargetHref, type NavParams, type TaxExpenditureYear } from '@/app/lib/ai/nav-targets';
+import { parseTaxBurdenInput, type TaxBurdenInput } from '@/app/lib/ai/tool-shaping-secondary';
 
 // ── OpenAI 互換の LLM メッセージ・ツール型（OpenRouter の chat.completions と1対1） ──
 
@@ -69,6 +71,22 @@ export interface ChatToolExecutor {
   getSubcontractChain(year: SupportedYear, pid: string): Promise<unknown> | unknown;
   getHighlights(year: SupportedYear, metricRaw: unknown): Promise<unknown> | unknown;
   compareYears(query: SankeyQuery | undefined, baseYear: SupportedYear, compareYear: SupportedYear): Promise<unknown> | unknown;
+  /** 事業の支出先一覧（契約方式・応札者数・落札率つき） */
+  getProjectRecipients(year: SupportedYear, pid: string): Promise<unknown> | unknown;
+  /** 基金の検索（名前・保有法人・府省）。q が空なら事業 pid に紐づく基金 */
+  searchFunds(q: string, pid: string | null): Promise<unknown> | unknown;
+  /** 基金 1 件の詳細（key = lineage_id） */
+  getFund(key: string): Promise<unknown> | unknown;
+  /** 事業者（支出先の法人）の検索と詳細。key（法人番号）があれば 1 件、無ければ q で検索 */
+  getVendor(q: string, key: string | null): Promise<unknown> | unknown;
+  /** 事業の来年度概算要求（財務省の明細表との突き合わせ） */
+  getBudgetRequest(pid: string): Promise<unknown> | unknown;
+  /** 概算要求の明細を事業名・府省で検索（補助ビュー: 概算要求） */
+  searchBudgetRequests(q: string, ministry: string): Promise<unknown> | unknown;
+  /** 法人税の租税特別措置を制度名・条文・キーワードで検索（補助ビュー: 租税特別措置） */
+  searchTaxExpenditures(q: string, year: TaxExpenditureYear): Promise<unknown> | unknown;
+  /** 家計の税・保険料の試算（補助ビュー: 国民負担。2025 年度制度のモデル計算） */
+  estimateTaxBurden(input: TaxBurdenInput): Promise<unknown> | unknown;
 }
 
 export interface SankeyChatAgentResult {
@@ -76,6 +94,8 @@ export interface SankeyChatAgentResult {
   result?: SankeyChatResult;
   /** 次に聞ける質問の提案（最大3件）。submit_result 経由のみ（テキスト回答モードは対象外） */
   suggestions?: string[];
+  /** ページ遷移の指示（navigate_page 経由）。クライアントが href へ移動し、result があれば移動先に適用する */
+  navigate?: { key: string; href: string; label: string; scenario?: { amounts: Record<string, number> } };
   toolCalls: number;
 }
 
@@ -94,6 +114,14 @@ const SUGGESTIONS_MAX = 3;
 
 const GIVE_UP_MESSAGE =
   'ご要望をフィルタ条件として解釈できませんでした。「再エネ関連で予算100億円以上」「経済産業省の事業だけ」のように、事業名・支出先名・府省庁・金額範囲を含めて具体的にお試しください。';
+/**
+ * システムプロンプトの版。応答キャッシュの鍵に含め、プロンプトを変えたときに古い応答が 24 時間残らないようにする。
+ * 応答の書き方に影響する変更をしたら上げる
+ */
+export const PROMPT_VERSION = 3;
+
+/** 「解釈できなかった」応答か（応答キャッシュはこれを保存しない） */
+export const isGiveUpMessage = (message: string): boolean => message === GIVE_UP_MESSAGE;
 
 // ── ツール定義（JSON Schema） ──
 
@@ -344,6 +372,162 @@ export const TOOLS: LlmToolDef[] = [
   {
     type: 'function',
     function: {
+      name: 'get_project_recipients',
+      description:
+        '事業の支出先一覧（金額の大きい順・上位20件）。各支出先の金額・法人番号・契約方式（一般競争・随意契約・補助金等）・応札者数・落札率・役割・再委託の階層を返す。' +
+        '「1者応札か」「随意契約か」「誰にいくら払ったか」「再委託先は」の問いに使う。',
+      parameters: {
+        type: 'object',
+        properties: { pid: { type: 'string', description: '事業ID' } },
+        required: ['pid'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_funds',
+      description:
+        '基金（国が法人に積んだ資金）を名前・保有法人・府省で検索し、残高・国庫返納・終了予定・点検結果の要点を返す（上位10件）。' +
+        'pid を指定すると、その事業が造成した／関連する基金を返す。詳細は get_fund。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '基金名・保有法人名・府省名の部分一致。pid 指定時は省略可' },
+          pid: { type: 'string', description: '事業ID。この事業に関連する基金だけを返す' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_fund',
+      description: '基金 1 件の詳細（年度ごとの残高・収支・国庫返納・保有割合、造成の経緯、必要性の記載、点検結果、関連事業）。key は search_funds の結果の key。',
+      parameters: {
+        type: 'object',
+        properties: { key: { type: 'string', description: '基金のキー（search_funds の key）' } },
+        required: ['key'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_vendor',
+      description:
+        '事業者（支出先の法人）の全府省での受注状況。年度ごとの受注額・件数、競争入札と1者応札の件数、主な支出元の府省、2年度以上1者応札が続く事業の一覧を返す。' +
+        '「この会社はどこから受注しているか」「1者応札が続いている事業者は」の問いに使う。q で名前・法人番号を検索（上位10件）、key（法人番号）で1件の詳細。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '事業者名・法人番号の部分一致' },
+          key: { type: 'string', description: '事業者のキー（法人番号13桁。検索結果の key）' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_budget_request',
+      description: '事業の来年度（2027年度）概算要求。レビューシートの要求額と、財務省の概算要求明細表の 目 ごとの要求額・前年度額との突き合わせ結果を返す。「来年度いくら要求しているか」「増える／減るか」の問いに使う。',
+      parameters: {
+        type: 'object',
+        properties: { pid: { type: 'string', description: '事業ID' } },
+        required: ['pid'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_budget_requests',
+      description: '来年度（2027年度）概算要求の明細（財務省の概算要求明細表・レビューシートの要求額）を事業名・事項名・府省で検索する。「○○省の概算要求で大きいもの」「△△関連の要求はいくらか」のような、事業を特定しない概算要求の問いに使う。事業 1 件の要求額は get_budget_request',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '検索語（事業名・事項名・会計名の部分一致）。空なら全件' },
+          ministry: { type: 'string', description: '府省名（完全一致。例: 「デジタル庁」「国土交通省」）。任意' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_tax_expenditures',
+      description: '法人税の租税特別措置（税優遇の制度）を制度名・条文・キーワードで検索し、適用件数・適用額（千円）・AI による試行評価・関連する RS 事業を返す。「研究開発税制はいくら使われているか」「賃上げ税制の評価は」のような問いに使う',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '検索語（例: 「研究開発」「賃上げ」「中小企業」）。空なら適用額の大きい順' },
+          year: { type: 'string', enum: [...TAX_EXPENDITURE_YEARS], description: `適用年度。省略時 "${TAX_EXPENDITURE_YEARS.at(-1)}"` },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'estimate_tax_burden',
+      description: '年収と世帯の型から、所得税・住民税・年金・医療・介護・雇用保険料と児童手当などの給付、純負担（税＋保険料−給付）とその率を試算する（2025年度制度・現行法のモデル計算）。「年収500万円で片働き子2人だと税と保険料はいくら？」「手取り率は？」のような家計の負担の問いに使う',
+      parameters: {
+        type: 'object',
+        properties: {
+          income: { type: 'number', description: '世帯の年収（円。共働きは合算）' },
+          household: { type: 'string', enum: [...HOUSEHOLD_IDS], description: '世帯の型: single=単身・子なし / single-children=ひとり親・子2人 / one-earner=片働き夫婦・子なし / one-earner-children=片働き夫婦・子2人 / two-earners=共働き夫婦・子なし / two-earners-children=共働き夫婦・子2人。省略時 one-earner-children' },
+          age: { type: 'number', description: '年齢（20〜64）。省略時 40' },
+          share: { type: 'number', description: '共働きのとき第1就労者の収入割合（%）。省略時 67' },
+          includeConsumption: { type: 'boolean', description: '消費税の推計額（家計調査の支出構成から）も含める。省略時 false' },
+        },
+        required: ['income'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'navigate_page',
+      description:
+        'ユーザーが「〜に移動して」「〜を開いて」「〜で見たい」のようにページの移動を求めたときに呼ぶ。呼ぶと会話はそこで終わり、画面がそのページへ移る。' +
+        '条件（query）を一緒に渡すと、移動先がサンキー図・評価一覧・委託構造・バブル図ならその条件で絞り込んだ状態で開く。' +
+        '補助ビュー（概算要求・租税特別措置・国民負担・財政余力）は query ではなく params でページ固有の条件を渡す。' +
+        `page の候補: ${NAV_TARGETS.map(t => `${t.key}=${t.label}${t.aliases.length ? `（${t.aliases.join('・')}）` : ''}`).join(' / ')}`,
+      parameters: {
+        type: 'object',
+        properties: {
+          page: { type: 'string', enum: [...NAV_TARGET_KEYS], description: '移動先のページ' },
+          query: { ...SANKEY_QUERY_SCHEMA, description: '移動先に適用する条件（任意）。直前に確定した条件を引き継ぐときはそれをそのまま渡す。サンキー図・評価一覧・委託構造・バブル図のみ' },
+          params: {
+            type: 'object',
+            description: '補助ビュー固有の条件（任意）。移動先に関係ない項目は無視される',
+            properties: {
+              q: { type: 'string', description: '概算要求・租税特別措置: 検索語' },
+              ministry: { type: 'string', description: '概算要求: 府省名（完全一致）' },
+              year: { type: 'string', enum: [...TAX_EXPENDITURE_YEARS], description: '租税特別措置: 適用年度' },
+              linkedOnly: { type: 'boolean', description: '租税特別措置: RS との関連を確認済みの制度だけ' },
+              view: { type: 'string', description: `租税特別措置: ${TAX_EXPENDITURE_VIEWS.join(' / ')}。国民負担: curve（年収別の負担率）/ revenue（国の税目別歳入）/ stats（年齢別の統計）/ age（生涯の推移）/ heatmap（年収×年齢）` },
+              income: { type: 'number', description: '国民負担: 年収（円）' },
+              household: { type: 'string', enum: [...HOUSEHOLD_IDS], description: '国民負担: 世帯の型（estimate_tax_burden と同じ）' },
+              age: { type: 'number', description: '国民負担: 年齢（20〜64）' },
+              includeConsumption: { type: 'boolean', description: '国民負担: 消費税の推計を含める' },
+              policies: {
+                type: 'array',
+                description: `財政余力: 試したい政策と年額（円）。id は ${FISCAL_POLICIES.map(p => `${p.id}=${p.name}`).join(' / ')}。例: 消費税減税 5 兆円なら [{ id: "consumption-tax", amountYen: 5000000000000 }]`,
+                items: { type: 'object', properties: { id: { type: 'string', enum: FISCAL_POLICIES.map(p => p.id) }, amountYen: { type: 'number' } }, required: ['id', 'amountYen'] },
+              },
+            },
+          },
+          message: { type: 'string', description: 'ユーザーへの一言（例: 「サンキー図に移動します」）' },
+        },
+        required: ['page'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'submit_result',
       description:
         '検証済みの最終フィルタ条件を確定する。run_sankey_query で結果を確認してから呼ぶこと。message にはユーザー向けの短い説明（何をどう絞ったか・何件マッチしたか）を日本語で書く。',
@@ -372,13 +556,17 @@ export const TOOLS: LlmToolDef[] = [
 
 // ── システムプロンプト ──
 
-function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[]): string {
+function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[], page?: string): string {
   const lines = [
     // サイト名は出さない（開発リポジトリ名由来の「まるみえ」が応答文に漏れた実績あり。公開版は別名のため一般名称で自称する）
     'あなたは、日本の行政事業レビューの予算・支出データをサンキー図で可視化するサイトのAIアシスタントです。サイト名やシステム名は応答に含めないこと。',
     'ユーザーの自然言語の要求を SankeyQuery（フィルタ条件）に翻訳し、ツールで検証してから submit_result で確定します。',
     '',
     '## データの前提',
+    ...(page ? [
+      `- ユーザーはいま「${page}」のページを見ている。そのページで見られる情報を優先して案内し、サンキー図でしか見られない条件はその旨を添える`,
+      ...(page !== 'サンキー図' ? [`- submit_result で確定した条件は「${page}」のページの絞り込みとして適用される（サンキー図ではない）。message では「サンキー図に反映した」「図に適用した」と書かず、「${page}を N 件に絞り込みました」のように、そのページ名で書く`] : []),
+    ] : []),
     `- 対象年度: ${year}（事業年度${year}のデータは予算年度${Number(year) - 1}の執行実績）`,
     '- 対象は行政事業レビュー対象事業のみ（国の全予算の約27%。国債費・地方交付税等は含まない）',
     '- 全金額は1円単位（「100億円」= 10000000000、「1兆円」= 1000000000000）',
@@ -410,8 +598,15 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '- 数値・事実は必ずツール応答から転記する。ツールで確認していない数値を推測で書かない',
     '- **0件・除外の理由を推測で説明しない**: 「なぜこの事業がマッチしなかったのか」を述べるときは、条件を変えた run_sankey_query（金額下限を外す等）や search_projects で実測してから、トークンごとに「名前不一致 / 金額条件で除外 / マッチ」を切り分けて答える（実例: 事業名の表記ゆれで0件だったものを「予算未満で除外」と誤説明した事故がある）',
     '- pid はユーザーには分からない前提。事業名から聞かれたら、まず search_projects でpidを特定してから深掘りツールを呼ぶ。支出先も同様に search_recipients でキーを特定する',
+    '- 契約方式（1者応札・随意契約・落札率）や「誰にいくら払ったか」は get_project_recipients。事業者（法人）側から「どこから受注しているか」「1者応札が続く事業」は get_vendor。基金（残高・国庫返納・終了予定）は search_funds → get_fund。来年度の概算要求は事業 1 件なら get_budget_request、府省や事項名で探すなら search_budget_requests',
+    '- 補助ビューの領域: 法人税の租税特別措置（税優遇の制度・適用額・AI 評価）は search_tax_expenditures。「年収○万円・片働き・子2人の税と保険料はいくら？」「手取り率は？」のような家計の負担は estimate_tax_burden（2025年度制度のモデル計算。回答に「モデル計算で実際の課税とは異なる」と添える）。財政余力（「次の1兆円で何が先に足りなくなるか」「消費税を5兆円減税したら」のような政策の仮定）は会話では計算できないので、navigate_page に params.policies（政策 id と年額）を付けて財政余力ページへ案内する',
     '- 品質スコアについて回答する際の語彙規律: スコアは「事業レビューシートに書かれた説明の質（支出先の特定可能性・使途の説明性・成果設計の明確さ等）」を評価したものであり、事業そのものの善悪・要不要・無駄の有無を判定するものではない。「この事業は無駄」のような断定はせず、「レビューシートの記載としては〜」のように表現する',
     '- ツール実行に失敗した・データが見つからない場合はその旨を正直に伝える（存在しないふりをしない）',
+    '',
+    '### C. ページの移動（「サンキー図に移動して」「委託構造で見たい」「トップに戻って」など）',
+    '- navigate_page を呼ぶ。移動先は page の候補から選ぶ。直前に確定した条件があり「この条件のまま」「これを」のように引き継ぐ意図が読めるときは、同じ query を渡す。条件の指定が無ければ query は渡さない',
+    '- 「〜の事業をサンキー図で見せて」のように条件と移動が同時に来たら、run_sankey_query で条件を確かめてから navigate_page に query を付けて呼ぶ（submit_result は呼ばない）',
+    '- 補助ビューへの移動は params で条件を渡す: 概算要求は q・ministry、租税特別措置は q・year・linkedOnly・view、国民負担は income・household・age・view・includeConsumption、財政余力は policies（政策 id と年額）。「年収600万円の共働きで国民負担を見せて」なら navigate_page({ page: "tax-burden", params: { income: 6000000, household: "two-earners" } })。値を聞く質問（「いくら？」）は移動せず estimate_tax_burden / search_* で答え、「見せて」「開いて」のときだけ移動する',
     '',
     '### 共通',
     '- 要求がこのデータのフィルタ条件にもデータ質問にも該当しない場合（雑談・データにない切り口等）は、ツールを呼ばずに、解釈できなかった旨と指定できる条件・質問の例を日本語のテキストで返す',
@@ -522,6 +717,121 @@ function buildToolProgressEvent(tool: string, payload: unknown): SankeyChatProgr
   return { kind: 'tool', tool };
 }
 
+// ── ツール実行（エージェントループと MCP サーバーの共通部） ──
+
+/** 会話を終える操作系（submit_result・navigate_page）を除いた、外部にも公開できるデータ取得ツール名 */
+export const ACTION_TOOL_NAMES: readonly string[] = ['submit_result', 'navigate_page'];
+/** navigate_page の query（サンキー条件）を適用できるページ */
+export const QUERY_NAV_TARGETS: readonly string[] = ['sankey', 'quality', 'subcontracts', 'bubble'];
+export const DATA_TOOL_NAMES = TOOLS.map(t => t.function.name).filter(name => !ACTION_TOOL_NAMES.includes(name));
+
+/**
+ * ツール 1 件を実行して LLM・MCP クライアントへ返す payload を作る。
+ * 引数の検証（必須項目・年度・文字数下限）はここで一度だけ行い、呼び出し元（チャットのループ・/api/mcp）で揃える。
+ * `result` は run_sankey_query が 1 件以上マッチしたときの確定候補（ループが安全網として保持する）。
+ */
+export async function executeToolCall(
+  name: string,
+  args: Record<string, unknown>,
+  executor: ChatToolExecutor,
+  year: SupportedYear,
+): Promise<{ payload: unknown; result?: SankeyChatResult }> {
+  switch (name) {
+    case 'run_sankey_query': {
+      const { errors, result } = await executor.executeQuery((args.query ?? args) as SankeyQuery, year);
+      if (errors) return { payload: { errors } };
+      const matched = result!.summary.projects.count > 0;
+      return {
+        payload: {
+          appliedQuery: result!.query, summary: result!.summary,
+          hint: matched
+            ? 'この結果が要求に合っていれば、追加の探索はせず submit_result で確定してください。'
+            : '0件です。条件を緩めて（正規表現の別表記・金額下限を外す等）もう一度 run_sankey_query してください。',
+        },
+        ...(matched ? { result: result! } : {}),
+      };
+    }
+    case 'search_projects':
+    case 'search_recipients':
+    case 'search_spending': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      if (!q) return { payload: { error: 'q（検索キーワード）を指定してください' } };
+      // API route（/api/search/spending）と同じ下限。1文字は総当たりに近くなるため弾く
+      if (name === 'search_spending' && q.length < 2) return { payload: { error: 'search_spending の q は2文字以上で指定してください' } };
+      if (name === 'search_projects') {
+        const scope: ProjectSearchScope = args.scope === 'details' ? 'details' : 'name';
+        return { payload: await executor.searchProjects(year, q, scope) };
+      }
+      if (name === 'search_recipients') return { payload: await executor.searchRecipients(year, q) };
+      return { payload: await executor.searchSpending(year, q) };
+    }
+    case 'get_project_detail': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getProjectDetail(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'get_quality_scores':
+      return { payload: await executor.getQualityScores(year, args.pids) };
+    case 'get_recipient_detail': {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return { payload: key ? await executor.getRecipientDetail(year, key) : { error: 'key（支出先キー）を指定してください' } };
+    }
+    case 'get_subcontract_chain': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getSubcontractChain(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'get_highlights':
+      return { payload: await executor.getHighlights(year, args.metric) };
+    case 'get_project_recipients': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getProjectRecipients(year, pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'search_funds': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      const pid = typeof args.pid === 'string' && args.pid.trim() ? args.pid.trim() : null;
+      if (!q && !pid) return { payload: { error: 'q（検索語）か pid（事業ID）のどちらかを指定してください' } };
+      return { payload: await executor.searchFunds(q, pid) };
+    }
+    case 'get_fund': {
+      const key = typeof args.key === 'string' ? args.key.trim() : '';
+      return { payload: key ? await executor.getFund(key) : { error: 'key（基金のキー）を指定してください' } };
+    }
+    case 'get_vendor': {
+      const q = typeof args.q === 'string' ? args.q.trim() : '';
+      const key = typeof args.key === 'string' && args.key.trim() ? args.key.trim() : null;
+      if (!q && !key) return { payload: { error: 'q（事業者名・法人番号）か key のどちらかを指定してください' } };
+      return { payload: await executor.getVendor(q, key) };
+    }
+    case 'get_budget_request': {
+      const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
+      return { payload: pid ? await executor.getBudgetRequest(pid) : { error: 'pid（事業ID）を指定してください' } };
+    }
+    case 'search_budget_requests': {
+      const q = typeof args.q === 'string' ? args.q.trim().slice(0, 200) : '';
+      const ministry = typeof args.ministry === 'string' ? args.ministry.trim().slice(0, 100) : '';
+      return { payload: await executor.searchBudgetRequests(q, ministry) };
+    }
+    case 'search_tax_expenditures': {
+      const q = typeof args.q === 'string' ? args.q.trim().slice(0, 200) : '';
+      const year = args.year === undefined || args.year === '' ? TAX_EXPENDITURE_YEARS.at(-1)! : (TAX_EXPENDITURE_YEARS as readonly string[]).includes(String(args.year)) ? String(args.year) as TaxExpenditureYear : null;
+      if (!year) return { payload: { error: `year は ${TAX_EXPENDITURE_YEARS.join(' / ')} のいずれかで指定してください` } };
+      return { payload: await executor.searchTaxExpenditures(q, year) };
+    }
+    case 'estimate_tax_burden': {
+      const parsed = parseTaxBurdenInput(args);
+      if ('error' in parsed) return { payload: { error: parsed.error } };
+      return { payload: await executor.estimateTaxBurden(parsed.input) };
+    }
+    case 'compare_years': {
+      const baseYear = args.baseYear === '2024' || args.baseYear === '2025' ? args.baseYear : null;
+      const compareYear = args.compareYear === '2024' || args.compareYear === '2025' ? args.compareYear : null;
+      if (!baseYear || !compareYear) return { payload: { error: 'baseYear・compareYear には "2024" または "2025" を指定してください' } };
+      return { payload: await executor.compareYears(args.query as SankeyQuery | undefined, baseYear, compareYear) };
+    }
+    default:
+      return { payload: { error: `未知のツールです: ${name}` } };
+  }
+}
+
 // ── エージェントループ本体 ──
 
 export async function runSankeyChatAgentCore(
@@ -535,7 +845,7 @@ export async function runSankeyChatAgentCore(
   const ministryNames = await executor.getMinistryNames(year);
 
   const messages: LlmMessage[] = [
-    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames) },
+    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames, context.page) },
     ...chatMessages.map((m): LlmMessage => ({ role: m.role, content: m.content })),
   ];
 
@@ -571,93 +881,47 @@ export async function runSankeyChatAgentCore(
         const { args, error } = parseToolArgs(call.function.arguments || '{}');
         if (error || !args) {
           payload = { error: error ?? 'ツール引数を解釈できませんでした' };
-        } else {
-          switch (call.function.name) {
-            case 'run_sankey_query': {
-              const { errors, result } = await executor.executeQuery((args.query ?? args) as SankeyQuery, year);
-              if (!errors && result && result.summary.projects.count > 0) lastGood = result;
-              payload = errors
-                ? { errors }
-                : { appliedQuery: result!.query, summary: result!.summary,
-                  hint: result!.summary.projects.count > 0
-                    ? 'この結果が要求に合っていれば、追加の探索はせず submit_result で確定してください。'
-                    : '0件です。条件を緩めて（正規表現の別表記・金額下限を外す等）もう一度 run_sankey_query してください。' };
-              break;
+        } else if (call.function.name === 'navigate_page') {
+          // ページ遷移。会話を終え、クライアントが href へ移動する。条件があれば検証して移動先に適用する
+          const target = findNavTarget(args.page);
+          if (!target) {
+            payload = { error: `page は ${NAV_TARGET_KEYS.join(' / ')} のいずれかで指定してください` };
+          } else {
+            let result: SankeyChatResult | undefined;
+            // サンキー条件を受け取れるのは事業一覧型のページだけ。補助ビューに query が付いてきても無視する（関係ない絞り込みを出さない）
+            if (args.query && typeof args.query === 'object' && QUERY_NAV_TARGETS.includes(target.key)) {
+              const executed = await executor.executeQuery(args.query as SankeyQuery, year);
+              if (!executed.errors && executed.result) result = executed.result;
             }
-            case 'search_projects':
-            case 'search_recipients':
-            case 'search_spending': {
-              const q = typeof args.q === 'string' ? args.q.trim() : '';
-              if (!q) {
-                payload = { error: 'q（検索キーワード）を指定してください' };
-              } else if (call.function.name === 'search_spending' && q.length < 2) {
-                // API route（/api/search/spending）と同じ下限。1文字は総当たりに近くなるため弾く
-                payload = { error: 'search_spending の q は2文字以上で指定してください' };
-              } else if (call.function.name === 'search_projects') {
-                const scope: ProjectSearchScope = args.scope === 'details' ? 'details' : 'name';
-                payload = await executor.searchProjects(year, q, scope);
-              } else if (call.function.name === 'search_recipients') {
-                payload = await executor.searchRecipients(year, q);
-              } else {
-                payload = await executor.searchSpending(year, q);
-              }
-              break;
-            }
-            case 'get_project_detail': {
-              const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
-              payload = pid ? await executor.getProjectDetail(year, pid) : { error: 'pid（事業ID）を指定してください' };
-              break;
-            }
-            case 'get_quality_scores': {
-              payload = await executor.getQualityScores(year, args.pids);
-              break;
-            }
-            case 'get_recipient_detail': {
-              const key = typeof args.key === 'string' ? args.key.trim() : '';
-              payload = key ? await executor.getRecipientDetail(year, key) : { error: 'key（支出先キー）を指定してください' };
-              break;
-            }
-            case 'get_subcontract_chain': {
-              const pid = typeof args.pid === 'string' ? args.pid.trim() : '';
-              payload = pid ? await executor.getSubcontractChain(year, pid) : { error: 'pid（事業ID）を指定してください' };
-              break;
-            }
-            case 'get_highlights': {
-              payload = await executor.getHighlights(year, args.metric);
-              break;
-            }
-            case 'compare_years': {
-              const baseYear = args.baseYear === '2024' || args.baseYear === '2025' ? args.baseYear : null;
-              const compareYear = args.compareYear === '2024' || args.compareYear === '2025' ? args.compareYear : null;
-              if (!baseYear || !compareYear) {
-                payload = { error: 'baseYear・compareYear には "2024" または "2025" を指定してください' };
-              } else {
-                payload = await executor.compareYears(args.query as SankeyQuery | undefined, baseYear, compareYear);
-              }
-              break;
-            }
-            case 'submit_result': {
-              const { errors, result } = await executor.executeQuery((args.query ?? {}) as SankeyQuery, year);
-              if (errors) {
-                payload = { errors, hint: 'クエリを修正して run_sankey_query で再検証してから submit_result してください' };
-                break;
-              }
-              const message = typeof args.message === 'string' && args.message.trim()
-                ? args.message.trim()
-                : `${result!.summary.projects.count}事業がマッチしました。`;
-              const interpretation = clampInterpretation(args.interpretation);
-              const suggestions = clampSuggestions(args.suggestions);
-              emitProgress(onProgress, buildToolProgressEvent('submit_result', { summary: result!.summary }));
-              return {
-                message,
-                result: interpretation ? { ...result!, interpretation } : result!,
-                ...(suggestions ? { suggestions } : {}),
-                toolCalls,
-              };
-            }
-            default:
-              payload = { error: `未知のツールです: ${call.function.name}` };
+            const destination = navTargetHref(target, args.params && typeof args.params === 'object' ? args.params as NavParams : undefined);
+            const message = (typeof args.message === 'string' && args.message.trim() ? args.message.trim() : `${target.label}に移動します。`)
+              + (destination.warnings.length ? `（受け付けなかった条件: ${destination.warnings.join('、')}）` : '');
+            emitProgress(onProgress, buildToolProgressEvent('navigate_page', { page: target.key }));
+            return { message, ...(result ? { result } : {}), navigate: { key: target.key, href: destination.href, label: target.label, ...(destination.scenario ? { scenario: destination.scenario } : {}) }, toolCalls };
           }
+        } else if (call.function.name === 'submit_result') {
+          // 確定はエージェントループ固有（会話を終える）。MCP など他の呼び出し元には公開しない
+          const { errors, result } = await executor.executeQuery((args.query ?? {}) as SankeyQuery, year);
+          if (errors) {
+            payload = { errors, hint: 'クエリを修正して run_sankey_query で再検証してから submit_result してください' };
+          } else {
+            const message = typeof args.message === 'string' && args.message.trim()
+              ? args.message.trim()
+              : `${result!.summary.projects.count}事業がマッチしました。`;
+            const interpretation = clampInterpretation(args.interpretation);
+            const suggestions = clampSuggestions(args.suggestions);
+            emitProgress(onProgress, buildToolProgressEvent('submit_result', { summary: result!.summary }));
+            return {
+              message,
+              result: interpretation ? { ...result!, interpretation } : result!,
+              ...(suggestions ? { suggestions } : {}),
+              toolCalls,
+            };
+          }
+        } else {
+          const executed = await executeToolCall(call.function.name, args, executor, year);
+          payload = executed.payload;
+          if (executed.result) lastGood = executed.result;
         }
       }
 

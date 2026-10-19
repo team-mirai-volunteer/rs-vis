@@ -23,6 +23,8 @@ export interface SankeyChatContext {
   year?: '2024' | '2025';
   /** 現在ページに適用中のクエリ（未フィルタなら省略可） */
   currentQuery?: SankeyQuery;
+  /** ユーザーがいま見ているページの名前（例: 「評価一覧」）。AI ナビがヘッダーから開かれたとき、案内の優先に使う（60 文字まで） */
+  page?: string;
 }
 
 export interface SankeyChatRequest {
@@ -57,6 +59,8 @@ export interface SankeyChatResponse {
   result?: SankeyChatResult;
   /** 次に聞ける質問の提案（最大3件）。現在のツールで実際に答えられる問いのみ */
   suggestions?: string[];
+  /** ページ遷移の指示。クライアントが href へ移動し、result があれば移動先に適用する */
+  navigate?: { key: string; href: string; label: string; scenario?: { amounts: Record<string, number> } };
   usage: {
     model: string;
     toolCalls: number;

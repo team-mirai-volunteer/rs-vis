@@ -14,6 +14,13 @@ import {
 } from '@/types/sankey-ai-chat';
 
 import { createServerLlmCaller, isServerAiEnabled, LlmUpstreamError, newUsage, serverModel, type LlmUsage } from '@/app/api/ai/_lib/server-llm';
+import { responseCacheKey, runWithResponseCache } from '@/app/api/ai/_lib/response-cache';
+import { navLogResponse, recordAiNavLog } from '@/app/lib/ai/nav-log-store';
+import { SANKEY_QUERY_DEFAULTS } from '@/app/lib/sankey-query';
+import { isGiveUpMessage } from '@/app/lib/ai/chat-core';
+
+/** 応答キャッシュに保存する応答か（解釈できなかった応答は保存しない） */
+const isCacheable = (result: { message: string }) => !isGiveUpMessage(result.message);
 
 /** appendUsageLog 呼び出しの共通次元（非ストリーミング・ストリーミング両経路で使う） */
 interface AiChatLogBase {
@@ -65,6 +72,7 @@ function validateContext(input: unknown): SankeyChatContext {
   if (raw.currentQuery !== null && typeof raw.currentQuery === 'object' && !Array.isArray(raw.currentQuery)) {
     context.currentQuery = raw.currentQuery;
   }
+  if (typeof raw.page === 'string' && raw.page.trim()) context.page = raw.page.trim().slice(0, 60);
   return context;
 }
 
@@ -106,13 +114,16 @@ export async function POST(req: Request) {
       return buildStreamResponse(messages, context, buildCallLlm, model, logBase, started, req.signal);
     }
 
+    const cacheKey = responseCacheKey(messages, context);
     let agentResult;
+    let cached = false;
     try {
-      agentResult = await runSankeyChatAgent(messages, context, buildCallLlm());
+      ({ result: agentResult, cached } = await runWithResponseCache(cacheKey, () => runSankeyChatAgent(messages, context, buildCallLlm()), isCacheable));
     } catch (e) {
       if (e instanceof LlmUpstreamError || (e instanceof Error && e.name === 'TimeoutError')) {
         console.error('[ai/sankey-chat] upstream error:', e);
         appendUsageLog({ ...logBase, outcome: 'upstream_error', latencyMs: Date.now() - started });
+        void recordAiNavLog({ year: context.year ?? SANKEY_QUERY_DEFAULTS.year, page: context.page, model, messages, response: null, outcome: 'upstream_error', toolCalls: 0, cached: false, latencyMs: Date.now() - started });
         return NextResponse.json(
           { error: 'AIが応答できませんでした。時間をおいて再度お試しください' },
           { status: 502 },
@@ -121,8 +132,11 @@ export async function POST(req: Request) {
       throw e;
     }
 
+    // 対話ログの保存（Supabase。個人を特定する情報は持たない。応答を止めないので await しない）
+    void recordAiNavLog({ year: context.year ?? SANKEY_QUERY_DEFAULTS.year, page: context.page, model, messages, response: navLogResponse(agentResult), outcome: agentResult.result ? 'result' : 'text', toolCalls: agentResult.toolCalls, cached, latencyMs: Date.now() - started });
     appendUsageLog({
       ...logBase,
+      cached,
       // result なし = 聞き返し・解釈不能（未充足需要のシグナル）。text 行の userText を集計して活用する
       outcome: agentResult.result ? 'result' : 'text',
       ...(agentResult.result ? { projectCount: agentResult.result.summary.projects.count } : {}),
@@ -136,6 +150,7 @@ export async function POST(req: Request) {
       message: agentResult.message,
       ...(agentResult.result ? { result: agentResult.result } : {}),
       ...(agentResult.suggestions ? { suggestions: agentResult.suggestions } : {}),
+      ...(agentResult.navigate ? { navigate: agentResult.navigate } : {}),
       usage: { model, toolCalls: agentResult.toolCalls },
     };
     // チャット応答はキャッシュ不可
@@ -201,9 +216,16 @@ function buildStreamResponse(
         );
         const onProgress = (ev: SankeyChatProgressEvent) => send('progress', ev);
         try {
-          const agentResult = await runSankeyChatAgent(messages, context, callLlm, onProgress);
+          // キャッシュに当たれば progress イベントは出ず、すぐ result が届く
+          const { result: agentResult, cached } = await runWithResponseCache(
+            responseCacheKey(messages, context),
+            () => runSankeyChatAgent(messages, context, callLlm, onProgress),
+            isCacheable,
+          );
+          void recordAiNavLog({ year: context.year ?? SANKEY_QUERY_DEFAULTS.year, page: context.page, model, messages, response: navLogResponse(agentResult), outcome: agentResult.result ? 'result' : 'text', toolCalls: agentResult.toolCalls, cached, latencyMs: Date.now() - started });
           appendUsageLog({
             ...logBase,
+            cached,
             outcome: agentResult.result ? 'result' : 'text',
             ...(agentResult.result ? { projectCount: agentResult.result.summary.projects.count } : {}),
             toolCalls: agentResult.toolCalls,
@@ -215,6 +237,7 @@ function buildStreamResponse(
             message: agentResult.message,
             ...(agentResult.result ? { result: agentResult.result } : {}),
             ...(agentResult.suggestions ? { suggestions: agentResult.suggestions } : {}),
+            ...(agentResult.navigate ? { navigate: agentResult.navigate } : {}),
             usage: { model, toolCalls: agentResult.toolCalls },
           };
           send('result', response);
@@ -226,6 +249,7 @@ function buildStreamResponse(
           } else if (e instanceof LlmUpstreamError || (e instanceof Error && e.name === 'TimeoutError')) {
             console.error('[ai/sankey-chat] upstream error (stream):', e);
             appendUsageLog({ ...logBase, outcome: 'upstream_error', latencyMs: Date.now() - started });
+            void recordAiNavLog({ year: context.year ?? SANKEY_QUERY_DEFAULTS.year, page: context.page, model, messages, response: null, outcome: 'upstream_error', toolCalls: 0, cached: false, latencyMs: Date.now() - started });
             send('error', { error: 'AIが応答できませんでした。時間をおいて再度お試しください' });
           } else {
             console.error('[ai/sankey-chat] unexpected error (stream):', e);

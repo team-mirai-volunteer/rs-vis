@@ -18,6 +18,7 @@ import type { SankeyLink } from '@/types/sankey';
 import { parseAmountToYen } from '@/app/lib/format/yen';
 import type { UnifiedColumn, UnifiedGraph } from '@/types/unified-budget';
 import { RS_TOTAL_ID, RS_TOTAL_NAME, UNIFIED_COLUMNS, UNIFIED_RS_MINISTRY_COLUMNS, rsMinistryId } from '@/types/unified-budget';
+import { ministryMatches } from '@/app/lib/unified-budget/ministry-names';
 import {
   AGGREGATE_ID_PREFIX,
   DEFAULT_UNIFIED_TOP_N,
@@ -190,10 +191,11 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
     }
   }
   if (filter.ministries.length > 0) {
+    // 共管の所管（「内閣府及び厚生労働省」など）は、構成する省庁のいずれかが選ばれていれば残す
     const allowed = new Set(filter.ministries);
     for (const n of current.nodes) {
       const d = n.details;
-      if ((d.column === 'ministry' || d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.ministry && !allowed.has(d.ministry)) remove.add(n.id);
+      if ((d.column === 'ministry' || d.column === 'organization' || d.column === 'section' || d.column === 'koumoku') && d.ministry && !ministryMatches(allowed, d.ministry)) remove.add(n.id);
     }
   }
   if (!filter.showNonRs) {
@@ -223,7 +225,7 @@ export function applyFilter(view: UnifiedViewGraph, filter: UnifiedViewFilter, c
     for (const n of current.nodes) {
       if (!isRsProgram(n) || originalIncoming.has(n.id)) continue;
       const d = n.details;
-      if (filter.ministries.length > 0 && !filter.ministries.includes(d.rsMinistry ?? '')) continue;
+      if (filter.ministries.length > 0 && !ministryMatches(new Set(filter.ministries), d.rsMinistry ?? '')) continue;
       if (filter.accountTypes.length > 0 && !filter.accountTypes.some(type => d.accountCategory === type || d.accountCategory === 'both')) continue;
       roots.push(n.id);
     }

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { LegalLinks } from '@/components/legal/LegalLinks';
-import { PAGES } from '@/components/navigation/pages';
+import { PRIMARY_PAGES, PRODUCT_NAME, SECONDARY_PAGES } from '@/components/navigation/pages';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,8 +38,8 @@ const PAGE_ICONS: Partial<Record<string, LucideIcon>> = {
  * ツール本体は各ビューに任せ、ここは「何が見られるか」を説明するだけにする。
  */
 export default function Home() {
-  const primary = PAGES.filter(p => p.primary);
-  const secondary = PAGES.filter(p => !p.primary);
+  const primary = PRIMARY_PAGES;
+  const secondary = SECONDARY_PAGES;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
@@ -48,7 +48,7 @@ export default function Home() {
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <section className="flex flex-col justify-between gap-6 rounded-2xl bg-mirai-gradient p-6 sm:flex-row sm:items-end sm:p-10">
           <div className="max-w-2xl">
-            <p className="mb-2 text-xs font-bold tracking-normal">行政事業レビュー可視化</p>
+            <p className="mb-2 text-xs font-bold tracking-normal">{PRODUCT_NAME}</p>
             <h1 className="text-2xl/8 font-bold tracking-normal sm:text-3xl/10">国の予算は、どこから来て、どこへ行くのか。</h1>
             <p className="mt-3 text-[15px] leading-relaxed font-medium">
               行政事業レビューシステムの 5,000 超の事業と 2 万超の支出先、財務省予算書の会計・項・目、
@@ -69,17 +69,16 @@ export default function Home() {
 
         <section aria-labelledby="views-heading" className="space-y-3">
           <h2 id="views-heading" className="text-lg font-bold tracking-normal">主なビュー</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {primary.map((p, index) => {
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {primary.map(p => {
               const Icon = PAGE_ICONS[p.href] ?? Waypoints;
-              const featured = index === 0;
               return (
                 <Link
                   key={p.href}
                   href={p.href}
                   className={cn(
                     'group flex flex-col gap-3 rounded-2xl border border-mirai-border bg-card p-5 shadow-xs transition-colors hover:border-primary',
-                    featured && 'sm:col-span-2'
+                    'sm:col-span-1'
                   )}
                 >
                   <span className="flex items-center gap-3">
@@ -99,12 +98,12 @@ export default function Home() {
           </div>
         </section>
 
-        <section aria-labelledby="mof-heading" className="space-y-3">
+        <section aria-labelledby="secondary-heading" className="space-y-3">
           <div>
-            <h2 id="mof-heading" className="text-lg font-bold tracking-normal">財務省予算書のビュー</h2>
-            <p className="text-sm text-mirai-text-muted">予算書・決算書データベースの会計・所管・項・目を、そのまま一覧やフローで確かめるための補助ビューです。</p>
+            <h2 id="secondary-heading" className="text-lg font-bold tracking-normal">補助ビュー</h2>
+            <p className="text-sm text-mirai-text-muted">概算要求・租税特別措置・国民負担・財政余力。事業の外側（来年度の要求・税の優遇・負担・余力）から予算を見る試作です。</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {secondary.map(p => (
               <Link
                 key={p.href}
@@ -112,7 +111,7 @@ export default function Home() {
                 className="group flex items-start justify-between gap-3 rounded-xl border border-mirai-border bg-card px-4 py-3 transition-colors hover:border-primary hover:bg-mirai-surface-teal/60"
               >
                 <span>
-                  <span className="block text-sm font-bold">{p.navLabel}</span>
+                  <span className="flex items-center gap-2 text-sm font-bold">{p.navLabel}{p.prototype && <Badge variant="light" className="rounded-full text-[10px]">試作</Badge>}</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-mirai-text-subtle">{p.description}</span>
                 </span>
                 <ArrowRight className="mt-0.5 size-4 shrink-0 text-mirai-text-muted transition-colors group-hover:text-primary-accent" aria-hidden="true" />
@@ -120,6 +119,7 @@ export default function Home() {
             ))}
           </div>
         </section>
+
       </main>
 
       <footer className="mt-4 bg-mirai-text px-4 py-6 text-xs leading-relaxed text-white sm:px-6 lg:px-8">

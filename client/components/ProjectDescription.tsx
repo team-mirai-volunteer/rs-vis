@@ -14,15 +14,18 @@ export function yearsRunning(startYear: number | null, sheetYear: string | numbe
 }
 
 /** サイドパネルと詳細ダイアログで共通の事業説明。 */
-export function ProjectDescription({ detail, showSourceLink = true, sheetYear }: {
+export function ProjectDescription({ detail, showSourceLink = true, sheetYear, size = 'default' }: {
   detail: ProjectDetail;
   showSourceLink?: boolean;
   /** RSシート年度。渡すと継続年数を出す */
   sheetYear?: string | number;
+  /** `large` は評価一覧の詳細ダイアログ（デスクトップ）向け。本文 14px・補足 12px に広げる */
+  size?: 'default' | 'large';
 }) {
   const years = yearsRunning(detail.startYear, sheetYear);
-  return <div className="space-y-3 text-xs">
-    <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-mirai-text-muted">
+  const large = size === 'large';
+  return <div className={large ? 'space-y-4 text-sm' : 'space-y-3 text-xs'}>
+    <div className={`flex flex-wrap gap-x-3 gap-y-1 text-mirai-text-muted ${large ? 'text-xs' : 'text-[10px]'}`}>
       {detail.category && <span>区分: {detail.category}</span>}
       {(detail.startYear || detail.startYearUnknown) && <span>開始: {detail.startYear ? `${detail.startYear}年度` : '不明'}</span>}
       {years !== null && <span title="対象年度 − 開始年度 ＋ 1（評価一覧の継続年数と同じ）" className="font-bold text-mirai-text-secondary">継続年数: {years}年</span>}

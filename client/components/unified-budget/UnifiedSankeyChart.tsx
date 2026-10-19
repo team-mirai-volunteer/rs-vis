@@ -792,7 +792,8 @@ export function UnifiedSankeyChart({
           filterFields={<UnifiedFilterFields filter={filter} onFilterChange={onFilterChange} ministryOptions={ministryOptions} hasSpending={hasSpending} scoreStatus={scoreStatus} />}
           trailing={searchAddon}
           filterActive={hasActiveUnifiedFilter(filter)}
-          onClearFilter={() => onFilterChange(UNIFIED_FILTER_DEFAULT)}
+          // 解除 × は条件だけを戻す。表示オプション（ギア側）は保つ
+          onClearFilter={() => onFilterChange({ ...UNIFIED_FILTER_DEFAULT, showNonRs: filter.showNonRs, includeCollapsedAccounts: filter.includeCollapsedAccounts })}
         />
         {searchTrailing}
       </div>

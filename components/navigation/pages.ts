@@ -6,28 +6,31 @@
  * - `navLabel`: ヘッダーの主要ナビ・メニュー・トップのカードに出す短い名前。試作であることは `prototype` のバッジで示す
  */
 export const PAGES = [
-  { href: '/budget-sankey', label: 'サンキー図', navLabel: 'サンキー図', prototype: false, description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れを 1 本のサンキーで追う。「RSのみ」で省庁 → 事業 → 支出先だけにも絞れる', primary: true },
-  { href: '/project-bubble', label: 'バブルチャート', navLabel: 'バブル図', prototype: false, description: '5,000 超の事業を内容の近さで配置し、予算規模やAI評価を切り替えて比較する', primary: true },
-  { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '公開資料に基づく独自基準のAI評価（試行）と執行透明性を、事業ごとに一覧で見る', primary: true },
-  { href: '/subcontracts', label: '委託構造', navLabel: '委託構造', prototype: false, description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true },
-  { href: '/vendors', label: '事業者別（試作）', navLabel: '事業者', prototype: true, description: '事業者（法人番号）ごとに、全府省での受注額・1者応札率・随意契約・同じ事業で1者応札が続く事業を見る', primary: true },
-  { href: '/funds', label: '基金（試作）', navLabel: '基金', prototype: true, description: '基金シートから、残高・支出・国庫返納・終了予定・府省の点検結果を見て、詳しく確認したい基金を探す', primary: true },
-  { href: '/budget-requests', label: '概算要求（試作）', navLabel: '概算要求', prototype: true, description: '2027年度の概算要求・要望を原資料とともに探し、府省ごとの取得状況と未抽出の資料を確認する', primary: true },
-  { href: '/tax-expenditures', label: '租税特別措置(試作)', navLabel: '税優遇', prototype: true, description: '法人税の租税特別措置の適用実態と、関連するRS事業を調べる', primary: true },
-  { href: '/tax-burden', label: '歳入・国民負担（試作）', navLabel: '国民負担', prototype: true, description: '年収・家族構成別の税と保険料の負担率、国の税目別歳入を見る', primary: true },
-  { href: '/fiscal-space', label: '財政余力シミュレータ（試作）', navLabel: '財政余力', prototype: true, description: '次の1兆円で何が最初に足りなくなるか。政策・物価・労働・エネルギー・国債借換を仮定モデルで比較する', primary: true },
-  { href: '/mof-budget-overview', label: '予算全体（MOF）', navLabel: '予算全体', prototype: false, description: '一般会計・特別会計の歳入から歳出までの全体フロー', primary: false },
-  { href: '/mof-jikou', label: '予算書 事項（MOF）', navLabel: '予算書 事項', prototype: false, description: '財務省予算書の「事項」を一覧・絞り込み', primary: false },
-  { href: '/mof-kou-moku', label: '予算書 科目別内訳（MOF）', navLabel: '予算書 科目別内訳', prototype: false, description: '「項・目」の内訳を一覧・絞り込み', primary: false },
-  { href: '/mof-kou', label: '予算書 項一覧（MOF）', navLabel: '予算書 項一覧', prototype: false, description: '「項」ごとの予算額と RS 事業との紐づきを一覧', primary: false },
-  { href: '/mof-hierarchy', label: '予算書 階層フロー（MOF）', navLabel: '予算書 階層フロー', prototype: false, description: '所管 → 組織 → 項 → 事項の階層をサンキーで追う', primary: false },
-  { href: '/mof-sankey', label: '予算書 項×RS事業（MOF）', navLabel: '予算書 項×RS事業', prototype: false, description: '予算書の「項」と RS 事業の対応をサンキーで見る', primary: false },
+  { href: '/budget-sankey', label: 'サンキー図', navLabel: 'サンキー図', prototype: false, description: '財務省予算書（会計・所管・項・目）から RS 事業・支出先までの流れをひとつながりで追う', primary: true, secondary: false },
+  { href: '/project-bubble', label: 'バブルチャート', navLabel: 'バブル図', prototype: false, description: '5,000 超の事業を内容の近さで配置し、予算規模やAI評価を切り替えて比較する', primary: true, secondary: false },
+  { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '公開資料に基づく独自基準のAI評価（試行）と執行透明性を、事業ごとに一覧で見る', primary: true, secondary: false },
+  { href: '/subcontracts', label: '委託構造', navLabel: '委託構造', prototype: false, description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true, secondary: false },
+  { href: '/vendors', label: '事業者別', navLabel: '事業者', prototype: false, description: '事業者（法人番号）ごとに、全府省での受注額・1者応札率・随意契約・同じ事業で1者応札が続く事業を見る', primary: true, secondary: false },
+  { href: '/funds', label: '基金', navLabel: '基金', prototype: false, description: '基金シートから、残高・支出・国庫返納・終了予定・府省の点検結果を見て、詳しく確認したい基金を探す', primary: true, secondary: false },
+  { href: '/budget-requests', label: '概算要求（試作）', navLabel: '概算要求', prototype: true, description: '2027年度の概算要求・要望を原資料とともに探し、府省ごとの取得状況と未抽出の資料を確認する', primary: false, secondary: true },
+  { href: '/tax-expenditures', label: '租税特別措置（試作）', navLabel: '租税特別措置', prototype: true, description: '法人税の租税特別措置の適用実態と、関連するRS事業を調べる', primary: false, secondary: true },
+  { href: '/tax-burden', label: '歳入・国民負担（試作）', navLabel: '国民負担', prototype: true, description: '年収・家族構成別の税と保険料の負担率、国の税目別歳入を見る', primary: false, secondary: true },
+  { href: '/fiscal-space', label: '財政余力シミュレータ（試作）', navLabel: '財政余力', prototype: true, description: '次の1兆円で何が最初に足りなくなるか。政策・物価・労働・エネルギー・国債借換を仮定モデルで比較する', primary: false, secondary: true },
+  { href: '/mof-budget-overview', label: '予算全体（MOF）', navLabel: '予算全体', prototype: false, description: '一般会計・特別会計の歳入から歳出までの全体フロー', primary: false, secondary: false },
+  { href: '/mof-jikou', label: '予算書 事項（MOF）', navLabel: '予算書 事項', prototype: false, description: '財務省予算書の「事項」を一覧・絞り込み', primary: false, secondary: false },
+  { href: '/mof-kou-moku', label: '予算書 科目別内訳（MOF）', navLabel: '予算書 科目別内訳', prototype: false, description: '「項・目」の内訳を一覧・絞り込み', primary: false, secondary: false },
+  { href: '/mof-kou', label: '予算書 項一覧（MOF）', navLabel: '予算書 項一覧', prototype: false, description: '「項」ごとの予算額と RS 事業との紐づきを一覧', primary: false, secondary: false },
+  { href: '/mof-hierarchy', label: '予算書 階層フロー（MOF）', navLabel: '予算書 階層フロー', prototype: false, description: '所管 → 組織 → 項 → 事項の階層をサンキーで追う', primary: false, secondary: false },
+  { href: '/mof-sankey', label: '予算書 項×RS事業（MOF）', navLabel: '予算書 項×RS事業', prototype: false, description: '予算書の「項」と RS 事業の対応をサンキーで見る', primary: false, secondary: false },
 ] as const;
 
 export type NavPageHref = (typeof PAGES)[number]['href'];
 
-/** ヘッダーの主要ナビに出すページ（残りは PageNavMenu の全件メニューへ） */
+/** ヘッダーの主要ナビに出すページ */
 export const PRIMARY_PAGES = PAGES.filter(p => p.primary);
 
-/** ヘッダー・トップページで使う製品名 */
-export const PRODUCT_NAME = '行政事業レビュー可視化';
+/** 補助ビュー。主要ナビには出さず、メニューの「補助ビュー」とトップの一覧に出す（概算要求・租税特別措置・国民負担・財政余力） */
+export const SECONDARY_PAGES = PAGES.filter(p => p.secondary);
+
+/** ヘッダー・トップページで使う製品名（正典は app/lib/product.ts。既存の import 先として再 export） */
+export { PRODUCT_NAME } from '@/app/lib/product';
