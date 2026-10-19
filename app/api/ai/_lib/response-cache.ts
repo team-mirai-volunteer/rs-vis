@@ -41,6 +41,7 @@ export function responseCacheKey(messages: SankeyChatMessage[], context: SankeyC
     year: context.year ?? SANKEY_QUERY_DEFAULTS.year,
     currentQuery: context.currentQuery ?? null,
     page: context.page ?? null,
+    pageState: context.pageState ?? null,
     version: dataVersion(context.year),
     prompt: PROMPT_VERSION,
   });

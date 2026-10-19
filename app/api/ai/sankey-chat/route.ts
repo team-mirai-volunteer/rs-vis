@@ -31,9 +31,9 @@ interface AiChatLogBase {
   userText: string;
 }
 
-/** チャットパネルの表示可否をクライアントが判定するための疎通エンドポイント */
+/** チャットパネルの表示可否をクライアントが判定するための疎通エンドポイント。無効でも 200 で返す（全ページのヘッダーから毎回呼ぶので、404 をエラー扱いにしない） */
 export async function GET() {
-  if (!isServerAiEnabled()) notFound();
+  if (!isServerAiEnabled()) return NextResponse.json({ enabled: false });
   return NextResponse.json({ enabled: true, model: serverModel() });
 }
 
@@ -73,6 +73,7 @@ function validateContext(input: unknown): SankeyChatContext {
     context.currentQuery = raw.currentQuery;
   }
   if (typeof raw.page === 'string' && raw.page.trim()) context.page = raw.page.trim().slice(0, 60);
+  if (typeof raw.pageState === 'string' && raw.pageState.trim()) context.pageState = raw.pageState.trim().slice(0, 4000);
   return context;
 }
 

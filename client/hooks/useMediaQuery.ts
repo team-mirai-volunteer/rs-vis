@@ -13,8 +13,12 @@ import { useEffect, useState } from 'react';
 /** Tailwind の `sm` ブレークポイント（640px）未満 */
 export const NARROW_QUERY = '(max-width: 639px)';
 
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+/**
+ * @param clientInitial true なら初回描画からクライアントの実際の値で始める。SSR されない（開いた後に描く）ダイアログなど、
+ *   false → true の切り替えで中の部品が作り直される（通信が二重になる）のを避けたいときに使う。SSR される部分では使わない（hydration がずれる）
+ */
+export function useMediaQuery(query: string, clientInitial = false): boolean {
+  const [matches, setMatches] = useState(() => clientInitial && typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(query).matches);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mq = window.matchMedia(query);

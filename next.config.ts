@@ -4,22 +4,28 @@ import type { NextConfig } from "next";
  * CSP（Content-Security-Policy）。目的は XSS 成立時の被害限定、特に BYOK の
  * APIキー（IndexedDB保存）の外部送信遮断（docs/ai-chat-architecture-guide.md「2. API キーの取り扱い規律」）。
  *
- * - connect-src: 自オリジン + OpenRouter（BYOKチャットのブラウザ直接呼び出し）のみ。
- *   XSS が成立しても fetch/XHR/sendBeacon での任意ホストへの送出を遮断する（本命の効果）
- * - script-src 'unsafe-inline': Next.js の hydration インラインスクリプトに必要
+ * - connect-src: 自オリジン + OpenRouter（BYOKチャットのブラウザ直接呼び出し）
+ *   + GA4 の送信先。XSS が成立しても fetch/XHR/sendBeacon での任意ホストへの
+ *   送出を遮断する（本命の効果）。*.google.com は許可しない。
+ * - script-src: 自オリジン + Google タグ（www.googletagmanager.com/gtag/js）。
+ *   'unsafe-inline' は Next.js の hydration と gtag 初期化のインラインスクリプトに必要
  *   （静的ページ主体のため per-request nonce は使えない）。スクリプト注入自体の防御は
  *   React の既定エスケープ + react-markdown（生HTML非描画）が一次防御
  * - style-src 'unsafe-inline': コンポーネント内 <style> タグ（chat-markdown 等）と
  *   インライン style 属性に必要
- * - 外部フォント・外部画像は許可しない。財政計算のworkerは自オリジンのみ
+ * - img-src: 自オリジン + GA4 の計測ピクセル。外部フォントは許可しない。
+ *   財政計算のworkerは自オリジンのみ
+ * - google-analytics.com / analytics.google.com は www と地域別サブドメイン
+ *   （region1. など。CSP の * は1ラベルだけ）の両方を書く。apex の
+ *   analytics.google.com は *.analytics.google.com には含まれない
  */
 const CSP_HEADER = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com",
   "font-src 'self'",
-  "connect-src 'self' https://openrouter.ai",
+  "connect-src 'self' https://openrouter.ai https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.googletagmanager.com",
   "worker-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",

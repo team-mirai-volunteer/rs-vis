@@ -118,7 +118,7 @@ const GIVE_UP_MESSAGE =
  * システムプロンプトの版。応答キャッシュの鍵に含め、プロンプトを変えたときに古い応答が 24 時間残らないようにする。
  * 応答の書き方に影響する変更をしたら上げる
  */
-export const PROMPT_VERSION = 3;
+export const PROMPT_VERSION = 4;
 
 /** 「解釈できなかった」応答か（応答キャッシュはこれを保存しない） */
 export const isGiveUpMessage = (message: string): boolean => message === GIVE_UP_MESSAGE;
@@ -556,7 +556,7 @@ export const TOOLS: LlmToolDef[] = [
 
 // ── システムプロンプト ──
 
-function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[], page?: string): string {
+function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | undefined, ministryNames: string[], page?: string, pageState?: string): string {
   const lines = [
     // サイト名は出さない（開発リポジトリ名由来の「まるみえ」が応答文に漏れた実績あり。公開版は別名のため一般名称で自称する）
     'あなたは、日本の行政事業レビューの予算・支出データをサンキー図で可視化するサイトのAIアシスタントです。サイト名やシステム名は応答に含めないこと。',
@@ -566,6 +566,13 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     ...(page ? [
       `- ユーザーはいま「${page}」のページを見ている。そのページで見られる情報を優先して案内し、サンキー図でしか見られない条件はその旨を添える`,
       ...(page !== 'サンキー図' ? [`- submit_result で確定した条件は「${page}」のページの絞り込みとして適用される（サンキー図ではない）。message では「サンキー図に反映した」「図に適用した」と書かず、「${page}を N 件に絞り込みました」のように、そのページ名で書く`] : []),
+    ] : []),
+    ...(pageState ? [
+      '',
+      '## いま見ている画面の状態（ページがブラウザで計算した結果の要約。ユーザーがこの画面について聞いたら、ツールを呼ばずにここから数字を転記して答える）',
+      pageState,
+      '- この要約はページの表示と同じ条件付きの試算で、推奨や公式の数値ではない。答えるときは「この条件では」「画面の試算では」と添える',
+      '- 要約に無い値は「画面に出ていない」と言い、推測で補わない',
     ] : []),
     `- 対象年度: ${year}（事業年度${year}のデータは予算年度${Number(year) - 1}の執行実績）`,
     '- 対象は行政事業レビュー対象事業のみ（国の全予算の約27%。国債費・地方交付税等は含まない）',
@@ -845,7 +852,7 @@ export async function runSankeyChatAgentCore(
   const ministryNames = await executor.getMinistryNames(year);
 
   const messages: LlmMessage[] = [
-    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames, context.page) },
+    { role: 'system', content: buildSystemPrompt(year, context.currentQuery, ministryNames, context.page, context.pageState) },
     ...chatMessages.map((m): LlmMessage => ({ role: m.role, content: m.content })),
   ];
 

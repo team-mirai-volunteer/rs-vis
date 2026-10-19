@@ -18,6 +18,7 @@ import { CapacityCalibration } from '@/client/components/fiscal-space/CapacityCa
 import { CashSettings, ChildcareCashSettings } from '@/client/components/fiscal-space/Poverty';
 import { ClipboardCheck, Info, SlidersHorizontal, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
+import { useAiPageState } from '@/client/lib/ai/result-handler';
 import { Button } from '@/components/ui/button';
 import { POLICIES, TRILLION } from '@/app/lib/fiscal-space/assumptions';
 import { CONSTRAINTS } from '@/app/lib/fiscal-space/constraints';
@@ -139,6 +140,24 @@ export default function FiscalSpacePage() {
   const loadedPolicies = useMemo(() => result?.allocated.map(policy => ({ ...policy, load: form.loads[policy.id] ?? policy.load })) ?? [], [result, form.loads]);
 
   const headline = result ? (result.estimate.status === 'unevaluated' ? '参考上限：算出不可' : result.estimate.status === 'empty-mix' ? '参考上限：未計算（政策の配分を入力してください）' : `参考上限 ${money(result.estimate.recommendedEnvelope, 1)}／年・${result.estimate.constraints.find(c => c.status === 'violated')?.label ?? '境界未特定'}`) : undefined;
+  // AI ナビに見せる「いまの画面の状態」。ページの表示と同じ条件付きの試算を短い日本語にする（個人情報は含まない）
+  const aiPageState = useMemo(() => {
+    if (!result || !calculationForm) return null;
+    const chosen = POLICIES.filter(policy => (calculationForm.amounts[policy.id] ?? 0) > 0)
+      .map(policy => `${policy.name} ${calculationForm.amounts[policy.id]}兆円／年（${calculationForm.policySettings[policy.id]?.kind === 'permanent' ? '恒久' : `${calculationForm.policySettings[policy.id]?.duration ?? policy.duration}年`}）`);
+    const binding = result.estimate.constraints.filter(c => c.status === 'violated');
+    const lines = [
+      `財政余力シミュレータ（仮定モデルの条件付き試算。評価期間 ${result.horizon} 年、データ ${calculationForm.dataset}）`,
+      `追加の財政措置: ${chosen.length ? chosen.join('、') : 'なし（政策の配分が未入力）'}。年額合計 ${money(result.totalYen, 2)}`,
+      `参考上限（同じ配分を拡大してストレスに耐える額）: ${result.estimate.status === 'empty-mix' ? '未計算' : result.estimate.status === 'unevaluated' ? '算出不可' : `${money(result.estimate.recommendedEnvelope, 1)}／年（ストレスなしの探索額 ${money(result.estimate.theoreticalMaximum, 1)}）`}`,
+      `境界を決めた制約: ${binding.length ? binding.map(c => `${c.label}（年${c.year}、${(c.currentValue * 100).toFixed(2)}% / 上限 ${(c.threshold * 100).toFixed(2)}%）`).join('、') : result.estimate.status === 'revenue-cap' ? `${POLICIES.find(x => x.id === result.estimate.limitingPolicy)?.name ?? ''}の減収対象の収入上限` : '境界未特定'}`,
+      ...result.comparison.filter(row => (calculationForm.amounts[row.policy.id] ?? 0) > 0).map(row =>
+        `${row.policy.name}: 実質GDP効果 ${money(row.realGdpEffect, 2)}、物価圧力 ${(row.inflationPressure * 100).toFixed(2)}ポイント、債務/GDP の変化 ${(row.debtGdpChangeAtHorizon * 100).toFixed(2)}ポイント（${result.horizon}年目）`),
+      ...(result.longRun.length ? [`長期シナリオ（${result.longRun.at(-1)!.year}年目）: 債務/GDP の政策なしとの差 ${((result.longRun.at(-1)!.debtGdp - result.longRun.at(-1)!.baselineDebtGdp) * 100).toFixed(2)}ポイント`] : []),
+    ];
+    return lines.join('\n');
+  }, [result, calculationForm]);
+  useAiPageState(aiPageState);
   return <div data-fiscal-space className="min-h-screen bg-background text-mirai-text [&_summary]:min-h-11 [&_summary]:py-2">
     <AppHeader current="/fiscal-space">
       <Button variant="outline" size="sm" className="border-mirai-border" onClick={() => { setDialogOpen(true); dataDialog.current?.showModal(); }}>

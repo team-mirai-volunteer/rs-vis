@@ -26,8 +26,8 @@ test('みんなの意見 is collapsed by default and opens as an accordion', asy
   await expect(panel.getByText('意見その1', { exact: true })).toBeVisible();
   await expect(panel.getByText('意見その4', { exact: true })).toHaveCount(0);
   // 別年度に投稿された意見も同じ事業としてまとまり、投稿時の年度が添えられる
-  await expect(panel.getByText('2023年度 ・', { exact: false }).first()).toBeVisible();
-  await expect(panel.getByText('2024年度 ・', { exact: false }).first()).toBeVisible();
+  await expect(panel.getByText('2023年度実績 ・', { exact: false }).first()).toBeVisible();
+  await expect(panel.getByText('2024年度実績 ・', { exact: false }).first()).toBeVisible();
   expect(requested.length).toBeGreaterThan(0);
   expect(requested.every(url => !new URL(url).searchParams.has('year'))).toBe(true);
   await panel.getByRole('button', { name: 'すべて表示（5件）' }).click();
@@ -45,7 +45,9 @@ test('zero comments add no extra line and no accordion toggle', async ({ page })
   await page.goto('/budget-sankey?year=2024&sel=project-budget-2826');
   const panel = page.getByTestId('unified-side-panel');
   await expect(panel.getByText('0件', { exact: true })).toBeVisible();
-  await expect(panel.getByText(/まだ意見はありません/)).toHaveCount(0);
-  await expect(panel.getByRole('button', { name: '意見を伝える', exact: true })).toHaveAttribute('title', /まだ意見はありません/);
+  // 案内文はボタンの吹き出し（title と tooltip）にだけあり、行としては出ない
+  await expect(panel.getByText(/まだ意見はありません/)).not.toBeVisible();
+  // 案内はボタンに乗せたときの吹き出し（role=tooltip。通常は非表示）に入る
+  await expect(panel.getByRole('tooltip', { includeHidden: true })).toContainText('まだ意見はありません');
   await expect(panel.getByRole('button', { name: /みんなの意見/ })).toHaveCount(0);
 });
