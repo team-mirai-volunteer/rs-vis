@@ -16,7 +16,7 @@
  */
 
 import LoadingSpinner from '@/client/components/LoadingSpinner';
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UNIFIED_BASES_BY_YEAR, UNIFIED_BASIS_LABELS, UNIFIED_BASIS_MOF_MEASURE, UNIFIED_RS_MINISTRY_COLUMN_LABELS, UNIFIED_RS_MINISTRY_MEASURE, isRsMinistryBasis, unifiedFileBasis, unifiedGraphFileName, type UnifiedBasis, type UnifiedColumn, type UnifiedGraph } from '@/types/unified-budget';
 import { UNIFIED_COLUMNS } from '@/types/unified-budget';
@@ -274,7 +274,10 @@ function UnifiedBudgetSankeyContent() {
     return out;
   }, [policySummary]);
   const filterCtx = useMemo(() => ({ policy: policyScores }), [policyScores]);
-  const filtered = useMemo(() => (base ? applyFilter(base, filter, filterCtx) : null), [base, filter, filterCtx]);
+  // 絞り込みの反映は入力より遅らせる（1 文字ごとに全ノードの絞り込みと再配置が走り、入力が引っかかるため）。
+  // 入力欄は filter に直結したまま即座に反応し、図の計算は途中の値を飛ばして最新だけ行う
+  const deferredFilter = useDeferredValue(filter);
+  const filtered = useMemo(() => (base ? applyFilter(base, deferredFilter, filterCtx) : null), [base, deferredFilter, filterCtx]);
   const collapsed = useMemo(() => (filtered ? collapseColumns(filtered, effectiveColumns) : null), [filtered, effectiveColumns]);
   const columnCounts = useMemo(() => (collapsed ? countByColumn(collapsed) : {}), [collapsed]);
   const display = useMemo(
