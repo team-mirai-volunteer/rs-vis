@@ -207,7 +207,7 @@ export function UnifiedFilterFields({
         {/* 評価一覧と同じ 6 項目。2 列 × 3 行 */}
         <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
           {UNIFIED_SCORE_FIELDS.map(s => (
-            <ScoreRow key={s.field} label={s.label} title={s.title} range={filter[s.field]} onChange={r => set({ [s.field]: r })} />
+            <ScoreRow key={s.field} label={s.short} ariaLabel={s.label} title={`${s.label}: ${s.title}`} compact range={filter[s.field]} onChange={r => set({ [s.field]: r })} />
           ))}
         </div>
         {scoreStatus === 'loading' && <p className="text-[10px] text-mirai-text-muted">政策評価を読み込み中…（取得できるまでスコアの絞り込みは効きません）</p>}
@@ -232,7 +232,7 @@ function AmountRow({ label, title, children }: { label: string; title: string; c
   );
 }
 
-function ScoreRow({ label, title, range, onChange, max = 100 }: { label: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void; max?: number }) {
+function ScoreRow({ label, ariaLabel = label, title, range, onChange, max = 100, compact = false }: { label: string; ariaLabel?: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void; max?: number; /** 2 列に並べるときの短い見出し（幅を詰める） */ compact?: boolean }) {
   const bound = (v: string) => {
     const t = v.trim();
     return t === '' || (Number.isFinite(Number(t)) && Number(t) >= 0 && Number(t) <= max);
@@ -240,7 +240,7 @@ function ScoreRow({ label, title, range, onChange, max = 100 }: { label: string;
   const cls = (ok: boolean) => cn(SMALL_NUMBER_CLASS, !ok && 'border-destructive focus-visible:border-destructive');
   return (
     <div className="flex items-center gap-1.5">
-      <span className="w-20 shrink-0 font-medium" title={title}>
+      <span className={cn('shrink-0 font-medium', compact ? 'w-9' : 'w-20')} title={title}>
         {label}
       </span>
       <input
@@ -251,7 +251,7 @@ function ScoreRow({ label, title, range, onChange, max = 100 }: { label: string;
         value={range.min}
         onChange={e => onChange({ ...range, min: e.target.value })}
         placeholder="下限"
-        aria-label={`${label}の下限`}
+        aria-label={`${ariaLabel}の下限`}
         aria-invalid={!bound(range.min) || undefined}
         className={cls(bound(range.min))}
       />
@@ -264,7 +264,7 @@ function ScoreRow({ label, title, range, onChange, max = 100 }: { label: string;
         value={range.max}
         onChange={e => onChange({ ...range, max: e.target.value })}
         placeholder="上限"
-        aria-label={`${label}の上限`}
+        aria-label={`${ariaLabel}の上限`}
         aria-invalid={!bound(range.max) || undefined}
         className={cls(bound(range.max))}
       />

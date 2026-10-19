@@ -92,12 +92,12 @@ export interface UnifiedViewFilter {
 
 /** 政策評価スコアの項目（UnifiedViewFilter のキー・UnifiedPolicyScores のキー・表示名） */
 export const UNIFIED_SCORE_FIELDS = [
-  { field: 'scoreO', key: 'o', label: '総合点', title: 'AI政策評価の総合点（0〜100）' },
-  { field: 'scoreD', key: 'd', label: '成果設計', title: '成果設計（0〜100）。誰のどんな課題をどう改善するかが特定できる形で説明されているか' },
-  { field: 'scoreE', key: 'e', label: '検証可能性', title: '検証可能性（0〜100）。成果を測る指標と目標が書かれているか' },
-  { field: 'scoreT', key: 't', label: '執行透明性', title: '執行透明性（0〜100）。支出先・使途・収支の記載の明確さ' },
-  { field: 'scoreX', key: 'x', label: '費用対内容', title: '費用対内容（0〜100）。金額が活動の規模に見合っているか' },
-  { field: 'scoreN', key: 'n', label: '代替困難性', title: '代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか' },
+  { field: 'scoreO', key: 'o', label: '総合点', short: '総合', title: 'AI政策評価の総合点（0〜100）' },
+  { field: 'scoreD', key: 'd', label: '成果設計', short: '設計', title: '成果設計（0〜100）。誰のどんな課題をどう改善するかが特定できる形で説明されているか' },
+  { field: 'scoreE', key: 'e', label: '検証可能性', short: '検証', title: '検証可能性（0〜100）。成果を測る指標と目標が書かれているか' },
+  { field: 'scoreT', key: 't', label: '執行透明性', short: '透明', title: '執行透明性（0〜100）。支出先・使途・収支の記載の明確さ' },
+  { field: 'scoreX', key: 'x', label: '費用対内容', short: '費用', title: '費用対内容（0〜100）。金額が活動の規模に見合っているか' },
+  { field: 'scoreN', key: 'n', label: '代替困難性', short: '代替', title: '代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか' },
 ] as const;
 export type UnifiedScoreField = (typeof UNIFIED_SCORE_FIELDS)[number]['field'];
 
