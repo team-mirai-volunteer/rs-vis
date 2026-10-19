@@ -26,6 +26,7 @@ import {
   hasScoreRange,
   type UnifiedOffset,
   type UnifiedPolicyScores,
+  UNIFIED_SCORE_FIELDS,
   type UnifiedProgramSort,
   type UnifiedTopN,
   type UnifiedViewFilter,
@@ -253,7 +254,7 @@ function UnifiedBudgetSankeyContent() {
   }, [visibleColumns, availableColumns]);
   // 政策評価スコアの絞り込みは /api/policy-summary（RSシート年度）が要る。範囲を指定したときだけ読む。
   // 取得前（undefined）・取得失敗（null）のときは ctx.policy を渡さず、スコアの絞り込みは効かせない
-  const scoreFilterActive = hasScoreRange(filter.scoreO) || hasScoreRange(filter.scoreX) || hasScoreRange(filter.scoreN);
+  const scoreFilterActive = UNIFIED_SCORE_FIELDS.some(s => hasScoreRange(filter[s.field])) || hasScoreRange(filter.years);
   // 並べ替えの値（総合点・継続年数・差額）も、その並べ替えを選んだときだけ読む。暫定（API）ビューには無い
   const sheetYear = graph && !graph.metadata.apiCoverage ? graph.metadata.rsSheetYear : null;
   const policySummary = usePolicySummary((scoreFilterActive || programSortNeedsScore(programSort)) && sheetYear !== null ? sheetYear : null);
@@ -269,7 +270,7 @@ function UnifiedBudgetSankeyContent() {
   const policyScores = useMemo<UnifiedPolicyScores | undefined>(() => {
     if (!policySummary) return undefined;
     const out: UnifiedPolicyScores = {};
-    for (const [pid, e] of Object.entries(policySummary.items)) out[pid] = { o: e.o, x: e.x, n: e.n };
+    for (const [pid, e] of Object.entries(policySummary.items)) out[pid] = { o: e.o, d: e.d, e: e.e, t: e.t, x: e.x, n: e.n, y: e.y ?? null };
     return out;
   }, [policySummary]);
   const filterCtx = useMemo(() => ({ policy: policyScores }), [policyScores]);

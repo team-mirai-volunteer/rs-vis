@@ -42,7 +42,7 @@ claude mcp add --transport http rs-vis-local http://localhost:3000/api/mcp
 
 - 両方を含む問い（「子育て支援の事業を探して、一番大きいものの中身を教えて」）は A → B の順で進める。
 - どちらにも当てはまらない問い（雑談、データに無い切り口）はツールを呼ばず、聞ける質問の例を返す。
-- 条件で表せないもの（「評価が低い事業だけ」）は、`get_highlights` の `lowScoreHighBudget` や `get_quality_scores` で近似するか、できない旨を正直に言う。
+- 「評価（総合点など）が低い事業だけ」は `run_sankey_query` の `filter.scores`（例: `{ overall: { max: 40 } }`。項目は overall / design / evidence / transparency / proportionality / necessity）で絞れる。執行率や支出先の集中のように条件に無い基準は `get_highlights` で pid を集めて `filter.projectIds` に入れるか、できない旨を正直に言う。
 
 ## ツールの使い分け
 

@@ -41,8 +41,12 @@ export function parseFilter(params: URLSearchParams): UnifiedViewFilter {
     subcontract: fsub === 'has' || fsub === 'none' ? fsub : 'any',
     subcontractMinDepth: Number.isInteger(fsd) && fsd >= 2 ? fsd : UNIFIED_FILTER_DEFAULT.subcontractMinDepth,
     scoreO: parseScoreRange(params.get('fso')),
+    scoreD: parseScoreRange(params.get('fsdg')),
+    scoreE: parseScoreRange(params.get('fsev')),
+    scoreT: parseScoreRange(params.get('fstr')),
     scoreX: parseScoreRange(params.get('fsx')),
     scoreN: parseScoreRange(params.get('fsn')),
+    years: parseScoreRange(params.get('fyr')),
   };
 }
 
@@ -72,10 +76,9 @@ export function serializeFilter(params: URLSearchParams, filter: UnifiedViewFilt
     params.set('fsub', filter.subcontract);
     if (filter.subcontract === 'has' && filter.subcontractMinDepth !== UNIFIED_FILTER_DEFAULT.subcontractMinDepth) params.set('fsd', String(filter.subcontractMinDepth));
   }
-  const fso = serializeScoreRange(filter.scoreO);
-  const fsx = serializeScoreRange(filter.scoreX);
-  const fsn = serializeScoreRange(filter.scoreN);
-  if (fso) params.set('fso', fso);
-  if (fsx) params.set('fsx', fsx);
-  if (fsn) params.set('fsn', fsn);
+  // fsd は再委託の階層に使っているので、成果設計は fsdg・検証可能性は fsev・執行透明性は fstr
+  for (const [field, name] of [['scoreO', 'fso'], ['scoreD', 'fsdg'], ['scoreE', 'fsev'], ['scoreT', 'fstr'], ['scoreX', 'fsx'], ['scoreN', 'fsn'], ['years', 'fyr']] as const) {
+    const v = serializeScoreRange(filter[field]);
+    if (v) params.set(name, v);
+  }
 }

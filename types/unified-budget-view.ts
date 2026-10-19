@@ -79,11 +79,27 @@ export interface UnifiedViewFilter {
   subcontract: 'any' | 'has' | 'none';
   /** subcontract = 'has' のときの階層の下限（2 = 再委託、3 = 再々委託…）。既定 2 */
   subcontractMinDepth: number;
-  /** 政策評価スコアの範囲（0〜100）。総合点 o・費用対内容 x・必要性 n。空なら無し */
+  /** 政策評価スコアの範囲（0〜100）。総合点 o・成果設計 d・検証可能性 e・執行透明性 t・費用対内容 x・代替困難性 n。空なら無し */
   scoreO: UnifiedScoreRange;
+  scoreD: UnifiedScoreRange;
+  scoreE: UnifiedScoreRange;
+  scoreT: UnifiedScoreRange;
   scoreX: UnifiedScoreRange;
   scoreN: UnifiedScoreRange;
+  /** 継続年数（開始年度からの年数）の範囲。空なら無し。範囲を指定すると開始年度が無い事業は落ちる */
+  years: UnifiedScoreRange;
 }
+
+/** 政策評価スコアの項目（UnifiedViewFilter のキー・UnifiedPolicyScores のキー・表示名） */
+export const UNIFIED_SCORE_FIELDS = [
+  { field: 'scoreO', key: 'o', label: '総合点', title: 'AI政策評価の総合点（0〜100）' },
+  { field: 'scoreD', key: 'd', label: '成果設計', title: '成果設計（0〜100）。誰のどんな課題をどう改善するかが特定できる形で説明されているか' },
+  { field: 'scoreE', key: 'e', label: '検証可能性', title: '検証可能性（0〜100）。成果を測る指標と目標が書かれているか' },
+  { field: 'scoreT', key: 't', label: '執行透明性', title: '執行透明性（0〜100）。支出先・使途・収支の記載の明確さ' },
+  { field: 'scoreX', key: 'x', label: '費用対内容', title: '費用対内容（0〜100）。金額が活動の規模に見合っているか' },
+  { field: 'scoreN', key: 'n', label: '代替困難性', title: '代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか' },
+] as const;
+export type UnifiedScoreField = (typeof UNIFIED_SCORE_FIELDS)[number]['field'];
 
 /** スコア範囲（0〜100 の数値文字列。空欄 = 指定なし） */
 export interface UnifiedScoreRange {
@@ -112,8 +128,12 @@ export const UNIFIED_FILTER_DEFAULT: UnifiedViewFilter = {
   subcontract: 'any',
   subcontractMinDepth: 2,
   scoreO: UNIFIED_SCORE_RANGE_EMPTY,
+  scoreD: UNIFIED_SCORE_RANGE_EMPTY,
+  scoreE: UNIFIED_SCORE_RANGE_EMPTY,
+  scoreT: UNIFIED_SCORE_RANGE_EMPTY,
   scoreX: UNIFIED_SCORE_RANGE_EMPTY,
   scoreN: UNIFIED_SCORE_RANGE_EMPTY,
+  years: UNIFIED_SCORE_RANGE_EMPTY,
 };
 
 export const hasScoreRange = (r: UnifiedScoreRange) => r.min.trim() !== '' || r.max.trim() !== '';
@@ -135,14 +155,13 @@ export function hasActiveUnifiedFilter(f: UnifiedViewFilter): boolean {
     f.projectIds.length > 0 ||
     f.recipientQuery.trim() !== '' ||
     f.subcontract !== 'any' ||
-    hasScoreRange(f.scoreO) ||
-    hasScoreRange(f.scoreX) ||
-    hasScoreRange(f.scoreN)
+    UNIFIED_SCORE_FIELDS.some(s => hasScoreRange(f[s.field])) ||
+    hasScoreRange(f.years)
   );
 }
 
 /** 政策評価スコア（/api/policy-summary の items を絞り込みに必要な 3 値へ落としたもの）。キーは事業ID の文字列 */
-export type UnifiedPolicyScores = Record<string, { o: number | null; x: number | null; n: number | null }>;
+export type UnifiedPolicyScores = Record<string, { o: number | null; d: number | null; e: number | null; t: number | null; x: number | null; n: number | null; y: number | null }>;
 
 /** applyFilter に渡す外部データ */
 export interface UnifiedFilterContext {

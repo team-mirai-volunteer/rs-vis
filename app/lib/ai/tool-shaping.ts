@@ -16,6 +16,9 @@ import {
   buildFilterExcludedIds,
   summarizeFilteredGraph,
   compareYearsSummary,
+  hasScoreFilter,
+  scoreExcluder,
+  type SankeyPolicyScores,
 } from '@/app/lib/sankey-query';
 import type { SankeyQuerySummary } from '@/app/lib/sankey-query';
 import { HIGHLIGHT_METRIC_NAMES, type HighlightMetricName, type HighlightsResult } from '@/app/lib/highlights';
@@ -42,6 +45,9 @@ export interface QueryExecution {
   errors?: string[];
   result?: SankeyChatResult;
 }
+
+/** 年度ごとの政策評価スコア（filter.scores の判定に使う）。無い環境では undefined を渡す */
+export type ScoreSource = (year: SupportedYear) => Promise<SankeyPolicyScores> | SankeyPolicyScores;
 
 // ── 汎用クランプ ──
 
@@ -117,12 +123,15 @@ export async function executeQueryWithGraph(
   getGraph: GraphSource,
   input: SankeyQuery,
   defaultYear: SupportedYear,
+  getScores?: ScoreSource,
 ): Promise<QueryExecution> {
   const withYear: SankeyQuery = { ...input, year: input.year ?? defaultYear };
   const { query, errors } = resolveSankeyQuery(withYear);
   if (errors.length > 0) return { errors };
+  if (hasScoreFilter(query.filter) && !getScores) return { errors: ['filter.scores（政策評価スコア）はこの環境では判定できません'] };
   const graph = await getGraph(query.year);
-  const excludedIds = buildFilterExcludedIds(graph.nodes, graph.edges, query.filter, [query.view.pin.projectId]);
+  const excludeProject = hasScoreFilter(query.filter) && getScores ? scoreExcluder(query.filter, await getScores(query.year)) : null;
+  const excludedIds = buildFilterExcludedIds(graph.nodes, graph.edges, query.filter, [query.view.pin.projectId], excludeProject);
   const summary = summarizeFilteredGraph(graph.nodes, graph.edges, excludedIds);
   return { result: { query, summary } };
 }

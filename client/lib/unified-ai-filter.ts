@@ -5,14 +5,20 @@
  * 無視する。金額は 1 円単位の数値を「億円」テキストへ変換する（UI の入力欄と同じ表現）。
  * 純粋関数。React・HTTP を含めない。
  */
-import type { ResolvedSankeyQuery } from '@/types/sankey-query';
-import { UNIFIED_FILTER_DEFAULT, type UnifiedViewFilter } from '@/types/unified-budget-view';
+import { SANKEY_SCORE_KEYS, type ResolvedSankeyQuery, type SankeyScoreKey } from '@/types/sankey-query';
+import { UNIFIED_FILTER_DEFAULT, UNIFIED_SCORE_FIELDS, type UnifiedScoreField, type UnifiedViewFilter } from '@/types/unified-budget-view';
 
 /** AI が触るフィールドだけを既定へ戻す（利用者の手動条件は残す） */
 export const AI_FILTER_FIELDS = [
   'ministries', 'accountTypes', 'projectQuery', 'projectRegex', 'recipientQuery', 'recipientRegex', 'recipientIncludeSub',
   'budgetMin', 'budgetMax', 'spendingMin', 'spendingMax', 'subcontract', 'subcontractMinDepth', 'projectIds',
+  'scoreO', 'scoreD', 'scoreE', 'scoreT', 'scoreX', 'scoreN', 'years',
 ] as const satisfies readonly (keyof UnifiedViewFilter)[];
+
+/** SankeyQuery の filter.scores の項目 → 統合ビューの絞り込みフィールド */
+const SCORE_FIELD_OF: Record<SankeyScoreKey, UnifiedScoreField> = {
+  overall: 'scoreO', design: 'scoreD', evidence: 'scoreE', transparency: 'scoreT', proportionality: 'scoreX', necessity: 'scoreN',
+};
 
 type AiFilterField = (typeof AI_FILTER_FIELDS)[number];
 const aiDefaults = (): Pick<UnifiedViewFilter, AiFilterField> =>
@@ -51,6 +57,17 @@ export function applySankeyQueryToUnifiedFilter(current: UnifiedViewFilter, quer
   if (f.spending.min !== null || f.spending.max !== null) {
     next.spendingMin = yenToOkuText(f.spending.min); next.spendingMax = yenToOkuText(f.spending.max);
     parts.push(`支出 ${next.spendingMin || '0'}〜${next.spendingMax || ''}`);
+  }
+  for (const key of SANKEY_SCORE_KEYS) {
+    const r = f.scores[key];
+    if (r.min === null && r.max === null) continue;
+    const field = SCORE_FIELD_OF[key];
+    next[field] = { min: r.min === null ? '' : String(r.min), max: r.max === null ? '' : String(r.max) };
+    parts.push(`${UNIFIED_SCORE_FIELDS.find(s => s.field === field)!.label} ${r.min ?? 0}〜${r.max ?? 100}点`);
+  }
+  if (f.yearsRunning.min !== null || f.yearsRunning.max !== null) {
+    next.years = { min: f.yearsRunning.min === null ? '' : String(f.yearsRunning.min), max: f.yearsRunning.max === null ? '' : String(f.yearsRunning.max) };
+    parts.push(`継続 ${f.yearsRunning.min ?? 0}〜${f.yearsRunning.max ?? ''}年`);
   }
   if ((f.projectIds ?? []).length > 0) {
     next.projectIds = [...f.projectIds];

@@ -12,7 +12,9 @@
 import { NextResponse } from 'next/server';
 import { loadSankeyGraph } from '@/app/lib/api/sankey-graph-loader';
 import { serverErrorResponse } from '@/app/lib/api/api-notes';
-import { buildFilterExcludedIds, resolveSankeyQuery } from '@/app/lib/sankey-query';
+import { buildFilterExcludedIds, hasScoreFilter, resolveSankeyQuery, scoreExcluder } from '@/app/lib/sankey-query';
+import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
+import { loadQualityScores } from '@/app/lib/api/quality-scores-loader';
 import type { SankeyQuery } from '@/types/sankey-query';
 
 export async function POST(req: Request) {
@@ -29,7 +31,18 @@ export async function POST(req: Request) {
     const { query, errors } = resolveSankeyQuery(body.query);
     if (errors.length > 0) return NextResponse.json({ error: errors.join('、') }, { status: 400 });
     const graph = loadSankeyGraph(query.year);
-    const excluded = buildFilterExcludedIds(graph.nodes, graph.edges, query.filter) ?? new Set<string>();
+    // 政策評価スコアの条件は評価データで判定する（AI ツール・/budget-sankey と同じ）
+    const excludeProject = hasScoreFilter(query.filter)
+      ? scoreExcluder(query.filter, (() => {
+        const yearsByPid = new Map(loadQualityScores(query.year).items.map(i => [i.pid, i.yearsRunning ?? null]));
+        return new Map([...loadPolicyEvaluations(query.year).values()].map(row => [row.pid, {
+          overall: row.overallScore, design: row.designClarityScore, evidence: row.evidenceScore,
+          transparency: row.executionTransparency, proportionality: row.proportionalityScore, necessity: row.necessityScore,
+          years: yearsByPid.get(row.pid) ?? null,
+        }]));
+      })())
+      : null;
+    const excluded = buildFilterExcludedIds(graph.nodes, graph.edges, query.filter, [], excludeProject) ?? new Set<string>();
     const projectIds: string[] = [];
     for (const node of graph.nodes) {
       if (!node.id.startsWith('project-budget-') || node.aggregated || excluded.has(node.id)) continue;

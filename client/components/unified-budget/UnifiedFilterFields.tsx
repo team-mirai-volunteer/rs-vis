@@ -7,7 +7,7 @@
  * 判定は app/lib/unified-budget/transform.ts の applyFilter（純関数）。ここは入力欄だけ。
  */
 
-import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter } from '@/types/unified-budget-view';
+import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter , UNIFIED_SCORE_FIELDS } from '@/types/unified-budget-view';
 import { Button } from '@/components/ui/button';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
@@ -81,7 +81,7 @@ export function UnifiedFilterFields({
             triggerClassName="h-7 w-full border-mirai-border text-xs"
           />
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">共管の所管（「内閣府及び厚生労働省」など）は、いずれかの省庁を選ぶと含まれます。</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">「内閣府及び厚生労働省」などは、いずれかの省庁を選ぶと含まれます。</p>
       </div>
       <div>
         <div className="mb-1 font-medium">名前（部分一致。一致したノードとその上流・下流だけを残す）</div>
@@ -197,9 +197,13 @@ export function UnifiedFilterFields({
         <div className="font-medium" title="AI政策評価のスコア（0〜100）。/quality と同じ値。範囲を指定した項目で評価が無い事業は落とす">
           政策評価スコア（0〜100。範囲を指定すると未評価の事業は落とす）
         </div>
-        <ScoreRow label="総合点" title="AI政策評価の総合点（0〜100）" range={filter.scoreO} onChange={r => set({ scoreO: r })} />
-        <ScoreRow label="費用対内容" title="費用対内容（0〜100）。金額が活動の規模に見合っているか" range={filter.scoreX} onChange={r => set({ scoreX: r })} />
-        <ScoreRow label="代替困難性" title="代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか" range={filter.scoreN} onChange={r => set({ scoreN: r })} />
+        {/* 評価一覧と同じ 6 項目。2 列 × 3 行 */}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+          {UNIFIED_SCORE_FIELDS.map(s => (
+            <ScoreRow key={s.field} label={s.label} title={s.title} range={filter[s.field]} onChange={r => set({ [s.field]: r })} />
+          ))}
+          <ScoreRow label="継続年数" title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる" range={filter.years} onChange={r => set({ years: r })} max={200} />
+        </div>
         {scoreStatus === 'loading' && <p className="text-[10px] text-mirai-text-muted">政策評価を読み込み中…（取得できるまでスコアの絞り込みは効きません）</p>}
         {scoreStatus === 'unavailable' && <p className="text-[10px] text-destructive">政策評価を取得できませんでした。スコアの絞り込みは効いていません</p>}
       </div>
@@ -222,10 +226,10 @@ function AmountRow({ label, title, children }: { label: string; title: string; c
   );
 }
 
-function ScoreRow({ label, title, range, onChange }: { label: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void }) {
+function ScoreRow({ label, title, range, onChange, max = 100 }: { label: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void; max?: number }) {
   const bound = (v: string) => {
     const t = v.trim();
-    return t === '' || (Number.isFinite(Number(t)) && Number(t) >= 0 && Number(t) <= 100);
+    return t === '' || (Number.isFinite(Number(t)) && Number(t) >= 0 && Number(t) <= max);
   };
   const cls = (ok: boolean) => cn(SMALL_NUMBER_CLASS, !ok && 'border-destructive focus-visible:border-destructive');
   return (
@@ -236,7 +240,7 @@ function ScoreRow({ label, title, range, onChange }: { label: string; title: str
       <input
         type="number"
         min={0}
-        max={100}
+        max={max}
         step={1}
         value={range.min}
         onChange={e => onChange({ ...range, min: e.target.value })}
@@ -249,7 +253,7 @@ function ScoreRow({ label, title, range, onChange }: { label: string; title: str
       <input
         type="number"
         min={0}
-        max={100}
+        max={max}
         step={1}
         value={range.max}
         onChange={e => onChange({ ...range, max: e.target.value })}

@@ -17,6 +17,7 @@ import type { SubcontractGraph } from '@/types/subcontract';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import type { QualityScoreProjection } from '@/app/lib/api/quality-scores-loader';
 import type { ChatToolExecutor } from '@/app/lib/ai/chat-core';
+import type { SankeyPolicyScores } from '@/app/lib/sankey-query';
 import {
   SEARCH_LIMIT,
   DETAIL_TOP_LIMIT,
@@ -42,6 +43,21 @@ import type { BudgetRequestRecord } from '@/types/budget-requests';
 import type { ConsumptionDataset, TaxParameters } from '@/types/tax-burden';
 
 export type ClientGraphSource = (year: SupportedYear) => Promise<GraphData>;
+
+/** 年度ごとの政策評価スコア（/api/policy-summary。数百 KB・gzip 後は小さい）。filter.scores の判定に使う。失敗時は空（評価なし扱いで落ちる） */
+const policyScoresCache = new Map<SupportedYear, Promise<SankeyPolicyScores>>();
+function policyScores(year: SupportedYear): Promise<SankeyPolicyScores> {
+  let p = policyScoresCache.get(year);
+  if (!p) {
+    p = (async () => {
+      const r = await fetchApi(`/api/policy-summary?year=${year}`);
+      const items = 'fetchError' in r || r.status !== 200 ? {} : ((r.json as { items?: Record<string, { o: number | null; d: number | null; e: number | null; t: number | null; x: number | null; n: number | null; y?: number | null }> } | null)?.items ?? {});
+      return new Map(Object.entries(items).map(([pid, e]) => [pid, { overall: e.o, design: e.d, evidence: e.e, transparency: e.t, proportionality: e.x, necessity: e.n, years: e.y ?? null }]));
+    })();
+    policyScoresCache.set(year, p);
+  }
+  return p;
+}
 
 /** 応答 JSON から links フィールドを再帰的に除去する（サーバ実装の payload に links は無い） */
 function stripLinks<T>(value: T): T {
@@ -87,7 +103,7 @@ export function createClientToolExecutor(getGraph: ClientGraphSource): ChatToolE
     },
 
     executeQuery(input, defaultYear) {
-      return executeQueryWithGraph(getGraph, input, defaultYear);
+      return executeQueryWithGraph(getGraph, input, defaultYear, policyScores);
     },
 
     compareYears(query, baseYear, compareYear) {

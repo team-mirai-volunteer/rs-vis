@@ -60,7 +60,19 @@ export interface SankeyQueryFilter {
    * で選んだ事業だけを残すときに使う。他の条件と AND。省略・空 = フィルタなし
    */
   projectIds?: string[];
+  /**
+   * 政策評価スコア（0〜100）の範囲。総合点 overall・成果設計 design・検証可能性 evidence・執行透明性 transparency・
+   * 費用対内容 proportionality・代替困難性 necessity。範囲を指定した項目で評価が無い事業は落ちる（/budget-sankey の絞り込みと同じ）
+   */
+  scores?: Partial<Record<SankeyScoreKey, { min?: number | null; max?: number | null }>>;
+  /** 継続年数（対象年度 − 開始年度 + 1）の範囲。「10 年以上続く事業」など。範囲を指定すると開始年度が無い事業は落ちる */
+  yearsRunning?: { min?: number | null; max?: number | null };
 }
+
+/** 政策評価スコアの項目（/api/policy-summary の o・d・e・t・x・n に対応） */
+export const SANKEY_SCORE_KEYS = ['overall', 'design', 'evidence', 'transparency', 'proportionality', 'necessity'] as const;
+export type SankeyScoreKey = (typeof SANKEY_SCORE_KEYS)[number];
+export type SankeyScoreRange = { min: number | null; max: number | null };
 
 /** 表示条件（TopN集約・ピン・フォーカス等、どう見せるか） */
 export interface SankeyQueryView {
@@ -105,6 +117,8 @@ export interface ResolvedSankeyQuery {
     accountCategories: AccountCategoryKey[];
     subcontract: { hasRedelegation: boolean; minDepth: number | null };
     projectIds: string[];
+    scores: Record<SankeyScoreKey, SankeyScoreRange>;
+    yearsRunning: SankeyScoreRange;
   };
   view: {
     topMinistry: number;

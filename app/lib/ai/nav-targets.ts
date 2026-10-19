@@ -22,7 +22,7 @@ export interface NavTarget {
 export const NAV_TARGETS: readonly NavTarget[] = [
   { key: 'sankey', href: '/budget-sankey', label: 'サンキー図', aliases: ['サンキー', '流れの図'] },
   { key: 'bubble', href: '/project-bubble', label: 'バブル図', aliases: ['バブルチャート', '散布図'] },
-  { key: 'quality', href: '/quality', label: '評価一覧', aliases: ['AI 評価', 'スコア一覧', '評価'] },
+  { key: 'quality', href: '/quality', label: '評価一覧', aliases: ['AI 評価', 'スコア一覧'] },
   { key: 'subcontracts', href: '/subcontracts', label: '委託構造', aliases: ['再委託', '委託'] },
   { key: 'vendors', href: '/vendors', label: '事業者', aliases: ['事業者別', '受注企業'] },
   { key: 'funds', href: '/funds', label: '基金', aliases: [] },

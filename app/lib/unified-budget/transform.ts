@@ -329,8 +329,12 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
   const scoreFilters = (
     [
       ['o', filter.scoreO],
+      ['d', filter.scoreD],
+      ['e', filter.scoreE],
+      ['t', filter.scoreT],
       ['x', filter.scoreX],
       ['n', filter.scoreN],
+      ['y', filter.years],
     ] as const
   )
     .map(([key, r]) => ({ key, min: parseScoreBound(r.min), max: parseScoreBound(r.max) }))

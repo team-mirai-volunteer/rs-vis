@@ -17,7 +17,8 @@ test('opening, copying, reloading and navigating history preserve the selected d
   await expect(detail).toBeVisible();
   await expect(page).toHaveURL(/year=2025&pid=1503&detail=1503#list$/);
   await detail.getByRole('button', { name: '詳細URLをコピー', exact: true }).click();
-  await expect(detail.getByRole('status')).toHaveText('詳細URLをコピーしました');
+  // 推移の読み込み中も role=status が出るので、コピーの通知だけを見る
+  await expect(detail.getByText('詳細URLをコピーしました')).toBeVisible();
   const shareUrl = await page.evaluate(() => navigator.clipboard.readText());
   expect(new URL(shareUrl).pathname + new URL(shareUrl).search).toBe('/quality?fiscalYear=2024&detail=1503');
   await page.goBack();
