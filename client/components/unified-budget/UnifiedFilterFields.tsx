@@ -81,10 +81,10 @@ export function UnifiedFilterFields({
             triggerClassName="h-7 w-full border-mirai-border text-xs"
           />
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">「内閣府及び厚生労働省」などは、いずれかの省庁を選ぶと含まれます。</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">「A及びB」の共管は、どちらを選んでも含まれます。</p>
       </div>
       <div>
-        <div className="mb-1 font-medium">名前（部分一致。一致したノードとその上流・下流だけを残す）</div>
+        <div className="mb-1 font-medium" title="部分一致。一致したノードとその上流・下流だけを残す">名前</div>
         <input
           type="text"
           value={filter.nameQuery}
@@ -97,7 +97,7 @@ export function UnifiedFilterFields({
 
       {/* ---- /sankey-svg から移植: 事業単位の絞り込み ---- */}
       <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
-        <div className="font-medium">事業（条件に合わない事業は事業(支出)・支出先ごと落とす）</div>
+        <div className="font-medium" title="条件に合わない事業は事業(支出)・支出先ごと落とす">事業</div>
         {filter.projectIds.length > 0 && (
           <div className="flex items-center justify-between gap-2 rounded-md bg-mirai-surface-teal px-2 py-1" data-testid="ai-selected-projects">
             <span>AI が選んだ {filter.projectIds.length} 事業だけを表示中（選び方は AI の応答を参照）</span>
@@ -175,7 +175,7 @@ export function UnifiedFilterFields({
 
       {hasSpending && (
         <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
-          <div className="font-medium">支出先（一致しない支出先を落とし、支出先が残らない事業も落とす）</div>
+          <div className="font-medium" title="一致しない支出先を落とし、支出先が残らない事業も落とす">支出先</div>
           <RegexTextFilter
             label="支出先名"
             note="支出先の名前で絞り込む。`.*` で正規表現（大文字小文字を区別しない）"
@@ -195,14 +195,14 @@ export function UnifiedFilterFields({
               disabled={filter.recipientQuery.trim() === ''}
               className="h-3.5 w-3.5 cursor-pointer accent-primary disabled:cursor-default"
             />
-            <span className={filter.recipientQuery.trim() === '' ? 'text-mirai-text-muted' : undefined}>再委託先も含めて判定する（一致する事業を残し、支出先は隠さない）</span>
+            <span className={filter.recipientQuery.trim() === '' ? 'text-mirai-text-muted' : undefined}>再委託先も含めて判定する</span>
           </label>
         </div>
       )}
 
       <div className="flex flex-col gap-1.5 border-t border-mirai-border pt-3">
         <div className="font-medium" title="AI政策評価のスコア（0〜100）。/quality と同じ値。範囲を指定した項目で評価が無い事業は落とす">
-          政策評価スコア（0〜100。範囲を指定すると未評価の事業は落とす）
+          政策評価スコア（0〜100）
         </div>
         {/* 評価一覧と同じ 6 項目。2 列 × 3 行 */}
         <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
