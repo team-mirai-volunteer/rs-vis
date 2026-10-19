@@ -37,6 +37,9 @@ import type { Vendor } from '@/types/vendors';
 import type { BudgetRequestProjectLinks } from '@/types/budget-request-links';
 import type { VendorRow } from '@/app/lib/vendors';
 import { BUDGET_REQUEST_FY, shapeBudgetRequest, shapeFund, shapeFundSearch, shapeProjectRecipients, shapeVendor, shapeVendorSearch } from '@/app/lib/ai/tool-shaping-extra';
+import { estimateTaxBurdenWith, searchTaxExpenditures, shapeBudgetRequestSearch } from '@/app/lib/ai/tool-shaping-secondary';
+import type { BudgetRequestRecord } from '@/types/budget-requests';
+import type { ConsumptionDataset, TaxParameters } from '@/types/tax-burden';
 
 export type ClientGraphSource = (year: SupportedYear) => Promise<GraphData>;
 
@@ -332,6 +335,35 @@ export function createClientToolExecutor(getGraph: ClientGraphSource): ChatToolE
       if (r.status !== 200) return apiError(r);
       const json = r.json as { requestedFY?: number } & BudgetRequestProjectLinks;
       return shapeBudgetRequest(pid, { coverage: json.coverage, items: json.items, unmatched: json.unmatched }, json.requestedFY ?? BUDGET_REQUEST_FY);
+    },
+
+    // ── 補助ビュー: 公開 API と静的データで、サーバ実装と同じ形に整形する ──
+    async searchBudgetRequests(q, ministry) {
+      const qs = new URLSearchParams({ limit: '10' });
+      if (q) qs.set('q', q);
+      if (ministry) qs.set('ministry', ministry);
+      const r = await fetchApi(`/api/budget-requests?${qs}`);
+      if ('fetchError' in r || r.status !== 200) return apiError(r, { error: '2027年度の概算要求データはまだ取得されていません' });
+      const json = r.json as { requestedFY?: number; records?: BudgetRequestRecord[]; pagination?: { matchingRecords?: number } } | null;
+      const records = json?.records ?? [];
+      return shapeBudgetRequestSearch(records, json?.pagination?.matchingRecords ?? records.length, json?.requestedFY ?? BUDGET_REQUEST_FY, q, ministry);
+    },
+
+    async searchTaxExpenditures(q, year) {
+      // 租税特別措置のデータは静的（約 230KB）。必要になったときだけ読む
+      const [{ default: data }, { assessments }] = await Promise.all([import('@/app/lib/tax-expenditures/data.json'), import('@/app/lib/tax-expenditures/assessments')]);
+      return searchTaxExpenditures(data.measures, assessments, q, year);
+    },
+
+    async estimateTaxBurden(input) {
+      const p = await fetchApi('/api/tax-burden/params?fy=2025');
+      if ('fetchError' in p || p.status !== 200) return apiError(p, { error: '国民負担の計算データがありません' });
+      let consumption: ConsumptionDataset | null = null;
+      if (input.includeConsumption) {
+        const c = await fetchApi('/api/tax-burden/consumption?year=2024');
+        if (!('fetchError' in c) && c.status === 200) consumption = c.json as ConsumptionDataset;
+      }
+      return estimateTaxBurdenWith(input, p.json as TaxParameters, consumption);
     },
   };
 }

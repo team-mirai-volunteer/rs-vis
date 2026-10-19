@@ -63,6 +63,9 @@ claude mcp add --transport http rs-vis-local http://localhost:3000/api/mcp
 | 基金 1 件の詳細（年度別の残高・収支・保有割合・造成の経緯・必要性の記載） | `get_fund` | `key`（`search_funds` の key） |
 | 事業者（法人）の全府省での受注状況、1 者応札が続く事業 | `get_vendor` | `q`（名前・法人番号で検索）または `key`（法人番号で 1 件） |
 | 事業の来年度（2027 年度）概算要求と財務省明細表の突き合わせ | `get_budget_request` | `pid` |
+| 概算要求の明細を府省・事項名で探す（事業を特定しない問い） | `search_budget_requests` | `q`、`ministry`（府省名の完全一致） |
+| 法人税の租税特別措置（税優遇）の適用件数・適用額・AI 評価・関連 RS 事業 | `search_tax_expenditures` | `q`（制度名・条文・キーワード）、`year`（`2022`〜`2024`） |
+| 家計の税・保険料・給付の試算（2025 年度制度のモデル計算） | `estimate_tax_burden` | `income`（年収・円）、`household`（世帯の型）、`age`、`share`、`includeConsumption` |
 
 `run_sankey_query` の `query` は次の形（条件は AND）。
 

@@ -60,7 +60,7 @@ export interface SankeyChatResponse {
   /** 次に聞ける質問の提案（最大3件）。現在のツールで実際に答えられる問いのみ */
   suggestions?: string[];
   /** ページ遷移の指示。クライアントが href へ移動し、result があれば移動先に適用する */
-  navigate?: { key: string; href: string; label: string };
+  navigate?: { key: string; href: string; label: string; scenario?: { amounts: Record<string, number> } };
   usage: {
     model: string;
     toolCalls: number;

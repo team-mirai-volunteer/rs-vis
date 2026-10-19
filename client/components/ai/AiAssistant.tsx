@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Check, ExternalLink, History, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -28,6 +28,7 @@ import { DEFAULT_BYOK_MODEL, testOpenRouterKey } from '@/client/lib/ai/openroute
 import { runByokChat, LlmUpstreamError } from '@/client/lib/ai/byok-chat';
 import { useAiResultTarget } from '@/client/lib/ai/result-handler';
 import { projectLinks, sankeyUrlForQuery } from '@/client/lib/ai/result-links';
+import { navigateHref, samePath } from '@/client/lib/ai/nav-href';
 import {
   deleteAllChatSessions, listChatSessions, loadChatSession, saveChatSession,
   type AiChatUiMessage, type ChatSessionMeta,
@@ -159,6 +160,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
 
   // navigate_page で移動したあと、移動先のページが受け取り手を登録したら条件を渡す
   const router = useRouter();
+  const pathname = usePathname();
   const pendingResultRef = useRef<SankeyChatResult | null>(null);
   useEffect(() => {
     if (!target || !pendingResultRef.current) return;
@@ -199,10 +201,18 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
       if (reply.navigate) {
         // ページ遷移。サンキー図は条件を URL に写して開く（ページ側が URL から適用する）。
         // 一覧型のページは移動後に受け取り手が登録されてから dispatch する（pendingResult）
-        const navHref = reply.navigate.key === 'sankey' && reply.result ? sankeyUrlForQuery(reply.result.query, yearKey) : reply.navigate.href;
+        const navHref = navigateHref(reply.navigate, reply.result, yearKey);
         pendingResultRef.current = reply.navigate.key === 'sankey' ? null : reply.result ?? null;
         setMessages(prev => [...prev, { role: 'assistant', content: reply.message, result: reply.result, applied: true, suggestions: reply.suggestions }]);
-        router.push(navHref);
+        if (samePath(navHref, pathname) && /[?#]/.test(navHref)) {
+          // 同じページで条件だけ変える。ページは URL を popstate / hashchange で読み直す（作り直すと入力中の状態が消える）
+          const hadHash = window.location.hash !== '';
+          window.history.pushState(null, '', navHref);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          if (hadHash || navHref.includes('#')) window.dispatchEvent(new HashChangeEvent('hashchange'));
+        } else {
+          router.push(navHref);
+        }
         return;
       }
       const applied = reply.result ? applyResult(reply.result) : undefined;

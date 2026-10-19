@@ -30,6 +30,9 @@ function stubExecutor(): { executor: ChatToolExecutor; calls: string[] } {
     getFund: record('getFund'),
     getVendor: record('getVendor'),
     getBudgetRequest: record('getBudgetRequest'),
+    searchBudgetRequests: record('searchBudgetRequests'),
+    searchTaxExpenditures: record('searchTaxExpenditures'),
+    estimateTaxBurden: record('estimateTaxBurden'),
   };
   return { executor, calls };
 }
