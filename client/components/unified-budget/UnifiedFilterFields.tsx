@@ -81,7 +81,7 @@ export function UnifiedFilterFields({
             triggerClassName="h-7 w-full border-mirai-border text-xs"
           />
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">「A及びB」の共管は、どちらを選んでも含まれます。</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">複数省庁の共管は1つでも選べば含まれます。</p>
       </div>
       <div>
         <div className="mb-1 font-medium" title="部分一致。一致したノードとその上流・下流だけを残す">名前</div>
