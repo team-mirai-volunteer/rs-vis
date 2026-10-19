@@ -22,7 +22,8 @@ for (const width of [1440, 390]) {
       await page.getByRole('button', { name: 'ページ切替メニュー' }).click();
       await page.getByRole('link', { name: '委託構造', exact: true }).last().click();
     }
-    await expect(page.locator('thead th')).toHaveCount(23);
+    // 委託構造の列は画面幅で段階的に出す（1280px 以上 12 列、それ未満 9 列。1700px 以上は 15 列）
+    await expect(page.locator('thead th')).toHaveCount(width >= 1280 ? 12 : 9);
     expect(await header!.evaluate(el => el.isConnected)).toBe(true);
     await page.goBack();
     await expect(page.getByRole('heading', { name: '事業別 AI評価（独自基準・試行）・執行透明性スコア' })).toBeVisible();

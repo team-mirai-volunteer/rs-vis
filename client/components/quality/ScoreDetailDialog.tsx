@@ -109,7 +109,8 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
 
   const dialogRef = useRef<HTMLDivElement>(null);
   useDialogFocus(dialogRef, onClose);
-  const desktop = useMediaQuery(DESKTOP_QUERY);
+  // ダイアログは開いた後にクライアントで描くので初回から実際の幅で分岐する（false → true の切り替えで「みんなの意見」が作り直され、取得が二重になるのを防ぐ）
+  const desktop = useMediaQuery(DESKTOP_QUERY, true);
   // 共有部品の文字サイズ。サイドパネル基準（11px）に対し、ダイアログでは +1、デスクトップでは +3
   const scaleFont = desktop ? (px: number) => px + 3 : (px: number) => px + 1;
 

@@ -95,7 +95,7 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   useEffect(() => {
     let cancelled = false;
     loadByokSettings().then(s => { if (!cancelled) setSettings(s); });
-    fetch('/api/ai/sankey-chat').then(r => { if (!cancelled) setServerEnabled(r.ok); }).catch(() => { if (!cancelled) setServerEnabled(false); });
+    fetch('/api/ai/sankey-chat').then(async r => { const body = r.ok ? await r.json().catch(() => null) as { enabled?: boolean } | null : null; if (!cancelled) setServerEnabled(body?.enabled === true); }).catch(() => { if (!cancelled) setServerEnabled(false); });
     return () => { cancelled = true; };
   }, []);
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [messages, progress]);

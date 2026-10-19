@@ -31,9 +31,9 @@ interface AiChatLogBase {
   userText: string;
 }
 
-/** チャットパネルの表示可否をクライアントが判定するための疎通エンドポイント */
+/** チャットパネルの表示可否をクライアントが判定するための疎通エンドポイント。無効でも 200 で返す（全ページのヘッダーから毎回呼ぶので、404 をエラー扱いにしない） */
 export async function GET() {
-  if (!isServerAiEnabled()) notFound();
+  if (!isServerAiEnabled()) return NextResponse.json({ enabled: false });
   return NextResponse.json({ enabled: true, model: serverModel() });
 }
 
