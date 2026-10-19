@@ -76,7 +76,7 @@ export function applySankeyQueryToUnifiedFilter(current: UnifiedViewFilter, quer
   if (f.subcontract.hasRedelegation) {
     next.subcontract = 'has';
     next.subcontractMinDepth = f.subcontract.minDepth ?? UNIFIED_FILTER_DEFAULT.subcontractMinDepth;
-    parts.push(next.subcontractMinDepth > 2 ? `再々委託以深` : '再委託あり');
+    parts.push(next.subcontractMinDepth > 2 ? `再々委託以上` : '再委託あり');
   }
   return { filter: next, summary: parts.join(' / ') || '条件なし' };
 }

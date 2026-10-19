@@ -37,7 +37,7 @@ export type AccountCategoryKey = 'general' | 'special' | 'both' | 'none';
 export interface SankeySubcontractFilter {
   /** true = 再委託の記載がある事業（階層2以上）のみ残す */
   hasRedelegation?: boolean;
-  /** ブロック階層数の下限（2=再委託あり、3=再々委託以深…）。指定時は記載なし事業を除外 */
+  /** ブロック階層数の下限（2=再委託あり、3=再々委託以上…）。指定時は記載なし事業を除外 */
   minDepth?: number | null;
 }
 

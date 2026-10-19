@@ -117,7 +117,7 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
     let minDepth: number | null = null;
     if (s?.minDepth != null) {
       if (typeof s.minDepth !== 'number' || !isFinite(s.minDepth) || Math.floor(s.minDepth) < 2) {
-        errors.push(`filter.subcontract.minDepth は2以上の整数で指定してください（2=再委託あり、3=再々委託以深。受領値: ${JSON.stringify(s.minDepth)}）`);
+        errors.push(`filter.subcontract.minDepth は2以上の整数で指定してください（2=再委託あり、3=再々委託以上。受領値: ${JSON.stringify(s.minDepth)}）`);
       } else {
         minDepth = Math.floor(s.minDepth);
       }

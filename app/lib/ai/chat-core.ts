@@ -206,7 +206,7 @@ const SANKEY_QUERY_SCHEMA: Record<string, unknown> = {
           description: '再委託条件。「再委託がある事業だけ」「再々委託まである事業」のような要求に使う',
           properties: {
             hasRedelegation: { type: 'boolean', description: 'true = 再委託の記載がある事業（ブロック階層2以上）のみ残す' },
-            minDepth: { type: ['number', 'null'], description: 'ブロック階層数の下限（2=再委託あり、3=再々委託以深、…）。hasRedelegation より優先' },
+            minDepth: { type: ['number', 'null'], description: 'ブロック階層数の下限（2=再委託あり、3=再々委託以上、…）。hasRedelegation より優先' },
           },
         },
       },
