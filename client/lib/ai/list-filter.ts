@@ -72,6 +72,9 @@ export function aiListFilterFrom(result: SankeyChatResult): AiListFilter {
   if (f.subcontract.hasRedelegation) unsupported.push('再委託の有無');
   // 会計区分は 4 種すべて = 条件なし
   if (f.accountCategories.length > 0 && f.accountCategories.length < 4) unsupported.push('会計区分');
+  // 政策評価スコア・継続年数は一覧の行に値が無い（評価一覧も AI の結果はサーバーの判定で揃える）
+  if (Object.values(f.scores).some(r => r.min !== null || r.max !== null)) unsupported.push('政策評価スコア');
+  if (f.yearsRunning.min !== null || f.yearsRunning.max !== null) unsupported.push('継続年数');
   return {
     query: result.query,
     summary: applySankeyQueryToUnifiedFilter(UNIFIED_FILTER_DEFAULT, result.query).summary,
