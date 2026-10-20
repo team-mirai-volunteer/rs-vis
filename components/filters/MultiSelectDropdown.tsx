@@ -7,7 +7,8 @@ import { FILTER_INPUT_CLASS } from './FilterTextInput';
 
 /** この件数を超えたら 2 列で並べる（統合ビューの所管は 23 件で、1 列だとフル HD のブラウザでも下が切れてスクロールが出る） */
 const TWO_COLUMN_MIN_OPTIONS = 16;
-const TWO_COLUMN_WIDTH = 560;
+/** 2 列のときの最小幅。呼び出し側（トリガー）がこれより広ければトリガーに合わせる（絞り込みパネルからはみ出さないため） */
+const TWO_COLUMN_MIN_WIDTH = 360;
 
 interface MultiSelectDropdownProps {
   options: string[];
@@ -69,8 +70,8 @@ export function MultiSelectDropdown({
         onClick={() => {
           if (buttonRef.current) {
             const r = buttonRef.current.getBoundingClientRect();
-            // 項目が多いとき（府省庁 40 件など）は幅を広げて 2 列にし、フル HD でスクロールなしに収める
-            const width = Math.min(Math.max(r.width, twoColumns ? TWO_COLUMN_WIDTH : 200), window.innerWidth - 16);
+            // 項目が多いとき（府省庁 23 件など）は 2 列にし、フル HD でスクロールなしに収める。幅はトリガー（パネル）に合わせる
+            const width = Math.min(Math.max(r.width, twoColumns ? TWO_COLUMN_MIN_WIDTH : 200), window.innerWidth - 16);
             setRect({
               top: r.bottom + 2,
               left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),

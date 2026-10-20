@@ -3,7 +3,7 @@
 import { QualityHelp } from '@/client/components/quality/QualityHelp';
 import { fiscalYear, fiscalYearLabel, rsSheetLabel } from '@/app/lib/rs-fiscal-year';
 
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useDeferredValue, useEffect, useState, useMemo, useRef } from 'react';
 import { AppHeader } from '@/components/navigation/AppHeader';
 import { SectionScoreTable } from '@/client/components/quality/SectionScoreTable';
 import { YearSelect } from '@/components/navigation/YearSelect';
@@ -266,6 +266,18 @@ export default function QualityPage() {
     return (item[metric as keyof QualityScoreItem] as number | null | undefined) ?? null;
   }, [policyByPid]);
 
+  // 検索語は入力より遅れて反映する（1 文字ごとに 5,794 行を絞り直すと入力が引っかかるため）。
+  // 検索対象の文字列は年度ごとに 1 回だけ正規化しておく
+  const deferredSearch = useDeferredValue(searchQuery);
+  const searchIndex = useMemo(() => {
+    if (!data) return null;
+    const normalize = (s: string) => s.replace(/（/g, '(').replace(/）/g, ')').toLowerCase();
+    return new Map(data.items.map(i => [i.pid, `${normalize(i.name)}
+${i.pid}
+${normalize(i.bureau)}
+${normalize(i.section)}
+${normalize(i.division)}`]));
+  }, [data]);
   const filtered = useMemo<QualityScoreItem[]>(() => {
     if (!data) return [];
     let items = data.items;
@@ -293,16 +305,9 @@ export default function QualityPage() {
       });
     }
 
-    if (searchQuery.trim()) {
-      const normalize = (s: string) => s.replace(/（/g, '(').replace(/）/g, ')').toLowerCase();
-      const q = normalize(searchQuery.trim());
-      items = items.filter(i =>
-        normalize(i.name).includes(q) ||
-        i.pid.includes(q) ||
-        normalize(i.bureau).includes(q) ||
-        normalize(i.section).includes(q) ||
-        normalize(i.division).includes(q)
-      );
+    if (deferredSearch.trim() && searchIndex) {
+      const q = deferredSearch.trim().replace(/（/g, '(').replace(/）/g, ')').toLowerCase();
+      items = items.filter(i => searchIndex.get(i.pid)?.includes(q));
     }
 
     for (const [metric, { min, max }] of Object.entries(scoreFilters)) {
@@ -372,7 +377,7 @@ export default function QualityPage() {
 
     return items;
   }, [data, policyByPid, metricValue, selectedRecommendation, selectedAction, selectedCategory,
-      selectedMinistry, scoreRange, distMetric, searchQuery, scoreFilters, yearsFilter, amountFilters, sortField, sortDir, aiFilter]);
+      selectedMinistry, scoreRange, distMetric, deferredSearch, searchIndex, scoreFilters, yearsFilter, amountFilters, sortField, sortDir, aiFilter]);
 
   // Reset page on filter change
   const amountFilterKey = Object.values(amountFilters).map(f => `${f.min}-${f.max}`).join(',')

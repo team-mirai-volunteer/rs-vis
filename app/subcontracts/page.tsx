@@ -112,7 +112,7 @@ const VISIBLE_COLUMNS_STORAGE_KEY = 'subcontracts-visible-columns-v2';
 /** 検索バー横のクイック絞り込み（AND で重ねる）。件数は年度の全事業に対して出す */
 const QUICK_FILTERS: ReadonlyArray<{ key: string; label: string; title: string; test: (g: SubcontractGraph) => boolean }> = [
   { key: 'sub', label: '再委託あり', title: '再委託（階層 2 以上）がある事業', test: g => g.maxDepth >= 2 },
-  { key: 'deep', label: '再々委託以深', title: '再々委託（階層 3 以上）まである事業', test: g => g.maxDepth >= 3 },
+  { key: 'deep', label: '再々委託以上', title: '再々委託（階層 3 以上）まである事業', test: g => g.maxDepth >= 3 },
   { key: 'single', label: '支出先1社', title: '記載された支出先が 1 者だけの事業', test: g => g.totalRecipientCount === 1 },
   { key: 'origin', label: '別財源あり', title: '事業からのつながりを確認できない起点ブロック（別財源）がある事業', test: g => g.separateOriginCount > 0 },
   { key: 'indirect', label: '間接経費あり', title: '国自らが支出する間接経費の記載がある事業', test: g => g.indirectCosts.length > 0 },

@@ -16,6 +16,7 @@ import type {
   ResolvedSankeyQuery,
   AccountCategoryKey,
 } from '@/types/sankey-query';
+import { SANKEY_SCORE_KEYS, type SankeyScoreKey, type SankeyScoreRange } from '@/types/sankey-query';
 import { parseAmountToYen } from '@/app/lib/format/yen';
 
 // /sankey-svg の初期状態と一致させる（page.tsx の useState 初期値・URLクランプと同値）
@@ -116,12 +117,46 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
     let minDepth: number | null = null;
     if (s?.minDepth != null) {
       if (typeof s.minDepth !== 'number' || !isFinite(s.minDepth) || Math.floor(s.minDepth) < 2) {
-        errors.push(`filter.subcontract.minDepth は2以上の整数で指定してください（2=再委託あり、3=再々委託以深。受領値: ${JSON.stringify(s.minDepth)}）`);
+        errors.push(`filter.subcontract.minDepth は2以上の整数で指定してください（2=再委託あり、3=再々委託以上。受領値: ${JSON.stringify(s.minDepth)}）`);
       } else {
         minDepth = Math.floor(s.minDepth);
       }
     }
     return { hasRedelegation, minDepth };
+  })();
+
+  const scores = (() => {
+    const out = Object.fromEntries(SANKEY_SCORE_KEYS.map(k => [k, { min: null, max: null }])) as Record<SankeyScoreKey, SankeyScoreRange>;
+    const s = input.filter?.scores;
+    if (s == null || typeof s !== 'object') return out;
+    for (const key of Object.keys(s)) {
+      if (!(SANKEY_SCORE_KEYS as readonly string[]).includes(key)) { errors.push(`filter.scores に未知の項目があります: ${key}（有効値: ${SANKEY_SCORE_KEYS.join(' | ')}）`); continue; }
+      const r = (s as Record<string, { min?: unknown; max?: unknown } | null | undefined>)[key];
+      if (r == null || typeof r !== 'object') continue;
+      for (const b of ['min', 'max'] as const) {
+        const value = r[b];
+        if (value == null) continue;
+        if (typeof value !== 'number' || !isFinite(value) || value < 0 || value > 100) errors.push(`filter.scores.${key}.${b} は 0〜100 の数値で指定してください（受領値: ${JSON.stringify(value)}）`);
+        else out[key as SankeyScoreKey][b] = value;
+      }
+      const o = out[key as SankeyScoreKey];
+      if (o.min != null && o.max != null && o.min > o.max) errors.push(`filter.scores.${key} は min <= max で指定してください`);
+    }
+    return out;
+  })();
+
+  const yearsRunning = (() => {
+    const out: SankeyScoreRange = { min: null, max: null };
+    const r = input.filter?.yearsRunning as { min?: unknown; max?: unknown } | null | undefined;
+    if (r == null || typeof r !== 'object') return out;
+    for (const b of ['min', 'max'] as const) {
+      const value = r[b];
+      if (value == null) continue;
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 200) errors.push(`filter.yearsRunning.${b} は 0〜200 の整数で指定してください（受領値: ${JSON.stringify(value)}）`);
+      else out[b] = value;
+    }
+    if (out.min != null && out.max != null && out.min > out.max) errors.push('filter.yearsRunning は min <= max で指定してください');
+    return out;
   })();
 
   const v = input.view;
@@ -142,6 +177,8 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
       // "project-budget-123" のようなノード ID で渡されても pid に正規化する。件数は URL 長のため上限を置く
       projectIds: [...new Set((Array.isArray(input.filter?.projectIds) ? input.filter!.projectIds! : [])
         .map(v => String(v).trim().replace(/^project-(?:budget|spending)-/, '')).filter(v => /^\d{1,10}$/.test(v)))].slice(0, MAX_PROJECT_IDS),
+      scores,
+      yearsRunning,
     },
     view: {
       topMinistry: clampInt(v?.topMinistry, SANKEY_QUERY_DEFAULTS.topMinistry, 1, TOP_MINISTRY_MAX),
@@ -171,10 +208,39 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
 /** filter.projectIds の上限（URL 長・ツール引数の肥大を防ぐ） */
 export const MAX_PROJECT_IDS = 300;
 
+/** 評価データが要る条件（政策評価スコア・継続年数）が 1 つでも指定されているか */
+export function hasScoreFilter(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning'>): boolean {
+  return SANKEY_SCORE_KEYS.some(k => filter.scores[k].min != null || filter.scores[k].max != null)
+    || filter.yearsRunning.min != null || filter.yearsRunning.max != null;
+}
+
+/** 事業 ID（文字列）→ 政策評価スコアと継続年数。/api/policy-summary の o・d・e・t・x・n・y を項目名に読み替えたもの */
+export type SankeyPolicyScores = ReadonlyMap<string, Partial<Record<SankeyScoreKey | 'years', number | null>>>;
+
+/**
+ * filter.scores を buildFilterExcludedIds の excludeProject（事業単位の追加除外）にする。
+ * 範囲を指定した項目で評価が無い事業は落とす（/budget-sankey の applyProgramFilters と同じ）。条件が無ければ null。
+ */
+export function scoreExcluder(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning'>, scores: SankeyPolicyScores): ((projectId: number) => boolean) | null {
+  const active: { key: SankeyScoreKey | 'years'; min: number | null; max: number | null }[] = SANKEY_SCORE_KEYS
+    .filter(k => filter.scores[k].min != null || filter.scores[k].max != null).map(k => ({ key: k, ...filter.scores[k] }));
+  if (filter.yearsRunning.min != null || filter.yearsRunning.max != null) active.push({ key: 'years', ...filter.yearsRunning });
+  if (active.length === 0) return null;
+  return (projectId: number) => {
+    const entry = scores.get(String(projectId));
+    for (const f of active) {
+      const v = entry?.[f.key];
+      if (v == null || (f.min != null && v < f.min) || (f.max != null && v > f.max)) return true;
+    }
+    return false;
+  };
+}
+
 /** フィルタ条件が1つでも指定されているか */
 export function hasActiveFilter(filter: ResolvedSankeyQuery['filter']): boolean {
   return (
     filter.projectIds.length > 0 ||
+    hasScoreFilter(filter) ||
     filter.projectName != null ||
     filter.recipientName != null ||
     filter.ministries.length > 0 ||
@@ -775,6 +841,11 @@ export function sankeyQueryToUrlParams(query: ResolvedSankeyQuery): URLSearchPar
   if (filter.subcontract.minDepth != null) p.set('fsd', String(filter.subcontract.minDepth));
   else if (filter.subcontract.hasRedelegation) p.set('fsr', '1');
   if (filter.projectIds.length > 0) p.set('fpid', filter.projectIds.join(','));
+  for (const k of SANKEY_SCORE_KEYS) {
+    const r = filter.scores[k];
+    if (r.min != null || r.max != null) p.set(`fsc_${k}`, `${r.min ?? ''}-${r.max ?? ''}`);
+  }
+  if (filter.yearsRunning.min != null || filter.yearsRunning.max != null) p.set('fyr', `${filter.yearsRunning.min ?? ''}-${filter.yearsRunning.max ?? ''}`);
   return p;
 }
 
@@ -821,6 +892,14 @@ export function sankeyQueryFromUrlParams(p: URLSearchParams): SankeyQuery {
   else if (p.get('fsr') === '1') filter.subcontract = { hasRedelegation: true };
   const fpid = p.get('fpid');
   if (fpid) filter.projectIds = fpid.split(',').map(v => v.trim()).filter(Boolean);
+  for (const k of SANKEY_SCORE_KEYS) {
+    const raw = p.get(`fsc_${k}`);
+    if (!raw) continue;
+    const [min, max] = raw.split('-');
+    filter.scores = { ...(filter.scores ?? {}), [k]: { min: min ? Number(min) : null, max: max ? Number(max) : null } };
+  }
+  const fyr = p.get('fyr');
+  if (fyr) { const [min, max] = fyr.split('-'); filter.yearsRunning = { min: min ? Number(min) : null, max: max ? Number(max) : null }; }
   if (Object.keys(filter).length > 0) query.filter = filter;
 
   const view: SankeyQuery['view'] = {};

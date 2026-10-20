@@ -7,6 +7,7 @@ import {
 } from '@/app/lib/policy-evaluation';
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
+import { loadQualityScores } from '@/app/lib/api/quality-scores-loader';
 import { parseQualityYear, QUALITY_YEAR_ERROR, type QualityYear } from '@/app/lib/api/quality-year';
 
 /**
@@ -30,6 +31,8 @@ export interface PolicySummaryEntry {
   x: number | null;
   /** 必要性 */
   n: number | null;
+  /** 継続年数（対象年度 − 開始年度 + 1）。開始年度が無い事業は null。項別の集計（quality-sections）には無い */
+  y?: number | null;
   /** 推奨判断（RECOMMENDATION_ORDER の番号。未判定は 0） */
   r: number;
   /** 改善アクション（IMPROVEMENT_ACTION_ORDER の番号。無しは 0） */
@@ -79,9 +82,11 @@ function build(year: QualityYear): PolicySummaryResponse {
   if (cached) return cached;
 
   const rows = [...buildEvaluations(year).values()];
+  const yearsByPid = new Map(loadQualityScores(year).items.map(i => [i.pid, i.yearsRunning ?? null]));
   const items: Record<string, PolicySummaryEntry> = {};
   for (const row of rows) {
     items[row.pid] = {
+      y: yearsByPid.get(row.pid) ?? null,
       o: row.overallScore,
       d: row.designClarityScore,
       e: row.evidenceScore,

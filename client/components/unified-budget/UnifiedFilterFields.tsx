@@ -7,7 +7,7 @@
  * 判定は app/lib/unified-budget/transform.ts の applyFilter（純関数）。ここは入力欄だけ。
  */
 
-import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter } from '@/types/unified-budget-view';
+import { UNIFIED_FILTER_DEFAULT, type UnifiedScoreRange, type UnifiedViewFilter , UNIFIED_SCORE_FIELDS } from '@/types/unified-budget-view';
 import { Button } from '@/components/ui/button';
 import { MinMaxInput } from '@/components/filters/MinMaxInput';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
@@ -24,8 +24,8 @@ const ACCOUNT_OPTIONS: Array<{ value: 'general' | 'special'; label: string }> = 
 
 const SUBCONTRACT_OPTIONS: Array<{ value: UnifiedViewFilter['subcontract']; label: string; title: string }> = [
   { value: 'any', label: '指定なし', title: '再委託の有無で絞り込まない' },
-  { value: 'has', label: '再委託あり', title: '再委託（支出先からさらに先への委託）の記載がある事業だけを残す' },
-  { value: 'none', label: '再委託なし', title: '再委託の記載が無い（直接支出のみ）事業だけを残す' },
+  { value: 'has', label: 'あり', title: '再委託（支出先からさらに先への委託）の記載がある事業だけを残す' },
+  { value: 'none', label: 'なし', title: '再委託の記載が無い（直接支出のみ）事業だけを残す' },
 ];
 
 const INPUT_CLASS =
@@ -81,10 +81,10 @@ export function UnifiedFilterFields({
             triggerClassName="h-7 w-full border-mirai-border text-xs"
           />
         </div>
-        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">共管の所管（「内閣府及び厚生労働省」など）は、いずれかの省庁を選ぶと含まれます。</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-mirai-text-muted">複数省庁の共管は1つでも選べば含まれます。</p>
       </div>
       <div>
-        <div className="mb-1 font-medium">名前（部分一致。一致したノードとその上流・下流だけを残す）</div>
+        <div className="mb-1 font-medium" title="部分一致。一致したノードとその上流・下流だけを残す">名前</div>
         <input
           type="text"
           value={filter.nameQuery}
@@ -97,7 +97,7 @@ export function UnifiedFilterFields({
 
       {/* ---- /sankey-svg から移植: 事業単位の絞り込み ---- */}
       <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
-        <div className="font-medium">事業（RS事業が対象。条件に合わない事業は事業(支出)・支出先ごと落とす）</div>
+        <div className="font-medium">事業（条件に合わない事業は事業(支出)・支出先ごと落とす）</div>
         {filter.projectIds.length > 0 && (
           <div className="flex items-center justify-between gap-2 rounded-md bg-mirai-surface-teal px-2 py-1" data-testid="ai-selected-projects">
             <span>AI が選んだ {filter.projectIds.length} 事業だけを表示中（選び方は AI の応答を参照）</span>
@@ -120,8 +120,8 @@ export function UnifiedFilterFields({
             <MinMaxInput minVal={filter.spendingMin} maxVal={filter.spendingMax} onMinChange={v => set({ spendingMin: v })} onMaxChange={v => set({ spendingMax: v })} />
           </AmountRow>
         )}
-        {hasSpending && (
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {hasSpending && (<>
             <span className="w-14 shrink-0 font-medium" title="再委託（支出先からさらに先への委託）の記載の有無">
               再委託
             </span>
@@ -162,13 +162,20 @@ export function UnifiedFilterFields({
                 <span>以上</span>
               </label>
             )}
-          </div>
-        )}
+          </>)}
+          {/* 継続年数。再委託と同じ行にまとめる（政策評価サマリの値。範囲を指定すると開始年度の記載が無い事業は落ちる） */}
+          <label className="flex items-center gap-1" title="継続年数（対象年度 − 開始年度 + 1）。範囲を指定すると開始年度の記載が無い事業は落ちる">
+            <span className="shrink-0 font-medium">継続年数</span>
+            <input type="number" min={0} max={200} step={1} value={filter.years.min} onChange={e => set({ years: { ...filter.years, min: e.target.value } })} placeholder="下限" aria-label="継続年数の下限" className={cn(SMALL_NUMBER_CLASS, 'w-[3.25rem]')} />
+            <span className="text-[11px] text-mirai-text-muted">~</span>
+            <input type="number" min={0} max={200} step={1} value={filter.years.max} onChange={e => set({ years: { ...filter.years, max: e.target.value } })} placeholder="上限" aria-label="継続年数の上限" className={cn(SMALL_NUMBER_CLASS, 'w-[3.25rem]')} />
+          </label>
+        </div>
       </div>
 
       {hasSpending && (
         <div className="flex flex-col gap-2 border-t border-mirai-border pt-3">
-          <div className="font-medium">支出先（一致しない支出先を落とし、支出先が残らない事業も落とす）</div>
+          <div className="font-medium">支出先（一致しない支出先や支出先が残らない事業は落とす）</div>
           <RegexTextFilter
             label="支出先名"
             note="支出先の名前で絞り込む。`.*` で正規表現（大文字小文字を区別しない）"
@@ -188,18 +195,21 @@ export function UnifiedFilterFields({
               disabled={filter.recipientQuery.trim() === ''}
               className="h-3.5 w-3.5 cursor-pointer accent-primary disabled:cursor-default"
             />
-            <span className={filter.recipientQuery.trim() === '' ? 'text-mirai-text-muted' : undefined}>再委託先も含めて判定する（一致する事業を残し、支出先は隠さない）</span>
+            <span className={filter.recipientQuery.trim() === '' ? 'text-mirai-text-muted' : undefined}>再委託先も含めて判定する</span>
           </label>
         </div>
       )}
 
       <div className="flex flex-col gap-1.5 border-t border-mirai-border pt-3">
         <div className="font-medium" title="AI政策評価のスコア（0〜100）。/quality と同じ値。範囲を指定した項目で評価が無い事業は落とす">
-          政策評価スコア（0〜100。範囲を指定すると未評価の事業は落とす）
+          政策評価スコア（0〜100）
         </div>
-        <ScoreRow label="総合点" title="AI政策評価の総合点（0〜100）" range={filter.scoreO} onChange={r => set({ scoreO: r })} />
-        <ScoreRow label="費用対内容" title="費用対内容（0〜100）。金額が活動の規模に見合っているか" range={filter.scoreX} onChange={r => set({ scoreX: r })} />
-        <ScoreRow label="代替困難性" title="代替困難性（0〜100）。廃止したら誰が具体的に困るか、他の手段で代替できないか" range={filter.scoreN} onChange={r => set({ scoreN: r })} />
+        {/* 評価一覧と同じ 6 項目。2 列 × 3 行 */}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
+          {UNIFIED_SCORE_FIELDS.map(s => (
+            <ScoreRow key={s.field} label={s.short} ariaLabel={s.label} title={`${s.label}: ${s.title}`} compact range={filter[s.field]} onChange={r => set({ [s.field]: r })} />
+          ))}
+        </div>
         {scoreStatus === 'loading' && <p className="text-[10px] text-mirai-text-muted">政策評価を読み込み中…（取得できるまでスコアの絞り込みは効きません）</p>}
         {scoreStatus === 'unavailable' && <p className="text-[10px] text-destructive">政策評価を取得できませんでした。スコアの絞り込みは効いていません</p>}
       </div>
@@ -222,26 +232,26 @@ function AmountRow({ label, title, children }: { label: string; title: string; c
   );
 }
 
-function ScoreRow({ label, title, range, onChange }: { label: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void }) {
+function ScoreRow({ label, ariaLabel = label, title, range, onChange, max = 100, compact = false }: { label: string; ariaLabel?: string; title: string; range: UnifiedScoreRange; onChange: (r: UnifiedScoreRange) => void; max?: number; /** 2 列に並べるときの短い見出し（幅を詰める） */ compact?: boolean }) {
   const bound = (v: string) => {
     const t = v.trim();
-    return t === '' || (Number.isFinite(Number(t)) && Number(t) >= 0 && Number(t) <= 100);
+    return t === '' || (Number.isFinite(Number(t)) && Number(t) >= 0 && Number(t) <= max);
   };
   const cls = (ok: boolean) => cn(SMALL_NUMBER_CLASS, !ok && 'border-destructive focus-visible:border-destructive');
   return (
     <div className="flex items-center gap-1.5">
-      <span className="w-20 shrink-0 font-medium" title={title}>
+      <span className={cn('shrink-0 font-medium', compact ? 'w-9' : 'w-20')} title={title}>
         {label}
       </span>
       <input
         type="number"
         min={0}
-        max={100}
+        max={max}
         step={1}
         value={range.min}
         onChange={e => onChange({ ...range, min: e.target.value })}
         placeholder="下限"
-        aria-label={`${label}の下限`}
+        aria-label={`${ariaLabel}の下限`}
         aria-invalid={!bound(range.min) || undefined}
         className={cls(bound(range.min))}
       />
@@ -249,12 +259,12 @@ function ScoreRow({ label, title, range, onChange }: { label: string; title: str
       <input
         type="number"
         min={0}
-        max={100}
+        max={max}
         step={1}
         value={range.max}
         onChange={e => onChange({ ...range, max: e.target.value })}
         placeholder="上限"
-        aria-label={`${label}の上限`}
+        aria-label={`${ariaLabel}の上限`}
         aria-invalid={!bound(range.max) || undefined}
         className={cls(bound(range.max))}
       />

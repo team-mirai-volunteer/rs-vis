@@ -175,7 +175,7 @@ test('政策評価スコア: ctx.policy があるときだけ効き、評価の�
   const filter = f({ scoreO: { min: '60', max: '' } });
   const noCtx = applyFilter(sample(), filter);
   assert.deepEqual(ids(noCtx), ids(sample()), '未取得なら効かない');
-  const policy = { '1': { o: 80, x: 50, n: 70 }, '2': { o: 40, x: 90, n: 10 } };
+  const policy = { '1': { o: 80, d: null, e: null, t: null, x: 50, n: 70, y: null }, '2': { o: 40, d: null, e: null, t: null, x: 90, n: 10, y: null } };
   const out = applyFilter(sample(), filter, { policy });
   const rs = out.nodes.filter(n => n.details.kind === 'rs' && n.details.column === 'program').map(n => n.id);
   assert.deepEqual(rs, ['project-budget-1'], '事業2は 40 点で落ち、事業3は評価が無いので落ちる');
