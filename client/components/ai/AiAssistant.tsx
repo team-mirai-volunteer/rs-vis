@@ -19,7 +19,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Check, ExternalLink, History, LoaderCircle, RotateCcw, Send, Settings2, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import type { SankeyChatContext, SankeyChatMessage, SankeyChatResponse, SankeyChatResult } from '@/types/sankey-ai-chat';
+import { MAX_CHAT_MESSAGES, type SankeyChatContext, type SankeyChatMessage, type SankeyChatResponse, type SankeyChatResult } from '@/types/sankey-ai-chat';
 import type { GraphData } from '@/types/sankey-svg';
 import type { SupportedYear } from '@/app/lib/api/api-notes';
 import { formatBudgetFromYen } from '@/client/lib/formatBudget';
@@ -180,7 +180,8 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
   const send = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || !canSend) return;
-    const history: SankeyChatMessage[] = [...messages.filter(m => !m.isError).map(m => ({ role: m.role, content: m.content })), { role: 'user', content: trimmed }];
+    // 会話は永続化されて長くなるので、API の上限（直近 MAX_CHAT_MESSAGES 件）に合わせて古い分を落とす。表示は全部残す
+    const history: SankeyChatMessage[] = [...messages.filter(m => !m.isError).map((m): SankeyChatMessage => ({ role: m.role, content: m.content })), { role: 'user' as const, content: trimmed }].slice(-MAX_CHAT_MESSAGES);
     setMessages(prev => [...prev, { role: 'user', content: trimmed }]);
     setInput(''); setSending(true); setProgress(null);
     const aborter = new AbortController(); abortRef.current = aborter;
