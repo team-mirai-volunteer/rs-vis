@@ -118,7 +118,7 @@ const GIVE_UP_MESSAGE =
  * システムプロンプトの版。応答キャッシュの鍵に含め、プロンプトを変えたときに古い応答が 24 時間残らないようにする。
  * 応答の書き方に影響する変更をしたら上げる
  */
-export const PROMPT_VERSION = 6;
+export const PROMPT_VERSION = 7;
 
 /** 「解釈できなかった」応答か（応答キャッシュはこれを保存しない） */
 export const isGiveUpMessage = (message: string): boolean => message === GIVE_UP_MESSAGE;
@@ -600,6 +600,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '',
     '### A. フィルタ要求（図の表示条件を変えたい）',
     '- 「総合点（評価）が低い・高い事業を出して・見せて・絞って」「検証可能性が 40 点以下」はこのモード。filter.scores（低い = max: 40、高い = min: 80 を目安）で run_sankey_query → submit_result し、いま見ているページを絞り込む。評価一覧へ移動するのは「評価一覧に行って」のように移動を明示されたときだけ。テキストで上位 10 件を列挙して終えない',
+    '- 「総合点でフィルタして」「評価で絞って」のように高い・低いの向きも点数も無いときは、聞き返さずに低い方（max: 40）で絞り、message で「総合点 40 点以下で絞り込みました。高い方なら『80 点以上』のように言ってください」と解釈を一言添える',
     '「〜の事業」「〜な事業を見たい/教えて/探して」のように、条件に当てはまる事業の集合を求める要求はすべてこのモード。列挙するだけで終えず、必ず図へ適用（submit_result）する。',
     '- 名前・金額・府省庁・会計・再委託で表せる条件はそのまま filter に書く',
     '- 「怪しい/気になる/無駄っぽい」「支出先が1社に集中」「評価スコアが低い」「執行率が低い/予算と執行の乖離」のように名前や金額で表せない基準は、' +
@@ -637,6 +638,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '- **フィルタで表現できない絞り込み条件に注意**: SankeyQuery のフィルタは事業名・支出先名・府省庁・金額範囲・会計区分・再委託（filter.subcontract: 有無・ブロック階層の下限）・政策評価スコア（filter.scores）・継続年数（filter.yearsRunning）。政策評価スコア（総合点・成果設計・検証可能性・執行透明性・費用対内容・代替困難性）は filter.scores で絞れる（「総合点が低い事業」= { overall: { max: 40 } } など）。執行率や支出先の集中のようにフィルタに無い基準は get_highlights で pid を集めて filter.projectIds に入れる。再委託の有無・深さは filter.subcontract でフィルタ化できる。filter.recipientName は既定で**直接支出先のみ**に掛かるが、includeSubcontract=true を付ければ「支出先または再委託先が◯◯」（OR・事業単位）を表現できる。再委託先だけを厳密に対象とする条件は表現できないため、その場合は includeSubcontract=true での近似か調査ツールへの誘導を提案する。「使途が広報の事業だけ」のような使途起点の質問も search_spending に誘導する',
     '- 条件が曖昧でも合理的な解釈が1つ選べるなら聞き返さずに進める（フィルタはユーザーが適用前に件数を確認できる）',
     '- 応答はすべて日本語で書く',
+    '- 文章で返すときは、利用者に向けた返答だけを書く。検討の過程（「ユーザーは〜を求めている」「〜する必要がある」「ちょっと待て」のような自問・方針・下書き）は本文に書かない',
     '',
     '## 解釈宣言（submit_result の interpretation）',
     '「子育て」「大型」「〜っぽい」のような曖昧語をAIが解釈して条件化した場合は、submit_result の interpretation に',
