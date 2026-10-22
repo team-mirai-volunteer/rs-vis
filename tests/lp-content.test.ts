@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { AI_EVALUATION_NATURE } from '../app/lib/ai-evaluation-disclosure';
 import { readDataJson } from '../app/lib/api/data-file';
 import type { RecipientRowsByPid } from '../app/lib/api/quality-recipients-loader';
@@ -167,4 +167,16 @@ test('LP retains all fifteen parliamentary questions and twelve scripts', () => 
     for (const theme of set.themes) assert.ok(DIET_QUESTIONS.some(q => q.theme === theme));
   }
   assert.ok(PERSONAS.some(persona => persona.title.includes('議員')));
+});
+
+test('LP: 数字にはすべて計算根拠（使ったデータ・手順・根拠メモ）が付いている', () => {
+  const figures = [...INSIGHTS.map(i => ({ name: i.id, basis: i.basis })), ...HERO_STATS.map(s => ({ name: s.label, basis: s.basis }))];
+  assert.equal(figures.length, INSIGHTS.length + 4);
+  for (const { name, basis } of figures) {
+    assert.ok(basis.data.length >= 1, `${name}: data`);
+    assert.ok(basis.steps.length >= 2, `${name}: steps`);
+    assert.match(basis.doc, /^docs\/tasks\/\d{8}_\d{4}_.+\.md$/, `${name}: doc`);
+    assert.ok(existsSync(basis.doc), `${name}: 根拠メモ ${basis.doc} が無い`);
+    if (basis.test) assert.ok(existsSync(basis.test.split('（')[0]), `${name}: テスト ${basis.test} が無い`);
+  }
 });

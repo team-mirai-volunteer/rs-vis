@@ -38,6 +38,7 @@ import { AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
 import { Badge } from '@/components/ui/badge';
 import { PolicyCases } from '@/components/lp/PolicyCases';
 import { MobileCta } from '@/components/lp/MobileCta';
+import { FigureBasis } from '@/components/lp/FigureBasis';
 import { SUMMARY_LINK, TEXT_LINK } from '@/components/lp/styles';
 import { Button } from '@/components/ui/button';
 import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, type Insight } from './insights';
@@ -191,9 +192,13 @@ export default function LandingPage() {
               <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {HERO_STATS.map(stat => (
                   <div key={stat.label} className="rounded-2xl border border-black/10 bg-card/70 px-4 py-3">
-                    <dd className="font-lexend text-2xl font-medium tracking-normal text-mirai-text">
-                      {stat.value}
-                      <span className="ml-1 font-sans text-sm font-bold">{stat.unit}</span>
+                    <dd>
+                      <FigureBasis figure={`${stat.value}${stat.unit}`} note={stat.label} basis={stat.basis} asOf={DATA_ASOF}>
+                        <span className="block font-lexend text-2xl font-medium tracking-normal text-mirai-text">
+                          {stat.value}
+                          <span className="ml-1 font-sans text-sm font-bold">{stat.unit}</span>
+                        </span>
+                      </FigureBasis>
                     </dd>
                     <dt className="mt-1 text-xs leading-relaxed text-mirai-text-subtle">{stat.label}</dt>
                   </div>
@@ -539,7 +544,10 @@ function InsightCard({ insight }: { insight: Insight }) {
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <div>
-        <p className="font-lexend text-3xl font-medium tracking-normal text-primary-accent">{insight.figure}</p>
+        {/* 数字を押すと計算根拠のモーダル（使ったファイル・絞り方・検証テスト・根拠メモ） */}
+        <FigureBasis figure={insight.figure} note={insight.figureNote} basis={insight.basis} asOf={DATA_ASOF}>
+          <span className="block font-lexend text-3xl font-medium tracking-normal text-primary-accent">{insight.figure}</span>
+        </FigureBasis>
         <p className="mt-1 text-xs font-medium text-mirai-text-subtle">{insight.figureNote}</p>
       </div>
       <h3 className="text-lg/7 font-bold tracking-normal">{insight.title}</h3>
