@@ -584,13 +584,13 @@ ${normalize(i.division)}`]));
             data.items.filter(i => { const s = metricValue(i, distMetric); return s != null && s >= lo && s <= hi; }).length
           );
           const maxCount = Math.max(...counts, 1);
-          // ヒストグラムは xl 未満（タブレット・小さいノート）で棒を細く低くする。固定 330px だと横に残る幅が
-          // 300px 前後になり、右の検索欄・セレクト・範囲入力が縦積みになって崩れていた。
-          // 棒の高さは CSS 変数で渡し、xl で 56px・それ未満で 40px に切り替える
+          // ヒストグラムは「フィルタ群が折り返さない幅」を優先して縮む。基準 330px から 140px まで、
+          // 右のフィルタ群（自然幅）が収まらない分を先に吸収する（shrink の重みを大きくする）。
+          // 棒の太さ・高さ・ラベルはヒストグラム自身の幅（コンテナクエリ）で切り替え、画面幅のブレークポイントには依存させない。
           // 上揃え。下揃えだと折り返したフィルタ群の高さにつられてヒストグラムが下に沈み、上に空白が残っていた
           return (
-            <div className="flex items-start gap-3 xl:gap-4 flex-wrap">
-              <div className="flex items-end gap-px xl:gap-0.5 pt-1">
+            <div className="flex items-start gap-3 xl:gap-4">
+              <div className="flex items-end gap-px pt-1 basis-[330px] shrink-[100] min-w-[140px] [container-type:inline-size]">
                 {binRanges.map(({ label, range, lo }, i) => {
                   const count = counts[i];
                   const ratio = Math.max(count / maxCount, 0.04);
@@ -603,20 +603,21 @@ ${normalize(i.division)}`]));
                       variant="ghost"
                       onClick={() => setScoreRange(isActive ? 'all' : range)}
                       className={cn(
-                        'h-auto flex-col items-center gap-0 rounded-md px-0 py-0 font-normal hover:bg-transparent',
+                        'h-auto flex-1 min-w-0 flex-col items-center gap-0 rounded-md px-0 py-0 font-normal hover:bg-transparent',
                         isActive && 'ring-1 ring-primary',
                       )}
                       title={`${label}点: ${count}件`}
                     >
-                      <span className="text-[8px] xl:text-[10px] tabular-nums text-mirai-text-muted mb-0.5">{count || ''}</span>
-                      <div className={`w-4 lg:w-5 xl:w-7 rounded-sm ${bar} h-[calc(var(--hist-h)*var(--hist-ratio))] [--hist-h:40px] xl:[--hist-h:56px]`} style={{ '--hist-ratio': ratio } as React.CSSProperties} />
-                      {/* xl 未満は棒が細く「90-99」が収まらないので下限だけを示す（範囲はツールチップ） */}
-                      <span className="text-[8px] xl:text-[9px] tabular-nums text-mirai-text-muted mt-1"><span className="xl:hidden">{lo}</span><span className="hidden xl:inline">{label}</span></span>
+                      {/* 件数は棒が 20px 幅を割ると重なるので、ヒストグラムが 220px 未満のときは出さない（ツールチップに残る） */}
+                      <span className="hidden [@container(min-width:220px)]:inline text-[8px] [@container(min-width:300px)]:text-[10px] tabular-nums text-mirai-text-muted mb-0.5">{count || ''}</span>
+                      <div className={`w-full max-w-7 rounded-sm ${bar} h-[calc(var(--hist-h)*var(--hist-ratio))] [--hist-h:40px] [@container(min-width:300px)]:[--hist-h:56px]`} style={{ '--hist-ratio': ratio } as React.CSSProperties} />
+                      {/* 幅 300px 未満は棒が細く「90-99」が収まらないので下限だけを示す（範囲はツールチップ） */}
+                      <span className="text-[8px] [@container(min-width:300px)]:text-[9px] tabular-nums text-mirai-text-muted mt-1"><span className="[@container(min-width:300px)]:hidden">{lo}</span><span className="hidden [@container(min-width:300px)]:inline">{label}</span></span>
                     </Button>
                   );
                 })}
               </div>
-              <div className="flex flex-col gap-1 self-start">
+              <div className="flex flex-col gap-1 self-start shrink-0">
                 <label className="flex flex-col gap-0.5">
                   <span className="text-[9px] text-mirai-text-muted leading-none">分布の軸</span>
                   <select
@@ -651,14 +652,15 @@ ${normalize(i.division)}`]));
                   </div>
                 </Button>
               </div>
-              <div className="flex flex-col gap-1.5 self-start flex-1 min-w-[200px]">
+              {/* 自然幅を基準にする（flex-auto）。足りない分はまずヒストグラムが縮み、それでも足りないときだけ各行が折り返す */}
+              <div className="flex flex-col gap-1.5 self-start flex-auto min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="text"
                     placeholder="事業名・PID・組織名で検索..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 min-w-[120px] px-3 py-1.5 text-xs xl:text-sm border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                    className="grow w-[120px] min-w-[120px] px-3 py-1.5 text-xs xl:text-sm border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                   />
                   <select
                     value={selectedMinistry}
