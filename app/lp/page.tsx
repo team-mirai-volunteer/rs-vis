@@ -39,6 +39,8 @@ import { Badge } from '@/components/ui/badge';
 import { PolicyCases } from '@/components/lp/PolicyCases';
 import { MobileCta } from '@/components/lp/MobileCta';
 import { FigureBasis } from '@/components/lp/FigureBasis';
+import { AnchorLink } from '@/components/lp/AnchorLink';
+import { HashOpener } from '@/components/lp/HashOpener';
 import { SUMMARY_LINK, TEXT_LINK } from '@/components/lp/styles';
 import { Button } from '@/components/ui/button';
 import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, type Insight } from './insights';
@@ -128,6 +130,8 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-mirai-text">
+      {/* #insight-xxx / #q-N で開かれたら、畳んである部分を開いてそこへスクロールする */}
+      <HashOpener />
       <AppHeader current="/" />
 
       <main className="flex-1">
@@ -465,6 +469,8 @@ function QuestionItem({ q, index }: { q: (typeof DIET_QUESTIONS)[number]; index:
                         <span className="mt-1.5 block text-sm leading-relaxed font-medium">{q.summary}</span>
                         <span className="mt-1 block text-xs text-mirai-text-muted max-sm:hidden">{q.committee}</span>
                       </span>
+                      {/* この問いだけを指す固定 URL（#q-N）。summary の中なので開閉には伝えない */}
+                      <AnchorLink id={`q-${index + 1}`} label={`Q${index + 1} ${q.theme}`} className="mt-0.5 max-sm:hidden" />
                       <ChevronDown className="mt-1 size-5 shrink-0 text-mirai-text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <div className="space-y-4 border-t border-mirai-border px-4 pb-4 pt-3 text-sm leading-relaxed sm:pl-12">
@@ -539,10 +545,14 @@ function QuestionItem({ q, index }: { q: (typeof DIET_QUESTIONS)[number]; index:
 function InsightCard({ insight }: { insight: Insight }) {
   const Icon = INSIGHT_ICONS[insight.id] ?? Workflow;
   return (
-    <article className="flex h-full flex-col gap-4 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
-        <Icon className="size-5" aria-hidden="true" />
-      </span>
+    <article id={`insight-${insight.id}`} className="flex h-full scroll-mt-24 flex-col gap-4 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mirai-surface-teal text-primary-accent">
+          <Icon className="size-5" aria-hidden="true" />
+        </span>
+        {/* このカードだけを指す固定 URL（#insight-xxx）をコピーする */}
+        <AnchorLink id={`insight-${insight.id}`} label={insight.title} />
+      </div>
       <div>
         {/* 数字を押すと計算根拠のモーダル（使ったファイル・絞り方・検証テスト・根拠メモ） */}
         <FigureBasis figure={insight.figure} note={insight.figureNote} basis={insight.basis} asOf={DATA_ASOF}>
