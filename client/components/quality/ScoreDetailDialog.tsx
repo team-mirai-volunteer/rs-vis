@@ -311,9 +311,9 @@ ${a.desc}`}>
           {!recipientsAvailable && <p className="border-b border-border bg-mirai-surface px-6 py-3 text-xs lg:text-sm text-mirai-text-muted">{year}年度は予算要求の表示です。以下の事業概要・評価は{sourceYear}年度RSシートを参照しています。{year}年度の支出先・執行実績は未収録です。</p>}
 
         {/*
-          デスクトップ（lg）は 2 列: 左は点数の直下に政策評価、その下に成果目標・実績。右は事業内容、その下に推移グラフ・概算要求・外部の検査。みんなの意見は上の点数の右の別枠。
+          デスクトップ（lg）は 2 列: 左は点数の直下に政策評価、その下に推移グラフ。右は事業内容、その下に成果目標・実績・概算要求・外部の検査。みんなの意見は上の点数の右の別枠。
           1 列で横いっぱいに流すと 1,500px 幅に小さな文字が並び、推移グラフが細長く潰れていたため。
-          lg 未満は縦 1 列（左列 → 右列の順 = 政策評価 → 成果目標 → 事業内容 → 推移）。
+          lg 未満は縦 1 列（左列 → 右列の順 = 政策評価 → 推移 → 事業内容 → 成果目標）。
         */}
         <div className="lg:grid lg:grid-cols-2 lg:divide-x lg:divide-mirai-border">
         <div className="min-w-0">
@@ -621,9 +621,10 @@ ${a.desc}`}>
           </section>
         )}
 
-        {/* 成果目標・実績（RS 3-1）。アウトカム指標の目標・実績・達成率。政策評価の直下に置き、「検証可能性」の所見の根拠を数字で追えるようにする */}
-        <ProjectOutcomeIndicators key={`${item.pid}-${sourceYear}`} pid={item.pid} year={sourceYear} scaleFont={scaleFont} defaultOpen
-          padding="border-b border-mirai-border px-6 py-2.5 lg:px-8 lg:py-3" />
+        {/* 予算・執行額の 5 年推移（サンキー図の詳細パネルと同じ部品）。事業内容の下に置き、左列の成果目標・実績と横並びで読めるようにする */}
+        <div className="border-b border-mirai-border px-6 lg:px-8 lg:py-3">
+          <ProjectBudgetHistory key={`${item.pid}-${desktop ? 'large' : 'default'}`} pid={Number(item.pid)} size={desktop ? 'large' : 'default'} />
+        </div>
         {/* みんなの意見。デスクトップでは上の点数の右に別枠で出すので、ここ（左列）は lg 未満だけ */}
         {!desktop && (
           <div className="px-6 py-3 border-b border-mirai-border empty:hidden">
@@ -633,7 +634,7 @@ ${a.desc}`}>
 
         </div>
 
-        {/* 右列（lg）: 事業内容と数字・外部資料。推移グラフ（デスクトップは size="large" で高く描く）、概算要求、関連ページ、予算執行調査、決算検査報告 */}
+        {/* 右列（lg）: 事業内容・成果目標・実績と外部資料。概算要求、関連ページ、予算執行調査、決算検査報告 */}
         <div className="min-w-0">
         {/* 事業内容（目的・現状課題・概要）— 成果設計の判定材料。見出しをクリックでその場で開閉 */}
         <section aria-labelledby="score-project-info-heading" className="px-6 py-3 lg:px-8 lg:py-4 border-b border-mirai-border bg-mirai-surface-gray">
@@ -649,10 +650,9 @@ ${a.desc}`}>
             {projectInfo && <ProjectDescription detail={projectInfo} sheetYear={year} size={desktop ? 'large' : 'default'} />}
           </div>}
         </section>
-        {/* 予算・執行額の 5 年推移（サンキー図の詳細パネルと同じ部品）。事業内容の下に置き、左列の成果目標・実績と横並びで読めるようにする */}
-        <div className="border-b border-mirai-border px-6 lg:px-8 lg:py-3">
-          <ProjectBudgetHistory key={`${item.pid}-${desktop ? 'large' : 'default'}`} pid={Number(item.pid)} size={desktop ? 'large' : 'default'} />
-        </div>
+        {/* 成果目標・実績（RS 3-1）。アウトカム指標の目標・実績・達成率。事業内容の直下（右下）に置き、左下の予算の推移と横並びで金額と成果の推移を読めるようにする */}
+        <ProjectOutcomeIndicators key={`${item.pid}-${sourceYear}`} pid={item.pid} year={sourceYear} scaleFont={scaleFont} defaultOpen
+          padding="border-b border-mirai-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectRelatedPages pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
 
