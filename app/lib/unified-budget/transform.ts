@@ -19,6 +19,7 @@ import { parseAmountToYen } from '@/app/lib/format/yen';
 import type { UnifiedColumn, UnifiedGraph } from '@/types/unified-budget';
 import { RS_TOTAL_ID, RS_TOTAL_NAME, UNIFIED_COLUMNS, UNIFIED_RS_MINISTRY_COLUMNS, rsMinistryId } from '@/types/unified-budget';
 import { ministryMatches } from '@/app/lib/unified-budget/ministry-names';
+import { matchesOutcomeCondition } from '@/app/lib/sankey-query';
 import {
   AGGREGATE_ID_PREFIX,
   DEFAULT_UNIFIED_TOP_N,
@@ -339,7 +340,8 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
   )
     .map(([key, r]) => ({ key, min: parseScoreBound(r.min), max: parseScoreBound(r.max) }))
     .filter(f => f.min !== null || f.max !== null);
-  const policy = scoreFilters.length > 0 ? ctx?.policy : undefined;
+  // 成果指標の有無も評価データ（oi・oa）で判定するので、スコア範囲と同じく ctx.policy があるときだけ効く
+  const policy = scoreFilters.length > 0 || filter.outcome !== '' ? ctx?.policy : undefined;
   const hasScore = policy !== undefined;
 
   const hasRecipients = view.nodes.some(n => n.details.column === 'recipient');
@@ -404,6 +406,7 @@ function applyProgramFilters(view: UnifiedViewGraph, filter: UnifiedViewFilter, 
             break;
           }
         }
+        if (!failScore && filter.outcome !== '' && !matchesOutcomeCondition(filter.outcome, entry ? { outcome: entry.oi, outcomeActual: entry.oa } : undefined)) failScore = true;
       }
       const failIds = hasProjectIds && !projectIdSet.has(String(pid));
       if (failBudget || failSpending || failName || failSubcontract || failAnyRecipient || failScore || failIds) dropProject(pid);

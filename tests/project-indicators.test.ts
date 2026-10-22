@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { getProjectIndicators, loadProjectIndicators } from '../app/lib/api/project-indicators-loader';
+import { countOutcomes, loadOutcomeCounts } from '../app/lib/api/outcome-counts';
+import { loadQualityScores } from '../app/lib/api/quality-scores-loader';
 import { displayYears, formatIndicatorValue, rateClass } from '../client/components/unified-budget/ProjectOutcomeIndicators';
 
 const data = loadProjectIndicators('2025');
@@ -49,4 +51,14 @@ test('成果目標・実績: 値の整形と達成率の色分け', () => {
   assert.equal(rateClass('60'), 'text-status-warn');
   assert.equal(rateClass('10'), 'text-destructive');
   assert.equal(rateClass(undefined), 'text-mirai-text-muted');
+});
+
+test('成果指標の件数: アウトカム指標が 1 つも無い事業は 2025 年度に 900 件以上ある（LP の洞察と整合）', { skip: !data }, () => {
+  const counts = loadOutcomeCounts('2025');
+  assert.equal(counts.get('2126')?.outcome, 2);
+  assert.equal(counts.get('2126')?.outcomeActual, 2);
+  const withOutcome = [...counts.values()].filter(c => c.outcome > 0).length;
+  const scored = loadQualityScores('2025').items.length;
+  assert.ok(scored - withOutcome > 900 && scored - withOutcome < 1100, `指標なし ${scored - withOutcome} 件`);
+  assert.deepEqual(countOutcomes([]), { outcome: 0, outcomeActual: 0 });
 });

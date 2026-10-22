@@ -16,7 +16,7 @@ import type {
   ResolvedSankeyQuery,
   AccountCategoryKey,
 } from '@/types/sankey-query';
-import { SANKEY_SCORE_KEYS, type SankeyScoreKey, type SankeyScoreRange } from '@/types/sankey-query';
+import { OUTCOME_INDICATOR_CONDITIONS, SANKEY_SCORE_KEYS, type OutcomeIndicatorCondition, type SankeyScoreKey, type SankeyScoreRange } from '@/types/sankey-query';
 import { parseAmountToYen } from '@/app/lib/format/yen';
 
 // /sankey-svg の初期状態と一致させる（page.tsx の useState 初期値・URLクランプと同値）
@@ -159,6 +159,14 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
     return out;
   })();
 
+  const outcomeIndicators = ((): OutcomeIndicatorCondition | null => {
+    const v = input.filter?.outcomeIndicators;
+    if (v == null) return null;
+    if ((OUTCOME_INDICATOR_CONDITIONS as readonly string[]).includes(String(v))) return v as OutcomeIndicatorCondition;
+    errors.push(`filter.outcomeIndicators は ${OUTCOME_INDICATOR_CONDITIONS.join(' | ')} のいずれかで指定してください（受領値: ${JSON.stringify(v)}）`);
+    return null;
+  })();
+
   const v = input.view;
   const query: ResolvedSankeyQuery = {
     year: year === '2025' ? '2025' : '2024',
@@ -179,6 +187,7 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
         .map(v => String(v).trim().replace(/^project-(?:budget|spending)-/, '')).filter(v => /^\d{1,10}$/.test(v)))].slice(0, MAX_PROJECT_IDS),
       scores,
       yearsRunning,
+      outcomeIndicators,
     },
     view: {
       topMinistry: clampInt(v?.topMinistry, SANKEY_QUERY_DEFAULTS.topMinistry, 1, TOP_MINISTRY_MAX),
@@ -208,30 +217,48 @@ export function resolveSankeyQuery(input: SankeyQuery): { query: ResolvedSankeyQ
 /** filter.projectIds の上限（URL 長・ツール引数の肥大を防ぐ） */
 export const MAX_PROJECT_IDS = 300;
 
-/** 評価データが要る条件（政策評価スコア・継続年数）が 1 つでも指定されているか */
-export function hasScoreFilter(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning'>): boolean {
+/** 評価データが要る条件（政策評価スコア・継続年数・成果指標の有無）が 1 つでも指定されているか */
+export function hasScoreFilter(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning' | 'outcomeIndicators'>): boolean {
   return SANKEY_SCORE_KEYS.some(k => filter.scores[k].min != null || filter.scores[k].max != null)
-    || filter.yearsRunning.min != null || filter.yearsRunning.max != null;
+    || filter.yearsRunning.min != null || filter.yearsRunning.max != null
+    || filter.outcomeIndicators != null;
 }
 
-/** 事業 ID（文字列）→ 政策評価スコアと継続年数。/api/policy-summary の o・d・e・t・x・n・y を項目名に読み替えたもの */
-export type SankeyPolicyScores = ReadonlyMap<string, Partial<Record<SankeyScoreKey | 'years', number | null>>>;
+/** 事業 1 件の政策評価スコア・継続年数と、成果指標の件数（outcome = アウトカム指標数、outcomeActual = うち実績値のある数） */
+export type SankeyPolicyScoreEntry = Partial<Record<SankeyScoreKey | 'years', number | null>> & { outcome?: number; outcomeActual?: number };
+
+/** 事業 ID（文字列）→ 政策評価スコア・継続年数・成果指標の件数。/api/policy-summary の o・d・e・t・x・n・y・oi・oa を項目名に読み替えたもの */
+export type SankeyPolicyScores = ReadonlyMap<string, SankeyPolicyScoreEntry>;
+
+/**
+ * 成果指標の有無の判定。指標の件数が無い（データに載っていない）事業は「指標 0 件」として扱う
+ * （rs{YEAR}-project-indicators.json は指標のある事業だけを載せるため、載っていない = 指標なし）
+ */
+export function matchesOutcomeCondition(cond: OutcomeIndicatorCondition, entry: { outcome?: number; outcomeActual?: number } | undefined): boolean {
+  const outcome = entry?.outcome ?? 0;
+  const actual = entry?.outcomeActual ?? 0;
+  if (cond === 'none') return outcome === 0;
+  if (cond === 'noActual') return outcome > 0 && actual === 0;
+  return actual > 0;
+}
 
 /**
  * filter.scores を buildFilterExcludedIds の excludeProject（事業単位の追加除外）にする。
  * 範囲を指定した項目で評価が無い事業は落とす（/budget-sankey の applyProgramFilters と同じ）。条件が無ければ null。
  */
-export function scoreExcluder(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning'>, scores: SankeyPolicyScores): ((projectId: number) => boolean) | null {
+export function scoreExcluder(filter: Pick<ResolvedSankeyQuery['filter'], 'scores' | 'yearsRunning' | 'outcomeIndicators'>, scores: SankeyPolicyScores): ((projectId: number) => boolean) | null {
   const active: { key: SankeyScoreKey | 'years'; min: number | null; max: number | null }[] = SANKEY_SCORE_KEYS
     .filter(k => filter.scores[k].min != null || filter.scores[k].max != null).map(k => ({ key: k, ...filter.scores[k] }));
   if (filter.yearsRunning.min != null || filter.yearsRunning.max != null) active.push({ key: 'years', ...filter.yearsRunning });
-  if (active.length === 0) return null;
+  const outcome = filter.outcomeIndicators;
+  if (active.length === 0 && outcome == null) return null;
   return (projectId: number) => {
     const entry = scores.get(String(projectId));
     for (const f of active) {
       const v = entry?.[f.key];
       if (v == null || (f.min != null && v < f.min) || (f.max != null && v > f.max)) return true;
     }
+    if (outcome != null && !matchesOutcomeCondition(outcome, entry)) return true;
     return false;
   };
 }
@@ -846,6 +873,7 @@ export function sankeyQueryToUrlParams(query: ResolvedSankeyQuery): URLSearchPar
     if (r.min != null || r.max != null) p.set(`fsc_${k}`, `${r.min ?? ''}-${r.max ?? ''}`);
   }
   if (filter.yearsRunning.min != null || filter.yearsRunning.max != null) p.set('fyr', `${filter.yearsRunning.min ?? ''}-${filter.yearsRunning.max ?? ''}`);
+  if (filter.outcomeIndicators != null) p.set('fout', filter.outcomeIndicators);
   return p;
 }
 
@@ -900,6 +928,8 @@ export function sankeyQueryFromUrlParams(p: URLSearchParams): SankeyQuery {
   }
   const fyr = p.get('fyr');
   if (fyr) { const [min, max] = fyr.split('-'); filter.yearsRunning = { min: min ? Number(min) : null, max: max ? Number(max) : null }; }
+  const fout = p.get('fout');
+  if (fout && (OUTCOME_INDICATOR_CONDITIONS as readonly string[]).includes(fout)) filter.outcomeIndicators = fout as OutcomeIndicatorCondition;
   if (Object.keys(filter).length > 0) query.filter = filter;
 
   const view: SankeyQuery['view'] = {};

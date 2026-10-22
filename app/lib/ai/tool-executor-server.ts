@@ -21,7 +21,7 @@ import { loadHighlights } from '@/app/lib/api/highlights-loader';
 import type { ChatToolExecutor } from '@/app/lib/ai/chat-core';
 import { withContractMethods } from '@/app/lib/api/contract-methods-loader';
 import { loadFunds } from '@/app/lib/api/funds-loader';
-import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
+import { loadSankeyPolicyScores } from '@/app/lib/api/sankey-policy-scores';
 import type { SankeyPolicyScores } from '@/app/lib/sankey-query';
 import { loadVendors } from '@/app/lib/api/vendors-loader';
 import { BUDGET_REQUEST_LINKS_FY, budgetRequestLinksFor } from '@/app/lib/api/budget-request-links-loader';
@@ -48,21 +48,8 @@ import {
   shapeHighlights,
 } from '@/app/lib/ai/tool-shaping';
 
-/** 年度ごとの政策評価スコア（filter.scores の判定用）。ローダはキャッシュ済みなので Map だけ持つ */
-const policyScoresCache = new Map<SupportedYear, SankeyPolicyScores>();
-function policyScores(year: SupportedYear): SankeyPolicyScores {
-  let map = policyScoresCache.get(year);
-  if (!map) {
-    const yearsByPid = new Map(loadQualityScores(year).items.map(i => [i.pid, i.yearsRunning ?? null]));
-    map = new Map([...loadPolicyEvaluations(year).values()].map(row => [row.pid, {
-      overall: row.overallScore, design: row.designClarityScore, evidence: row.evidenceScore,
-      transparency: row.executionTransparency, proportionality: row.proportionalityScore, necessity: row.necessityScore,
-      years: yearsByPid.get(row.pid) ?? null,
-    }]));
-    policyScoresCache.set(year, map);
-  }
-  return map;
-}
+/** 年度ごとの政策評価スコア・継続年数・成果指標の件数（filter.scores 等の判定用）。/api/sankey/matches と共用 */
+const policyScores = (year: SupportedYear): SankeyPolicyScores => loadSankeyPolicyScores(year);
 
 export const serverToolExecutor: ChatToolExecutor = {
   getMinistryNames(year) {

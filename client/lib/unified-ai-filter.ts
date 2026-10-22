@@ -5,14 +5,14 @@
  * 無視する。金額は 1 円単位の数値を「億円」テキストへ変換する（UI の入力欄と同じ表現）。
  * 純粋関数。React・HTTP を含めない。
  */
-import { SANKEY_SCORE_KEYS, type ResolvedSankeyQuery, type SankeyScoreKey } from '@/types/sankey-query';
+import { OUTCOME_INDICATOR_LABELS, SANKEY_SCORE_KEYS, type ResolvedSankeyQuery, type SankeyScoreKey } from '@/types/sankey-query';
 import { UNIFIED_FILTER_DEFAULT, UNIFIED_SCORE_FIELDS, type UnifiedScoreField, type UnifiedViewFilter } from '@/types/unified-budget-view';
 
 /** AI が触るフィールドだけを既定へ戻す（利用者の手動条件は残す） */
 export const AI_FILTER_FIELDS = [
   'ministries', 'accountTypes', 'projectQuery', 'projectRegex', 'recipientQuery', 'recipientRegex', 'recipientIncludeSub',
   'budgetMin', 'budgetMax', 'spendingMin', 'spendingMax', 'subcontract', 'subcontractMinDepth', 'projectIds',
-  'scoreO', 'scoreD', 'scoreE', 'scoreT', 'scoreX', 'scoreN', 'years',
+  'scoreO', 'scoreD', 'scoreE', 'scoreT', 'scoreX', 'scoreN', 'years', 'outcome',
 ] as const satisfies readonly (keyof UnifiedViewFilter)[];
 
 /** SankeyQuery の filter.scores の項目 → 統合ビューの絞り込みフィールド */
@@ -68,6 +68,10 @@ export function applySankeyQueryToUnifiedFilter(current: UnifiedViewFilter, quer
   if (f.yearsRunning.min !== null || f.yearsRunning.max !== null) {
     next.years = { min: f.yearsRunning.min === null ? '' : String(f.yearsRunning.min), max: f.yearsRunning.max === null ? '' : String(f.yearsRunning.max) };
     parts.push(`継続 ${f.yearsRunning.min ?? 0}〜${f.yearsRunning.max ?? ''}年`);
+  }
+  if (f.outcomeIndicators !== null) {
+    next.outcome = f.outcomeIndicators;
+    parts.push(OUTCOME_INDICATOR_LABELS[f.outcomeIndicators]);
   }
   if ((f.projectIds ?? []).length > 0) {
     next.projectIds = [...f.projectIds];

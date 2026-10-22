@@ -65,3 +65,45 @@ test('AI の scores はサンキー図の 6 項目の絞り込みに写り、URL
   assert.deepEqual(cleared.scoreO, { min: '', max: '' });
   assert.deepEqual(cleared.scoreD, { min: '', max: '' });
 });
+
+test('filter.outcomeIndicators: 検証・URL 往復・判定（データに無い事業は指標 0 件として扱う）', () => {
+  const { query, errors } = resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'none' } });
+  assert.deepEqual(errors, []);
+  assert.equal(query.filter.outcomeIndicators, 'none');
+  assert.ok(hasScoreFilter(query.filter));
+  assert.ok(hasActiveFilter(query.filter));
+  assert.equal(resolveSankeyQuery({ year: '2025' }).query.filter.outcomeIndicators, null);
+  assert.ok(resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'bogus' as never } }).errors.length > 0);
+  const params = sankeyQueryToUrlParams(query);
+  assert.equal(params.get('fout'), 'none');
+  assert.equal(sankeyQueryFromUrlParams(params).filter?.outcomeIndicators, 'none');
+
+  const scores = new Map([
+    ['1', { overall: 50, outcome: 2, outcomeActual: 1 }],
+    ['2', { overall: 50, outcome: 2, outcomeActual: 0 }],
+    ['3', { overall: 50 }],
+  ]);
+  const none = scoreExcluder(query.filter, scores)!;
+  assert.equal(none(1), true); assert.equal(none(2), true); assert.equal(none(3), false); assert.equal(none(99), false, 'データに無い事業は指標なし');
+  const noActual = scoreExcluder(resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'noActual' } }).query.filter, scores)!;
+  assert.equal(noActual(1), true); assert.equal(noActual(2), false); assert.equal(noActual(3), true);
+  const hasActual = scoreExcluder(resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'hasActual' } }).query.filter, scores)!;
+  assert.equal(hasActual(1), false); assert.equal(hasActual(2), true); assert.equal(hasActual(99), true);
+  // スコア条件と AND
+  const both = scoreExcluder(resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'hasActual', scores: { overall: { max: 40 } } } }).query.filter, scores)!;
+  assert.equal(both(1), true, '総合点が上限超え');
+});
+
+test('AI の outcomeIndicators はサンキー図の絞り込みに写り、URL でも往復し、解除で消える', () => {
+  const { query } = resolveSankeyQuery({ year: '2025', filter: { outcomeIndicators: 'noActual' } });
+  const { filter, summary } = applySankeyQueryToUnifiedFilter(UNIFIED_FILTER_DEFAULT, query);
+  assert.equal(filter.outcome, 'noActual');
+  assert.match(summary, /アウトカム実績なし/);
+  assert.ok(hasActiveUnifiedFilter(filter));
+  const params = new URLSearchParams();
+  serializeFilter(params, filter);
+  assert.equal(params.get('fout'), 'noActual');
+  assert.equal(parseFilter(params).outcome, 'noActual');
+  assert.equal(parseFilter(new URLSearchParams('fout=bogus')).outcome, '');
+  assert.equal(clearAiFilter(filter).outcome, '');
+});

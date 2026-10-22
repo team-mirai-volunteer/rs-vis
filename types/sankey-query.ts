@@ -67,7 +67,21 @@ export interface SankeyQueryFilter {
   scores?: Partial<Record<SankeyScoreKey, { min?: number | null; max?: number | null }>>;
   /** 継続年数（対象年度 − 開始年度 + 1）の範囲。「10 年以上続く事業」など。範囲を指定すると開始年度が無い事業は落ちる */
   yearsRunning?: { min?: number | null; max?: number | null };
+  /**
+   * 成果指標（RS シート 3-1 のアウトカム指標）の有無。none = アウトカム指標が 1 つも無い事業、
+   * noActual = 指標はあるが実績値が 1 つも無い事業、hasActual = 実績値のある指標が 1 つ以上ある事業。省略・null = フィルタなし
+   */
+  outcomeIndicators?: OutcomeIndicatorCondition | null;
 }
+
+/** 成果指標（アウトカム指標）の有無の条件 */
+export const OUTCOME_INDICATOR_CONDITIONS = ['none', 'noActual', 'hasActual'] as const;
+export type OutcomeIndicatorCondition = (typeof OUTCOME_INDICATOR_CONDITIONS)[number];
+export const OUTCOME_INDICATOR_LABELS: Record<OutcomeIndicatorCondition, string> = {
+  none: 'アウトカム指標なし',
+  noActual: 'アウトカム実績なし',
+  hasActual: 'アウトカム実績あり',
+};
 
 /** 政策評価スコアの項目（/api/policy-summary の o・d・e・t・x・n に対応） */
 export const SANKEY_SCORE_KEYS = ['overall', 'design', 'evidence', 'transparency', 'proportionality', 'necessity'] as const;
@@ -119,6 +133,7 @@ export interface ResolvedSankeyQuery {
     projectIds: string[];
     scores: Record<SankeyScoreKey, SankeyScoreRange>;
     yearsRunning: SankeyScoreRange;
+    outcomeIndicators: OutcomeIndicatorCondition | null;
   };
   view: {
     topMinistry: number;

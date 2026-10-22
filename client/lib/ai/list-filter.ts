@@ -75,6 +75,7 @@ export function aiListFilterFrom(result: SankeyChatResult): AiListFilter {
   // 政策評価スコア・継続年数は一覧の行に値が無い（評価一覧も AI の結果はサーバーの判定で揃える）
   if (Object.values(f.scores).some(r => r.min !== null || r.max !== null)) unsupported.push('政策評価スコア');
   if (f.yearsRunning.min !== null || f.yearsRunning.max !== null) unsupported.push('継続年数');
+  if (f.outcomeIndicators !== null) unsupported.push('成果指標の有無');
   return {
     query: result.query,
     summary: applySankeyQueryToUnifiedFilter(UNIFIED_FILTER_DEFAULT, result.query).summary,

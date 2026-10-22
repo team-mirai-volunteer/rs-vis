@@ -194,6 +194,14 @@ const SANKEY_QUERY_SCHEMA: Record<string, unknown> = {
           description: '継続年数（対象年度 − 開始年度 + 1）の範囲。「10 年以上続いている事業」「始まって 3 年以内の事業」に使う。範囲を指定すると開始年度の記載が無い事業は落ちる',
           properties: { min: { type: ['number', 'null'] }, max: { type: ['number', 'null'] } },
         },
+        outcomeIndicators: {
+          type: ['string', 'null'],
+          enum: ['none', 'noActual', 'hasActual', null],
+          description:
+            '成果指標（レビューシートのアウトカム指標）の有無。none=アウトカム指標が 1 つも無い事業（「成果指標がない事業」「アウトカムを設定していない事業」）、' +
+            'noActual=指標はあるが実績値が 1 つも無い事業（「実績を記載していない事業」）、hasActual=実績値のある指標が 1 つ以上ある事業。' +
+            '政策評価スコアの「検証可能性」とは別物（こちらはシートの記載の有無そのもの）。省略=フィルタなし',
+        },
         projectIds: {
           type: 'array',
           items: { type: 'string' },
@@ -635,7 +643,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '',
     '### 共通',
     '- 要求がこのデータのフィルタ条件にもデータ質問にも該当しない場合（雑談・データにない切り口等）は、ツールを呼ばずに、解釈できなかった旨と指定できる条件・質問の例を日本語のテキストで返す',
-    '- **フィルタで表現できない絞り込み条件に注意**: SankeyQuery のフィルタは事業名・支出先名・府省庁・金額範囲・会計区分・再委託（filter.subcontract: 有無・ブロック階層の下限）・政策評価スコア（filter.scores）・継続年数（filter.yearsRunning）。政策評価スコア（総合点・成果設計・検証可能性・執行透明性・費用対内容・代替困難性）は filter.scores で絞れる（「総合点が低い事業」= { overall: { max: 40 } } など）。執行率や支出先の集中のようにフィルタに無い基準は get_highlights で pid を集めて filter.projectIds に入れる。再委託の有無・深さは filter.subcontract でフィルタ化できる。filter.recipientName は既定で**直接支出先のみ**に掛かるが、includeSubcontract=true を付ければ「支出先または再委託先が◯◯」（OR・事業単位）を表現できる。再委託先だけを厳密に対象とする条件は表現できないため、その場合は includeSubcontract=true での近似か調査ツールへの誘導を提案する。「使途が広報の事業だけ」のような使途起点の質問も search_spending に誘導する',
+    '- **フィルタで表現できない絞り込み条件に注意**: SankeyQuery のフィルタは事業名・支出先名・府省庁・金額範囲・会計区分・再委託（filter.subcontract: 有無・ブロック階層の下限）・政策評価スコア（filter.scores）・継続年数（filter.yearsRunning）・成果指標の有無（filter.outcomeIndicators）。政策評価スコア（総合点・成果設計・検証可能性・執行透明性・費用対内容・代替困難性）は filter.scores で絞れる（「総合点が低い事業」= { overall: { max: 40 } } など）。「アウトカム指標がない事業」「成果の実績を書いていない事業」は filter.outcomeIndicators（none / noActual / hasActual）で絞れる。執行率や支出先の集中のようにフィルタに無い基準は get_highlights で pid を集めて filter.projectIds に入れる。再委託の有無・深さは filter.subcontract でフィルタ化できる。filter.recipientName は既定で**直接支出先のみ**に掛かるが、includeSubcontract=true を付ければ「支出先または再委託先が◯◯」（OR・事業単位）を表現できる。再委託先だけを厳密に対象とする条件は表現できないため、その場合は includeSubcontract=true での近似か調査ツールへの誘導を提案する。「使途が広報の事業だけ」のような使途起点の質問も search_spending に誘導する',
     '- 条件が曖昧でも合理的な解釈が1つ選べるなら聞き返さずに進める（フィルタはユーザーが適用前に件数を確認できる）',
     '- 応答はすべて日本語で書く',
     '- 文章で返すときは、利用者に向けた返答だけを書く。検討の過程（「ユーザーは〜を求めている」「〜する必要がある」「ちょっと待て」のような自問・方針・下書き）は本文に書かない',

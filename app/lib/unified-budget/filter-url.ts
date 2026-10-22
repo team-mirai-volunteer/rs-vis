@@ -10,6 +10,7 @@
  *   fsub=has|none 再委託の有無・fsd 階層の下限 / fso・fsx・fsn スコア範囲 "lo-hi"
  */
 import { UNIFIED_FILTER_DEFAULT, UNIFIED_SCORE_RANGE_EMPTY, type UnifiedScoreRange, type UnifiedViewFilter } from '@/types/unified-budget-view';
+import { OUTCOME_INDICATOR_CONDITIONS, type OutcomeIndicatorCondition } from '@/types/sankey-query';
 
 /** スコア範囲の URL 表現 "min-max"（片方だけなら "60-" / "-40"） */
 export function parseScoreRange(v: string | null): UnifiedScoreRange {
@@ -47,6 +48,7 @@ export function parseFilter(params: URLSearchParams): UnifiedViewFilter {
     scoreX: parseScoreRange(params.get('fsx')),
     scoreN: parseScoreRange(params.get('fsn')),
     years: parseScoreRange(params.get('fyr')),
+    outcome: (() => { const v = params.get('fout'); return v && (OUTCOME_INDICATOR_CONDITIONS as readonly string[]).includes(v) ? v as OutcomeIndicatorCondition : ''; })(),
   };
 }
 
@@ -81,4 +83,5 @@ export function serializeFilter(params: URLSearchParams, filter: UnifiedViewFilt
     const v = serializeScoreRange(filter[field]);
     if (v) params.set(name, v);
   }
+  if (filter.outcome) params.set('fout', filter.outcome);
 }

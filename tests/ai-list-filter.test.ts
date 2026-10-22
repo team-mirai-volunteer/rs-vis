@@ -45,5 +45,6 @@ test('支出先・支出額・再委託は行では判定できず unsupported �
 test('政策評価スコア・継続年数の条件も行では判定できず unsupported に載る（サーバーで事業 ID に解決する）', () => {
   const f = aiListFilterFrom(result({ scores: { overall: { max: 40 } }, yearsRunning: { min: 10 } }));
   assert.deepEqual(f.unsupported, ['政策評価スコア', '継続年数']);
+  assert.deepEqual(aiListFilterFrom(result({ outcomeIndicators: 'none' })).unsupported, ['成果指標の有無']);
   assert.equal(aiListFilterFrom(result({})).unsupported.length, 0);
 });

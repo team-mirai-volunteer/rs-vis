@@ -8,6 +8,7 @@
 
 import type { SankeyLink, SankeyNode } from './sankey';
 import type { UnifiedColumn, UnifiedNode, UnifiedProgramKind } from './unified-budget';
+import type { OutcomeIndicatorCondition } from './sankey-query';
 
 /** 表示ノードに添える詳細。元ノードの属性をそのまま持ち、集約・畳み込みの情報を足す */
 export interface UnifiedViewDetails extends Omit<UnifiedNode, 'id' | 'name' | 'value' | 'col'> {
@@ -88,6 +89,8 @@ export interface UnifiedViewFilter {
   scoreN: UnifiedScoreRange;
   /** 継続年数（開始年度からの年数）の範囲。空なら無し。範囲を指定すると開始年度が無い事業は落ちる */
   years: UnifiedScoreRange;
+  /** 成果指標（アウトカム指標）の有無。'' = 指定なし。none = 指標なし、noActual = 指標はあるが実績なし、hasActual = 実績あり */
+  outcome: OutcomeIndicatorCondition | '';
 }
 
 /** 政策評価スコアの項目（UnifiedViewFilter のキー・UnifiedPolicyScores のキー・表示名） */
@@ -134,6 +137,7 @@ export const UNIFIED_FILTER_DEFAULT: UnifiedViewFilter = {
   scoreX: UNIFIED_SCORE_RANGE_EMPTY,
   scoreN: UNIFIED_SCORE_RANGE_EMPTY,
   years: UNIFIED_SCORE_RANGE_EMPTY,
+  outcome: '',
 };
 
 export const hasScoreRange = (r: UnifiedScoreRange) => r.min.trim() !== '' || r.max.trim() !== '';
@@ -156,12 +160,13 @@ export function hasActiveUnifiedFilter(f: UnifiedViewFilter): boolean {
     f.recipientQuery.trim() !== '' ||
     f.subcontract !== 'any' ||
     UNIFIED_SCORE_FIELDS.some(s => hasScoreRange(f[s.field])) ||
-    hasScoreRange(f.years)
+    hasScoreRange(f.years) ||
+    f.outcome !== ''
   );
 }
 
 /** 政策評価スコア（/api/policy-summary の items を絞り込みに必要な 3 値へ落としたもの）。キーは事業ID の文字列 */
-export type UnifiedPolicyScores = Record<string, { o: number | null; d: number | null; e: number | null; t: number | null; x: number | null; n: number | null; y: number | null }>;
+export type UnifiedPolicyScores = Record<string, { o: number | null; d: number | null; e: number | null; t: number | null; x: number | null; n: number | null; y: number | null; oi?: number; oa?: number }>;
 
 /** applyFilter に渡す外部データ */
 export interface UnifiedFilterContext {

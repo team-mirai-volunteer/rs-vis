@@ -8,7 +8,7 @@ const query = (filter: Partial<ResolvedSankeyQuery['filter']>): ResolvedSankeyQu
   year: '2025',
   filter: { projectName: null, recipientName: null, ministries: [], budget: { min: null, max: null }, spending: { min: null, max: null },
     accountCategories: [], subcontract: { hasRedelegation: false, minDepth: null }, projectIds: [],
-    scores: { overall: { min: null, max: null }, design: { min: null, max: null }, evidence: { min: null, max: null }, transparency: { min: null, max: null }, proportionality: { min: null, max: null }, necessity: { min: null, max: null } }, yearsRunning: { min: null, max: null }, ...filter },
+    scores: { overall: { min: null, max: null }, design: { min: null, max: null }, evidence: { min: null, max: null }, transparency: { min: null, max: null }, proportionality: { min: null, max: null }, necessity: { min: null, max: null } }, yearsRunning: { min: null, max: null }, outcomeIndicators: null, ...filter },
   view: {} as ResolvedSankeyQuery['view'],
 });
 

@@ -8,7 +8,8 @@ import {
 import { API_CACHE_CONTROL, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
 import { loadQualityScores } from '@/app/lib/api/quality-scores-loader';
-import { parseQualityYear, QUALITY_YEAR_ERROR, type QualityYear } from '@/app/lib/api/quality-year';
+import { loadOutcomeCounts } from '@/app/lib/api/outcome-counts';
+import { parseQualityYear, qualitySourceYear, QUALITY_YEAR_ERROR, type QualityYear } from '@/app/lib/api/quality-year';
 
 /**
  * Sankey 図に重ねるための、事業ごとの政策評価サマリ。
@@ -33,6 +34,9 @@ export interface PolicySummaryEntry {
   n: number | null;
   /** 継続年数（対象年度 − 開始年度 + 1）。開始年度が無い事業は null。項別の集計（quality-sections）には無い */
   y?: number | null;
+  /** 成果指標: アウトカム指標の数（oi）と、うち実績値のある数（oa）。指標が無い事業は省略（= 0） */
+  oi?: number;
+  oa?: number;
   /** 推奨判断（RECOMMENDATION_ORDER の番号。未判定は 0） */
   r: number;
   /** 改善アクション（IMPROVEMENT_ACTION_ORDER の番号。無しは 0） */
@@ -83,10 +87,13 @@ function build(year: QualityYear): PolicySummaryResponse {
 
   const rows = [...buildEvaluations(year).values()];
   const yearsByPid = new Map(loadQualityScores(year).items.map(i => [i.pid, i.yearsRunning ?? null]));
+  const outcomes = loadOutcomeCounts(qualitySourceYear(year));
   const items: Record<string, PolicySummaryEntry> = {};
   for (const row of rows) {
+    const oc = outcomes.get(row.pid);
     items[row.pid] = {
       y: yearsByPid.get(row.pid) ?? null,
+      ...(oc && oc.outcome > 0 ? { oi: oc.outcome, oa: oc.outcomeActual } : {}),
       o: row.overallScore,
       d: row.designClarityScore,
       e: row.evidenceScore,
