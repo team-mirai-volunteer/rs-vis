@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown } from 'lucide-react';
 import { SUPPORT_CASE, INVESTIGATION_CASE } from '@/app/lp/policy-cases';
 
 import { SUMMARY_LINK, TEXT_LINK } from '@/components/lp/styles';
+import { AnchorLink } from '@/components/lp/AnchorLink';
 
 const linkClass = TEXT_LINK;
 
@@ -11,12 +12,18 @@ export function PolicyCases() {
     <section id="policy-cases" aria-labelledby="policy-cases-heading" className="px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <p className="text-sm font-bold text-primary-accent">政策の選択肢</p>
-        <h2 id="policy-cases-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">数字の先に、政策の選択肢をつくる</h2>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 id="policy-cases-heading" className="text-2xl/8 font-bold tracking-normal">数字の先に、政策の選択肢をつくる</h2>
+          <AnchorLink id="policy-cases" label="政策の選択肢" />
+        </div>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-mirai-text-subtle">増やすべき予算や、支援の届き方を変える方法も探せます。以下は調査のモデルケース。確認済みの記載と、これから求める根拠を分けています。</p>
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
           <article id="support-case" aria-labelledby="support-case-heading" className="rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
             <p className="text-xs font-bold text-primary-accent">モデルケース 1 · 支援を届ける</p>
-            <h3 id="support-case-heading" className="mt-1 text-lg/7 font-bold">{SUPPORT_CASE.title}</h3>
+            <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+              <h3 id="support-case-heading" className="text-lg/7 font-bold">{SUPPORT_CASE.title}</h3>
+              <AnchorLink id="support-case" label={SUPPORT_CASE.title} />
+            </div>
             <p className="mt-2 text-sm leading-relaxed text-mirai-text-subtle">{SUPPORT_CASE.intro}</p>
             <dl className="mt-4 space-y-3 text-sm leading-relaxed">
               <div className="rounded-xl bg-mirai-surface-teal p-3">
@@ -52,7 +59,10 @@ export function PolicyCases() {
           </article>
           <article id="investigation-case" aria-labelledby="investigation-case-heading" className="rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
             <p className="text-xs font-bold text-primary-accent">モデルケース 2 · 1件を最後まで調べる</p>
-            <h3 id="investigation-case-heading" className="mt-1 text-lg/7 font-bold">{INVESTIGATION_CASE.title}</h3>
+            <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+              <h3 id="investigation-case-heading" className="text-lg/7 font-bold">{INVESTIGATION_CASE.title}</h3>
+              <AnchorLink id="investigation-case" label={INVESTIGATION_CASE.title} />
+            </div>
             <p className="mt-2 text-sm leading-relaxed text-mirai-text-subtle">{INVESTIGATION_CASE.intro}</p>
             <ol className="mt-4 space-y-3">
               {INVESTIGATION_CASE.steps.map((step, index) => (

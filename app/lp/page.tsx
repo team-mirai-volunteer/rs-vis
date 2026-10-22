@@ -217,7 +217,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[0].label}</p>
-              <h2 id="insights-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 id="insights-heading" className="text-2xl/8 font-bold tracking-normal">公開データをつなぐと、見えてきたこと</h2>
+                <AnchorLink id="insights" label="分かったこと" />
+              </div>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 各府省が自ら公表した数字の集計です（集計日 {DATA_ASOF}）。数字は結論ではなく、問いを立てる材料です。まず代表的な{featured.length}件、続けて残りの{rest.length}件。
               </p>
@@ -252,7 +255,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[1].label}</p>
-              <h2 id="howto-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">3ステップで、根拠つきの問いにする</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 id="howto-heading" className="text-2xl/8 font-bold tracking-normal">3ステップで、根拠つきの問いにする</h2>
+                <AnchorLink id="howto" label="使い方" />
+              </div>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 公開データの集計条件と元資料を確かめ、質問や記事の根拠として示すときは、画面の共有URLを添えてください。
               </p>
@@ -282,7 +288,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[3].label}</p>
-              <h2 id="questions-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 id="questions-heading" className="text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
+                <AnchorLink id="questions" label="国会質問の試案" />
+              </div>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
                 「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体はチームみらいの実際の質疑の型（政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する）に揃えています。
               </p>
@@ -342,7 +351,10 @@ export default function LandingPage() {
           <div className="mx-auto max-w-6xl space-y-4">
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[4].label}</p>
-              <h2 id="views-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}つの見方で</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 id="views-heading" className="text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}つの見方で</h2>
+                <AnchorLink id="views" label="ビュー一覧" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               {VIEW_PAGES.map(page => {
@@ -373,7 +385,10 @@ export default function LandingPage() {
         <section id="data" aria-labelledby="data-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl rounded-3xl border border-mirai-border bg-card p-6 sm:p-10">
             <p className="text-sm font-bold text-primary-accent">{SECTIONS[5].label}</p>
-            <h2 id="data-heading" className="mt-1 text-2xl/8 font-bold tracking-normal">数字は公開元の記載どおり。出典と前提をここに書いています</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 id="data-heading" className="text-2xl/8 font-bold tracking-normal">数字は公開元の記載どおり。出典と前提をここに書いています</h2>
+              <AnchorLink id="data" label="データについて" />
+            </div>
             <ul className="mt-4 grid gap-3 text-sm leading-relaxed text-mirai-text-subtle md:grid-cols-2">
               <li className="rounded-xl bg-mirai-surface p-4 md:col-span-2">
                 <span className="font-bold text-mirai-text">出典と利用条件。</span>
