@@ -87,6 +87,8 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
   const [showPrompt, setShowPrompt] = useState(false);
   const [showPolicy, setShowPolicy] = useState(true);
   const [showProjectInfo, setShowProjectInfo] = useState(true);
+  // 政策評価の「検証可能性」の所見から成果目標・実績の節へ飛ぶ。増えるたびに節が開いてスクロールする
+  const [outcomeFocusTick, setOutcomeFocusTick] = useState(0);
   // 支出先一覧のタブ（支出先・ブロック・予算内訳）と、ブロックでの絞り込み
   const [recipientTab, setRecipientTab] = useState<ScoreRecipientTab>('recipients');
   const [blockFilter, setBlockFilter] = useState<string | null>(null);
@@ -117,6 +119,7 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
 
   // 事業が切り替わったら表示状態だけ初期化する（データ取得はフック側）
   useEffect(() => {
+    setOutcomeFocusTick(0);
     setRecipientSearch('');
     setRecipientSortField('chain');
     setRecipientSortDir('asc');
@@ -415,6 +418,13 @@ ${a.desc}`}>
                 <div key={label}>
                   <span className="font-bold text-mirai-text-secondary">{label}: </span>
                   <span className="text-mirai-text-subtle leading-relaxed">{text}</span>
+                  {/* 検証可能性の根拠はシートの成果指標そのもの。右下の「成果目標・実績」へ飛べるようにする */}
+                  {label === '検証可能性' && (
+                    <button type="button" onClick={() => setOutcomeFocusTick(t => t + 1)}
+                      className="ml-2 whitespace-nowrap text-[11px] lg:text-xs text-primary-accent underline-offset-4 hover:underline">
+                      成果目標・実績を見る ↓
+                    </button>
+                  )}
                 </div>
               ) : null)}
               {policy.recommendationReason && (
@@ -652,6 +662,7 @@ ${a.desc}`}>
         </section>
         {/* 成果目標・実績（RS 3-1）。アウトカム指標の目標・実績・達成率。事業内容の直下（右下）に置き、左下の予算の推移と横並びで金額と成果の推移を読めるようにする */}
         <ProjectOutcomeIndicators key={`${item.pid}-${sourceYear}`} pid={item.pid} year={sourceYear} scaleFont={scaleFont} defaultOpen
+          id="score-outcome-indicators" focusTick={outcomeFocusTick}
           padding="border-b border-mirai-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectRelatedPages pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />

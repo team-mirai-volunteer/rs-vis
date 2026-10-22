@@ -9,7 +9,7 @@
  * 数値は RS に登録された文字列をそのまま整形する（達成率は RS 側の計算値で、「下がると良い指標」も織り込み済み）。
  * 指標が無い事業は API が 404 を返し、何も描かない（指標が無いこと自体は 政策評価 の所見で触れる）。
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { ProjectIndicator, ProjectIndicatorsResponse } from '@/types/project-indicators';
@@ -105,12 +105,23 @@ function IndicatorCard({ indicator, scaleFont, sheetYear }: { indicator: Project
  * @param scaleFont 共有部品の文字サイズ倍率（サイドパネル基準 11px）
  * @param defaultOpen 初期状態で開くか。評価一覧の詳細パネルは開く
  */
-export function ProjectOutcomeIndicators({ pid, year, scaleFont, padding = 'px-3.5 py-2', defaultOpen = false }: {
+export function ProjectOutcomeIndicators({ pid, year, scaleFont, padding = 'px-3.5 py-2', defaultOpen = false, id, focusTick = 0 }: {
   pid: number | string; year: number | string; scaleFont: (px: number) => number; padding?: string; defaultOpen?: boolean;
+  /** 節の要素 id。政策評価の所見（検証可能性）からここへ飛ぶリンクの飛び先に使う */
+  id?: string;
+  /** 0 より大きい値に変わるたびに節を開いて画面内へスクロールする（所見のリンクが押されたとき） */
+  focusTick?: number;
 }) {
   const key = `${year}-${pid}`;
   const data = useCached(cache, key, `/api/project-indicators/${pid}?year=${year}`, extract);
   const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    if (!focusTick || !id) return;
+    setOpen(true);
+    // 開いてから描画された高さでスクロールする
+    const frame = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [focusTick, id]);
   const groups = useMemo(() => {
     if (!data) return [];
     const byKind = new Map<string, ProjectIndicator[]>();
@@ -121,7 +132,14 @@ export function ProjectOutcomeIndicators({ pid, year, scaleFont, padding = 'px-3
     }
     return [...byKind.entries()].sort((a, b) => kindMeta(a[0]).order - kindMeta(b[0]).order);
   }, [data]);
-  if (data === undefined || data === null || data.indicators.length === 0) return null;
+  if (data === undefined) return null;
+  // 指標の記載が無い事業も 1 行で示す（「無い」こと自体が成果設計の情報。LP の洞察では 954 事業がこれに当たる）
+  if (data === null || data.indicators.length === 0) {
+    return <section id={id} aria-label="成果目標・実績" className={padding} style={{ fontSize: scaleFont(11) }}>
+      <span className="font-bold text-mirai-text-subtle">成果目標・実績</span>
+      <span className="ml-[5px] text-mirai-text-muted" style={{ fontSize: scaleFont(10) }}>レビューシートに成果指標の記載なし</span>
+    </section>;
+  }
 
   const outcomes = data.indicators.filter(i => i.kind === 'アウトカム');
   const outcomesWithActual = outcomes.filter(i => Object.keys(i.actual).length > 0 || i.qualitativeResult);
@@ -131,7 +149,7 @@ export function ProjectOutcomeIndicators({ pid, year, scaleFont, padding = 'px-3
   const title = '成果目標・実績';
   const explanation = `${data.sheetYear}年度の行政事業レビューシートに登録された成果目標と指標の目標値・実績値・達成率（直近 6 年度）。達成率は RS システムの計算値`;
   const metaPx = scaleFont(10);
-  return <section aria-label={title} className={padding} style={{ fontSize: scaleFont(11) }}>
+  return <section id={id} aria-label={title} className={padding} style={{ fontSize: scaleFont(11) }}>
     <Button variant="ghost" size="xs" aria-expanded={open} onClick={() => setOpen(v => !v)} title={`${open ? '成果目標・実績を閉じる' : '成果目標・実績を開く'}。${explanation}`}
       className="h-auto justify-start gap-[5px] rounded-md p-0 font-normal hover:bg-transparent hover:text-mirai-text has-[>svg]:px-0">
       <span className="font-bold text-mirai-text-subtle" style={{ fontSize: scaleFont(11) }}>{title}</span>
