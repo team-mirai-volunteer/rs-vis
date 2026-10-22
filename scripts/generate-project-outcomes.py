@@ -14,7 +14,10 @@
   data/year_{YEAR}/1-5_RS_{YEAR}_基本情報_関連事業.csv
 
 出力:
-  public/data/rs{YEAR}-project-outcomes.json
+  public/data/rs{YEAR}-project-outcomes.json   （AI 採点スクリプトの入力。点検・関連事業・ロジックモデル込み）
+  public/data/rs{YEAR}-project-indicators.json （UI 用の軽量版。/api/project-indicators が読む。
+                                                 成果目標・実績の指標だけに絞り、集計値も落とす。
+                                                 前者は 50MB 超でサーバー関数に同梱しないため別出力にする）
 
 3-1 の構造:
   指標1つにつき「1.目標年度 / 2.目標値 / 3.実績値 / 4.達成率」の4行があり、
@@ -40,6 +43,11 @@ YEAR = args.year
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / 'data' / f'year_{YEAR}'
 OUT = ROOT / 'public' / 'data' / f'rs{YEAR}-project-outcomes.json'
+OUT_SLIM = ROOT / 'public' / 'data' / f'rs{YEAR}-project-indicators.json'
+
+# UI 用の軽量版に残す指標の項目（types/project-indicators.ts と対応）
+SLIM_KEYS = ('no', 'kind', 'period', 'goalType', 'goal', 'indicator', 'unit', 'direction',
+             'source', 'qualitativeResult', 'target', 'actual', 'rate')
 
 GOALS_CSV = SRC / f'3-1_RS_{YEAR}_効果発現経路_目標・実績.csv'
 LINKS_CSV = SRC / f'3-2_RS_{YEAR}_効果発現経路_目標のつながり.csv'
@@ -279,6 +287,15 @@ def main():
     with io.open(OUT, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False)
 
+    # UI 用の軽量版。指標が 1 つも無い事業は載せない（API は 404 を返し、画面は節を出さない）
+    slim = {}
+    for pid, v in result.items():
+        if not v['indicators']:
+            continue
+        slim[pid] = {'indicators': [{k: i[k] for k in SLIM_KEYS} for i in v['indicators']]}
+    with io.open(OUT_SLIM, 'w', encoding='utf-8') as f:
+        json.dump(slim, f, ensure_ascii=False, separators=(',', ':'))
+
     n_ind = sum(len(v['indicators']) for v in result.values())
     n_actual = sum(v['indicatorCounts'].get('withActual', 0) for v in result.values())
     n_outcome_actual = sum(v['indicatorCounts'].get('outcomeWithActual', 0) for v in result.values())
@@ -293,6 +310,7 @@ def main():
     print(f'  関連事業      : {sum(1 for v in result.values() if v["relatedProjects"]):,}事業')
     print(f'  ロジックモデル : {n_link:,}事業（アウトカムまで到達 {n_reach:,}）')
     print(f'出力: {OUT.name} ({size_mb:.1f}MB)')
+    print(f'出力: {OUT_SLIM.name} ({OUT_SLIM.stat().st_size / 1e6:.1f}MB・{len(slim):,}事業)')
 
 
 if __name__ == '__main__':

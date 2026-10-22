@@ -16,6 +16,7 @@ description: データパイプライン・CSV処理・JSON生成の実装を行
 | `scripts/generate-subcontracts.ts` | `subcontracts-{2024,2025}.json`（/subcontracts 用） |
 | `scripts/generate-mof-budget-overview-data.ts` | `mof-budget-overview-2023.json`（/mof-budget-overview 用） |
 | `scripts/generate-project-details.ts` | `rs{2024,2025}-project-details.json`（/api/project-details 用） |
+| `scripts/generate-project-outcomes.py` | `rs{2024,2025}-project-outcomes.json`（AI採点の入力・サーバー非同梱）と `rs{2024,2025}-project-indicators.json`（成果目標・実績の軽量版。/api/project-indicators 用） |
 | `scripts/score-project-quality.py` | `project-quality-{scores,recipients}-{2024,2025}.json`（/quality 用・機械signal生成） |
 | `scripts/score-project-quality-ai.py` | `project-quality-scores-{2024,2025}.json` を上書き（/quality 用・AI評価で新4軸＋総合を最終確定） |
 
@@ -37,6 +38,7 @@ description: データパイプライン・CSV処理・JSON生成の実装を行
 | Subcontracts | `public/data/subcontracts-{YEAR}.json(.gz)` |
 | MOF Overview | `public/data/mof-budget-overview-2023.json` |
 | Project Details | `public/data/rs{YEAR}-project-details.json(.gz)` |
+| Project Indicators | `public/data/rs{YEAR}-project-indicators.json(.gz)`（成果目標・実績。評価一覧の詳細パネル） |
 | Quality Scores | `public/data/project-quality-scores-{YEAR}.json` + `project-quality-recipients-{YEAR}.json(.gz)` |
 | 辞書 CSV | `public/data/dictionaries/*.csv`（Git 管理、`score-project-quality.py` の参照元） |
 

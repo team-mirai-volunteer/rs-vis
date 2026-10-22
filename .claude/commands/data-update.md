@@ -46,6 +46,11 @@ RS System（rssystem.go.jp）のデータを更新する手順を実行する。
    npm run generate-project-details
    ```
 
+   成果目標・実績（/api/project-indicators 用。`rs{YEAR}-project-indicators.json` を同時出力）
+   ```bash
+   python3 scripts/generate-project-outcomes.py --year 2025
+   ```
+
 6. **/quality 用**
    ```bash
    npm run score-quality               # 2024年度

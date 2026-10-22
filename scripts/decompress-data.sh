@@ -43,6 +43,8 @@ decompress_if_needed "project-quality-scores-2024.json" optional
 decompress_if_needed "project-quality-scores-2025.json" optional
 decompress_if_needed "rs2025-project-outcomes.json" optional
 decompress_if_needed "rs2024-project-outcomes.json" optional
+decompress_if_needed "rs2025-project-indicators.json" optional
+decompress_if_needed "rs2024-project-indicators.json" optional
 decompress_if_needed "project-map-2025.json" optional
 decompress_if_needed "project-map-2024.json" optional
 # 統合ビューの生成済みグラフは全てブラウザへ配信する。
@@ -67,6 +69,7 @@ cp "$DATA_DIR"/*.json.gz "$BUNDLE_DIR/"
 # パイプライン専用の入力はサーバ関数から一切読まないので同梱しない。
 # rs{YEAR}-project-outcomes は AI採点スクリプトの入力のみで 8MB 超あり、
 # 全関数のバンドルに乗せると 250MB 上限への余裕を無駄に食う。
+# （画面が読む成果目標・実績は軽量版 rs{YEAR}-project-indicators.json.gz で、こちらは同梱する）
 rm -f "$BUNDLE_DIR"/rs*-project-outcomes.json.gz
 echo "✅ Server bundle data ready ($(du -sh "$BUNDLE_DIR" | cut -f1))"
 

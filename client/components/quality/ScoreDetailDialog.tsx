@@ -11,6 +11,7 @@ import { fiscalYearLabel, rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { ProjectBudgetExecutionAudit } from '@/client/components/unified-budget/ProjectBudgetExecutionAudit';
 import { ProjectAuditReport } from '@/client/components/unified-budget/ProjectAuditReport';
 import { ProjectBudgetHistory } from '@/client/components/unified-budget/ProjectBudgetHistory';
+import { ProjectOutcomeIndicators } from '@/client/components/unified-budget/ProjectOutcomeIndicators';
 import { ProjectBudgetRequest } from '@/client/components/unified-budget/ProjectBudgetRequest';
 import { ProjectRelatedPages } from '@/client/components/unified-budget/ProjectRelatedPages';
 import { unifiedProjectUrl } from '@/app/lib/unified-budget/links';
@@ -244,21 +245,22 @@ export function ScoreDetailDialog({ item, policy: policyProp, onClose, year, nav
         {/* Score summary — single compact row。デスクトップは右にみんなの意見の枠を並べる */}
         <div className="px-6 py-2.5 lg:px-8 lg:py-4 border-b border-mirai-border shrink-0 lg:flex lg:items-start lg:gap-8">
           <div className="min-w-0 lg:flex-1">
-          <div className="flex flex-wrap items-center gap-4 lg:gap-8">
+          <div className="flex flex-wrap items-center gap-3 lg:gap-8">
+            {/* 点数はサンキー図の側パネル（約 16px）より一回り大きい程度に抑え、総合点と 4 軸は同じ大きさで並べる（総合点だけ巨大だと数字が見出しのように見えて読みにくかった） */}
             <div className="shrink-0 text-center">
-              <div className={`text-2xl lg:text-6xl font-bold tabular-nums leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
+              <div className={`text-base lg:text-2xl font-bold tabular-nums leading-none cursor-help ${scoreColor(policy?.overallScore ?? null)}`} title={COL_DESC.総合点}>
                 {policy?.overallScore ?? '—'}
               </div>
               <div className="text-[11px] lg:text-xs text-mirai-text-muted mt-0.5 lg:mt-1.5">総合点</div>
             </div>
-            <div className="flex flex-wrap items-center gap-3 lg:gap-6">
+            <div className="flex flex-wrap items-center gap-2.5 lg:gap-6">
               {AXIS_META.map(a => {
                 const score = policy?.[a.key] ?? null;
                 return (
                   <div key={a.key} className="text-center cursor-help" title={`${a.label}（総合点への重み ${a.weight}）
 
 ${a.desc}`}>
-                    <div className={`text-sm lg:text-3xl font-bold tabular-nums leading-none ${scoreColor(score)}`}>
+                    <div className={`text-base lg:text-2xl font-bold tabular-nums leading-none ${scoreColor(score)}`}>
                       {score ?? '—'}
                     </div>
                     <div className="text-[11px] lg:text-xs text-mirai-text-muted mt-0.5 lg:mt-1.5 whitespace-nowrap">{a.label}</div>
@@ -267,22 +269,18 @@ ${a.desc}`}>
               })}
             </div>
             {/* Divider */}
-            <div className="w-px h-8 lg:h-14 bg-mirai-surface-light shrink-0" />
-            {/* Key metrics — 3 lines inline（デスクトップは 13px・行間を広げる） */}
-            <div className="flex-1 min-w-0 text-[11px] lg:text-[13px] text-mirai-text-secondary space-y-0.5 lg:space-y-1.5 lg:[&_.text-mirai-text-muted]:mr-1">
-              <div className="flex flex-wrap gap-x-3">
+            <div className="w-px h-8 lg:h-10 bg-mirai-surface-light shrink-0" />
+            {/* Key metrics — 1 行に流して折り返す（固定 3 行だと「乖離率」「支出先数」の後に空きが残って間延びしていた） */}
+            <div className="flex-1 min-w-0 text-[11px] lg:text-[13px] text-mirai-text-secondary lg:[&_.text-mirai-text-muted]:mr-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 lg:gap-y-1">
                 <span><span className="text-mirai-text-muted">予算:</span><span className="tabular-nums">{formatAmount(item.budgetAmount)}</span></span>
                 <span><span className="text-mirai-text-muted">執行:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.execAmount ?? 0) : '未収録'}</span></span>
                 <span><span className="text-mirai-text-muted">再委託を除く支出:</span><span className="tabular-nums">{recipientsAvailable ? formatAmount(item.spendNetTotal) : '未収録'}</span></span>
                 <span><span className="text-mirai-text-muted">乖離率:</span><span className="tabular-nums">{pct(item.gapRatio)}</span></span>
-              </div>
-              <div className="flex flex-wrap gap-x-3">
                 <span><span className="text-mirai-text-muted">支出先数:</span><span className="tabular-nums">{!recipientsAvailable ? '未収録' : recipientsError ? '取得できません' : recipients?.length ?? '...'}</span></span>
                 <span><span className="text-mirai-text-muted">ブロック:</span>{item.blockCount}件</span>
                 {item.hasRedelegation && <span><span className="text-mirai-text-muted">深度:</span><span className="text-status-caution">{item.redelegationDepth}</span></span>}
                 {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">不透明:</span><span className="text-status-warn">{pct(item.opaqueRatio)}</span></span>}
-              </div>
-              <div className="flex flex-wrap gap-x-3 items-center">
                 {item.identifyLevelAvg != null && <span><span className="text-mirai-text-muted">特定Lv</span> <span className="tabular-nums">{item.identifyLevelAvg.toFixed(1)}/3</span></span>}
                 {item.purposeLevelAvg != null && <span><span className="text-mirai-text-muted">使途Lv</span> <span className="tabular-nums">{item.purposeLevelAvg.toFixed(1)}/3</span></span>}
                 <span><span className="text-mirai-text-muted">valid</span> <span className="tabular-nums">{axis1Num}/{axis1Total}</span></span>
@@ -646,12 +644,15 @@ ${a.desc}`}>
 
         </div>
 
-        {/* 右列（lg）: 数字と外部資料。推移グラフ（デスクトップは size="large" で高く描く）、概算要求、関連ページ、予算執行調査、決算検査報告 */}
+        {/* 右列（lg）: 数字と外部資料。推移グラフ（デスクトップは size="large" で高く描く）、成果目標・実績、概算要求、関連ページ、予算執行調査、決算検査報告 */}
         <div className="min-w-0">
         {/* 予算・執行額の 5 年推移（サンキー図の詳細パネルと同じ部品）。評価の文脈として AI 評価の直後に置く */}
         <div className="border-b border-mirai-border px-6 lg:px-8 lg:py-3">
           <ProjectBudgetHistory key={`${item.pid}-${desktop ? 'large' : 'default'}`} pid={Number(item.pid)} size={desktop ? 'large' : 'default'} />
         </div>
+        {/* 成果目標・実績（RS 3-1）。アウトカム指標の目標・実績・達成率。予算の推移の直下に置き、金額の推移と成果の推移を並べて読めるようにする */}
+        <ProjectOutcomeIndicators key={`${item.pid}-${sourceYear}`} pid={item.pid} year={sourceYear} scaleFont={scaleFont} defaultOpen
+          padding="border-b border-mirai-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectBudgetRequest pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
         <ProjectRelatedPages pid={Number(item.pid)} scaleFont={scaleFont} padding="border-b border-border px-6 py-2.5 lg:px-8 lg:py-3" />
 
