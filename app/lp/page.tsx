@@ -234,7 +234,8 @@ export default function LandingPage() {
               ))}
             </ol>
 
-            <details className="group">
+            {/* #insight-xxx で開くと Chrome が水和前にこの details を開くので、open の不一致警告を抑える */}
+            <details className="group" suppressHydrationWarning>
               <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-white px-6 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
                 残りの{rest.length}件を見る
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -334,7 +335,8 @@ export default function LandingPage() {
             <ol className="mt-6 space-y-3">
               {questions.slice(0, shownCount).map((q, index) => <QuestionItem key={q.theme} q={q} index={index} />)}
             </ol>
-            <details className="group mt-4">
+            {/* #q-N で開くと Chrome が水和前にこの details を開くので、open の不一致警告を抑える */}
+            <details className="group mt-4" suppressHydrationWarning>
               <summary className="inline-flex h-10 cursor-pointer list-none items-center gap-2 rounded-full border border-black bg-white px-6 text-sm font-bold shadow-xs hover:bg-mirai-surface [&::-webkit-details-marker]:hidden">
                 所管委員会で単独に使う問い（{questions.length - shownCount}本）を見る
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />

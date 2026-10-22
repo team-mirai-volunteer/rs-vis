@@ -18,7 +18,7 @@ export function PolicyCases() {
         </div>
         <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-mirai-text-subtle">増やすべき予算や、支援の届き方を変える方法も探せます。以下は調査のモデルケース。確認済みの記載と、これから求める根拠を分けています。</p>
         <div className="mt-6 grid items-start gap-4 lg:grid-cols-2">
-          <article id="support-case" aria-labelledby="support-case-heading" className="rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
+          <article id="support-case" aria-labelledby="support-case-heading" className="scroll-mt-24 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
             <p className="text-xs font-bold text-primary-accent">モデルケース 1 · 支援を届ける</p>
             <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
               <h3 id="support-case-heading" className="text-lg/7 font-bold">{SUPPORT_CASE.title}</h3>
@@ -57,7 +57,7 @@ export function PolicyCases() {
               <p className="mt-3 text-sm leading-relaxed text-mirai-text-subtle"><span className="font-bold text-primary-accent">改善後の確認：</span>{SUPPORT_CASE.followUp}</p>
             </details>
           </article>
-          <article id="investigation-case" aria-labelledby="investigation-case-heading" className="rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
+          <article id="investigation-case" aria-labelledby="investigation-case-heading" className="scroll-mt-24 rounded-2xl border border-mirai-border bg-card p-5 sm:p-6">
             <p className="text-xs font-bold text-primary-accent">モデルケース 2 · 1件を最後まで調べる</p>
             <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
               <h3 id="investigation-case-heading" className="text-lg/7 font-bold">{INVESTIGATION_CASE.title}</h3>

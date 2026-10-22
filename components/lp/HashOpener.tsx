@@ -22,10 +22,19 @@ function reveal(hash: string) {
 
 export function HashOpener() {
   useEffect(() => {
-    reveal(window.location.hash);
+    // 初回は <details> の open を React が水和し終えてから触る（先に触ると「サーバーと属性が違う」警告になる）。
+    // 水和は load までに済むので、load 後にもう 1 ティック置いてから開く
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const initial = () => { timer = setTimeout(() => reveal(window.location.hash), 0); };
+    if (document.readyState === 'complete') initial();
+    else window.addEventListener('load', initial, { once: true });
     const onHash = () => reveal(window.location.hash);
     window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
+    return () => {
+      window.removeEventListener('load', initial);
+      window.removeEventListener('hashchange', onHash);
+      if (timer) clearTimeout(timer);
+    };
   }, []);
   return null;
 }
