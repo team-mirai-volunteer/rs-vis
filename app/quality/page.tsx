@@ -482,6 +482,7 @@ ${normalize(i.division)}`]));
   const policyRows = policyByPid ? [...policyByPid.values()] : [];
   // 幅は固定。<select> は選択中の文言で幅が変わるため、放っておくと類型を選ぶたびに
   // 隣のUIが横に動く。truncate と併せて、選んでもレイアウトが動かないようにする。
+  // xl 未満（タブレット）は幅を 2/3 ほどに詰め、ヒストグラム横の限られた幅で折り返しを減らす（文言は truncate で切れる）。
   const selCls = 'h-8 shrink-0 truncate px-2 py-1 text-xs border border-mirai-border '
     + 'rounded-md bg-card text-mirai-text-secondary cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
 
@@ -586,9 +587,10 @@ ${normalize(i.division)}`]));
           // ヒストグラムは xl 未満（タブレット・小さいノート）で棒を細く低くする。固定 330px だと横に残る幅が
           // 300px 前後になり、右の検索欄・セレクト・範囲入力が縦積みになって崩れていた。
           // 棒の高さは CSS 変数で渡し、xl で 56px・それ未満で 40px に切り替える
+          // 上揃え。下揃えだと折り返したフィルタ群の高さにつられてヒストグラムが下に沈み、上に空白が残っていた
           return (
-            <div className="flex items-end gap-3 xl:gap-4 flex-wrap">
-              <div className="flex items-end gap-px xl:gap-0.5">
+            <div className="flex items-start gap-3 xl:gap-4 flex-wrap">
+              <div className="flex items-end gap-px xl:gap-0.5 pt-1">
                 {binRanges.map(({ label, range, lo }, i) => {
                   const count = counts[i];
                   const ratio = Math.max(count / maxCount, 0.04);
@@ -614,7 +616,7 @@ ${normalize(i.division)}`]));
                   );
                 })}
               </div>
-              <div className="flex flex-col gap-1 self-end">
+              <div className="flex flex-col gap-1 self-start">
                 <label className="flex flex-col gap-0.5">
                   <span className="text-[9px] text-mirai-text-muted leading-none">分布の軸</span>
                   <select
@@ -649,19 +651,19 @@ ${normalize(i.division)}`]));
                   </div>
                 </Button>
               </div>
-              <div className="flex flex-col gap-1.5 self-end flex-1 min-w-[200px]">
+              <div className="flex flex-col gap-1.5 self-start flex-1 min-w-[200px]">
                 <div className="flex flex-wrap items-center gap-2">
                   <input
                     type="text"
                     placeholder="事業名・PID・組織名で検索..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 min-w-[120px] px-3 py-1.5 text-sm border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
+                    className="flex-1 min-w-[120px] px-3 py-1.5 text-xs xl:text-sm border border-mirai-border rounded-md bg-card text-mirai-text placeholder:text-mirai-text-placeholder outline-none transition-colors focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/40"
                   />
                   <select
                     value={selectedMinistry}
                     onChange={e => setSelectedMinistry(e.target.value)}
-                    className={`w-[162px] ${selCls}`}
+                    className={`w-[112px] xl:w-[162px] ${selCls}`}
                   >
                     <option value="">全府省庁</option>
                     {summary.ministries.map(m => (
@@ -674,14 +676,14 @@ ${normalize(i.division)}`]));
                           { name: '推奨', labels: RECOMMENDATION_LABELS, selected: selectedRecommendation, setSelected: setSelectedRecommendation, field: 'recommendation' },
                           { name: '改善', labels: IMPROVEMENT_ACTION_LABELS, selected: selectedAction, setSelected: setSelectedAction, field: 'improvementAction' },
                         ] as const).map(({ name, labels, selected, setSelected, field }) => (
-                          <div key={name} className="w-[170px] max-w-full">
+                          <div key={name} className="w-[136px] xl:w-[170px] max-w-full">
                             <MultiSelectDropdown options={labels} selected={selected} onChange={setSelected}
                               allLabel={name} placeholder={`${name}：すべて`} minWidth={0} placeholderTone="strong"
                               triggerClassName={`${selCls} pr-10`}
                               optionLabel={label => `${label}（${policyRows.filter(p => p[field] === label).length.toLocaleString()}）`} />
                           </div>
                         ))}
-                        <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={`w-[194px] ${selCls}`}>
+                        <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)} className={`w-[132px] xl:w-[194px] ${selCls}`}>
                           {/* 政策類型は32分類あるため、7つの上位グループで optgroup にまとめる */}
                           <option value="">類型: すべて</option>
                           {POLICY_CATEGORY_GROUPS.map(group => (
