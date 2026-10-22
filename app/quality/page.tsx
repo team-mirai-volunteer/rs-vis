@@ -583,12 +583,15 @@ ${normalize(i.division)}`]));
             data.items.filter(i => { const s = metricValue(i, distMetric); return s != null && s >= lo && s <= hi; }).length
           );
           const maxCount = Math.max(...counts, 1);
+          // ヒストグラムは xl 未満（タブレット・小さいノート）で棒を細く低くする。固定 330px だと横に残る幅が
+          // 300px 前後になり、右の検索欄・セレクト・範囲入力が縦積みになって崩れていた。
+          // 棒の高さは CSS 変数で渡し、xl で 56px・それ未満で 40px に切り替える
           return (
-            <div className="flex items-end gap-4 flex-wrap">
-              <div className="flex items-end gap-0.5">
+            <div className="flex items-end gap-3 xl:gap-4 flex-wrap">
+              <div className="flex items-end gap-px xl:gap-0.5">
                 {binRanges.map(({ label, range, lo }, i) => {
                   const count = counts[i];
-                  const h = Math.max(2, Math.round((count / maxCount) * 56));
+                  const ratio = Math.max(count / maxCount, 0.04);
                   // ビンの下限はスコア帯の境界（90 / 70 / 50）と揃っているので、下限の帯色で塗る
                   const { bar } = scoreBand(lo);
                   const isActive = scoreRange === range;
@@ -603,9 +606,10 @@ ${normalize(i.division)}`]));
                       )}
                       title={`${label}点: ${count}件`}
                     >
-                      <span className="text-[10px] tabular-nums text-mirai-text-muted mb-0.5">{count || ''}</span>
-                      <div className={`w-7 rounded-sm ${bar}`} style={{ height: `${h}px` }} />
-                      <span className="text-[9px] tabular-nums text-mirai-text-muted mt-1">{label}</span>
+                      <span className="text-[8px] xl:text-[10px] tabular-nums text-mirai-text-muted mb-0.5">{count || ''}</span>
+                      <div className={`w-4 lg:w-5 xl:w-7 rounded-sm ${bar} h-[calc(var(--hist-h)*var(--hist-ratio))] [--hist-h:40px] xl:[--hist-h:56px]`} style={{ '--hist-ratio': ratio } as React.CSSProperties} />
+                      {/* xl 未満は棒が細く「90-99」が収まらないので下限だけを示す（範囲はツールチップ） */}
+                      <span className="text-[8px] xl:text-[9px] tabular-nums text-mirai-text-muted mt-1"><span className="xl:hidden">{lo}</span><span className="hidden xl:inline">{label}</span></span>
                     </Button>
                   );
                 })}
