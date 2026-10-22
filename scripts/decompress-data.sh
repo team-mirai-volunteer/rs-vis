@@ -47,6 +47,15 @@ decompress_if_needed "rs2025-project-indicators.json" optional
 decompress_if_needed "rs2024-project-indicators.json" optional
 decompress_if_needed "project-map-2025.json" optional
 decompress_if_needed "project-map-2024.json" optional
+
+# 展開禁止のサーバ専用データでも、手元で gunzip した生 JSON が残っていると .gz より古くてもそちらが
+# 読まれる（ローダは raw 優先）。.gz の方が新しければ生 JSON を消して、古いデータで検証しないようにする。
+for base in project-quality-recipients-2024.json project-quality-recipients-2025.json rs2024-project-details.json rs2025-project-details.json recipient-index-2024.json recipient-index-2025.json; do
+  if [ -f "$DATA_DIR/$base" ] && [ -f "$DATA_DIR/$base.gz" ] && [ "$DATA_DIR/$base.gz" -nt "$DATA_DIR/$base" ]; then
+    echo "🧹 Removing stale $base (older than its .gz)"
+    rm -f "$DATA_DIR/$base"
+  fi
+done
 # 統合ビューの生成済みグラフは全てブラウザへ配信する。
 # 年度・基準を手列挙すると、新しい補正予算の .gz だけが配信され JSON が404になる。
 for unified_graph in "$DATA_DIR"/unified-budget-*-graph.json.gz; do

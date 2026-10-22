@@ -83,7 +83,7 @@ function BasisDialog({ figure, note, basis, asOf, onClose }: { figure: string; n
             </p>
           )}
           <p className="mt-4 rounded-xl bg-mirai-surface px-3 py-2 text-xs leading-relaxed text-mirai-text-note">
-            集計日 {asOf}。public/data の生成物（各府省が公表したレビューシート等を当サイトで加工したもの）を集計した値で、集計スクリプトは保存していません。上の手順で同じファイルから再計算できます。
+            集計日 {asOf}。public/data の生成物（各府省が公表したレビューシート等を当サイトで加工したもの）を集計した値です。上の手順と同じ定義で再計算するスクリプト（scripts/verify-lp-figures.ts）があり、載せている数字と一致することを確かめています。原資料（概算要求の概要・租税特別措置の報告書）から読んだ数字は、そのページ・表を手順に記しています。
           </p>
           <a href={docUrl} target="_blank" rel="noopener noreferrer"
             className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-primary-accent hover:underline">
