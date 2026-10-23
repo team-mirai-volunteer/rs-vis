@@ -47,7 +47,7 @@ import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, type 
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
-  'RSに記載された競争入札のうち応札者数の記載がある契約の48%が1者応札。基金残高16.7兆円、年度内の執行が予算現額の半分未満の事業が340件。公開データから分かったことと、国会質問への使い方。';
+  '行政事業レビューシートなどの公開データから、入札・基金・予算の執行などについて分かったことと、まだ分からないことを、原資料まで追える形でまとめました。国会質問への使い方も。';
 
 export const metadata: Metadata = {
   title: `${TITLE}｜${PRODUCT_NAME}`,
