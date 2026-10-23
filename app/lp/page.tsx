@@ -63,8 +63,9 @@ export const metadata: Metadata = {
     images: [{ url: new URL('/og/home.png', SITE_URL).href, width: 1200, height: 630, alt: `${TITLE} — チームみらい ${PRODUCT_NAME}` }],
   },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [new URL('/og/home.png', SITE_URL).href] },
-  // 試案のため検索エンジンに載せない（dev のプレビューでのみ公開）
-  robots: { index: false, follow: false },
+  // 本番では検索エンジンに載せ、dev のプレビュー・ローカルでは載せない。
+  // いまは本番では LandingPage が 404 を返すので、本番公開するときは notFound() の行を消し、sitemap に /lp を足す
+  robots: process.env.VERCEL_ENV === 'production' ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 /** 集計日とデータの版。数字を更新したら insights.ts と一緒に変える */
