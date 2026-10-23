@@ -94,6 +94,19 @@ export const VENDOR_SIGNAL_DESCRIPTIONS: Record<VendorSignal, string> = {
   highBidRate: '1者応札の落札率（記載のある契約3件以上の単純平均）が95%以上。',
   multiMinistry: '3つ以上の府省から契約を受けている。',
 };
+/** 論点ごとの、そうなる合理的な理由の例。実名の法人に付くラベルなので、ホバー説明で必ず添える */
+const VENDOR_SIGNAL_CAVEATS: Record<VendorSignal, string> = {
+  singleMajority: '専用の設備・技術や、既存システムの保守の継続など、1者になる合理的な理由がある場合もあります。',
+  repeatSingle: '専用の設備・技術や、既存システムの保守の継続など、1者になる合理的な理由がある場合もあります。',
+  soleMajor: '法令に基づく指定、特許、既存システムとの互換性など、随意契約に合理的な理由がある場合もあります。',
+  repeatSole: '法令に基づく指定、特許、既存システムとの互換性など、随意契約に合理的な理由がある場合もあります。',
+  highBidRate: '予定価格の積算が実勢に近い場合や、仕様が特殊な場合にも高くなります。',
+  multiMinistry: '共通システムや全国規模の業務を担う事業者では自然に起こります。',
+};
+/** 論点タグのホバー説明。定義・合理的な理由の例・判定ではない旨を一続きで出す */
+export function vendorSignalTitle(s: VendorSignal): string {
+  return `${VENDOR_SIGNAL_LABELS[s]}：${VENDOR_SIGNAL_DESCRIPTIONS[s]}${VENDOR_SIGNAL_CAVEATS[s]}確かめる手がかりで、不適切さの判定ではありません。`;
+}
 export const VENDOR_SIGNALS = Object.keys(VENDOR_SIGNAL_LABELS) as VendorSignal[];
 
 export function vendorSignals(v: Vendor): VendorSignal[] {

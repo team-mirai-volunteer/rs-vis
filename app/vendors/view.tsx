@@ -19,7 +19,7 @@ import { CORPORATE_KIND_LABELS } from '@/app/lib/recipient-profile';
 import {
   avgMultiBidRate, avgSingleBidRate, fromVendorRow, matchVendor, nonCompetitiveShare, singleBidRatio, sortVendors,
   VENDOR_COLUMN_DESCRIPTIONS, VENDOR_KIND_GROUP_LABELS, VENDOR_SIGNAL_DESCRIPTIONS, VENDOR_SIGNAL_LABELS, VENDOR_SIGNAL_SHORT, VENDOR_SIGNALS, VENDOR_SORTS,
-  vendorKindGroup, vendorSignals, type VendorKindGroup, type VendorRow, type VendorSignal, type VendorSortKey,
+  vendorKindGroup, vendorSignalTitle, vendorSignals, type VendorKindGroup, type VendorRow, type VendorSignal, type VendorSortKey,
 } from '@/app/lib/vendors';
 import type { Vendor, VendorsFile } from '@/types/vendors';
 
@@ -159,7 +159,7 @@ export default function VendorsView() {
           <span className="text-xs text-mirai-text-muted">論点</span>
           {([null, ...VENDOR_SIGNALS] as (VendorSignal | null)[]).map(s => {
             const active = signal === s;
-            return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? VENDOR_SIGNAL_DESCRIPTIONS[s] : undefined}
+            return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? vendorSignalTitle(s) : undefined}
               onClick={() => setSignal(active || s === null ? null : s)}
               className={`h-7 rounded-full px-2 text-xs font-medium ${active ? 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'border-mirai-border bg-card text-mirai-text-subtle'}`}>
               {s ? VENDOR_SIGNAL_LABELS[s] : 'すべて'}<span className="ml-1 tabular-nums text-mirai-text-muted">{s ? counts[s] ?? 0 : rows.length}</span>
@@ -191,7 +191,7 @@ export default function VendorsView() {
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{pct(nonCompetitiveShare(t))}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{t.projects}事業・{t.ministries}府省</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{v.repeatSingleCount > 0 ? `${v.repeatSingleCount}事業` : '—'}</td>
-                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={`${VENDOR_SIGNAL_LABELS[s]}：${VENDOR_SIGNAL_DESCRIPTIONS[s]}`}
+                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
                     className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_SHORT[s]}</span>)}</div></td>
                 </tr>; })}
               </tbody>
@@ -265,7 +265,7 @@ function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, positi
       {sameName.map(r => <Button key={r.key} variant="link" size="xs" onClick={() => onSelect(r.key)} className="h-auto p-0 px-1 text-[11px] text-primary-accent">
         {r.corporateNumber ? `法人番号 ${r.corporateNumber}` : '番号なし'}・契約額 {yen(fromVendorRow(r).total.contractAmount)}</Button>)}
     </p>}
-    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={VENDOR_SIGNAL_DESCRIPTIONS[s]}
+    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
       className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_LABELS[s]}</span>)}</div>}
     <dl className="mt-3 grid grid-cols-2 gap-2">
       {([['契約額（全年度）', yen(t.contractAmount)], ['1者応札', `${yen(t.singleAmount)}${t.competitiveWithApplicants ? ` · ${pct(singleBidRatio(t))}` : ''}`],
