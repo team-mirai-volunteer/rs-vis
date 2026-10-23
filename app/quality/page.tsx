@@ -843,7 +843,7 @@ ${a.desc}` })),
         — 不用額の返納は適切な行動であり、減点すると使い切りを誘発するためです。
         単年度の不用は入札差金でも生じるため、縮小は<span className="font-bold">2年連続で不用率が上位帯</span>にある事業に限定し（一覧に「2年連続の不用」を表示）、
         単年度のみ・前年度実績が無い事業は要改善（差異理由の説明）にとどめています。
-        逆に予算をほぼ消化していても支出先が不透明な事業は「継続」とせず要改善として拾います。
+        逆に予算をほぼ消化していても支出先の個別記載が少ない事業は「継続」とせず要改善として拾います。
         「見直し候補」は結論ではなく政党レビューへ送るためのスクリーニング結果です。
         判断（推奨）と改善（改善アクション）は分離して表示しています。
         </p>
@@ -1092,7 +1092,7 @@ ${a.desc}`}
                               <div>{[item.ministry, item.bureau, item.division, item.section, item.office].filter(Boolean).join(' › ')}</div>
                               <div>支出先数: {item.recipientCount ?? item.rowCount}／ブロック: {item.blockCount}{item.orphanBlockCount > 0 && <span className="text-status-caution">（孤立 {item.orphanBlockCount}）</span>}</div>
                               <div>再委託: {item.hasRedelegation ? `あり（階層${item.redelegationDepth}）` : 'なし'}</div>
-                              <div>不透明支出比: {pct(item.opaqueRatio)}</div>
+                              <div>個別記載なしの支出比: {pct(item.opaqueRatio)}</div>
                             </div>
                           </div>
                         </div>

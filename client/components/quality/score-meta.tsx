@@ -15,7 +15,7 @@ import {
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 
 // LPを含め、評価主体・判断基準・確認状況の説明を共通にする。
-export { AI_EVALUATION_TITLE, AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
+export { AI_EVALUATION_TITLE, AI_EVALUATION_NATURE, AI_EVALUATION_BADGE } from '@/app/lib/ai-evaluation-disclosure';
 
 /** 一覧に出す政策評価の指標（品質軸の生値は詳細側に集約した） */
 export type PolicyMetric = 'overallScore' | 'designClarityScore' | 'evidenceScore'

@@ -15,7 +15,7 @@ import { rsViewUrl } from '@/app/lib/rs-fiscal-year';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { scoreColor } from '@/client/components/quality/score-format';
-import { TONE_CLS, ACTION_CLS, AI_EVALUATION_NATURE, AI_EVALUATION_TITLE } from '@/client/components/quality/score-meta';
+import { TONE_CLS, ACTION_CLS, AI_EVALUATION_BADGE, AI_EVALUATION_NATURE, AI_EVALUATION_TITLE } from '@/client/components/quality/score-meta';
 
 /** 表示に必要な最小セット。呼び出し側がサマリ or 単体評価から組み立てる */
 export interface PolicyEvaluationView {
@@ -108,6 +108,8 @@ export function PolicyEvaluationBlock({
         {/* 「暫定」は全事業に共通なので本文には出さず、見出しのツールチップで断る */}
         <span className="cursor-help font-bold text-mirai-text-subtle" style={{ fontSize: labelPx }}
           title={`${AI_EVALUATION_TITLE}。${AI_EVALUATION_NATURE}スクリーニングの目安で、結論ではありません。`}>政策評価</span>
+        {/* 共有URLから詳細に直接来た人は LP の説明を読まないので、点数の性質は常に見える形で添える */}
+        <span className="whitespace-nowrap text-mirai-text-muted" style={{ fontSize: metaPx }}>{AI_EVALUATION_BADGE}</span>
         {view.categoryLabel && (
           <span
             className="whitespace-nowrap rounded-full bg-mirai-surface-light px-1.5 py-px text-mirai-text-subtle"

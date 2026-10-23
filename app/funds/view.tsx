@@ -133,13 +133,15 @@ export default function FundsView() {
     {/* 見出しと全体の集計は評価一覧と同じ帯（白・下罫線）に置き、操作と表はその下の背景の上に並べる */}
     <div className="shrink-0 border-b border-mirai-border bg-card px-3 py-3 sm:px-4">
       <h1 className="text-lg font-bold text-mirai-text">基金の残高と収支</h1>
+      {/* 取得前に 0 件・0 円を出すと「基金が無い」と読めるので、届くまで集計は出さない */}
+      {!data ? <p className="mt-1 text-sm text-mirai-text-muted">{data === undefined ? '読み込み中…' : '—'}</p> :
       <p className="mt-1 text-sm text-mirai-text-muted">
         <span className="mr-3 inline-block">{rows.length.toLocaleString()}基金</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">残高</span> 計{formatBudgetFromYen(summary.balance)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">前年度支出</span> 計{formatBudgetFromYen(summary.expense)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">国庫返納</span> 計{formatBudgetFromYen(summary.returned)}</span>
         <span className="inline-block text-xs">RSシステムの基金シート（{includeOlder ? `${data?.metadata.sheetYears.join('・')}年版。以前の年度だけに載っている基金はその年度の値` : `最新の${currentYear}年版に載っている基金`}）・府省の記載どおり</span>
-      </p>
+      </p>}
     </div>
     <main className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row">
       <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
@@ -157,7 +159,7 @@ export default function FundsView() {
           </label>
           {pidFilter && <Button variant="outline" size="xs" onClick={() => setPidFilter(null)} className="h-7 rounded-full border-primary bg-mirai-surface-teal px-2 text-xs font-medium text-primary-accent" title="事業の詳細パネルから開いた絞り込みを解除する">
             予算事業ID {pidFilter} に関連する基金だけ <X className="size-3" /></Button>}
-          <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>
+          {data && <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length}基金・残高 計{formatBudgetFromYen(totalBalance)}</span>}
         </div>
         {/* 論点の絞り込み。切り替えなのでグラデ（主要操作用）は使わず、選択中はティールの面と枠で示す */}
         <div role="group" aria-label="論点で絞り込む" className="flex flex-wrap items-center gap-1">

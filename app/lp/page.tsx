@@ -354,7 +354,7 @@ export default function LandingPage() {
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[4].label}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h2 id="views-heading" className="text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}つの見方で</h2>
+                <h2 id="views-heading" className="text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}の見方で</h2>
                 <AnchorLink id="views" label="ビュー一覧" />
               </div>
             </div>
