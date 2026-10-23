@@ -77,20 +77,20 @@ export function nonCompetitiveShare(y: VendorYear): number | null {
 export type VendorSignal = 'singleMajority' | 'repeatSingle' | 'soleMajor' | 'repeatSole' | 'highBidRate' | 'multiMinistry';
 export const VENDOR_SIGNAL_LABELS: Record<VendorSignal, string> = {
   singleMajority: '1者応札が半数以上',
-  repeatSingle: '同じ事業で1者応札が続く',
+  repeatSingle: '同じ事業で複数年度に1者応札',
   soleMajor: '競争なしの随意契約が主',
-  repeatSole: '同じ事業で随意契約が続く',
+  repeatSole: '同じ事業で複数年度に随意契約',
   highBidRate: '1者応札の落札率95%以上',
   multiMinistry: '3府省以上から受注',
 };
 export const VENDOR_SIGNAL_SHORT: Record<VendorSignal, string> = {
-  singleMajority: '1者過半', repeatSingle: '1者連続', soleMajor: '随契主', repeatSole: '随契連続', highBidRate: '落札率高', multiMinistry: '複数府省',
+  singleMajority: '1者過半', repeatSingle: '1者複数年', soleMajor: '随契主', repeatSole: '随契複数年', highBidRate: '落札率高', multiMinistry: '複数府省',
 };
 export const VENDOR_SIGNAL_DESCRIPTIONS: Record<VendorSignal, string> = {
   singleMajority: '全年度合計で、応札者数の記載がある競争入札が5件以上あり、そのうち半数以上が1者応札。',
-  repeatSingle: '同じ事業で2つ以上のシート年度に競争入札の1者応札がある。',
+  repeatSingle: '同じ事業で2つ以上のシート年度に競争入札の1者応札がある（連続した年度とは限らない）。',
   soleMajor: '全年度合計の契約額の半分以上が、競争なしの随意契約（特命・不落随契）。',
-  repeatSole: '同じ事業で2つ以上のシート年度に競争なしの随意契約がある。',
+  repeatSole: '同じ事業で2つ以上のシート年度に競争なしの随意契約がある（連続した年度とは限らない）。',
   highBidRate: '1者応札の落札率（記載のある契約3件以上の単純平均）が95%以上。',
   multiMinistry: '3つ以上の府省から契約を受けている。',
 };
@@ -117,7 +117,7 @@ export const VENDOR_SORTS: { key: VendorSortKey; label: string; desc: boolean }[
   { key: 'soleAmount', label: '競争なしの随意契約', desc: true },
   { key: 'nonCompetitive', label: '競争を経ない割合', desc: true },
   { key: 'bidRate', label: '1者応札の落札率', desc: true },
-  { key: 'repeatSingle', label: '1者応札が続く事業数', desc: true },
+  { key: 'repeatSingle', label: '複数年度で1者応札の事業数', desc: true },
   { key: 'projects', label: '事業数', desc: true },
   { key: 'ministries', label: '府省数', desc: true },
   { key: 'name', label: '事業者名', desc: false },

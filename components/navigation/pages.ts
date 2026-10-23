@@ -10,7 +10,7 @@ export const PAGES = [
   { href: '/project-bubble', label: 'バブルチャート', navLabel: 'バブル図', prototype: false, description: '5,000 超の事業を内容の近さで配置し、予算規模やAI評価を切り替えて比較する', primary: true, secondary: false },
   { href: '/quality', label: '評価一覧', navLabel: '評価一覧', prototype: false, description: '公開資料に基づく独自基準のAI評価（試行）と執行透明性を、事業ごとに一覧で見る', primary: true, secondary: false },
   { href: '/subcontracts', label: '委託構造', navLabel: '委託構造', prototype: false, description: '事業ごとの支出先・再委託先の構造を図と表で確かめる', primary: true, secondary: false },
-  { href: '/vendors', label: '事業者別', navLabel: '事業者', prototype: false, description: '事業者（法人番号）ごとに、全府省での受注額・1者応札率・随意契約・同じ事業で1者応札が続く事業を見る', primary: true, secondary: false },
+  { href: '/vendors', label: '事業者別', navLabel: '事業者', prototype: false, description: '事業者（法人番号）ごとに、全府省での受注額・1者応札率・随意契約・同じ事業で複数年度に1者応札事業を見る', primary: true, secondary: false },
   { href: '/funds', label: '基金', navLabel: '基金', prototype: false, description: '基金シートから、残高・支出・国庫返納・終了予定・府省の点検結果を見て、詳しく確認したい基金を探す', primary: true, secondary: false },
   { href: '/budget-requests', label: '概算要求（試作）', navLabel: '概算要求', prototype: true, description: '2027年度の概算要求・要望を原資料とともに探し、府省ごとの取得状況と未抽出の資料を確認する', primary: false, secondary: true },
   { href: '/tax-expenditures', label: '租税特別措置（試作）', navLabel: '租税特別措置', prototype: true, description: '法人税の租税特別措置の適用実態と、関連するRS事業を調べる', primary: false, secondary: true },

@@ -239,7 +239,9 @@ export const TOOLS: LlmToolDef[] = [
     function: {
       name: 'run_sankey_query',
       description:
-        'SankeyQuery を実行し、マッチした事業・支出先の件数・金額・上位10件を返す。submit_result の前に必ず実行して、絞り込みの過不足（0件・多すぎ）を確認すること。',
+        'SankeyQuery を実行し、マッチした事業・支出先の件数・金額・上位10件を返す。submit_result の前に必ず実行して、絞り込みの過不足（0件・多すぎ）を確認すること。' +
+        'projects.budgetTotal と top[].budget は事業全体の予算で、支出先への支払額ではない。支出先名（recipientName）で絞ったときのその支出先への直接支出は projects.spendingTotal と top[].spending（includeSubcontract のときは支出先を隠さないので、その支出先への額は分からない）。' +
+        'message で企業・団体名と金額を並べるときは「該当事業の予算総額」と「その支出先への直接支出」を取り違えず、どちらの額かを必ず書くこと。',
       parameters: {
         type: 'object',
         properties: { query: SANKEY_QUERY_SCHEMA },
@@ -439,7 +441,7 @@ export const TOOLS: LlmToolDef[] = [
     function: {
       name: 'get_vendor',
       description:
-        '事業者（支出先の法人）の全府省での受注状況。年度ごとの受注額・件数、競争入札と1者応札の件数、主な支出元の府省、2年度以上1者応札が続く事業の一覧を返す。' +
+        '事業者（支出先の法人）の全府省での受注状況。年度ごとの受注額・件数、競争入札と1者応札の件数、主な支出元の府省、2年度以上複数年度で1者応札の事業の一覧を返す。' +
         '「この会社はどこから受注しているか」「1者応札が続いている事業者は」の問いに使う。q で名前・法人番号を検索（上位10件）、key（法人番号）で1件の詳細。',
       parameters: {
         type: 'object',
@@ -630,7 +632,7 @@ function buildSystemPrompt(year: SupportedYear, currentQuery: SankeyQuery | unde
     '- 数値・事実は必ずツール応答から転記する。ツールで確認していない数値を推測で書かない',
     '- **0件・除外の理由を推測で説明しない**: 「なぜこの事業がマッチしなかったのか」を述べるときは、条件を変えた run_sankey_query（金額下限を外す等）や search_projects で実測してから、トークンごとに「名前不一致 / 金額条件で除外 / マッチ」を切り分けて答える（実例: 事業名の表記ゆれで0件だったものを「予算未満で除外」と誤説明した事故がある）',
     '- pid はユーザーには分からない前提。事業名から聞かれたら、まず search_projects でpidを特定してから深掘りツールを呼ぶ。支出先も同様に search_recipients でキーを特定する',
-    '- 契約方式（1者応札・随意契約・落札率）や「誰にいくら払ったか」は get_project_recipients。事業者（法人）側から「どこから受注しているか」「1者応札が続く事業」は get_vendor。基金（残高・国庫返納・終了予定）は search_funds → get_fund。来年度の概算要求は事業 1 件なら get_budget_request、府省や事項名で探すなら search_budget_requests',
+    '- 契約方式（1者応札・随意契約・落札率）や「誰にいくら払ったか」は get_project_recipients。事業者（法人）側から「どこから受注しているか」「複数年度で1者応札の事業」は get_vendor。基金（残高・国庫返納・終了予定）は search_funds → get_fund。来年度の概算要求は事業 1 件なら get_budget_request、府省や事項名で探すなら search_budget_requests',
     '- 補助ビューの領域: 法人税の租税特別措置（税優遇の制度・適用額・AI 評価）は search_tax_expenditures。「年収○万円・片働き・子2人の税と保険料はいくら？」「手取り率は？」のような家計の負担は estimate_tax_burden（2025年度制度のモデル計算。回答に「モデル計算で実際の課税とは異なる」と添える）。財政余力（「次の1兆円で何が先に足りなくなるか」「消費税を5兆円減税したら」のような政策の仮定）は会話では計算できないので、navigate_page に params.policies（政策 id と年額）を付けて財政余力ページへ案内する',
     '- 品質スコアについて回答する際の語彙規律: スコアは「事業レビューシートに書かれた説明の質（支出先の特定可能性・使途の説明性・成果設計の明確さ等）」を評価したものであり、事業そのものの善悪・要不要・無駄の有無を判定するものではない。「この事業は無駄」のような断定はせず、「レビューシートの記載としては〜」のように表現する',
     '- ツール実行に失敗した・データが見つからない場合はその旨を正直に伝える（存在しないふりをしない）',

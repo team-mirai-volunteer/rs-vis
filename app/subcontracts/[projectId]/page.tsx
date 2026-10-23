@@ -20,6 +20,8 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  *   view : 表示モード（block=ブロック図。既定のフロー図(ribbon)は省略）。replaceState で同期
  */
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, type CSSProperties } from 'react';
+import { lastSubcontractsListUrl } from '@/client/lib/subcontracts-list-url';
+import { onwardShare } from '@/app/lib/subcontract-onward-share';
 import { createPortal } from 'react-dom';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -656,15 +658,16 @@ function SidePane({
         <div className="font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_META_FONT_PX }}>再委託</div>
         {/* 1 行要約: 階層・支出に占める再委託分の割合・最大の再委託先。数字の羅列より先に「この事業の委託構造の要点」を読めるようにする */}
         {(() => {
-          const downstream = Math.max(0, graph.totalExpense - graph.directExpenseTotal);
-          const share = graph.totalExpense > 0 ? Math.round((downstream / graph.totalExpense) * 100) : null;
+          const onward = onwardShare(graph).share;
+          const share = onward === null ? null : Math.round(onward * 100);
           const largest = graph.blocks
             .filter(b => b.originKind === 'subcontract' && b.totalAmount > 0)
             .sort((a, b) => b.totalAmount - a.totalAmount)[0];
           const largestName = largest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const parts: string[] = [];
-          parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
-          if (share !== null && graph.maxDepth >= 2) parts.push(`支出の ${share}% が再委託先へ`);
+          parts.push(graph.maxDepth >= 2 ? `その先への支出は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : 'その先への支出なし（直接支出のみ）');
+          // 先のブロックは契約上の再委託とは限らない（補助金の再交付・支出委任なども 5-2 では同じ形で並ぶ）
+          if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% がさらに先へ（再委託・補助金の再交付など）`);
           if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
           return (
             <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
@@ -672,16 +675,15 @@ function SidePane({
         })()}
         {/* 年度比較: 前年度の同じ事業との違い（段数・再委託先への割合・最大の再委託先）。2024 年度実績を見ているときだけ */}
         {prevGraph && (() => {
-          const prevDown = Math.max(0, prevGraph.totalExpense - prevGraph.directExpenseTotal);
-          const prevShare = prevGraph.totalExpense > 0 ? Math.round((prevDown / prevGraph.totalExpense) * 100) : null;
-          const curDown = Math.max(0, graph.totalExpense - graph.directExpenseTotal);
-          const curShare = graph.totalExpense > 0 ? Math.round((curDown / graph.totalExpense) * 100) : null;
+          const pctOf = (g: typeof graph) => { const s = onwardShare(g).share; return s === null ? null : Math.round(s * 100); };
+          const prevShare = pctOf(prevGraph);
+          const curShare = pctOf(graph);
           const prevLargest = prevGraph.blocks.filter(b => b.originKind === 'subcontract' && b.totalAmount > 0).sort((a, b) => b.totalAmount - a.totalAmount)[0];
           const prevLargestName = prevLargest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
           const parts = [
             `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
-            prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
+            prevShare !== null ? `その先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
             prevLargestName ? `最大は ${prevLargestName}（${formatYen(prevLargest.totalAmount)}）` : '再委託なし',
           ].filter(Boolean);
           return (
@@ -1266,6 +1268,9 @@ function SubcontractDetailPageInner() {
   const projectId = params.projectId;
   const parsedYear = Number(sheetYearFromParams(searchParams));
   const year = parsedYear === 2024 || parsedYear === 2025 ? parsedYear : 2025;
+  // 「← 一覧」は一覧で最後に見ていた検索・フィルタ・並び順に戻す（覚えていなければ素の一覧）
+  const [listHref, setListHref] = useState<string | null>(null);
+  useEffect(() => { setListHref(lastSubcontractsListUrl()); }, []);
   // マウント時のURL(sel/tab/z/tx/ty)を一度だけ捕捉。データ読み込み後の初回復元にのみ使う
   // （sel/tab の復元先はグラフ読み込み完了時、z/tx/ty の復元先は初回フィット時と別タイミングのため、
   //   オブジェクト自体は読み取り専用で保持し、消費側は各々の「適用済み」refで一度きりに制御する）
@@ -1787,7 +1792,7 @@ function SubcontractDetailPageInner() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
         <p className="text-destructive">エラー: {error ?? 'データなし'}</p>
-        <Link href="/subcontracts" className="text-sm text-primary underline-offset-4 hover:text-primary-accent hover:underline">← 一覧に戻る</Link>
+        <Link href={listHref ?? '/subcontracts'} className="text-sm text-primary underline-offset-4 hover:text-primary-accent hover:underline">← 一覧に戻る</Link>
       </div>
     );
   }
@@ -1877,7 +1882,7 @@ function SubcontractDetailPageInner() {
         {/* 一覧へ戻る — 左上（サイドパネルが左表示のときは退避） */}
         <div style={{ position: 'absolute', top: 12, left: leftFloatOffset, zIndex: 15, transition: sidePanel.isResizing ? 'none' : 'left 0.2s ease' }}>
           <Button asChild variant="outline" size="sm" className="border-mirai-border text-[13px] font-medium">
-            <Link href={rsViewUrl('/subcontracts', year)}>
+            <Link href={listHref ?? rsViewUrl('/subcontracts', year)}>
               ← 一覧
             </Link>
           </Button>
