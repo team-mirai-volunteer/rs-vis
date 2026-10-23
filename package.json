@@ -77,7 +77,7 @@
     "reprocess:budget-requests": "node --import tsx scripts/reprocess-budget-requests.ts 2027"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
+    "@anthropic-ai/sdk": "^0.127.0",
     "@dagrejs/dagre": "^2.0.4",
     "@modelcontextprotocol/server": "^2.3.1",
     "@next/third-parties": "15.5.28",
