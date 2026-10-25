@@ -661,10 +661,10 @@ function SidePane({
           const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
           if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
           // 種類の内訳は 1 行要約に混ぜると読みにくいので、行を分けて出す
-          const kindText = kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join('・');
+          const kindText = kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join(' / ');
           return (
             <>
-              <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+              <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join(' / ')}</p>
               {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>内訳: {kindText}</p>}
             </>
           );
@@ -684,7 +684,7 @@ function SidePane({
           ].filter(Boolean);
           return (
             <p className="mt-0.5 leading-relaxed text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }} title="前年度（2023 年度実績）の同じ事業の委託構造との比較">
-              前年度: {parts.join('・')}
+              前年度: {parts.join(' / ')}
             </p>
           );
         })()}
