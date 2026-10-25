@@ -86,8 +86,8 @@ import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import { truncateName, Ellipsis } from '@/client/components/unified-budget/sankey-label';
 
-// サイドパネルの既定幅は現状の SidePane 固定幅(390)を維持。最小/最大はサンキーと共通の値を使う
-const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 390;
+// サイドパネルの既定幅。タブ一覧の支出先名・金額が詰まらないよう、サンキー（400）より広めに取る。最小/最大はサンキーと共通の値を使う
+const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 440;
 
 const COLOR_BACK_EDGE = 'rgba(217,69,69,0.65)';
 const COLOR_DIRECT_BODY = '#f8d3d3';
@@ -568,8 +568,8 @@ function SidePane({
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 45% までにして中でスクロールさせる（タブの一覧を広く取る） */}
-      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[45%] sm:overflow-y-auto">
+      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 52% までにして中でスクロールさせる（タブの一覧も広く取る） */}
+      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[52%] sm:overflow-y-auto">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
       <div className="border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex items-start gap-1.5">
