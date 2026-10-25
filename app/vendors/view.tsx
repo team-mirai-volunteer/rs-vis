@@ -2,7 +2,7 @@
 
 /**
  * 事業者別の横断ビュー（/vendors）。契約方式データを法人番号でまとめ、全府省での受注・1者応札・随意契約を事業者ごとに並べる。
- * 行を選ぶと右に事業者の詳細（年度別の集計・府省別・1者応札が続く事業・支出先としての説明）を出す。
+ * 行を選ぶと右に事業者の詳細（年度別の集計・府省別・複数年度で1者応札の事業・支出先としての説明）を出す。
  * 一覧は契約額の下限以上の事業者だけ（軽い行）。下限未満は検索ボタンでサーバー側を引く。
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -19,7 +19,7 @@ import { CORPORATE_KIND_LABELS } from '@/app/lib/recipient-profile';
 import {
   avgMultiBidRate, avgSingleBidRate, fromVendorRow, matchVendor, nonCompetitiveShare, singleBidRatio, sortVendors,
   VENDOR_COLUMN_DESCRIPTIONS, VENDOR_KIND_GROUP_LABELS, VENDOR_SIGNAL_DESCRIPTIONS, VENDOR_SIGNAL_LABELS, VENDOR_SIGNAL_SHORT, VENDOR_SIGNALS, VENDOR_SORTS,
-  vendorKindGroup, vendorSignals, type VendorKindGroup, type VendorRow, type VendorSignal, type VendorSortKey,
+  vendorKindGroup, vendorSignalTitle, vendorSignals, type VendorKindGroup, type VendorRow, type VendorSignal, type VendorSortKey,
 } from '@/app/lib/vendors';
 import type { Vendor, VendorsFile } from '@/types/vendors';
 
@@ -115,8 +115,11 @@ export default function VendorsView() {
     if (r) setSearched({ q, rows: r.rows, limit: r.limit });
   };
 
-  const summary = useMemo(() => filtered.reduce((acc, r) => ({ contract: acc.contract + r.v.total.contractAmount, single: acc.single + r.v.total.singleAmount, sole: acc.sole + r.v.total.soleAmount }),
-    { contract: 0, single: 0, sole: 0 }), [filtered]);
+  // 見出しの帯は一覧の全事業者の計、絞り込み・検索の結果の計は「表示 N 事業者」の横に分けて出す（件数と金額の対象を揃える）
+  const sumOf = (vs: Vendor[]) => vs.reduce((acc, v) => ({ contract: acc.contract + v.total.contractAmount, single: acc.single + v.total.singleAmount, sole: acc.sole + v.total.soleAmount }),
+    { contract: 0, single: 0, sole: 0 });
+  const summary = useMemo(() => sumOf((data?.rows ?? []).map(fromVendorRow)), [data]);
+  const filteredSummary = useMemo(() => sumOf(filtered.map(r => r.v)), [filtered]);
   const sheetYears = data?.metadata.sheetYears ?? [];
 
   return <div className="flex h-dvh flex-col bg-background text-mirai-text">
@@ -125,9 +128,13 @@ export default function VendorsView() {
       <h1 className="text-lg font-bold text-mirai-text">事業者別の受注と競争性</h1>
       <p className="mt-1 text-sm text-mirai-text-muted">
         <span className="mr-3 inline-block">{data ? `${data.totalVendors.toLocaleString()}事業者（一覧は契約額${(data.minContract / 1e4).toLocaleString()}万円以上の${data.rows.length.toLocaleString()}事業者）` : '読み込み中…'}</span>
+        {/* 取得前に 0 円を出すと「契約が無い」と読めるので、届くまで金額は出さない */}
+        {data && <>
+        <span className="mr-3 inline-block text-xs">一覧の全事業者の計</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">契約額</span> 計{formatBudgetFromYen(summary.contract)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">1者応札</span> 計{formatBudgetFromYen(summary.single)}</span>
         <span className="mr-3 inline-block"><span className="font-bold text-mirai-text">競争なしの随意契約</span> 計{formatBudgetFromYen(summary.sole)}</span>
+        </>}
         <span className="inline-block text-xs">{sheetYears.length ? `${sheetYears[0] - 1}〜${sheetYears[sheetYears.length - 1] - 1}年度の契約（RS公開API・${sheetYears[sheetYears.length - 1] - 1}年度は暫定）の合計・府省の記載どおり` : ''}</span>
       </p>
     </div>
@@ -146,13 +153,13 @@ export default function VendorsView() {
           <select value={sort.key} onChange={e => { const s = VENDOR_SORTS.find(x => x.key === e.target.value)!; setSort({ key: s.key, desc: s.desc }); }} aria-label="並び順" className="rounded-md border border-mirai-border bg-card px-2 py-1.5 text-sm">
             {VENDOR_SORTS.map(s => <option key={s.key} value={s.key}>{s.label}{s.desc ? '（大きい順）' : '（昇順）'}</option>)}
           </select>
-          <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length.toLocaleString()}事業者{searched && searched.q === query.trim() ? `（全事業者から検索・上位${searched.limit}件）` : ''}</span>
+          {data && <span className="tabular-nums text-mirai-text-muted">表示 {filtered.length.toLocaleString()}事業者{searched && searched.q === query.trim() ? `（全事業者から検索・上位${searched.limit}件）` : ''}・契約額 計{formatBudgetFromYen(filteredSummary.contract)}・1者応札 計{formatBudgetFromYen(filteredSummary.single)}</span>}
         </div>
         <div role="group" aria-label="論点で絞り込む" className="flex flex-wrap items-center gap-1">
           <span className="text-xs text-mirai-text-muted">論点</span>
           {([null, ...VENDOR_SIGNALS] as (VendorSignal | null)[]).map(s => {
             const active = signal === s;
-            return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? VENDOR_SIGNAL_DESCRIPTIONS[s] : undefined}
+            return <Button key={s ?? 'all'} variant="outline" size="xs" aria-pressed={active} title={s ? vendorSignalTitle(s) : undefined}
               onClick={() => setSignal(active || s === null ? null : s)}
               className={`h-7 rounded-full px-2 text-xs font-medium ${active ? 'border-primary bg-mirai-surface-teal text-primary-accent hover:bg-mirai-surface-teal' : 'border-mirai-border bg-card text-mirai-text-subtle'}`}>
               {s ? VENDOR_SIGNAL_LABELS[s] : 'すべて'}<span className="ml-1 tabular-nums text-mirai-text-muted">{s ? counts[s] ?? 0 : rows.length}</span>
@@ -165,7 +172,7 @@ export default function VendorsView() {
             : <table className="w-full min-w-[960px] text-xs">
               <thead className="sticky top-0 z-10 bg-mirai-surface text-mirai-text-muted">
                 <tr>{([['事業者・法人番号・主な府省', 'name', 'name'], ['契約額', 'contractAmount', 'contractAmount'], ['1者応札（金額・率）', 'singleAmount', 'single'], ['落札率 1者（複数）', 'bidRate', 'bidRate'],
-                  ['競争なし随契', 'soleAmount', 'sole'], ['競争を経ない割合', 'nonCompetitive', 'nonCompetitive'], ['事業・府省', 'projects', 'projects'], ['1者連続', 'repeatSingle', 'repeat'], ['論点', null, 'signals']] as [string, VendorSortKey | null, string][]).map(([label, key, desc]) =>
+                  ['競争なし随契', 'soleAmount', 'sole'], ['競争を経ない割合', 'nonCompetitive', 'nonCompetitive'], ['事業・府省', 'projects', 'projects'], ['1者複数年', 'repeatSingle', 'repeat'], ['論点', null, 'signals']] as [string, VendorSortKey | null, string][]).map(([label, key, desc]) =>
                   <th key={label} title={VENDOR_COLUMN_DESCRIPTIONS[desc]} className={`whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : 'cursor-help'}`}
                     onClick={key ? () => setSort(s => ({ key, desc: s.key === key ? !s.desc : key !== 'name' })) : undefined}>
                     {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
@@ -184,7 +191,7 @@ export default function VendorsView() {
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{pct(nonCompetitiveShare(t))}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{t.projects}事業・{t.ministries}府省</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{v.repeatSingleCount > 0 ? `${v.repeatSingleCount}事業` : '—'}</td>
-                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={`${VENDOR_SIGNAL_LABELS[s]}：${VENDOR_SIGNAL_DESCRIPTIONS[s]}`}
+                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
                     className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_SHORT[s]}</span>)}</div></td>
                 </tr>; })}
               </tbody>
@@ -203,6 +210,7 @@ export default function VendorsView() {
       </section>
       {!selected && <VendorsOverview rows={rows} signal={signal} onSignal={setSignal} />}
       {selected && <VendorDetail vendorKey={selected.v.key} row={selected.v} signals={selected.signals} onClose={() => setSelectedKey(null)}
+        sameName={sameNameVendors(selected.v, [...(data?.rows ?? []), ...(searched?.rows ?? [])])} onSelect={setSelectedKey}
         position={{ index: selectedIndex, total: filtered.length }}
         onPrev={selectedIndex > 0 ? () => setSelectedKey(filtered[selectedIndex - 1].v.key) : undefined}
         onNext={selectedIndex >= 0 && selectedIndex < filtered.length - 1 ? () => setSelectedKey(filtered[selectedIndex + 1].v.key) : undefined} />}
@@ -212,8 +220,23 @@ export default function VendorsView() {
 
 const detailCache = new Map<string, Vendor | null>();
 
-function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, position }: {
+/** 名前の表記ゆれ（全角・半角、空白）を除いた比較用の名前 */
+const nameKey = (name: string) => name.normalize('NFKC').replace(/\s+/g, '');
+
+/**
+ * 同じ名前で、法人番号の有無が逆の別集計（番号あり ↔ 番号なし）。
+ * 事業者は法人番号でまとめ、番号の無い記載は名前でまとめるため、同じ会社が 2 行に分かれることがある
+ */
+function sameNameVendors(v: Vendor, rows: VendorRow[]): VendorRow[] {
+  const k = nameKey(v.name);
+  const seen = new Set<string>();
+  return rows.filter(r => r.key !== v.key && Boolean(r.corporateNumber) !== Boolean(v.corporateNumber) && nameKey(r.name) === k
+    && !seen.has(r.key) && (seen.add(r.key), true));
+}
+
+function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, position, sameName, onSelect }: {
   vendorKey: string; row: Vendor; signals: VendorSignal[]; onClose: () => void; onPrev?: () => void; onNext?: () => void; position: { index: number; total: number };
+  sameName: VendorRow[]; onSelect: (key: string) => void;
 }) {
   const [full, setFull] = useState<Vendor | null | undefined>(detailCache.get(vendorKey));
   useEffect(() => {
@@ -237,7 +260,12 @@ function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, positi
     </div>
     <div className="text-[11px] text-mirai-text-muted">{v.corporateNumber ? <span className="tabular-nums">法人番号 {v.corporateNumber}</span> : '法人番号の記載なし（名前でまとめた相手）'}{v.kind && ` · ${CORPORATE_KIND_LABELS[v.kind] ?? v.kind}`}</div>
     <h2 className="mt-1 text-sm font-bold">{v.name}</h2>
-    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={VENDOR_SIGNAL_DESCRIPTIONS[s]}
+    {sameName.length > 0 && <p className="mt-1 rounded-md bg-mirai-surface-light px-2 py-1 text-[11px] text-mirai-text-subtle">
+      同じ名前で法人番号の{v.corporateNumber ? '記載がない' : '記載がある'}別の集計があります（この画面の金額には含みません）：
+      {sameName.map(r => <Button key={r.key} variant="link" size="xs" onClick={() => onSelect(r.key)} className="h-auto p-0 px-1 text-[11px] text-primary-accent">
+        {r.corporateNumber ? `法人番号 ${r.corporateNumber}` : '番号なし'}・契約額 {yen(fromVendorRow(r).total.contractAmount)}</Button>)}
+    </p>}
+    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
       className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_LABELS[s]}</span>)}</div>}
     <dl className="mt-3 grid grid-cols-2 gap-2">
       {([['契約額（全年度）', yen(t.contractAmount)], ['1者応札', `${yen(t.singleAmount)}${t.competitiveWithApplicants ? ` · ${pct(singleBidRatio(t))}` : ''}`],
@@ -265,7 +293,7 @@ function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, positi
           <span className="text-mirai-text-subtle">{m.ministry}<span className="ml-1 text-mirai-text-muted">{m.projects}事業</span></span><span className="tabular-nums">{yen(m.amount)}</span></li>)}</ul>
       </>}
       {full.repeatSingle.length > 0 && <>
-        <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">同じ事業で1者応札が続く<span className="ml-1 font-normal text-mirai-text-muted">{full.repeatSingleCount}事業</span></h3>
+        <h3 className="mb-1 mt-4 font-bold text-mirai-text-secondary">同じ事業で複数年度に1者応札<span className="ml-1 font-normal text-mirai-text-muted">{full.repeatSingleCount}事業</span></h3>
         <ul className="m-0 list-none space-y-1 p-0">{full.repeatSingle.map(p => <li key={p.pid} className="rounded-lg bg-mirai-surface px-2 py-1.5">
           <div className="flex items-start justify-between gap-2">
             <Link href={`/quality?pid=${p.pid}`} className="min-w-0 truncate text-primary underline underline-offset-4 hover:text-primary-accent" title={p.name ?? p.pid}>{p.name ?? `事業 ${p.pid}`}</Link>
@@ -285,7 +313,7 @@ function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, positi
 function VendorsOverview({ rows, signal, onSignal }: { rows: Row[]; signal: VendorSignal | null; onSignal: (s: VendorSignal | null) => void }) {
   return <aside aria-label="論点の概要" className="hidden lg:block lg:w-[400px] lg:shrink-0 min-[1700px]:w-[460px] lg:rounded-xl lg:border lg:border-mirai-border lg:bg-card lg:p-4 lg:shadow-soft lg:overflow-y-auto text-xs">
     <h2 className="text-sm font-bold">論点ごとの事業者数と1者応札の金額</h2>
-    <p className="mt-1 text-mirai-text-muted">行を選ぶと事業者の詳細（年度別・府省別・1者応札が続く事業・支出先としての説明）を出します。</p>
+    <p className="mt-1 text-mirai-text-muted">行を選ぶと事業者の詳細（年度別・府省別・複数年度で1者応札の事業・支出先としての説明）を出します。</p>
     <ul className="mt-3 space-y-1">{VENDOR_SIGNALS.map(s => { const hit = rows.filter(r => r.signals.includes(s)); const single = hit.reduce((a, r) => a + r.v.total.singleAmount, 0);
       return <li key={s}><button type="button" onClick={() => onSignal(signal === s ? null : s)} aria-pressed={signal === s}
         className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-mirai-surface-teal/60 ${signal === s ? 'bg-mirai-surface-teal/60' : ''}`}>

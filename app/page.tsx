@@ -51,7 +51,7 @@ export default function Home() {
             <p className="mb-2 text-xs font-bold tracking-normal">{PRODUCT_NAME}</p>
             <h1 className="text-2xl/8 font-bold tracking-normal sm:text-3xl/10">国の予算は、どこから来て、どこへ行くのか。</h1>
             <p className="mt-3 text-[15px] leading-relaxed font-medium">
-              行政事業レビューシステムの 5,000 超の事業と 2 万超の支出先、財務省予算書の会計・項・目、
+              行政事業レビューシステムの 5,000 超の事業と 2 万超の支出先（延べ 9.9 万件の記載）、財務省予算書の会計・項・目、
               そして歳入と国民負担を、ひとつながりのデータとして見られるようにしています。
             </p>
           </div>

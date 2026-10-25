@@ -47,7 +47,7 @@ import { DIET_PRINCIPLES, DIET_QUESTIONS, DIET_SETS, HERO_STATS, INSIGHTS, type 
 
 const TITLE = '国の予算は、ここまで見える。';
 const DESCRIPTION =
-  'RSに記載された競争入札のうち応札者数の記載がある契約の48%が1者応札。基金残高16.7兆円、年度内の執行が予算現額の半分未満の事業が340件。公開データから分かったことと、国会質問への使い方。';
+  '行政事業レビューシートなどの公開データから、入札・基金・予算の執行などについて分かったことと、まだ分からないことを、原資料まで追える形でまとめました。国会質問への使い方も。';
 
 export const metadata: Metadata = {
   title: `${TITLE}｜${PRODUCT_NAME}`,
@@ -63,8 +63,9 @@ export const metadata: Metadata = {
     images: [{ url: new URL('/og/home.png', SITE_URL).href, width: 1200, height: 630, alt: `${TITLE} — チームみらい ${PRODUCT_NAME}` }],
   },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [new URL('/og/home.png', SITE_URL).href] },
-  // 試案のため検索エンジンに載せない（dev のプレビューでのみ公開）
-  robots: { index: false, follow: false },
+  // 本番では検索エンジンに載せ、dev のプレビュー・ローカルでは載せない。
+  // いまは本番では LandingPage が 404 を返すので、本番公開するときは notFound() の行を消し、sitemap に /lp を足す
+  robots: process.env.VERCEL_ENV === 'production' ? { index: true, follow: true } : { index: false, follow: false },
 };
 
 /** 集計日とデータの版。数字を更新したら insights.ts と一緒に変える */
@@ -354,7 +355,7 @@ export default function LandingPage() {
             <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[4].label}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <h2 id="views-heading" className="text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}つの見方で</h2>
+                <h2 id="views-heading" className="text-2xl/8 font-bold tracking-normal">ひとつのデータを、{VIEW_PAGES.length}の見方で</h2>
                 <AnchorLink id="views" label="ビュー一覧" />
               </div>
             </div>

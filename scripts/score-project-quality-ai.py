@@ -73,6 +73,9 @@ parser.add_argument('--votes', type=int, default=1,
                          'デフォルト1。1票目は従来のキャッシュキーと同一なので既存の走行結果を流用できる。'
                          '実測では1票だと推奨判断の再現率が81.7%%しかない（3票で約89%%）')
 parser.add_argument('--force', action='store_true', help='キャッシュを無視して再判定')
+parser.add_argument('--pids', default='',
+                    help='カンマ区切りの事業IDだけを評価する（プロンプト変更の試し採点用）。--benchmark と同じく'
+                         'tests/benchmark-results/ に出力し、本番データ(project-quality-scores)は上書きしない')
 args = parser.parse_args()
 
 YEAR = args.year
@@ -700,8 +703,17 @@ def build_unified_system(anchors, tax, detail_by_pid):
         '     finding には「執行ベース」と明記する（例「執行57.4億円÷…」）。\n'
         '   - execOku が budgetOku を大きく上回る（1.5倍以上）場合も、実際に払われた execOku を単価計算に使い、\n'
         '     予算超過の事実を finding に一言添える。\n'
-        '3. 支出先の一覧を見て、その金が名目上の受益者に届いているかを確認する。\n'
-        '4. 単価の妥当性と支出先の妥当性を併せて判断する。どちらか一方でも崩れていれば低くなります。\n\n'
+        '3. 割る前に、分子（金額）と分母（数量）の対象と期間が一致しているかを確かめる。一致しなければ単価を計算しない。\n'
+        '   - 対象: 分母は、分子の金額が賄う活動全体の数量であること。事業が複数の活動（新設・改築・維持修繕・調査など）を含むのに、\n'
+        '     そのうち一つの活動の数量だけで事業全体の金額を割らない（例: 道路事業全体の予算÷新規開通延長）。\n'
+        '   - 期間: 複数年度にまたがる工事・整備・研究開発の当年度の金額を、当年度に完成・開通・竣工・終了した量で割らない。\n'
+        '     当年度の支出には継続中の工事の分が含まれ、完成した量とは対応しない。採択件数・交付決定件数で割るときも、\n'
+        '     その年度の金額がその件数に対応している（単年度で完結する給付・補助など）かを確かめる。\n'
+        '   - 一致しない、または本文から一致を確かめられない場合は、finding に「単価換算せず（理由）」と書き\n'
+        '     （例「単価換算せず：予算は新設・改築・修繕の全体、開通延長は新設の完成分のみ」）、支出先の妥当性と配分の粗さで判定する。\n'
+        '     単価を出せないこと自体を減点理由にも加点理由にもしない。\n'
+        '4. 支出先の一覧を見て、その金が名目上の受益者に届いているかを確認する。\n'
+        '5. 単価の妥当性と支出先の妥当性を併せて判断する。どちらか一方でも崩れていれば低くなります。\n\n'
         '支出先の妥当性で見る点:\n'
         '- 受益者の乖離: 「国民のため」と称しながら、資金の大半がコンサルタント・シンクタンク・\n'
         '  業界団体など特定の受注事業者に流れていないか。国民は受益者か、それとも名目か。\n'
@@ -723,7 +735,8 @@ def build_unified_system(anchors, tax, detail_by_pid):
         '  問題は集中ではなく、集中先が受益者ではなく受注事業者であること。\n'
         '- 記述が明瞭なだけで高評価にしない。よく書けていても単価や支出先が説明できなければ低い。\n'
         '- 事業の必要性の弱さ。それは段階4で採点する。ここでは支出の中身だけを見る。\n'
-        '- finding には必ず単価換算を書くこと（例「2.4億円÷1万人＝約2.4万円/人」）。\n'
+        '- finding には単価換算を書くこと（例「2.4億円÷1万人＝約2.4万円/人」）。手順3で対象・期間が一致しない場合は、\n'
+        '  換算せずその理由を書く。範囲の合わない割り算で単価を作らないこと。\n'
         '- 金額は提示された budgetOku / execOku（億円）をそのまま使う。桁を読み替えないこと。\n'
         '- budgetOku と execOku の両方が 0 または未提示の事業のみ score を null にする。\n'
         '  どちらか一方でも金額があれば必ず採点する。0円で単価を計算しない。\n'
@@ -812,7 +825,7 @@ def build_unified_system(anchors, tax, detail_by_pid):
 
 
 def unified_key(d):
-    """段階採点のキャッシュキー。'U10:' = unified v16（供給力の分母に売上高・シェア目標を追加、数値が無いこと自体は減点しない。'U9:' は v15）。"""
+    """段階採点のキャッシュキー。'U11:' = unified v17（費用対内容の単価換算は分子と分母の対象・期間が一致するときだけ。'U10:' は v16、'U9:' は v15）。"""
     tops = '|'.join(f"{r['name']}:{r.get('amount') or 0}:{r.get('depth') or 0}"
                     for r in (d.get('topRecipients') or []))
     c = d.get('indicatorCounts') or {}
@@ -824,7 +837,7 @@ def unified_key(d):
         f"{c.get('total', 0)}:{c.get('withActual', 0)}:{c.get('outcomeWithActual', 0)}:{c.get('withSource', 0)}",
         normalize(rv.get('expertOpinion', ''))[:200], normalize(rv.get('teamOpinion', ''))[:200],
     ])
-    return 'U10:' + hashlib.sha1(raw.encode('utf-8')).hexdigest()
+    return 'U11:' + hashlib.sha1(raw.encode('utf-8')).hexdigest()
 
 
 def heuristic_unified(d):
@@ -857,7 +870,7 @@ def _build_unified_prompt(items):
                   '{"category":[{"i":<index>,"id":"<類型id>"}, ...],'
                   '"design":[{"i":<index>,"nearestAnchor":<整数>,"score":<0〜10>,"finding":"<40字以内>"}, ...],'
                   '"evidence":[{"i":<index>,"nearestAnchor":<整数>,"score":<0〜10>,"finding":"<40字以内>"}, ...],'
-                  '"proportionality":[{"i":<index>,"nearestAnchor":<整数>,"score":<0〜10またはnull>,"finding":"<単価換算を含め40字以内>"}, ...],'
+                  '"proportionality":[{"i":<index>,"nearestAnchor":<整数>,"score":<0〜10またはnull>,"finding":"<単価換算（または「単価換算せず：理由」）を含め40字以内>"}, ...],'
                   '"necessity":[{"i":<index>,"nearestAnchor":<整数>,"score":<0〜10またはnull>,"finding":"<40字以内>"}, ...]}')
     return '\n'.join(lines_)
 
@@ -1055,6 +1068,10 @@ def main():
             bench_pids = {str(x['pid']) for x in json.load(f)['projects']}
         scores = [it for it in scores if str(it['pid']) in bench_pids]
         print(f'  --benchmark: ベンチマークセット{len(scores)}事業のみ評価（本番データは上書きしない）')
+    if args.pids:
+        trial_pids = {p.strip() for p in args.pids.split(',') if p.strip()}
+        scores = [it for it in scores if str(it['pid']) in trial_pids]
+        print(f'  --pids: 指定した{len(scores)}事業のみ評価（本番データは上書きしない）')
     if args.limit > 0:
         keep = {it['pid'] for it in scores[:args.limit]}
         scores = [it for it in scores if it['pid'] in keep]
@@ -1400,14 +1417,14 @@ def main():
         it['aiSource'] = ai_source
 
     # 5. 出力（--limit はテスト用なので全件ファイルを上書きしない）
-    if args.benchmark:
+    if args.benchmark or args.pids:
         BENCHMARK_OUT.mkdir(parents=True, exist_ok=True)
-        out_path = BENCHMARK_OUT / f'production-benchmark-{MODEL_SLUG}.json'
+        out_path = BENCHMARK_OUT / (f'trial-{YEAR}-{MODEL_SLUG}.json' if args.pids else f'production-benchmark-{MODEL_SLUG}.json')
         pol = USAGE_BY_PHASE.get('policy', {'prompt_tokens': 0, 'completion_tokens': 0, 'cost': 0.0, 'calls': 0})
         rec = USAGE_BY_PHASE.get('recipient', {'prompt_tokens': 0, 'completion_tokens': 0, 'cost': 0.0, 'calls': 0})
         cost = pol['cost'] + rec['cost']
         payload = {
-            'source': 'score-project-quality-ai.py --benchmark',
+            'source': 'score-project-quality-ai.py --pids' if args.pids else 'score-project-quality-ai.py --benchmark',
             'model': MODEL,
             'year': YEAR,
             'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%S'),

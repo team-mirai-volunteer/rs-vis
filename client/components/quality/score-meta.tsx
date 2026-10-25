@@ -15,7 +15,7 @@ import {
 import type { RecipientRow } from '@/app/lib/api/quality-recipients-loader';
 
 // LPを含め、評価主体・判断基準・確認状況の説明を共通にする。
-export { AI_EVALUATION_TITLE, AI_EVALUATION_NATURE } from '@/app/lib/ai-evaluation-disclosure';
+export { AI_EVALUATION_TITLE, AI_EVALUATION_NATURE, AI_EVALUATION_BADGE } from '@/app/lib/ai-evaluation-disclosure';
 
 /** 一覧に出す政策評価の指標（品質軸の生値は詳細側に集約した） */
 export type PolicyMetric = 'overallScore' | 'designClarityScore' | 'evidenceScore'
@@ -130,7 +130,7 @@ export const COL_DESC: Record<string, string> = {
   組織: `局・庁までの所管組織。詳細な階層（課・室まで）はモーダルのヘッダに出ます。`,
   支出先列: `クリックすると支出先一覧・事業内容・スコアの計算根拠をモーダルで開きます。`,
 
-  継続年数: `対象年度 − 開始年度 ＋ 1。★は終了予定なしの事業。
+  継続年数: `RSシートの年度 − 開始年度 ＋ 1（例: 2024年度実績＝2025年版シートなら 2025 − 開始年度 ＋ 1）。★は終了予定なしの事業。
 
 20年以上をオレンジで表示しています。開始年度が未登録の事業は — になります。`,
 };

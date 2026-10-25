@@ -128,7 +128,7 @@ export function shapeVendorSearch(rows: readonly VendorRow[], q: string) {
   const hits = rows.filter(v => matchVendor(v, q));
   return {
     totalHits: hits.length,
-    notes: ['合計は全年度。詳細（年度別・主な府省・1者応札が続く事業）は get_vendor(key)'],
+    notes: ['合計は全年度。詳細（年度別・主な府省・複数年度で1者応札の事業）は get_vendor(key)'],
     items: hits.slice(0, VENDOR_SEARCH_LIMIT).map(v => {
       const total = unpackVendorYear(v.t);
       return {

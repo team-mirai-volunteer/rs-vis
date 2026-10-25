@@ -78,7 +78,7 @@ test('LP uses the shared AI disclosure and does not claim blanket pension exclus
   const page = readFileSync(new URL('../app/lp/page.tsx', import.meta.url), 'utf8');
   const scoreMeta = readFileSync(new URL('../client/components/quality/score-meta.tsx', import.meta.url), 'utf8');
   assert.match(page, /\{AI_EVALUATION_NATURE\}/);
-  assert.match(scoreMeta, /export \{ AI_EVALUATION_TITLE, AI_EVALUATION_NATURE \} from '@\/app\/lib\/ai-evaluation-disclosure'/);
+  assert.match(scoreMeta, /export \{ AI_EVALUATION_TITLE, AI_EVALUATION_NATURE, AI_EVALUATION_BADGE \} from '@\/app\/lib\/ai-evaluation-disclosure'/);
   assert.match(AI_EVALUATION_NATURE, /政策上の判断/);
   assert.match(AI_EVALUATION_NATURE, /人によるレビューも経ていません/);
   assert.doesNotMatch(page, /対象は国の予算の約27%|年金給付・財政投融資はレビューの対象外/);

@@ -383,21 +383,30 @@ export function AiAssistant({ open, onClose, sheetYear, page }: {
 function ResultLinks({ result, sheetYear, onNavigate }: { result: SankeyChatResult; sheetYear: SupportedYear; onNavigate: () => void }) {
   const { projects } = result.summary;
   const top = projects.top.filter(p => p.projectId !== null).slice(0, LINKED_PROJECTS);
+  // 支出先名で絞ったとき、事業の予算総額をその支出先への支払額と読み違えないよう、2 つを分けて出す。
+  // 「再委託先を含む」検索は支出先を隠さないので、その支出先への額は計算できない（未算出と明記する）
+  const recipient = result.query.filter?.recipientName ?? null;
+  const recipientPaid = recipient && !recipient.includeSubcontract ? projects.spendingTotal : null;
+  const fy = Number(sheetYear) - 1;
   return <div className="mt-2 space-y-2">
     <div className="flex flex-wrap items-center gap-2">
       <Button asChild variant="outline" size="xs" className="rounded-full font-medium">
         <Link href={sankeyUrlForQuery(result.query, sheetYear)} onClick={onNavigate}>
-          <ExternalLink aria-hidden="true" className="size-3.5" />サンキー図で見る（{projects.count.toLocaleString()}事業・{formatBudgetFromYen(projects.budgetTotal)}）
+          <ExternalLink aria-hidden="true" className="size-3.5" />サンキー図で見る（{projects.count.toLocaleString()}事業{recipient ? '' : `・${formatBudgetFromYen(projects.budgetTotal)}`}）
         </Link>
       </Button>
       {result.interpretation && <span className="text-xs text-mirai-text-muted">{result.interpretation}</span>}
     </div>
+    {recipient && <p className="m-0 text-xs leading-relaxed text-mirai-text-secondary">
+      {fy}年度実績。該当事業の予算総額 {formatBudgetFromYen(projects.budgetTotal)}（事業全体の予算で、支出先への支払額ではありません）／
+      「{recipient.query}」への{recipientPaid !== null ? `直接支出 ${formatBudgetFromYen(recipientPaid)}` : '支出額は未算出（再委託先を含む検索のため）'}
+    </p>}
     {top.length > 0 && <ul className="m-0 list-none space-y-1 p-0 text-xs">
       {top.map(p => {
         const links = projectLinks(p.projectId!, sheetYear);
         return <li key={p.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <Link href={links.quality} onClick={onNavigate} className="min-w-0 font-medium text-primary-accent underline-offset-4 hover:underline">{p.name}</Link>
-          <span className="text-mirai-text-muted">{p.ministry ?? ''}・{formatBudgetFromYen(p.budget)}</span>
+          <span className="text-mirai-text-muted">{p.ministry ?? ''}・{recipient ? `事業の予算 ${formatBudgetFromYen(p.budget)}${recipientPaid !== null ? `・うち支出先へ ${formatBudgetFromYen(p.spending)}` : ''}` : formatBudgetFromYen(p.budget)}</span>
           <Link href={links.subcontracts} onClick={onNavigate} className="text-[11px] text-mirai-text-muted underline-offset-4 hover:text-primary-accent hover:underline">委託構造</Link>
         </li>;
       })}

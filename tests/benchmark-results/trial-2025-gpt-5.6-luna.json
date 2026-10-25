@@ -1,0 +1,624 @@
+{
+  "source": "score-project-quality-ai.py --pids",
+  "model": "openai/gpt-5.6-luna",
+  "year": 2025,
+  "generatedAt": "2026-10-24T08:17:32",
+  "usage": {
+    "policy": {
+      "prompt_tokens": 411771,
+      "completion_tokens": 23307,
+      "cost": 0.05174014,
+      "calls": 15
+    },
+    "recipient": {
+      "prompt_tokens": 67252,
+      "completion_tokens": 23648,
+      "cost": 0.0451858,
+      "calls": 32
+    },
+    "total": 0.09692593999999999,
+    "policyPerProject": 0.0017246713333333333
+  },
+  "projects": [
+    {
+      "pid": "202",
+      "name": "沖縄振興特定事業推進費",
+      "ministry": "内閣府",
+      "budgetAmount": 12988555000,
+      "execAmount": 6576742000,
+      "policyCategory": "grant_admin",
+      "designClarity": 3.0,
+      "evidenceReadiness": 7.33,
+      "budgetProportionality": 5.0,
+      "necessity": 5.0,
+      "axisIdentify": 89.5,
+      "axisPurpose": 75.6,
+      "policyFindings": {
+        "design": "対象・要件は明確だが、多様な事業を包括し経路が浅い",
+        "evidence": "登録アウトカム実績あり、出典なし。成果達成率は50％",
+        "proportionality": "単価換算せず：多様な事業で金額と数量が非対応。市町村配分は妥当",
+        "necessity": "市町村が機動的財源を失う。既存交付金は代替同等。制度"
+      }
+    },
+    {
+      "pid": "592",
+      "name": "森林整備事業(補助)",
+      "ministry": "復興庁",
+      "budgetAmount": 3152567000,
+      "execAmount": 2218031000,
+      "policyCategory": "agriculture",
+      "designClarity": 7.0,
+      "evidenceReadiness": 8.33,
+      "budgetProportionality": 6.0,
+      "necessity": 8.0,
+      "axisIdentify": 87.6,
+      "axisPurpose": 63.0,
+      "policyFindings": {
+        "design": "森林整備から公益機能まで接続するが、多段性は乏しい",
+        "evidence": "登録アウトカム実績・出典ありだが、他の成果は未計測",
+        "proportionality": "単価換算せず：予算は間伐・路網等全体で施業面積と非対応",
+        "necessity": "被災森林と下流住民が土砂流出防止を失う。市場代替は割高。責任"
+      }
+    },
+    {
+      "pid": "837",
+      "name": "統計情報提供事業",
+      "ministry": "総務省",
+      "budgetAmount": 1278999000,
+      "execAmount": 864076000,
+      "policyCategory": "digital",
+      "designClarity": 9.0,
+      "evidenceReadiness": 9.33,
+      "budgetProportionality": 6.33,
+      "necessity": 7.33,
+      "axisIdentify": 99.6,
+      "axisPurpose": 89.4,
+      "policyFindings": {
+        "design": "利用者・行政課題からデータ利用成果まで多段接続",
+        "evidence": "登録アウトカム実績・達成率・出典が複数あり概要とも整合",
+        "proportionality": "単価換算せず：システム・DB・支援の複数活動。実務事業者へ支出",
+        "necessity": "行政・研究者が公的統計基盤を失う。民間代替は割高。制度"
+      }
+    },
+    {
+      "pid": "1150",
+      "name": "国際機関職員派遣信託基金(JPO)拠出金",
+      "ministry": "外務省",
+      "budgetAmount": 4340199000,
+      "execAmount": 4328345000,
+      "policyCategory": "diplomacy",
+      "designClarity": 6.67,
+      "evidenceReadiness": 7.67,
+      "budgetProportionality": 5.67,
+      "necessity": 5.33,
+      "axisIdentify": 70.0,
+      "axisPurpose": 40.0,
+      "policyFindings": {
+        "design": "派遣から定着・日本人職員増まで接続するが国民便益は限定",
+        "evidence": "登録アウトカム実績・達成率・出典あり、一指標は未実績",
+        "proportionality": "43.4億円÷41人＝約1.06億円/人。海外機関配分で国民便益との対応が粗い",
+        "necessity": "若手が国際機関就業機会を失い国民の人材便益も減る。代替は割高。制度"
+      }
+    },
+    {
+      "pid": "1674",
+      "name": "国立研究開発法人物質・材料研究機構設備整備費補助",
+      "ministry": "文部科学省",
+      "budgetAmount": 5173966400,
+      "execAmount": 2092568692,
+      "policyCategory": "rnd",
+      "designClarity": 8.0,
+      "evidenceReadiness": 9.33,
+      "budgetProportionality": 6.67,
+      "necessity": 7.0,
+      "axisIdentify": 96.0,
+      "axisPurpose": 83.8,
+      "policyFindings": {
+        "design": "設備整備から論文・特許・実装まで接続するが対象課題は広い",
+        "evidence": "論文・特許・許諾のアウトカム実績と出典がそろう",
+        "proportionality": "単価換算せず：継続設備整備で2件と年度予算が非対応。機構・メーカーへ支出",
+        "necessity": "研究者が共用設備を失い産業研究が停滞。民間代替は割高。技術"
+      }
+    },
+    {
+      "pid": "2400",
+      "name": "最低賃金引上げに向けた中小企業・小規模事業者支援事業",
+      "ministry": "厚生労働省",
+      "budgetAmount": 40818994000,
+      "execAmount": 24200951564,
+      "policyCategory": "sme",
+      "designClarity": 7.0,
+      "evidenceReadiness": 9.33,
+      "budgetProportionality": 8.33,
+      "necessity": 7.0,
+      "axisIdentify": 35.8,
+      "axisPurpose": 84.8,
+      "policyFindings": {
+        "design": "助成から賃上げ・全国平均まで接続するが因果は粗い",
+        "evidence": "賃上げ人数等のアウトカム実績・達成率・出典あり",
+        "proportionality": "執行242億円÷1万8601件＝約130万円/件。企業への直接助成が中心",
+        "necessity": "中小企業と低賃金労働者が助成を失う。融資等は割高。制度"
+      }
+    },
+    {
+      "pid": "2850",
+      "name": "地域介護・福祉空間整備等施設整備交付金等",
+      "ministry": "厚生労働省",
+      "budgetAmount": 16948292400,
+      "execAmount": 7889625000,
+      "policyCategory": "elderly_care",
+      "designClarity": 7.0,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 7.0,
+      "necessity": 8.0,
+      "axisIdentify": 70.5,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "施設・対策別に整備から利用者の安全まで接続",
+        "evidence": "登録アウトカム実績・達成率・出典あり",
+        "proportionality": "単価換算せず：複数対策・複数年度の総額で分母不一致",
+        "necessity": "施設利用者が防災・冷房を失う。代替は割高。制度"
+      }
+    },
+    {
+      "pid": "2957",
+      "name": "厚生労働科学研究費補助金(厚生労働行政推進調査事業費補助金を含む)",
+      "ministry": "厚生労働省",
+      "budgetAmount": 12274803504,
+      "execAmount": 11468213524,
+      "policyCategory": "rnd",
+      "designClarity": 8.33,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 6.67,
+      "necessity": 7.0,
+      "axisIdentify": 1.1,
+      "axisPurpose": 76.3,
+      "policyFindings": {
+        "design": "研究支援から行政課題解決まで多段接続",
+        "evidence": "登録アウトカム4件に実績・出典があり整合",
+        "proportionality": "122.7億円÷748件＝約0.16億円、その他78%で粗い",
+        "necessity": "国民が政策研究成果を失う。競争資金は同等。責任・裁量"
+      }
+    },
+    {
+      "pid": "3286",
+      "name": "持続的生産強化対策事業(2023年度は環境負荷軽減型持続的生産支援における調査等委託費を含む)",
+      "ministry": "農林水産省",
+      "budgetAmount": 15915735000,
+      "execAmount": 14875783000,
+      "policyCategory": "agriculture",
+      "designClarity": 9.0,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 5.33,
+      "necessity": 7.33,
+      "axisIdentify": 66.5,
+      "axisPurpose": 72.0,
+      "policyFindings": {
+        "design": "品目別支援から生産性・販売力まで多段接続",
+        "evidence": "登録アウトカム25件に実績、出典も多数",
+        "proportionality": "単価換算せず：多品目・多施策で総額と分母不一致",
+        "necessity": "農業者・消費者が生産基盤を失う。代替は不明。なし"
+      }
+    },
+    {
+      "pid": "3442",
+      "name": "山林施設災害復旧等事業",
+      "ministry": "林野庁",
+      "budgetAmount": 96666621000,
+      "execAmount": 39703123875,
+      "policyCategory": "disaster",
+      "designClarity": 5.0,
+      "evidenceReadiness": 3.33,
+      "budgetProportionality": 6.33,
+      "necessity": 9.0,
+      "axisIdentify": 55.9,
+      "axisPurpose": 87.4,
+      "policyFindings": {
+        "design": "復旧活動と成果は接続するが便益が抽象的",
+        "evidence": "登録は採択箇所の実績のみ、アウトカム実績なし",
+        "proportionality": "単価換算せず：災害復旧全体の総額で箇所数未確定",
+        "necessity": "住民・林業者が復旧と安全を失う。代替は割高。制度"
+      }
+    },
+    {
+      "pid": "3445",
+      "name": "漁港関係災害復旧等事業",
+      "ministry": "水産庁",
+      "budgetAmount": 17815866000,
+      "execAmount": 4833546000,
+      "policyCategory": "disaster",
+      "designClarity": 5.0,
+      "evidenceReadiness": 3.33,
+      "budgetProportionality": 7.0,
+      "necessity": 9.0,
+      "axisIdentify": 94.0,
+      "axisPurpose": 81.9,
+      "policyFindings": {
+        "design": "復旧から施設回復へ接続するが最終便益が浅い",
+        "evidence": "登録は採択箇所の実績のみ、アウトカム実績なし",
+        "proportionality": "単価換算せず：復旧全体の総額で採択箇所数未確定",
+        "necessity": "漁業者・沿岸住民が港湾安全を失う。代替は割高。制度"
+      }
+    },
+    {
+      "pid": "3522",
+      "name": "ポスト5G情報通信システム基盤強化研究開発事業(AI基盤モデル及び先端半導体関連技術開発事業)",
+      "ministry": "経済産業省",
+      "budgetAmount": 990178535000,
+      "execAmount": 990178535000,
+      "policyCategory": "rnd",
+      "designClarity": 8.67,
+      "evidenceReadiness": 7.67,
+      "budgetProportionality": 4.67,
+      "necessity": 7.33,
+      "axisIdentify": 100.0,
+      "axisPurpose": 70.0,
+      "policyFindings": {
+        "design": "研究開発から国内製造基盤まで多段で接続",
+        "evidence": "登録アウトカム実績・出典ありだが未測定指標多数",
+        "proportionality": "単価換算せず：基金追加交付で成果数量不明、基金に集中",
+        "necessity": "国内企業が先端技術基盤を失う。民間単独は割高。技術"
+      }
+    },
+    {
+      "pid": "3669",
+      "name": "中小企業取引対策事業",
+      "ministry": "経済産業省",
+      "budgetAmount": 4350116000,
+      "execAmount": 3127429000,
+      "policyCategory": "sme",
+      "designClarity": 9.0,
+      "evidenceReadiness": 9.33,
+      "budgetProportionality": 5.0,
+      "necessity": 8.0,
+      "axisIdentify": 99.8,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "取締り・相談・交渉支援から賃上げまで接続",
+        "evidence": "登録アウトカム実績・達成率・出典が整う",
+        "proportionality": "単価換算せず：複数業務の総額で数量不一致。委託先は調査会社中心",
+        "necessity": "中小企業が適正取引を失う。民間代替は割高。制度"
+      }
+    },
+    {
+      "pid": "3899",
+      "name": "国立研究開発法人新エネルギー・産業技術総合開発機構一般管理費(エネルギー需給勘定)",
+      "ministry": "経済産業省",
+      "budgetAmount": 6817320000,
+      "execAmount": 6817320000,
+      "policyCategory": "org_operation",
+      "designClarity": 5.33,
+      "evidenceReadiness": 2.67,
+      "budgetProportionality": 4.67,
+      "necessity": 4.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 70.0,
+      "policyFindings": {
+        "design": "研究管理業務は明確だが国民便益への接続が弱い",
+        "evidence": "登録は活動指標1件のみで成果実績なし",
+        "proportionality": "単価換算せず：一般管理費で数量不明。NEDO一者に68.2億円",
+        "necessity": "研究管理が停滞。法人統合・縮小が安い可能性。不明。制度"
+      }
+    },
+    {
+      "pid": "4032",
+      "name": "道路事業(直轄・改築等)",
+      "ministry": "国土交通省",
+      "budgetAmount": 1319438420763,
+      "execAmount": 897369998817,
+      "policyCategory": "road",
+      "designClarity": 7.0,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 5.0,
+      "necessity": 8.0,
+      "axisIdentify": 53.6,
+      "axisPurpose": 81.5,
+      "policyFindings": {
+        "design": "整備からミッシングリンク、速達性まで接続",
+        "evidence": "登録アウトカム実績・達成率・出典あり",
+        "proportionality": "単価換算せず：総額と新規開通80kmは対象不一致。その他42%",
+        "necessity": "地域住民・物流が道路網を失う。代替は割高。なし"
+      }
+    },
+    {
+      "pid": "4561",
+      "name": "都市防災関連事業",
+      "ministry": "国土交通省",
+      "budgetAmount": 10222775000,
+      "execAmount": 2887443000,
+      "policyCategory": "disaster",
+      "designClarity": 7.0,
+      "evidenceReadiness": 8.0,
+      "budgetProportionality": 7.0,
+      "necessity": 9.0,
+      "axisIdentify": 66.0,
+      "axisPurpose": 85.1,
+      "policyFindings": {
+        "design": "復旧・危険除去から安全回復まで接続",
+        "evidence": "登録アウトカム実績と出典あり、達成率は一部",
+        "proportionality": "単価換算せず：復旧・降灰等の複数事業。自治体配分、その他32%",
+        "necessity": "被災住民が復旧・安全を失う。自治体負担は割高。責任"
+      }
+    },
+    {
+      "pid": "5244",
+      "name": "車両更新(空自)",
+      "ministry": "防衛省",
+      "budgetAmount": 9561094048,
+      "execAmount": 8973662048,
+      "policyCategory": "defense",
+      "designClarity": 6.33,
+      "evidenceReadiness": 8.67,
+      "budgetProportionality": 8.0,
+      "necessity": 8.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 98.6,
+      "policyFindings": {
+        "design": "老朽車更新から基地の任務遂行能力へ接続",
+        "evidence": "アウトカム実績・達成率・出典あり",
+        "proportionality": "95.6億円÷160両＝約0.60億円/両。車両メーカー等へ配分",
+        "necessity": "部隊が機動性・安全運行を失う。民間調達は同等。責任"
+      }
+    },
+    {
+      "pid": "5309",
+      "name": "安全保障技術研究推進制度",
+      "ministry": "防衛省",
+      "budgetAmount": 10390844800,
+      "execAmount": 10174581995,
+      "policyCategory": "rnd",
+      "designClarity": 6.67,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 6.67,
+      "necessity": 7.0,
+      "axisIdentify": 89.6,
+      "axisPurpose": 99.7,
+      "policyFindings": {
+        "design": "公募・研究から成果獲得まで多段接続",
+        "evidence": "登録アウトカム実績・達成率・出典あり",
+        "proportionality": "単価換算せず：継続研究を含み契約25件と総額不一致。研究機関へ配分",
+        "necessity": "防衛研究の種を失う。他制度代替は不明。責任"
+      }
+    },
+    {
+      "pid": "5937",
+      "name": "石油ガス備蓄事業(うち国有資産所在市町村交付金(石油ガス分))",
+      "ministry": "経済産業省",
+      "budgetAmount": 1845628000,
+      "execAmount": 1845628000,
+      "policyCategory": "energy",
+      "designClarity": 5.0,
+      "evidenceReadiness": 3.0,
+      "budgetProportionality": 9.0,
+      "necessity": 7.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "交付活動から備蓄量へ接続するが国民便益は浅い",
+        "evidence": "登録は備蓄量の活動指標のみ、出典なし",
+        "proportionality": "18.5億円を5市へ法定交付、配分先明確",
+        "necessity": "立地市が交付金を失う。代替なし。制度"
+      }
+    },
+    {
+      "pid": "7135",
+      "name": "GXサプライチェーン構築支援事業",
+      "ministry": "経済産業省",
+      "budgetAmount": 54800000000,
+      "execAmount": 509030000,
+      "policyCategory": "industry_subsidy",
+      "designClarity": 9.0,
+      "evidenceReadiness": 5.0,
+      "budgetProportionality": 3.33,
+      "necessity": 5.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 56.9,
+      "policyFindings": {
+        "design": "対象技術・投資・製造能力まで多段接続",
+        "evidence": "採択件数等の実績はあるがアウトカム実績なし",
+        "proportionality": "執行5.1億円、事務局・再委託に集中。設備単価不明",
+        "necessity": "国内企業が投資支援を失う。民間投資は割高。市場"
+      }
+    },
+    {
+      "pid": "7159",
+      "name": "宇宙戦略基金事業",
+      "ministry": "経済産業省",
+      "budgetAmount": 100000000000,
+      "execAmount": 100000000000,
+      "policyCategory": "rnd",
+      "designClarity": 7.67,
+      "evidenceReadiness": 4.67,
+      "budgetProportionality": 5.67,
+      "necessity": 6.33,
+      "axisIdentify": 100.0,
+      "axisPurpose": 70.0,
+      "policyFindings": {
+        "design": "支援分野から技術開発・市場拡大へ接続",
+        "evidence": "採択実績はあるがアウトカム実績なし",
+        "proportionality": "1000億円をJAXA基金へ、23件配分だが残高大",
+        "necessity": "企業・大学が研究資金を失う。民間資金は割高。市場"
+      }
+    },
+    {
+      "pid": "7268",
+      "name": "クリーンエネルギー自動車導入促進補助金",
+      "ministry": "経済産業省",
+      "budgetAmount": 239098317000,
+      "execAmount": 49553522000,
+      "policyCategory": "environment",
+      "designClarity": 7.33,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 7.33,
+      "necessity": 5.0,
+      "axisIdentify": 68.3,
+      "axisPurpose": 70.1,
+      "policyFindings": {
+        "design": "購入支援から導入・電動車比率まで接続",
+        "evidence": "登録アウトカム実績・出典あり、概要と整合",
+        "proportionality": "495.5億円÷88,848台＝約55.8万円/台、配分追跡は粗い",
+        "necessity": "購入者が補助を失う。税制・民間負担で代替は同等。なし"
+      }
+    },
+    {
+      "pid": "7723",
+      "name": "ワクチン大規模臨床試験等支援事業",
+      "ministry": "厚生労働省",
+      "budgetAmount": 100800000000,
+      "execAmount": 100564061000,
+      "policyCategory": "rnd",
+      "designClarity": 8.0,
+      "evidenceReadiness": 8.0,
+      "budgetProportionality": 4.33,
+      "necessity": 8.0,
+      "axisIdentify": 100.0,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "試験支援から製造体制構築へ多段接続",
+        "evidence": "アウトカム実績はゼロだが登録・出典あり",
+        "proportionality": "1005.6億円を基金法人へ交付、最終配分不明",
+        "necessity": "国内企業が試験機会を失い備え低下。代替は割高。市場"
+      }
+    },
+    {
+      "pid": "19935",
+      "name": "宇宙戦略基金事業",
+      "ministry": "文部科学省",
+      "budgetAmount": 155000000000,
+      "execAmount": 155000000000,
+      "policyCategory": "rnd",
+      "designClarity": 8.67,
+      "evidenceReadiness": 5.0,
+      "budgetProportionality": 5.33,
+      "necessity": 6.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "支援分野から技術開発・市場拡大まで多段接続",
+        "evidence": "活動実績はあるが、アウトカム実績は未登録",
+        "proportionality": "単価換算せず：基金額と採択件数の期間・範囲不一致",
+        "necessity": "企業・大学が長期開発資金を失う。民間代替は割高。市場"
+      }
+    },
+    {
+      "pid": "20350",
+      "name": "医学系研究支援プログラム",
+      "ministry": "文部科学省",
+      "budgetAmount": 13383138000,
+      "execAmount": 13383138000,
+      "policyCategory": "rnd",
+      "designClarity": 9.0,
+      "evidenceReadiness": 9.67,
+      "budgetProportionality": 5.0,
+      "necessity": 7.0,
+      "axisIdentify": 100.0,
+      "axisPurpose": 40.0,
+      "policyFindings": {
+        "design": "研究者・大学を対象に支援から研究成果まで接続",
+        "evidence": "登録アウトカム13件に実績・出典あり",
+        "proportionality": "単価換算せず：研究者数・成果量不明、基金経由",
+        "necessity": "研究者が研究費を失う。代替は割高。責任"
+      }
+    },
+    {
+      "pid": "20948",
+      "name": "再生・細胞医療・遺伝子治療製造設備投資支援事業費補助金",
+      "ministry": "経済産業省",
+      "budgetAmount": 10003605000,
+      "execAmount": 0,
+      "policyCategory": "industry_subsidy",
+      "designClarity": 7.0,
+      "evidenceReadiness": 3.0,
+      "budgetProportionality": 5.33,
+      "necessity": 7.0,
+      "axisIdentify": 94.4,
+      "axisPurpose": 71.7,
+      "policyFindings": {
+        "design": "CDMO整備から国内製造実績まで接続",
+        "evidence": "登録は指標枠のみで実績値なし",
+        "proportionality": "単価換算せず：100億円と採択13社の期間不一致",
+        "necessity": "国内CDMOが整備機会を失い輸入依存。代替は割高。制度"
+      }
+    },
+    {
+      "pid": "20955",
+      "name": "ポスト5G情報通信システム基盤強化研究開発事業(量子コンピュータの産業化に向けた開発の加速事業)",
+      "ministry": "経済産業省",
+      "budgetAmount": 49498197000,
+      "execAmount": 49498197000,
+      "policyCategory": "rnd",
+      "designClarity": 9.0,
+      "evidenceReadiness": 3.0,
+      "budgetProportionality": 4.67,
+      "necessity": 6.33,
+      "axisIdentify": 100.0,
+      "axisPurpose": 100.0,
+      "policyFindings": {
+        "design": "開発支援から国際競争力・産業化まで多段接続",
+        "evidence": "実績は活動指標1件のみ、成果実績なし",
+        "proportionality": "単価換算せず：基金495億円と採択件数不明",
+        "necessity": "国内企業が量子開発支援を失う。民間代替は割高。技術"
+      }
+    },
+    {
+      "pid": "21007",
+      "name": "ポスト5G情報通信システム基盤強化研究開発事業(ロボティクス分野におけるソフトウェア基盤開発構築事業)",
+      "ministry": "経済産業省",
+      "budgetAmount": 10340000000,
+      "execAmount": 10340000000,
+      "policyCategory": "rnd",
+      "designClarity": 6.67,
+      "evidenceReadiness": 2.33,
+      "budgetProportionality": 4.67,
+      "necessity": 5.0,
+      "axisIdentify": 100.0,
+      "axisPurpose": 70.0,
+      "policyFindings": {
+        "design": "基盤開発から実用化率まで経路を設計",
+        "evidence": "登録指標に実績値がなく成果未検証",
+        "proportionality": "単価換算せず：103.4億円と成果数量不明",
+        "necessity": "ロボット開発者が共通基盤を失う。代替は不明。なし"
+      }
+    },
+    {
+      "pid": "21055",
+      "name": "子育てグリーン住宅支援事業",
+      "ministry": "国土交通省",
+      "budgetAmount": 175000000000,
+      "execAmount": 92000000,
+      "policyCategory": "environment",
+      "designClarity": 7.0,
+      "evidenceReadiness": 9.0,
+      "budgetProportionality": 4.0,
+      "necessity": 5.67,
+      "axisIdentify": 100.0,
+      "axisPurpose": 99.4,
+      "policyFindings": {
+        "design": "住宅支援から省エネ率・CO2削減まで接続",
+        "evidence": "登録アウトカム実績・出典あり、概要と整合",
+        "proportionality": "執行0.9億円、単価換算せず：補助件数不明",
+        "necessity": "対象世帯が省エネ補助を失う。規制代替は割高。制度"
+      }
+    },
+    {
+      "pid": "21124",
+      "name": "能登の創造的復興の支援に必要な経費",
+      "ministry": "内閣府",
+      "budgetAmount": 50000000000,
+      "execAmount": 50000000000,
+      "policyCategory": "disaster",
+      "designClarity": 5.67,
+      "evidenceReadiness": 8.0,
+      "budgetProportionality": 5.33,
+      "necessity": 8.33,
+      "axisIdentify": 100.0,
+      "axisPurpose": 40.0,
+      "policyFindings": {
+        "design": "復興課題は列挙されるが自由度の高い交付で経路が粗い",
+        "evidence": "アウトカム実績と出典あり、採択実績も確認可能",
+        "proportionality": "500億円÷採択1件は全体量と不一致、基金配分先も粗い",
+        "necessity": "被災住民・事業者が再建支援を失う。通常補助は割高。制度"
+      }
+    }
+  ]
+}

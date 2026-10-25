@@ -36,7 +36,7 @@ import { isOthersRowName, othersLabel, othersTitle } from '@/app/lib/others-coun
 import { ProjectDescription } from '@/client/components/ProjectDescription';
 import {
   AXIS_META, COL_DESC, UNUSED_TREND_META, WEIGHT_BY_KEY, STATUS_META,
-  RecommendationBadge, ActionBadge, fmtRaw,
+  RecommendationBadge, ActionBadge, fmtRaw, AI_EVALUATION_BADGE, AI_EVALUATION_NATURE,
 } from '@/client/components/quality/score-meta';
 
 /**
@@ -283,7 +283,7 @@ ${a.desc}`}>
                 <span><span className="text-mirai-text-muted">支出先数:</span><span className="tabular-nums">{!recipientsAvailable ? '未収録' : recipientsError ? '取得できません' : recipients?.length ?? '...'}</span></span>
                 <span><span className="text-mirai-text-muted">ブロック:</span>{item.blockCount}件</span>
                 {item.hasRedelegation && <span><span className="text-mirai-text-muted">深度:</span><span className="text-status-caution">{item.redelegationDepth}</span></span>}
-                {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">不透明:</span><span className="text-status-warn">{pct(item.opaqueRatio)}</span></span>}
+                {item.opaqueRatio !== null && item.opaqueRatio > 0 && <span><span className="text-mirai-text-muted">支出先の個別記載なし:</span><span className="text-status-warn">{pct(item.opaqueRatio)}</span></span>}
                 {item.identifyLevelAvg != null && <span><span className="text-mirai-text-muted">特定Lv</span> <span className="tabular-nums">{item.identifyLevelAvg.toFixed(1)}/3</span></span>}
                 {item.purposeLevelAvg != null && <span><span className="text-mirai-text-muted">使途Lv</span> <span className="tabular-nums">{item.purposeLevelAvg.toFixed(1)}/3</span></span>}
                 <span><span className="text-mirai-text-muted">valid</span> <span className="tabular-nums">{axis1Num}/{axis1Total}</span></span>
@@ -296,6 +296,8 @@ ${a.desc}`}>
               </div>
             </div>
           </div>
+          {/* 共有URLから直接来た人は LP の説明を読まないので、点数の性質を点数のすぐ下に常に出す */}
+          <p className="mt-1.5 text-[11px] lg:text-xs text-mirai-text-muted" title={AI_EVALUATION_NATURE}>{AI_EVALUATION_BADGE}。政府の公式評価ではありません。</p>
           </div>
           {/* みんなの意見（AIインタビューで集めた匿名意見）の別枠。点数と並べて、評価と市民の声を一緒に見られるようにする */}
           {desktop && (
@@ -400,7 +402,7 @@ ${a.desc}`}>
                   </div>
                   {policy.spendDownRisk && (
                     <div className="text-status-warn font-sans">
-                      ほぼ消化済だが支出先が不透明
+                      ほぼ消化済だが支出先の個別記載が少ない
                     </div>
                   )}
                 </div>
@@ -523,7 +525,7 @@ ${a.desc}`}>
                     {item.govAgencyCount > 0 && <span className="text-status-good">行政機関 {item.govAgencyCount}</span>}
                     {item.suppValidCount > 0 && <span className="text-primary">補助 {item.suppValidCount}</span>}
                     <span className="text-status-bad">invalid {item.invalidCount}</span>
-                    {item.opaqueRatio != null && item.opaqueRatio > 0 && <span className="text-status-warn">不透明 {pct(item.opaqueRatio)}</span>}
+                    {item.opaqueRatio != null && item.opaqueRatio > 0 && <span className="text-status-warn">支出先の個別記載なし {pct(item.opaqueRatio)}</span>}
                     <span>= {item.axisIdentify != null ? item.axisIdentify.toFixed(0) : "—"}点</span>
                   </div>
                 </div>
@@ -783,7 +785,7 @@ ${a.desc}`}>
                           <div className="flex items-center gap-1.5 min-w-0">
                             <span className="truncate flex-1">{isOthers ? othersLabel(row.n, othersCount) : row.n}</span>
                             {!row.o && <span title={sm.desc} className={`shrink-0 inline-block cursor-help px-1.5 py-0.5 rounded-md text-[11px] font-bold ${sm.cls}`}>{sm.label}</span>}
-                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-status-warn-bg text-status-warn-fg" title="支出先名が「その他」「〇〇等」など、相手を特定できない書き方にあたります（不透明キーワードに一致）">不透明</span>}
+                            {row.o && <span className="shrink-0 inline-block px-1.5 py-0.5 rounded-md text-[11px] font-bold bg-status-warn-bg text-status-warn-fg" title="支出先名が「その他」「〇〇等」など、相手を特定できない書き方にあたります（キーワードに一致）">個別記載なし</span>}
                           </div>
                         </td>
                         <td className="px-3 py-1.5 tabular-nums text-mirai-text-muted truncate" title={row.chain}>

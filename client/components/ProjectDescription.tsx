@@ -28,7 +28,7 @@ export function ProjectDescription({ detail, showSourceLink = true, sheetYear, s
     <div className={`flex flex-wrap gap-x-3 gap-y-1 text-mirai-text-muted ${large ? 'text-xs' : 'text-[10px]'}`}>
       {detail.category && <span>区分: {detail.category}</span>}
       {(detail.startYear || detail.startYearUnknown) && <span>開始: {detail.startYear ? `${detail.startYear}年度` : '不明'}</span>}
-      {years !== null && <span title="対象年度 − 開始年度 ＋ 1（評価一覧の継続年数と同じ）" className="font-bold text-mirai-text-secondary">継続年数: {years}年</span>}
+      {years !== null && <span title={`${sheetYear}年版シートの年度 − 開始年度 ＋ 1（評価一覧の継続年数と同じ）。実績の年度（${Number(sheetYear) - 1}年度）ではなく、シートの年度で数えています`} className="font-bold text-mirai-text-secondary">継続年数: {years}年（{sheetYear}年版シート時点）</span>}
       <span>終了: {detail.noEndDate ? '予定なし' : detail.endYear ? `${detail.endYear}年度` : '-'}</span>
       {detail.implementationMethods?.length > 0 && <span>実施方法: {detail.implementationMethods.join('・')}</span>}
       {showSourceLink && detail.url && /^https?:\/\//.test(detail.url) && <a href={detail.url} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline hover:text-primary-accent">事業概要URL ↗</a>}
