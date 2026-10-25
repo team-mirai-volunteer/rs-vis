@@ -266,13 +266,17 @@ const RIBBON_VISIBLE_COLS = 4;
 // SVG 内に描く列見出し（列名 + 合計の 2 行）がノード上端より上に出るぶんを確保する
 const RIBBON_FIT_TOP_RESERVE = 64;
 
+// 1 列（棒＋ラベル＋間隔）に最低限確保する画面 px。スマホ幅で 4 列を詰めると見出しの金額が重なり、
+// ラベルが金額だけになっていたため、これより狭いときは列を詰めずに横へはみ出させる（ドラッグで移動）
+const RIBBON_MIN_COL_PITCH_PX = 210;
+
 /**
- * ribbon図のフィット値を算出。横はフィット時に「可視幅に4列」となる横スケール、
+ * ribbon図のフィット値を算出。横はフィット時に「可視幅に4列」となる横スケール（1 列 RIBBON_MIN_COL_PITCH_PX 以上）、
  * 縦は高さフィット（baseZoom）。resetViewport と URL復元の両方から使い、式の二重化を防ぐ。
  */
 function computeRibbonFit(cW: number, cH: number, contentH: number): { horizontalScale: number; baseZoom: number } {
   return {
-    horizontalScale: (cW / RIBBON_VISIBLE_COLS) / (RIBBON_COL_W + RIBBON_COL_GAP),
+    horizontalScale: Math.max(cW / RIBBON_VISIBLE_COLS, RIBBON_MIN_COL_PITCH_PX) / (RIBBON_COL_W + RIBBON_COL_GAP),
     baseZoom: Math.max(0.05, Math.min(10, (Math.max(100, cH - RIBBON_FIT_TOP_RESERVE) / contentH) * 0.9)),
   };
 }
@@ -1343,7 +1347,8 @@ function SubcontractDetailPageInner() {
   const isNarrow = useIsNarrow();
   // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが開いている
   // ときだけ退避オフセットが必要（サンキーの left: selectedNodeId... と同じ流儀）
-  const leftFloatOffset = !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
+  // スマホ幅ではパネルが下からのシートになるので横の退避は要らない（退避すると画面の外に出ていた）
+  const leftFloatOffset = !sidePanel.collapsed && !isNarrow ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
@@ -2903,10 +2908,10 @@ function SubcontractDetailPageInner() {
         </div>
 
         {/* フォントサイズコントロール — 左下フローティング（サンキー流儀と同じ配置・操作感。
-            サイドパネルが左表示のときは退避） */}
+            サイドパネルが左表示のときは退避。スマホ幅では下のシートに隠れるので出さない） */}
         <div
           data-pan-disabled="true"
-          className="flex items-center rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 shadow-xs"
+          className="flex items-center rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 shadow-xs max-sm:hidden"
           style={{
             position: 'absolute',
             left: leftFloatOffset,
