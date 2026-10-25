@@ -288,8 +288,7 @@ export default function LandingPage() {
         {/* Diet questions */}
         <section id="questions" aria-labelledby="questions-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
-            {/* 説明と試案の注記が長いので、他の節（max-w-2xl）より広く取る。フルHD など広い画面ではさらに広げる */}
-            <div className="max-w-4xl 2xl:max-w-5xl">
+            <div className="max-w-2xl">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[3].label}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 id="questions-heading" className="text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
