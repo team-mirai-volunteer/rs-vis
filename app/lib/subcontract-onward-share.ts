@@ -1,5 +1,6 @@
 import type { SubcontractGraph } from '@/types/subcontract';
 import type { ContractMethodEntry } from '@/app/lib/contract-method';
+import { isOthersRowName } from '@/app/lib/others-count';
 
 /** 直接支出ブロックから 1 段先のブロック ID（参照フローと直接支出どうしは除く） */
 function firstHopBlocks(g: SubcontractGraph): Set<string> {
@@ -55,4 +56,33 @@ export function onwardKindBreakdown(g: SubcontractGraph, entries: readonly Contr
   const total = [...sums.values()].reduce((s, v) => s + v, 0);
   if (total <= 0) return [];
   return [...sums].map(([kind, v]) => ({ kind, share: v / total })).sort((a, b) => b.share - a.share);
+}
+
+/**
+ * 再委託先（originKind = subcontract のブロック）の支出先のうち、名前のある最大の相手と、
+ * 府省が「その他」とまとめた行の合計（金額・件数）。「最大は その他」では相手が分からないため分けて出す。
+ * 件数は各ブロックの othersCount（RS 公開 API の支出先の数から算出）を足す。1 つでも分からなければ null。
+ */
+export function largestSubcontractRecipients(g: SubcontractGraph): {
+  largest: { name: string; amount: number } | null;
+  others: { amount: number; count: number | null } | null;
+} {
+  let largest: { name: string; amount: number } | null = null;
+  let othersAmount = 0;
+  let othersCount: number | null = 0;
+  let hasOthers = false;
+  for (const b of g.blocks) {
+    if (b.originKind !== 'subcontract') continue;
+    let blockHasOthers = false;
+    for (const r of b.recipients ?? []) {
+      if (r.amount <= 0) continue;
+      if (isOthersRowName(r.name)) { othersAmount += r.amount; blockHasOthers = true; continue; }
+      if (!largest || r.amount > largest.amount) largest = { name: r.name, amount: r.amount };
+    }
+    if (blockHasOthers) {
+      hasOthers = true;
+      othersCount = othersCount !== null && b.othersCount ? othersCount + b.othersCount.n : null;
+    }
+  }
+  return { largest, others: hasOthers ? { amount: othersAmount, count: othersCount } : null };
 }

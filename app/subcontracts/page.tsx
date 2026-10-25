@@ -84,8 +84,9 @@ const COLUMN_DEFS: ReadonlyArray<{ key: SortKey; label: string; title: string; a
   { key: 'accountCategory', label: '会計区分', title: '一般会計・特別会計のどちらの予算か（両方にまたがる事業もあります）', align: 'left', tier: 'wide' },
   { key: 'budget', label: '予算額', title: '歳出予算現額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
   { key: 'execution', label: '執行額', title: '実際に執行された額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
-  { key: 'directExpenseTotal', label: '直接支出合計', title: '事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません', align: 'right', tier: 'wide' },
-  { key: 'totalExpense', label: '支出額合計', title: '全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります', align: 'right', tier: 'base' },
+  { key: 'directExpenseTotal', label: '直接支出合計', title: '事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません', align: 'right', tier: 'base' },
+  // 支出額合計は二重計上を含むので既定では出さない（列メニューで表示できる）。既定は直接支出合計
+  { key: 'totalExpense', label: '支出額合計', title: '全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります', align: 'right' },
   { key: 'subcontractShare', label: '再委託率', title: '直接支出のうち、直接の支出先からさらに先のブロック（再委託先）へ流れた額の割合。ここでの再委託は資金のつながりで、補助金の再交付・支出委任なども含みます（種類の内訳は事業の詳細に出します）', align: 'right', tier: 'base' },
   { key: 'totalMinusDirect', label: '支出額合計 − 直接支出合計', title: '支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）', align: 'right' },
   { key: 'executionMinusDirect', label: '執行額 − 直接支出合計', title: '執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり', align: 'right' },

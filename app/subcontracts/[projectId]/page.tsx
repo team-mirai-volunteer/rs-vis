@@ -21,7 +21,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  */
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, type CSSProperties } from 'react';
 import { lastSubcontractsListUrl } from '@/client/lib/subcontracts-list-url';
-import { onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
+import { largestSubcontractRecipients, onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
 import { createPortal } from 'react-dom';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -88,6 +88,15 @@ import { truncateName, Ellipsis } from '@/client/components/unified-budget/sanke
 
 // サイドパネルの既定幅。タブ一覧の支出先名・金額が詰まらないよう、サンキー（400）より少しだけ広く取る。最小/最大はサンキーと共通の値を使う
 const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 410;
+
+/** 再委託サマリの「最大は 〜（金額）」と「その他 N件（金額）」。最大の相手は「その他」行を除いて選ぶ */
+function largestParts(g: SubcontractGraph): string[] {
+  const { largest, others } = largestSubcontractRecipients(g);
+  const out: string[] = [];
+  if (largest) out.push(`最大は ${largest.name}（${formatYen(largest.amount)}）`);
+  if (others) out.push(`その他${others.count !== null ? ` ${others.count.toLocaleString()}件` : ''}（${formatYen(others.amount)}）`);
+  return out;
+}
 
 const COLOR_BACK_EDGE = 'rgba(217,69,69,0.65)';
 const COLOR_DIRECT_BODY = '#f8d3d3';
@@ -596,7 +605,8 @@ function SidePane({
             {/* 支出の内訳。図に現れる分（支出先ブロック）と現れない分（間接経費）を明示する。
                 出典が別（5-1 ブロック支出 / 2-1 執行額）で合計は支出額に一致しないため、
                 式ではなく併記に留める */}
-            {(graph.directExpenseTotal > 0 || indirect.total > 0) && (
+            {/* 支出先の合計が支出額と同じ表示になるとき（大半の事業）は同じ数字が 2 回並ぶので出さない */}
+            {((graph.directExpenseTotal > 0 && formatYen(graph.directExpenseTotal) !== formatYen(graph.execution)) || indirect.total > 0) && (
               <div className="mt-1 text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
                 支出先 {graph.directExpenseTotal > 0 ? formatYen(graph.directExpenseTotal) : '—'}
                 {indirect.total > 0 && <> ／ 間接経費 {formatYen(indirect.total)}</>}
@@ -650,22 +660,19 @@ function SidePane({
         {(() => {
           const onward = onwardShare(graph).share;
           const share = onward === null ? null : Math.round(onward * 100);
-          const largest = graph.blocks
-            .filter(b => b.originKind === 'subcontract' && b.totalAmount > 0)
-            .sort((a, b) => b.totalAmount - a.totalAmount)[0];
-          const largestName = largest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const parts: string[] = [];
           parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
           if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が再委託先へ`);
           // 「再委託」は 5-2 の資金のつながり全体を指す呼び名で、契約上の再委託とは限らない。種類の内訳を契約方式から添える
           const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
-          if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
+          parts.push(...largestParts(graph));
           // 種類の内訳は 1 行要約に混ぜると読みにくいので、行を分けて出す
           const kindText = kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join(' / ');
           return (
             <>
               <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join(' / ')}</p>
-              {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>内訳: {kindText}</p>}
+              {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}
+                title="再委託先のブロックの契約方式から分けています。「種別の記載なし」は、府省が契約方式を「その他」とだけ記載し、補足の記述も無いものです">内訳: {kindText}</p>}
             </>
           );
         })()}
@@ -674,13 +681,11 @@ function SidePane({
           const pctOf = (g: typeof graph) => { const s = onwardShare(g).share; return s === null ? null : Math.round(s * 100); };
           const prevShare = pctOf(prevGraph);
           const curShare = pctOf(graph);
-          const prevLargest = prevGraph.blocks.filter(b => b.originKind === 'subcontract' && b.totalAmount > 0).sort((a, b) => b.totalAmount - a.totalAmount)[0];
-          const prevLargestName = prevLargest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
           const parts = [
             `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
             prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
-            prevLargestName ? `最大は ${prevLargestName}（${formatYen(prevLargest.totalAmount)}）` : '再委託なし',
+            ...(prevGraph.maxDepth >= 2 ? largestParts(prevGraph) : ['再委託なし']),
           ].filter(Boolean);
           return (
             <p className="mt-0.5 leading-relaxed text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }} title="前年度（2023 年度実績）の同じ事業の委託構造との比較">
@@ -1547,8 +1552,12 @@ function SubcontractDetailPageInner() {
       .then((data: { evaluation?: PolicyEvaluation } | null) => {
         if (controller.signal.aborted) return;
         const e = data?.evaluation;
+        // パネル幅を広げたので、サンキー図の事業パネルと同じく 5 軸すべてを出す
         setPolicyView(e ? {
           overall: e.overallScore,
+          designClarity: e.designClarityScore,
+          evidence: e.evidenceScore,
+          transparency: e.executionTransparency,
           proportionality: e.proportionalityScore,
           necessity: e.necessityScore,
           recommendation: e.recommendation,
