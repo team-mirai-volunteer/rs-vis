@@ -555,15 +555,17 @@ function SidePane({
 
   // タブ定義。フローを入口（初期選択）に置く。
   // 支出先はブロック未選択なら事業全体、選択中はそのブロック内訳を出す。
-  // 間接経費は0件でも押せるようにする（「無い」ことも情報。図に現れない支出の唯一の受け皿）。
+  // 間接経費は記載のある事業だけタブを出す（0件の事業が8割強あり、空のタブは並べない）。
   // 予算・執行はサンキー図の詳細パネルと同じく上の要約ではなくタブに置く（上部が長くなりタブの中身が見えなくなるため）。
   const tabs: Array<{ key: PaneTab; label: string; count?: number; disabled?: boolean }> = [
     { key: 'flow', label: 'フロー', count: graph.flows.length },
     { key: 'blocks', label: 'ブロック', count: graph.blocks.length },
     { key: 'budget', label: '予算', count: graph.budgetBreakdown?.length ?? 0 },
     { key: 'recipients', label: '支出先', count: block ? block.recipients.length : graph.totalRecipientCount },
-    { key: 'indirect-cost', label: '間接経費', count: indirectCount },
+    ...(indirectCount > 0 ? [{ key: 'indirect-cost' as const, label: '間接経費', count: indirectCount }] : []),
   ];
+  // 共有 URL などで 0 件の間接経費タブが指定されていたら、フローを出す
+  const shownTab: PaneTab = activeTab === 'indirect-cost' && indirectCount === 0 ? 'flow' : activeTab;
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
@@ -657,10 +659,14 @@ function SidePane({
           if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が再委託先へ`);
           // 「再委託」は 5-2 の資金のつながり全体を指す呼び名で、契約上の再委託とは限らない。種類の内訳を契約方式から添える
           const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
-          if (kinds.length > 0) parts.push(`内訳 ${kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join('・')}`);
           if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
+          // 種類の内訳は 1 行要約に混ぜると読みにくいので、行を分けて出す
+          const kindText = kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join('・');
           return (
-            <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+            <>
+              <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+              {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>内訳: {kindText}</p>}
+            </>
           );
         })()}
         {/* 年度比較: 前年度の同じ事業との違い（段数・再委託先への割合・最大の再委託先）。2024 年度実績を見ているときだけ */}
@@ -718,7 +724,7 @@ function SidePane({
       {/* タブヘッダー */}
       <div className="flex border-b border-border bg-card" role="tablist">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive = shownTab === tab.key;
           const isDisabled = tab.disabled;
           return (
             <Button
@@ -748,7 +754,7 @@ function SidePane({
 
       {/* タブ本体 — ここだけがスクロールする（ヘッダ・タブは固定） */}
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {activeTab === 'flow' && (
+        {shownTab === 'flow' && (
           <>
             <div className="mb-2 flex items-baseline justify-between">
               <div className="text-[11px] text-mirai-text-subtle">{filteredFlows.length.toLocaleString()}本 / {graph.flows.length.toLocaleString()}本</div>
@@ -811,7 +817,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'blocks' && (
+        {shownTab === 'blocks' && (
           <>
             <div className="mb-2 text-[11px] text-mirai-text-subtle">
               {filteredBlocks.length.toLocaleString()}件 / {graph.blocks.length.toLocaleString()}件
@@ -864,7 +870,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'recipients' && (
+        {shownTab === 'recipients' && (
           <>
             {!block && (
               <>
@@ -1005,7 +1011,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'budget' && (
+        {shownTab === 'budget' && (
           // 予算・執行（共有コンポーネント。メイン画面と同一の会計集計・歳出項目カード表示）。タブ内なので見出しと内部スクロールは省く
           <BudgetExecutionSection
             budgetSummary={graph.budgetSummary}
@@ -1015,7 +1021,7 @@ function SidePane({
           />
         )}
 
-        {activeTab === 'indirect-cost' && (
+        {shownTab === 'indirect-cost' && (
           <>
             <div className="mb-2 text-[11px] text-mirai-text-subtle">
               国自らが支出する間接経費 {indirectCount.toLocaleString()}件
