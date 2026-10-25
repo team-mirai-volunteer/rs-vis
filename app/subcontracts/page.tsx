@@ -86,7 +86,7 @@ const COLUMN_DEFS: ReadonlyArray<{ key: SortKey; label: string; title: string; a
   { key: 'execution', label: '執行額', title: '実際に執行された額の合計（レビューシート 2-1）', align: 'right', tier: 'base' },
   { key: 'directExpenseTotal', label: '直接支出合計', title: '事業（国）から直接支払ったブロックの金額の合計（レビューシート 5-1）。再委託先への支払いは含みません', align: 'right', tier: 'wide' },
   { key: 'totalExpense', label: '支出額合計', title: '全ブロックの金額の合計。再委託先（B・C…）への支払いも足すので、同じお金を二重に数えることがあります', align: 'right', tier: 'base' },
-  { key: 'subcontractShare', label: 'その先への割合', title: '直接支出のうち、直接の支出先からさらに先のブロック（再委託・補助金の再交付・支出委任など）へ流れた額の割合。契約上の再委託とは限りません', align: 'right', tier: 'base' },
+  { key: 'subcontractShare', label: '再委託率', title: '直接支出のうち、直接の支出先からさらに先のブロック（再委託先）へ流れた額の割合。ここでの再委託は資金のつながりで、補助金の再交付・支出委任なども含みます（種類の内訳は事業の詳細に出します）', align: 'right', tier: 'base' },
   { key: 'totalMinusDirect', label: '支出額合計 − 直接支出合計', title: '支出額合計 − 直接支出合計（再委託・別財源など下流ブロック分）', align: 'right' },
   { key: 'executionMinusDirect', label: '執行額 − 直接支出合計', title: '執行額(2-1) − 直接支出合計(5-1)。間接経費分とほぼ一致するケースあり', align: 'right' },
   { key: 'totalBlockCount', label: 'ブロック', title: 'ブロック（同じ役割の支出先のまとまり。A・B・C…）の数', align: 'right', tier: 'wide' },
@@ -728,7 +728,7 @@ function SubcontractsPageInner() {
         if (share === null) return dash;
         const pct = Math.round(share * 100);
         return (
-          <div className="flex items-center gap-1.5" title={`直接支出 ${formatYen(g.directExpenseTotal)} のうち、その先へ ${formatYen(onwardShare(g).amount)}`}>
+          <div className="flex items-center gap-1.5" title={`直接支出 ${formatYen(g.directExpenseTotal)} のうち、再委託先へ ${formatYen(onwardShare(g).amount)}`}>
             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mirai-surface-light">
               <div className={cn('h-full rounded-full', pct >= 50 ? 'bg-status-warn' : 'bg-primary')} style={{ width: `${pct}%` }} />
             </div>

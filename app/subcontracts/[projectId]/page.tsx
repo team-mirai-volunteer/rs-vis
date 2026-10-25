@@ -21,7 +21,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  */
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, type CSSProperties } from 'react';
 import { lastSubcontractsListUrl } from '@/client/lib/subcontracts-list-url';
-import { onwardShare } from '@/app/lib/subcontract-onward-share';
+import { onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
 import { createPortal } from 'react-dom';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -665,9 +665,11 @@ function SidePane({
             .sort((a, b) => b.totalAmount - a.totalAmount)[0];
           const largestName = largest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const parts: string[] = [];
-          parts.push(graph.maxDepth >= 2 ? `その先への支出は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : 'その先への支出なし（直接支出のみ）');
-          // 先のブロックは契約上の再委託とは限らない（補助金の再交付・支出委任なども 5-2 では同じ形で並ぶ）
-          if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% がさらに先へ（再委託・補助金の再交付など）`);
+          parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
+          if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が再委託先へ`);
+          // 「再委託」は 5-2 の資金のつながり全体を指す呼び名で、契約上の再委託とは限らない。種類の内訳を契約方式から添える
+          const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
+          if (kinds.length > 0) parts.push(`内訳 ${kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join('・')}`);
           if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
           return (
             <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
@@ -683,7 +685,7 @@ function SidePane({
           const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
           const parts = [
             `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
-            prevShare !== null ? `その先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
+            prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
             prevLargestName ? `最大は ${prevLargestName}（${formatYen(prevLargest.totalAmount)}）` : '再委託なし',
           ].filter(Boolean);
           return (
