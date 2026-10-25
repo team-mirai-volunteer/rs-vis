@@ -613,6 +613,20 @@ function SidePane({
         </div>
       </div>
 
+      {/* みんなの意見（AIインタビューで集めた匿名意見）。パネルの一番上（事業名のすぐ下）に置く。Supabase 未配布環境では描かれない */}
+      <ProjectComments
+        context={{
+          pid: String(graph.projectId),
+          year: String(year),
+          projectName: graph.projectName,
+          ministry: graph.ministry,
+          detail: projectDetail,
+          budget: graph.budget,
+          execution: graph.execution,
+        }}
+        scaleFont={scaleFont}
+      />
+
       {/* 事業概要（共有コンポーネント。メイン画面と同一のプレビュー＋展開詳細） */}
       {projectDetail && (
         <ProjectOverviewSection
@@ -681,20 +695,6 @@ function SidePane({
           )}
         </div>
       </div>
-
-      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-      <ProjectComments
-        context={{
-          pid: String(graph.projectId),
-          year: String(year),
-          projectName: graph.projectName,
-          ministry: graph.ministry,
-          detail: projectDetail,
-          budget: graph.budget,
-          execution: graph.execution,
-        }}
-        scaleFont={scaleFont}
-      />
 
       {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
       <PolicyEvaluationBlock
