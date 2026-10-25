@@ -45,7 +45,7 @@ test('LP key disclosures remain visible without opening an individual insight', 
   const bid = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'RSに記載された競争入札では、1者応札が48%' }) });
   await expect(bid).toContainText('応札者数の記載がある16,948件');
   await page.locator('#insights > div > details > summary').click();
-  const broker = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /事務局への支出は3,027億円/ }) });
+  const broker = page.getByRole('article').filter({ has: page.getByRole('heading', { name: /事務局として経由する支出は3,027億円/ }) });
   await expect(broker.getByText(/補助金本体を含む支出額で、事務局の手数料ではない/)).toBeVisible();
   const audit = page.getByRole('article').filter({ has: page.getByRole('heading', { name: '外部の検査結果と、独自基準のAI評価を別々に確かめられる' }) });
   await expect(audit.getByText('91事業', { exact: true })).toBeVisible();
