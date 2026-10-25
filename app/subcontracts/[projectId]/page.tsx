@@ -86,8 +86,8 @@ import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import { truncateName, Ellipsis } from '@/client/components/unified-budget/sankey-label';
 
-// サイドパネルの既定幅。タブ一覧の支出先名・金額が詰まらないよう、サンキー（400）より広めに取る。最小/最大はサンキーと共通の値を使う
-const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 440;
+// サイドパネルの既定幅。タブ一覧の支出先名・金額が詰まらないよう、サンキー（400）より少しだけ広く取る。最小/最大はサンキーと共通の値を使う
+const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 410;
 
 const COLOR_BACK_EDGE = 'rgba(217,69,69,0.65)';
 const COLOR_DIRECT_BODY = '#f8d3d3';
