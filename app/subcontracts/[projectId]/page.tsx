@@ -21,7 +21,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  */
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, type CSSProperties } from 'react';
 import { lastSubcontractsListUrl } from '@/client/lib/subcontracts-list-url';
-import { largestSubcontractRecipients, onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
+import { largestSubcontractRecipients, onwardKindBreakdown, onwardKindByBlock, onwardShare, ONWARD_KIND_TAG, type OnwardKind } from '@/app/lib/subcontract-onward-share';
 import { createPortal } from 'react-dom';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -90,6 +90,16 @@ import { truncateName, Ellipsis } from '@/client/components/unified-budget/sanke
 const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 410;
 
 /** 再委託サマリの「最大は 〜（金額）」と「その他 N件（金額）」。最大の相手は「その他」行を除いて選ぶ */
+/**
+ * ブロックのタグの呼び名。再委託ブロックは契約方式から「再委託」（委託・請負）／「補助・交付」／「支出委任等」／「種別不明」に分ける。
+ * 契約方式の行が無いブロックは「再委託」のまま
+ */
+function blockTagLabel(kindByBlock: ReadonlyMap<string, OnwardKind>, blockId: string, originKind: BlockOriginKind): string {
+  if (originKind !== 'subcontract') return originKindLabel(originKind);
+  const k = kindByBlock.get(blockId);
+  return k ? ONWARD_KIND_TAG[k] : '再委託';
+}
+
 function largestParts(g: SubcontractGraph): string[] {
   const { largest, others } = largestSubcontractRecipients(g);
   const out: string[] = [];
@@ -565,6 +575,7 @@ function SidePane({
 
   // 間接経費（支出先ブロックを持たない＝フロー図の終端ノードに載る分）は親から受け取る
   const indirectCount = indirect.count;
+  const kindByBlock = onwardKindByBlock(graph, contractEntries ?? []);
 
   // タブ定義。フローを入口（初期選択）に置く。
   // 支出先はブロック未選択なら事業全体、選択中はそのブロック内訳を出す。
@@ -666,7 +677,7 @@ function SidePane({
           const share = onward === null ? null : Math.round(onward * 100);
           const parts: string[] = [];
           parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
-          if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が再委託先へ`);
+          if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が次の支出先へ`);
           // 「再委託」は 5-2 の資金のつながり全体を指す呼び名で、契約上の再委託とは限らない。種類の内訳を契約方式から添える
           const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
           parts.push(...largestParts(graph));
@@ -676,7 +687,7 @@ function SidePane({
             <>
               <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join(' / ')}</p>
               {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}
-                title="再委託先のブロックの契約方式から分けています。「種別の記載なし」は、府省が契約方式を「その他」とだけ記載し、補足の記述も無いものです">内訳: {kindText}</p>}
+                title="再委託先のブロックの契約方式から分けています（委託・請負／補助・交付／支出委任等／種別不明）。「種別不明」は、府省が契約方式を「その他」とだけ記載し、補足の記述も無いものです">内訳: {kindText}</p>}
             </>
           );
         })()}
@@ -688,7 +699,7 @@ function SidePane({
           const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
           const parts = [
             `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
-            prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
+            prevShare !== null ? `次の支出先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
             ...(prevGraph.maxDepth >= 2 ? largestParts(prevGraph) : ['再委託なし']),
           ].filter(Boolean);
           return (
@@ -704,7 +715,12 @@ function SidePane({
         </div>
         <div className="mt-1.5 flex flex-wrap gap-[5px]">
           <TagChip kind="direct" fontSize={PANEL_META_FONT_PX}>直接 {graph.directBlockCount}</TagChip>
-          <TagChip kind="subcontract" fontSize={PANEL_META_FONT_PX}>再委託 {Math.max(0, graph.totalBlockCount - graph.directBlockCount - graph.separateOriginCount)}</TagChip>
+          {/* 再委託ブロックは種類ごとに件数を出す（補助・交付を「再委託」と数えない） */}
+          {(() => {
+            const counts = new Map<string, number>();
+            for (const b of graph.blocks) if (b.originKind === 'subcontract') { const l = blockTagLabel(kindByBlock, b.blockId, b.originKind); counts.set(l, (counts.get(l) ?? 0) + 1); }
+            return [...counts].map(([l, n]) => <TagChip key={l} kind="subcontract" fontSize={PANEL_META_FONT_PX}>{l} {n}</TagChip>);
+          })()}
           {graph.separateOriginCount > 0 && (
             <TagChip kind="separate-origin" fontSize={PANEL_META_FONT_PX}>別財源 {graph.separateOriginCount}</TagChip>
           )}
@@ -820,6 +836,7 @@ function SidePane({
                   graph={graph}
                   onSelectBlock={onSelectBlock}
                   scaleFont={scaleFont}
+                  kindByBlock={kindByBlock}
                 />
               ));
             })()}
@@ -874,6 +891,7 @@ function SidePane({
                 onClick={() => onSelectBlock(b)}
                 selected={block?.blockId === b.blockId}
                 scaleFont={scaleFont}
+                kindByBlock={kindByBlock}
               />
             ))}
           </>
@@ -932,7 +950,7 @@ function SidePane({
                       <div className="flex w-full min-w-0 items-center gap-1.5">
                         {/* 種別バッジの色は意味色（直接=赤 / 再委託=橙 / 別財源=紫） */}
                         <span className="shrink-0 rounded-full px-1.5 text-[10px] font-bold" style={{ background: badge.bg, color: badge.fg }}>
-                          {originKindLabel(originKind)}
+                          {blockTagLabel(kindByBlock, blockId, originKind)}
                         </span>
                         {/* 契約方式（RS 公開 API との突き合わせ）。1者応札・随意契約が委託の深さと一緒に読める */}
                         {(() => {
@@ -957,7 +975,7 @@ function SidePane({
                       const badge = originKindBadgeColor(block.originKind);
                       return (
                         <span className="shrink-0 rounded-md px-1.5 py-px text-[10px] font-bold" style={{ background: badge.bg, color: badge.fg }}>
-                          {originKindLabel(block.originKind)}
+                          {blockTagLabel(kindByBlock, block.blockId, block.originKind)}
                         </span>
                       );
                     })()}
@@ -1073,9 +1091,9 @@ function SidePane({
   );
 }
 
-function BlockListRow({ block, graph, selected, onClick, scaleFont }: { graph: SubcontractGraph; block: BlockNode; selected: boolean; onClick: () => void; scaleFont: (px: number) => number }) {
+function BlockListRow({ block, graph, selected, onClick, scaleFont, kindByBlock }: { graph: SubcontractGraph; block: BlockNode; selected: boolean; onClick: () => void; scaleFont: (px: number) => number; kindByBlock: ReadonlyMap<string, OnwardKind> }) {
   const badge = originKindBadgeColor(block.originKind);
-  const badgeText = originKindLabel(block.originKind);
+  const badgeText = blockTagLabel(kindByBlock, block.blockId, block.originKind);
   const PANEL_LIST_NAME_FONT_PX = scaleFont(PANEL_LIST_NAME_FONT_PX_DEFAULT);
   const PANEL_LIST_VALUE_FONT_PX = scaleFont(PANEL_LIST_VALUE_FONT_PX_DEFAULT);
   const PANEL_META_FONT_PX = scaleFont(PANEL_META_FONT_PX_DEFAULT);
@@ -1116,8 +1134,9 @@ function BlockListRow({ block, graph, selected, onClick, scaleFont }: { graph: S
  * 合流（対象へ複数ブロックから流入）のときは起点が複数行になり、視認性を高める。
  */
 function FlowGroupRow({
-  targetBlockId, incoming, graph, onSelectBlock, scaleFont,
+  targetBlockId, incoming, graph, onSelectBlock, scaleFont, kindByBlock,
 }: {
+  kindByBlock: ReadonlyMap<string, OnwardKind>;
   targetBlockId: string;
   incoming: BlockEdge[];
   graph: SubcontractGraph;
@@ -1152,7 +1171,7 @@ function FlowGroupRow({
           <div key={`${f.sourceBlock ?? 'root'}-${i}`} className="flex min-w-0 items-center gap-[5px] text-mirai-text-subtle" style={{ fontSize: META_PX }}>
             {/* 起点種別バッジの色は意味色（直接=赤 / 再委託=橙 / 別財源=紫 / 移替・参考=グレー） */}
             <span className="shrink-0 rounded-full px-1.5 font-bold" style={{ background: badge.bg, color: badge.fg, fontSize: Math.max(9, META_PX - 1) }}>
-              {flowOriginLabel(f.origin)}
+              {f.origin === 'subcontract' ? blockTagLabel(kindByBlock, targetBlockId, 'subcontract') : flowOriginLabel(f.origin)}
             </span>
             {src ? (
               <Button
@@ -1312,6 +1331,8 @@ function SubcontractDetailPageInner() {
     }
     return flags;
   }, [contractEntries]);
+  // 再委託ブロックの種類（ブロック図のカード見出しの呼び名に使う）
+  const kindByBlockMain = useMemo(() => graph ? onwardKindByBlock(graph, contractEntries ?? []) : new Map<string, OnwardKind>(), [graph, contractEntries]);
   const [projectDetail, setProjectDetail] = useState<ProjectDetail | null>(null);
   const [orgChain, setOrgChain] = useState<string[]>([]);
   // undefined = fetch中（ブロックは非表示）、null = スコアなし確定。メイン画面と同じ作法
@@ -2143,7 +2164,7 @@ function SubcontractDetailPageInner() {
               const recipients = lb.node.recipients;
               const topRecipients = sortRecipients(recipients, 'amount-desc').slice(0, 3);
               const selectedStroke = palette.selectedStroke;
-              const headerKindLabel = palette.badgeText;
+              const headerKindLabel = lb.originKind === 'subcontract' ? blockTagLabel(kindByBlockMain, lb.blockId, lb.originKind) : palette.badgeText;
               // ボディ枠: 既定は控えめなグレー、ホバーでアクセント色、選択時は強調色
               const bodyBorderColor = isSelected ? selectedStroke : (isHovered ? nodeColor : CARD_BORDER_NEUTRAL);
 

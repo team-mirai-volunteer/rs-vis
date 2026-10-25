@@ -21,16 +21,16 @@ test('再委託率は直接支出に対する 1 段先の額の割合（2 段目
 });
 
 test('契約方式から再委託の種類を分ける', () => {
-  assert.equal(onwardKind({ m: 'subsidy' }), '補助・交付金');
+  assert.equal(onwardKind({ m: 'subsidy' }), '補助・交付');
   assert.equal(onwardKind({ m: 'open-tendering-lowest-price' }), '委託・請負');
-  assert.equal(onwardKind({ m: 'others', mt: '支出委任' }), '支出委任・その他');
-  assert.equal(onwardKind({ m: 'others', mt: '交付金交付' }), '補助・交付金');
+  assert.equal(onwardKind({ m: 'others', mt: '支出委任' }), '支出委任等');
+  assert.equal(onwardKind({ m: 'others', mt: '交付金交付' }), '補助・交付');
   assert.equal(onwardKind({ m: 'others', mt: '再委託' }), '委託・請負');
-  assert.equal(onwardKind({ m: 'others' }), '種別の記載なし');
+  assert.equal(onwardKind({ m: 'others' }), '種別不明');
 });
 
 test('内訳は 1 段先のブロックの契約だけを金額で按分する', () => {
   const e = (b: string, a: number, m: ContractMethodEntry['m'], mt?: string): ContractMethodEntry => ({ b, n: 'x', cn: '', a, m, ...(mt ? { mt } : {}) });
   const kinds = onwardKindBreakdown(graph, [e('A', 100, 'subsidy'), e('B', 45, 'others', '支出委任'), e('B', 15, 'open-tendering-lowest-price'), e('C', 50, 'subsidy')]);
-  assert.deepEqual(kinds, [{ kind: '支出委任・その他', share: 0.75 }, { kind: '委託・請負', share: 0.25 }]);
+  assert.deepEqual(kinds, [{ kind: '支出委任等', share: 0.75 }, { kind: '委託・請負', share: 0.25 }]);
 });
