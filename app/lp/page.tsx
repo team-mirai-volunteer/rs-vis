@@ -296,7 +296,7 @@ export default function LandingPage() {
                 <AnchorLink id="questions" label="国会質問の試案" />
               </div>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体は<span className="cursor-help underline decoration-dotted underline-offset-4" title="政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する">チームみらいの実際の質疑の型</span>に揃えています。
+                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。<br />文体は<span className="cursor-help underline decoration-dotted underline-offset-4" title="政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する">チームみらいの実際の質疑の型</span>に揃えています。
               </p>
               <p className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm leading-relaxed">
                 <span className="font-bold">これは試案です。</span>
