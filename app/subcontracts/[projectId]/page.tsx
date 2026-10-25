@@ -21,7 +21,7 @@ import { fiscalYear, fiscalYearLabel, sheetYearFromParams, rsViewUrl } from '@/a
  */
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense, type CSSProperties } from 'react';
 import { lastSubcontractsListUrl } from '@/client/lib/subcontracts-list-url';
-import { onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
+import { largestSubcontractRecipients, onwardKindBreakdown, onwardShare } from '@/app/lib/subcontract-onward-share';
 import { createPortal } from 'react-dom';
 import { ScoreDetailDialog } from '@/client/components/quality/ScoreDetailDialog';
 import type { QualityScoreItem } from '@/app/api/quality-scores/route';
@@ -86,8 +86,17 @@ import { createScaleFont, defaultBaseFontPxForWidth } from '@/app/lib/font-scale
 import { FontSizeControls } from '@/client/components/SankeySvg/FontSizeControls';
 import { truncateName, Ellipsis } from '@/client/components/unified-budget/sankey-label';
 
-// サイドパネルの既定幅は現状の SidePane 固定幅(390)を維持。最小/最大はサンキーと共通の値を使う
-const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 390;
+// サイドパネルの既定幅。タブ一覧の支出先名・金額が詰まらないよう、サンキー（400）より少しだけ広く取る。最小/最大はサンキーと共通の値を使う
+const SUBCONTRACT_PANEL_WIDTH_DEFAULT = 410;
+
+/** 再委託サマリの「最大は 〜（金額）」と「その他 N件（金額）」。最大の相手は「その他」行を除いて選ぶ */
+function largestParts(g: SubcontractGraph): string[] {
+  const { largest, others } = largestSubcontractRecipients(g);
+  const out: string[] = [];
+  if (largest) out.push(`最大は ${largest.name}（${formatYen(largest.amount)}）`);
+  if (others) out.push(`その他${others.count !== null ? ` ${others.count.toLocaleString()}件` : ''}（${formatYen(others.amount)}）`);
+  return out;
+}
 
 const COLOR_BACK_EDGE = 'rgba(217,69,69,0.65)';
 const COLOR_DIRECT_BODY = '#f8d3d3';
@@ -257,13 +266,17 @@ const RIBBON_VISIBLE_COLS = 4;
 // SVG 内に描く列見出し（列名 + 合計の 2 行）がノード上端より上に出るぶんを確保する
 const RIBBON_FIT_TOP_RESERVE = 64;
 
+// 1 列（棒＋ラベル＋間隔）に最低限確保する画面 px。スマホ幅で 4 列を詰めると見出しの金額が重なり、
+// ラベルが金額だけになっていたため、これより狭いときは列を詰めずに横へはみ出させる（ドラッグで移動）
+const RIBBON_MIN_COL_PITCH_PX = 210;
+
 /**
- * ribbon図のフィット値を算出。横は「可視幅に4列」の固定ピッチ（zoom非依存）、
+ * ribbon図のフィット値を算出。横はフィット時に「可視幅に4列」となる横スケール（1 列 RIBBON_MIN_COL_PITCH_PX 以上）、
  * 縦は高さフィット（baseZoom）。resetViewport と URL復元の両方から使い、式の二重化を防ぐ。
  */
 function computeRibbonFit(cW: number, cH: number, contentH: number): { horizontalScale: number; baseZoom: number } {
   return {
-    horizontalScale: (cW / RIBBON_VISIBLE_COLS) / (RIBBON_COL_W + RIBBON_COL_GAP),
+    horizontalScale: Math.max(cW / RIBBON_VISIBLE_COLS, RIBBON_MIN_COL_PITCH_PX) / (RIBBON_COL_W + RIBBON_COL_GAP),
     baseZoom: Math.max(0.05, Math.min(10, (Math.max(100, cH - RIBBON_FIT_TOP_RESERVE) / contentH) * 0.9)),
   };
 }
@@ -555,21 +568,23 @@ function SidePane({
 
   // タブ定義。フローを入口（初期選択）に置く。
   // 支出先はブロック未選択なら事業全体、選択中はそのブロック内訳を出す。
-  // 間接経費は0件でも押せるようにする（「無い」ことも情報。図に現れない支出の唯一の受け皿）。
+  // 間接経費は記載のある事業だけタブを出す（0件の事業が8割強あり、空のタブは並べない）。
   // 予算・執行はサンキー図の詳細パネルと同じく上の要約ではなくタブに置く（上部が長くなりタブの中身が見えなくなるため）。
   const tabs: Array<{ key: PaneTab; label: string; count?: number; disabled?: boolean }> = [
     { key: 'flow', label: 'フロー', count: graph.flows.length },
     { key: 'blocks', label: 'ブロック', count: graph.blocks.length },
     { key: 'budget', label: '予算', count: graph.budgetBreakdown?.length ?? 0 },
     { key: 'recipients', label: '支出先', count: block ? block.recipients.length : graph.totalRecipientCount },
-    { key: 'indirect-cost', label: '間接経費', count: indirectCount },
+    ...(indirectCount > 0 ? [{ key: 'indirect-cost' as const, label: '間接経費', count: indirectCount }] : []),
   ];
+  // 共有 URL などで 0 件の間接経費タブが指定されていたら、フローを出す
+  const shownTab: PaneTab = activeTab === 'indirect-cost' && indirectCount === 0 ? 'flow' : activeTab;
 
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 58% までにして中でスクロールさせる */}
-      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[58%] sm:overflow-y-auto">
+      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 52% までにして中でスクロールさせる（タブの一覧も広く取る） */}
+      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[52%] sm:overflow-y-auto">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
       <div className="border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex items-start gap-1.5">
@@ -594,7 +609,8 @@ function SidePane({
             {/* 支出の内訳。図に現れる分（支出先ブロック）と現れない分（間接経費）を明示する。
                 出典が別（5-1 ブロック支出 / 2-1 執行額）で合計は支出額に一致しないため、
                 式ではなく併記に留める */}
-            {(graph.directExpenseTotal > 0 || indirect.total > 0) && (
+            {/* 支出先の合計が支出額と同じ表示になるとき（大半の事業）は同じ数字が 2 回並ぶので出さない */}
+            {((graph.directExpenseTotal > 0 && formatYen(graph.directExpenseTotal) !== formatYen(graph.execution)) || indirect.total > 0) && (
               <div className="mt-1 text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
                 支出先 {graph.directExpenseTotal > 0 ? formatYen(graph.directExpenseTotal) : '—'}
                 {indirect.total > 0 && <> ／ 間接経費 {formatYen(indirect.total)}</>}
@@ -613,6 +629,20 @@ function SidePane({
         </div>
       </div>
 
+      {/* みんなの意見（AIインタビューで集めた匿名意見）。パネルの一番上（事業名のすぐ下）に置く。Supabase 未配布環境では描かれない */}
+      <ProjectComments
+        context={{
+          pid: String(graph.projectId),
+          year: String(year),
+          projectName: graph.projectName,
+          ministry: graph.ministry,
+          detail: projectDetail,
+          budget: graph.budget,
+          execution: graph.execution,
+        }}
+        scaleFont={scaleFont}
+      />
+
       {/* 事業概要（共有コンポーネント。メイン画面と同一のプレビュー＋展開詳細） */}
       {projectDetail && (
         <ProjectOverviewSection
@@ -627,52 +657,27 @@ function SidePane({
         />
       )}
 
-      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-      <ProjectComments
-        context={{
-          pid: String(graph.projectId),
-          year: String(year),
-          projectName: graph.projectName,
-          ministry: graph.ministry,
-          detail: projectDetail,
-          budget: graph.budget,
-          execution: graph.execution,
-        }}
-        scaleFont={scaleFont}
-      />
-
-      {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
-      <PolicyEvaluationBlock
-        view={policyView}
-        error={policyError}
-        pid={graph.projectId}
-        year={year}
-        labelPx={scaleFont(12)}
-        metaPx={scaleFont(10)}
-        onOpenDetail={() => openScoreDialog(graph.projectId)}
-        detailLoading={scoreDialogLoading}
-      />
-
-      {/* 再委託（構造サマリ）— メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
+      {/* 再委託（構造サマリ）— 委託構造の詳細なので、事業概要のすぐ下・政策評価より上に置く。メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
       <div className="border-b border-border px-4 pb-[9px] pt-[7px]">
         <div className="font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_META_FONT_PX }}>再委託</div>
         {/* 1 行要約: 階層・支出に占める再委託分の割合・最大の再委託先。数字の羅列より先に「この事業の委託構造の要点」を読めるようにする */}
         {(() => {
           const onward = onwardShare(graph).share;
           const share = onward === null ? null : Math.round(onward * 100);
-          const largest = graph.blocks
-            .filter(b => b.originKind === 'subcontract' && b.totalAmount > 0)
-            .sort((a, b) => b.totalAmount - a.totalAmount)[0];
-          const largestName = largest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const parts: string[] = [];
           parts.push(graph.maxDepth >= 2 ? `再委託は ${graph.maxDepth - 1} 段（階層 ${graph.maxDepth}）` : '再委託なし（直接支出のみ）');
           if (share !== null && graph.maxDepth >= 2) parts.push(`直接支出の ${share}% が再委託先へ`);
           // 「再委託」は 5-2 の資金のつながり全体を指す呼び名で、契約上の再委託とは限らない。種類の内訳を契約方式から添える
           const kinds = graph.maxDepth >= 2 && contractEntries ? onwardKindBreakdown(graph, contractEntries) : [];
-          if (kinds.length > 0) parts.push(`内訳 ${kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join('・')}`);
-          if (largest && largestName) parts.push(`最大は ${largestName}（${formatYen(largest.totalAmount)}）`);
+          parts.push(...largestParts(graph));
+          // 種類の内訳は 1 行要約に混ぜると読みにくいので、行を分けて出す
+          const kindText = kinds.filter(k => k.share >= 0.01).map(k => `${k.kind} ${Math.round(k.share * 100)}%`).join(' / ');
           return (
-            <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join('・')}</p>
+            <>
+              <p className="mt-1 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}>{parts.join(' / ')}</p>
+              {kindText && <p className="mt-0.5 leading-relaxed text-mirai-text-secondary" style={{ fontSize: PANEL_META_FONT_PX }}
+                title="再委託先のブロックの契約方式から分けています。「種別の記載なし」は、府省が契約方式を「その他」とだけ記載し、補足の記述も無いものです">内訳: {kindText}</p>}
+            </>
           );
         })()}
         {/* 年度比較: 前年度の同じ事業との違い（段数・再委託先への割合・最大の再委託先）。2024 年度実績を見ているときだけ */}
@@ -680,17 +685,15 @@ function SidePane({
           const pctOf = (g: typeof graph) => { const s = onwardShare(g).share; return s === null ? null : Math.round(s * 100); };
           const prevShare = pctOf(prevGraph);
           const curShare = pctOf(graph);
-          const prevLargest = prevGraph.blocks.filter(b => b.originKind === 'subcontract' && b.totalAmount > 0).sort((a, b) => b.totalAmount - a.totalAmount)[0];
-          const prevLargestName = prevLargest?.recipients?.slice().sort((a, b) => b.amount - a.amount)[0]?.name;
           const delta = (cur: number | null, prev: number | null) => cur !== null && prev !== null && cur !== prev ? `（${cur > prev ? '+' : ''}${cur - prev}pt）` : '';
           const parts = [
             `階層 ${prevGraph.maxDepth}${prevGraph.maxDepth !== graph.maxDepth ? ` → ${graph.maxDepth}` : '（同じ）'}`,
             prevShare !== null ? `再委託先への割合 ${prevShare}%${delta(curShare, prevShare)}` : null,
-            prevLargestName ? `最大は ${prevLargestName}（${formatYen(prevLargest.totalAmount)}）` : '再委託なし',
+            ...(prevGraph.maxDepth >= 2 ? largestParts(prevGraph) : ['再委託なし']),
           ].filter(Boolean);
           return (
             <p className="mt-0.5 leading-relaxed text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }} title="前年度（2023 年度実績）の同じ事業の委託構造との比較">
-              前年度: {parts.join('・')}
+              前年度: {parts.join(' / ')}
             </p>
           );
         })()}
@@ -708,6 +711,18 @@ function SidePane({
         </div>
       </div>
 
+      {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
+      <PolicyEvaluationBlock
+        view={policyView}
+        error={policyError}
+        pid={graph.projectId}
+        year={year}
+        labelPx={scaleFont(12)}
+        metaPx={scaleFont(10)}
+        onOpenDetail={() => openScoreDialog(graph.projectId)}
+        detailLoading={scoreDialogLoading}
+      />
+
       {/* 予算・執行は下の「予算」タブへ移した（サンキー図の詳細パネルと同じ置き方） */}
 
       {/* ブロックインスペクター（Phase 4）は一旦非表示（ユーザー要望）。選択自体は
@@ -718,7 +733,7 @@ function SidePane({
       {/* タブヘッダー */}
       <div className="flex border-b border-border bg-card" role="tablist">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive = shownTab === tab.key;
           const isDisabled = tab.disabled;
           return (
             <Button
@@ -748,7 +763,7 @@ function SidePane({
 
       {/* タブ本体 — ここだけがスクロールする（ヘッダ・タブは固定） */}
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {activeTab === 'flow' && (
+        {shownTab === 'flow' && (
           <>
             <div className="mb-2 flex items-baseline justify-between">
               <div className="text-[11px] text-mirai-text-subtle">{filteredFlows.length.toLocaleString()}本 / {graph.flows.length.toLocaleString()}本</div>
@@ -811,7 +826,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'blocks' && (
+        {shownTab === 'blocks' && (
           <>
             <div className="mb-2 text-[11px] text-mirai-text-subtle">
               {filteredBlocks.length.toLocaleString()}件 / {graph.blocks.length.toLocaleString()}件
@@ -864,7 +879,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'recipients' && (
+        {shownTab === 'recipients' && (
           <>
             {!block && (
               <>
@@ -1005,7 +1020,7 @@ function SidePane({
           </>
         )}
 
-        {activeTab === 'budget' && (
+        {shownTab === 'budget' && (
           // 予算・執行（共有コンポーネント。メイン画面と同一の会計集計・歳出項目カード表示）。タブ内なので見出しと内部スクロールは省く
           <BudgetExecutionSection
             budgetSummary={graph.budgetSummary}
@@ -1015,7 +1030,7 @@ function SidePane({
           />
         )}
 
-        {activeTab === 'indirect-cost' && (
+        {shownTab === 'indirect-cost' && (
           <>
             <div className="mb-2 text-[11px] text-mirai-text-subtle">
               国自らが支出する間接経費 {indirectCount.toLocaleString()}件
@@ -1332,7 +1347,8 @@ function SubcontractDetailPageInner() {
   const isNarrow = useIsNarrow();
   // 左下・左上のフローティングUI（一覧リンク・凡例・フォントサイズ操作）は、パネルが開いている
   // ときだけ退避オフセットが必要（サンキーの left: selectedNodeId... と同じ流儀）
-  const leftFloatOffset = !sidePanel.collapsed ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
+  // スマホ幅ではパネルが下からのシートになるので横の退避は要らない（退避すると画面の外に出ていた）
+  const leftFloatOffset = !sidePanel.collapsed && !isNarrow ? sidePanel.effectiveWidth + SIDE_PANEL_INSET * 2 + 12 : 12;
   // 基準フォントサイズ（サンキーと同じ localStorage 永続化方式。キーはページごとに分離）
   const [baseFontPx, setBaseFontPx] = useBaseFontPx(
     // 旧実装が既定値も無条件保存していたため、v2 キーへ移行（明示設定のみ引き継ぐ）
@@ -1421,8 +1437,8 @@ function SubcontractDetailPageInner() {
   // ズーム/パン
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [baseZoom, setBaseZoom] = useState(1);
-  // フロー図の横スケール（zoom非依存・4列固定ピッチ）。resetViewport / URL復元時に可視幅から算出して保持。
-  // 縦は transform.scale(zoom) が担い、横はこの値で「画面上の列位置」を zoom不変に固定する。
+  // フロー図の横スケール（フィット時に可視幅へ4列）。resetViewport / URL復元時に可視幅から算出して保持。
+  // 拡大・縮小は transform.scale が縦横一様に担う（ix/iw で baseZoom を基準にする）。
   const [horizontalScale, setHorizontalScale] = useState(1);
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
@@ -1541,8 +1557,12 @@ function SubcontractDetailPageInner() {
       .then((data: { evaluation?: PolicyEvaluation } | null) => {
         if (controller.signal.aborted) return;
         const e = data?.evaluation;
+        // パネル幅を広げたので、サンキー図の事業パネルと同じく 5 軸すべてを出す
         setPolicyView(e ? {
           overall: e.overallScore,
+          designClarity: e.designClarityScore,
+          evidence: e.evidenceScore,
+          transparency: e.executionTransparency,
           proportionality: e.proportionalityScore,
           necessity: e.necessityScore,
           recommendation: e.recommendation,
@@ -1572,11 +1592,10 @@ function SubcontractDetailPageInner() {
         if (!rect) return { ...prev, scale: newScale };
         const cy = clientY - rect.top;
         const cx = clientX - rect.left;
-        // ribbon図は横スケールが transform.scale に依存しない（ix/iw で打ち消す）ため pan.x を据え置き、
-        // 縦のみカーソルアンカー。block図は生座標を一様スケールで描くため、横もカーソルに再アンカーする。
+        // フロー図・ブロック図とも縦横一様に拡大するので、横も縦もカーソル位置を固定して拡大する
         return {
           scale: newScale,
-          x: viewMode === 'ribbon' ? prev.x : cx - (cx - prev.x) * (newScale / prev.scale),
+          x: cx - (cx - prev.x) * (newScale / prev.scale),
           y: cy - (cy - prev.y) * (newScale / prev.scale),
         };
       });
@@ -1593,7 +1612,7 @@ function SubcontractDetailPageInner() {
         setTransform((prev) => ({ ...prev, x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
       }
     }
-  }, [beginHoverSuppressCooldown, baseZoom, scrollMode, viewMode]);
+  }, [beginHoverSuppressCooldown, baseZoom, scrollMode]);
 
   useEffect(() => {
     if (!graph) return; // SVGがレンダリングされるまで待つ
@@ -1642,15 +1661,17 @@ function SubcontractDetailPageInner() {
       const container = containerRef.current;
       if (!container) return { ...prev, scale: newScale };
       const cy = container.clientHeight / 2;
-      const cx = container.clientWidth / 2;
-      // ribbon図は横 zoom不変（pan.x 据え置き）、block図は生座標のため横も中央アンカーで再計算。縦は共通で中央アンカー。
+      // サイドパネルは container に重なるオーバーレイなので、パネルを除いた「見えている領域」の中央を固定する（resetViewport と同じ差し引き）
+      const reserveLeft = !sidePanel.collapsed && !isNarrow ? sidePanel.effectiveWidth : 0;
+      const cx = reserveLeft + (container.clientWidth - reserveLeft) / 2;
+      // 縦横一様の拡大なので、横も縦も表示領域の中央を固定する
       return {
         scale: newScale,
-        x: viewMode === 'ribbon' ? prev.x : cx - (cx - prev.x) * (newScale / prev.scale),
+        x: cx - (cx - prev.x) * (newScale / prev.scale),
         y: cy - (cy - prev.y) * (newScale / prev.scale),
       };
     });
-  }, [baseZoom, viewMode]);
+  }, [baseZoom, sidePanel.collapsed, sidePanel.effectiveWidth, isNarrow]);
 
   const resetViewport = useCallback(() => {
     const container = containerRef.current;
@@ -1664,7 +1685,7 @@ function SubcontractDetailPageInner() {
     const cW = Math.max(100, container.clientWidth - reserveLeft);
     const cH = container.clientHeight;
     if (viewMode === 'ribbon') {
-      // 横縦分離: 横は「可視幅に4列」の固定ピッチ（zoom非依存）、縦のみ高さフィットで baseZoom を決める。
+      // 横はフィット時に「可視幅に4列」となる横スケール、縦は高さフィットで baseZoom を決める。
       // pan.x は可視領域左端に左寄せ（予算・執行列が左端）。横フィットはしない（5列以上はオーバーフロー）。
       const { horizontalScale: hScale, baseZoom: fitZoomV } = computeRibbonFit(cW, cH, activeContentSize.h);
       setHorizontalScale(hScale);
@@ -1814,12 +1835,12 @@ function SubcontractDetailPageInner() {
   // baseZoom 超のズームイン時に最大 ZOOM_FONT_MAX_RATIO 倍まで拡大する。
   const ribbonZoomLabelScale = getZoomLabelScale(transform.scale, baseZoom);
   const ribbonLabelFont = (px: number) => scaleFont(px) * ribbonZoomLabelScale / transform.scale;
-  // 横縦分離の座標変換（メインの screenToInnerX / screenWToInner 相当）。
-  // 群は translate(pan) scale(transform.scale) されるので、横座標/幅を横スケール倍して
-  // transform.scale で割り戻すと、群の scale(zoom) を打ち消して「画面上の横位置は zoom不変」
-  // になる。縦(y・高さ)は素のレイアウト座標のまま群の scale(zoom) で拡大させる。
-  const ix = (x: number) => (x * horizontalScale) / transform.scale;
-  const iw = (w: number) => (w * horizontalScale) / transform.scale;
+  // 横の座標変換。フィット時（transform.scale = baseZoom）に「可視幅に4列」となる横スケールを掛け、baseZoom で割る。
+  // 群の scale(transform.scale) がそのまま横にも効くので、拡大・縮小は縦横一様になる（統合ビューのサンキー図と同じ）。
+  // 以前は transform.scale で割って横位置を zoom 不変にしていたが、拡大しても列幅が変わらず、
+  // 文字だけ大きくなってラベルが省略されていた。
+  const ix = (x: number) => (x * horizontalScale) / baseZoom;
+  const iw = (w: number) => (w * horizontalScale) / baseZoom;
   // ラベル衝突回避（メインの nodeShiftInfo 相当）。列ごとに「最小ラベルスロット高」を確保し、
   // 高さがそれに満たない少額ノードは下方向へ余白を足して（cumShift）ラベルの重なりを防ぐ。
   // ノード自身は拡張スロットの中央（topShift）に置く。zoom連動：拡大でノードが十分高くなれば
@@ -2887,10 +2908,10 @@ function SubcontractDetailPageInner() {
         </div>
 
         {/* フォントサイズコントロール — 左下フローティング（サンキー流儀と同じ配置・操作感。
-            サイドパネルが左表示のときは退避） */}
+            サイドパネルが左表示のときは退避。スマホ幅では下のシートに隠れるので出さない） */}
         <div
           data-pan-disabled="true"
-          className="flex items-center rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 shadow-xs"
+          className="flex items-center rounded-xl border border-mirai-border bg-card px-2.5 py-1.5 shadow-xs max-sm:hidden"
           style={{
             position: 'absolute',
             left: leftFloatOffset,

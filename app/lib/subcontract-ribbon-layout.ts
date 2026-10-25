@@ -59,9 +59,9 @@ export const RIBBON_ROW_GAP = 6;
 // 直接系バンド群と別財源レーンの間の追加ギャップ（通常の兄弟間ギャップより大きく取り、
 // 視覚的に「別レーン」であることを示す）
 export const RIBBON_LANE_GAP = 28;
-// /sankey-svg の computeLayout に合わせ、最低高さは「読みやすさのための下駄」ではなく
-// 描画上のハード床（1px）とする。金額差はすべて線形スケールの高さ差として表現する。
-export const RIBBON_BAR_MIN_H = 1;
+// 最低高さ（レイアウト座標）。少額のブロックが線にしか見えずクリックもしにくかったため 1 → 3 に上げた。
+// それ以外の金額差はすべて線形スケールの高さ差として表現する。
+export const RIBBON_BAR_MIN_H = 3;
 export const RIBBON_MARGIN = { top: 28, right: 36, bottom: 40, left: 36 };
 // 列（深度）ごとの合計金額のうち最大のものを、この高さ（px, ギャップ除く）に収める形で
 // 線形スケール係数 k を決定する（/sankey-svg の ky 決定＝「最も厳しい列が innerH に収まる

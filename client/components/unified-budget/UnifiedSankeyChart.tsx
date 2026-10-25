@@ -851,8 +851,11 @@ export function UnifiedSankeyChart({
                         )}
                       </div>
                     )}
-                    <div className="mt-0.5 text-lg font-bold text-mirai-text">{selectedDetails.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(selectedPanelNode.value)}</div>
-                    {!selectedDetails.budgetUnmatched && <div className="hidden text-[11px] text-mirai-text-muted sm:block">{Math.round(selectedPanelNode.value).toLocaleString()}円</div>}
+                    {/* 円単位の正確な額は改行せず同じ行の右に並べる（パネルが狭いときだけ折り返す） */}
+                    <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-lg font-bold text-mirai-text">{selectedDetails.budgetUnmatched ? '予算額未突合' : formatBudgetFromYen(selectedPanelNode.value)}</span>
+                      {!selectedDetails.budgetUnmatched && <span className="hidden text-[11px] tabular-nums text-mirai-text-muted sm:inline">{Math.round(selectedPanelNode.value).toLocaleString()}円</span>}
+                    </div>
                     {!selectedNode && <div className="mt-1 text-[11px] text-stance-neutral">表示数の上限から溢れている、または非表示の列にあるため図には出ていません</div>}
                   </div>
                   <Button variant="ghost" size="icon-sm" title="選択を解除" aria-label="選択を解除" onClick={() => onSelect(null)} className="shrink-0 text-mirai-text-muted hover:text-mirai-text">
