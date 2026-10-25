@@ -258,7 +258,7 @@ const RIBBON_VISIBLE_COLS = 4;
 const RIBBON_FIT_TOP_RESERVE = 64;
 
 /**
- * ribbon図のフィット値を算出。横は「可視幅に4列」の固定ピッチ（zoom非依存）、
+ * ribbon図のフィット値を算出。横はフィット時に「可視幅に4列」となる横スケール、
  * 縦は高さフィット（baseZoom）。resetViewport と URL復元の両方から使い、式の二重化を防ぐ。
  */
 function computeRibbonFit(cW: number, cH: number, contentH: number): { horizontalScale: number; baseZoom: number } {
@@ -568,8 +568,8 @@ function SidePane({
   return (
     <aside className="flex h-full w-full flex-col overflow-hidden bg-card">
       {/* ヘッダー・インスペクター・タブは固定（/sankey-svg と同様に、スクロールはリスト部のみ） */}
-      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 58% までにして中でスクロールさせる */}
-      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[58%] sm:overflow-y-auto">
+      {/* 上部（概要・意見・評価・再委託・予算）が伸びるとタブの中身が見えなくなるので、上部は高さの 45% までにして中でスクロールさせる（タブの一覧を広く取る） */}
+      <div className="shrink-0 bg-card max-sm:max-h-[38%] max-sm:overflow-y-auto sm:max-h-[45%] sm:overflow-y-auto">
       {/* 事業ヘッダー（常時表示）。セクション並びはメイン画面と同じ 概要→品質→再委託→予算・執行 */}
       <div className="border-b border-border px-4 pb-3 pt-3.5">
         <div className="flex items-start gap-1.5">
@@ -627,33 +627,7 @@ function SidePane({
         />
       )}
 
-      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
-      <ProjectComments
-        context={{
-          pid: String(graph.projectId),
-          year: String(year),
-          projectName: graph.projectName,
-          ministry: graph.ministry,
-          detail: projectDetail,
-          budget: graph.budget,
-          execution: graph.execution,
-        }}
-        scaleFont={scaleFont}
-      />
-
-      {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
-      <PolicyEvaluationBlock
-        view={policyView}
-        error={policyError}
-        pid={graph.projectId}
-        year={year}
-        labelPx={scaleFont(12)}
-        metaPx={scaleFont(10)}
-        onOpenDetail={() => openScoreDialog(graph.projectId)}
-        detailLoading={scoreDialogLoading}
-      />
-
-      {/* 再委託（構造サマリ）— メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
+      {/* 再委託（構造サマリ）— 委託構造の詳細なので、事業概要のすぐ下・政策評価より上に置く。メイン画面の「再委託」節と同型。当ページはフロー詳細なので フロー↗ は出さない */}
       <div className="border-b border-border px-4 pb-[9px] pt-[7px]">
         <div className="font-bold text-mirai-text-subtle" style={{ fontSize: PANEL_META_FONT_PX }}>再委託</div>
         {/* 1 行要約: 階層・支出に占める再委託分の割合・最大の再委託先。数字の羅列より先に「この事業の委託構造の要点」を読めるようにする */}
@@ -707,6 +681,32 @@ function SidePane({
           )}
         </div>
       </div>
+
+      {/* みんなの意見（AIインタビューで集めた匿名意見）。Supabase 未配布環境では描かれない */}
+      <ProjectComments
+        context={{
+          pid: String(graph.projectId),
+          year: String(year),
+          projectName: graph.projectName,
+          ministry: graph.ministry,
+          detail: projectDetail,
+          budget: graph.budget,
+          execution: graph.execution,
+        }}
+        scaleFont={scaleFont}
+      />
+
+      {/* 政策評価ブロック（メイン画面と共有コンポーネント） */}
+      <PolicyEvaluationBlock
+        view={policyView}
+        error={policyError}
+        pid={graph.projectId}
+        year={year}
+        labelPx={scaleFont(12)}
+        metaPx={scaleFont(10)}
+        onOpenDetail={() => openScoreDialog(graph.projectId)}
+        detailLoading={scoreDialogLoading}
+      />
 
       {/* 予算・執行は下の「予算」タブへ移した（サンキー図の詳細パネルと同じ置き方） */}
 
@@ -1421,8 +1421,8 @@ function SubcontractDetailPageInner() {
   // ズーム/パン
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [baseZoom, setBaseZoom] = useState(1);
-  // フロー図の横スケール（zoom非依存・4列固定ピッチ）。resetViewport / URL復元時に可視幅から算出して保持。
-  // 縦は transform.scale(zoom) が担い、横はこの値で「画面上の列位置」を zoom不変に固定する。
+  // フロー図の横スケール（フィット時に可視幅へ4列）。resetViewport / URL復元時に可視幅から算出して保持。
+  // 拡大・縮小は transform.scale が縦横一様に担う（ix/iw で baseZoom を基準にする）。
   const [horizontalScale, setHorizontalScale] = useState(1);
   const [isEditingZoom, setIsEditingZoom] = useState(false);
   const [zoomInputValue, setZoomInputValue] = useState('');
@@ -1572,11 +1572,10 @@ function SubcontractDetailPageInner() {
         if (!rect) return { ...prev, scale: newScale };
         const cy = clientY - rect.top;
         const cx = clientX - rect.left;
-        // ribbon図は横スケールが transform.scale に依存しない（ix/iw で打ち消す）ため pan.x を据え置き、
-        // 縦のみカーソルアンカー。block図は生座標を一様スケールで描くため、横もカーソルに再アンカーする。
+        // フロー図・ブロック図とも縦横一様に拡大するので、横も縦もカーソル位置を固定して拡大する
         return {
           scale: newScale,
-          x: viewMode === 'ribbon' ? prev.x : cx - (cx - prev.x) * (newScale / prev.scale),
+          x: cx - (cx - prev.x) * (newScale / prev.scale),
           y: cy - (cy - prev.y) * (newScale / prev.scale),
         };
       });
@@ -1593,7 +1592,7 @@ function SubcontractDetailPageInner() {
         setTransform((prev) => ({ ...prev, x: prev.x - e.deltaX * speed, y: prev.y - e.deltaY * speed }));
       }
     }
-  }, [beginHoverSuppressCooldown, baseZoom, scrollMode, viewMode]);
+  }, [beginHoverSuppressCooldown, baseZoom, scrollMode]);
 
   useEffect(() => {
     if (!graph) return; // SVGがレンダリングされるまで待つ
@@ -1642,15 +1641,17 @@ function SubcontractDetailPageInner() {
       const container = containerRef.current;
       if (!container) return { ...prev, scale: newScale };
       const cy = container.clientHeight / 2;
-      const cx = container.clientWidth / 2;
-      // ribbon図は横 zoom不変（pan.x 据え置き）、block図は生座標のため横も中央アンカーで再計算。縦は共通で中央アンカー。
+      // サイドパネルは container に重なるオーバーレイなので、パネルを除いた「見えている領域」の中央を固定する（resetViewport と同じ差し引き）
+      const reserveLeft = !sidePanel.collapsed && !isNarrow ? sidePanel.effectiveWidth : 0;
+      const cx = reserveLeft + (container.clientWidth - reserveLeft) / 2;
+      // 縦横一様の拡大なので、横も縦も表示領域の中央を固定する
       return {
         scale: newScale,
-        x: viewMode === 'ribbon' ? prev.x : cx - (cx - prev.x) * (newScale / prev.scale),
+        x: cx - (cx - prev.x) * (newScale / prev.scale),
         y: cy - (cy - prev.y) * (newScale / prev.scale),
       };
     });
-  }, [baseZoom, viewMode]);
+  }, [baseZoom, sidePanel.collapsed, sidePanel.effectiveWidth, isNarrow]);
 
   const resetViewport = useCallback(() => {
     const container = containerRef.current;
@@ -1664,7 +1665,7 @@ function SubcontractDetailPageInner() {
     const cW = Math.max(100, container.clientWidth - reserveLeft);
     const cH = container.clientHeight;
     if (viewMode === 'ribbon') {
-      // 横縦分離: 横は「可視幅に4列」の固定ピッチ（zoom非依存）、縦のみ高さフィットで baseZoom を決める。
+      // 横はフィット時に「可視幅に4列」となる横スケール、縦は高さフィットで baseZoom を決める。
       // pan.x は可視領域左端に左寄せ（予算・執行列が左端）。横フィットはしない（5列以上はオーバーフロー）。
       const { horizontalScale: hScale, baseZoom: fitZoomV } = computeRibbonFit(cW, cH, activeContentSize.h);
       setHorizontalScale(hScale);
@@ -1814,12 +1815,12 @@ function SubcontractDetailPageInner() {
   // baseZoom 超のズームイン時に最大 ZOOM_FONT_MAX_RATIO 倍まで拡大する。
   const ribbonZoomLabelScale = getZoomLabelScale(transform.scale, baseZoom);
   const ribbonLabelFont = (px: number) => scaleFont(px) * ribbonZoomLabelScale / transform.scale;
-  // 横縦分離の座標変換（メインの screenToInnerX / screenWToInner 相当）。
-  // 群は translate(pan) scale(transform.scale) されるので、横座標/幅を横スケール倍して
-  // transform.scale で割り戻すと、群の scale(zoom) を打ち消して「画面上の横位置は zoom不変」
-  // になる。縦(y・高さ)は素のレイアウト座標のまま群の scale(zoom) で拡大させる。
-  const ix = (x: number) => (x * horizontalScale) / transform.scale;
-  const iw = (w: number) => (w * horizontalScale) / transform.scale;
+  // 横の座標変換。フィット時（transform.scale = baseZoom）に「可視幅に4列」となる横スケールを掛け、baseZoom で割る。
+  // 群の scale(transform.scale) がそのまま横にも効くので、拡大・縮小は縦横一様になる（統合ビューのサンキー図と同じ）。
+  // 以前は transform.scale で割って横位置を zoom 不変にしていたが、拡大しても列幅が変わらず、
+  // 文字だけ大きくなってラベルが省略されていた。
+  const ix = (x: number) => (x * horizontalScale) / baseZoom;
+  const iw = (w: number) => (w * horizontalScale) / baseZoom;
   // ラベル衝突回避（メインの nodeShiftInfo 相当）。列ごとに「最小ラベルスロット高」を確保し、
   // 高さがそれに満たない少額ノードは下方向へ余白を足して（cumShift）ラベルの重なりを防ぐ。
   // ノード自身は拡張スロットの中央（topShift）に置く。zoom連動：拡大でノードが十分高くなれば
