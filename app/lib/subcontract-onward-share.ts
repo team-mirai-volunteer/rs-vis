@@ -28,17 +28,17 @@ export function onwardShare(g: SubcontractGraph): { amount: number; share: numbe
 }
 
 /** 再委託（1 段先）の種類。画面全体の呼び名は「再委託」のまま、詳細の内訳だけをこの粒度で出す */
-export type OnwardKind = '委託・請負' | '補助・交付金' | '支出委任・その他' | '種別の記載なし';
+export type OnwardKind = '委託・請負' | '補助・交付' | '支出委任等' | '種別不明';
 
 /** 契約方式と補足の記述から、再委託ブロックの支出の種類を決める */
 export function onwardKind(e: Pick<ContractMethodEntry, 'm' | 'mt'>): OnwardKind {
-  if (e.m === 'subsidy' || e.m === 'management-expense-grant') return '補助・交付金';
+  if (e.m === 'subsidy' || e.m === 'management-expense-grant') return '補助・交付';
   if (e.m !== 'others') return '委託・請負';   // 競争入札・随意契約・国庫債務負担行為
   const mt = e.mt ?? '';
-  if (!mt.trim()) return '種別の記載なし';
-  if (/補助|交付/.test(mt)) return '補助・交付金';
+  if (!mt.trim()) return '種別不明';
+  if (/補助|交付/.test(mt)) return '補助・交付';
   if (/委託|請負|競争|随意|契約/.test(mt)) return '委託・請負';
-  return '支出委任・その他';
+  return '支出委任等';
 }
 
 /**
@@ -85,4 +85,31 @@ export function largestSubcontractRecipients(g: SubcontractGraph): {
     }
   }
   return { largest, others: hasOthers ? { amount: othersAmount, count: othersCount } : null };
+}
+
+/** ブロックのタグに出す呼び名。契約上の委託・請負だけを「再委託」と呼ぶ */
+export const ONWARD_KIND_TAG: Record<OnwardKind, string> = {
+  '委託・請負': '再委託',
+  '補助・交付': '補助・交付',
+  '支出委任等': '支出委任等',
+  '種別不明': '種別不明',
+};
+
+/**
+ * 再委託ブロック（originKind = subcontract）ごとの種類。ブロック内の契約の金額が最も大きい種類で決める。
+ * 契約方式の行が無いブロックは入れない（呼び出し側は「再委託」のまま出す）。
+ */
+export function onwardKindByBlock(g: SubcontractGraph, entries: readonly ContractMethodEntry[]): Map<string, OnwardKind> {
+  const sub = new Set(g.blocks.filter(b => b.originKind === 'subcontract').map(b => b.blockId));
+  const sums = new Map<string, Map<OnwardKind, number>>();
+  for (const e of entries) {
+    if (!sub.has(e.b) || !e.a || e.a <= 0) continue;
+    const m = sums.get(e.b) ?? new Map<OnwardKind, number>();
+    const k = onwardKind(e);
+    m.set(k, (m.get(k) ?? 0) + e.a);
+    sums.set(e.b, m);
+  }
+  const out = new Map<string, OnwardKind>();
+  for (const [b, m] of sums) out.set(b, [...m].sort((x, y) => y[1] - x[1])[0][0]);
+  return out;
 }

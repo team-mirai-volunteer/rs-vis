@@ -729,7 +729,7 @@ function SubcontractsPageInner() {
         if (share === null) return dash;
         const pct = Math.round(share * 100);
         return (
-          <div className="flex items-center gap-1.5" title={`直接支出 ${formatYen(g.directExpenseTotal)} のうち、再委託先へ ${formatYen(onwardShare(g).amount)}`}>
+          <div className="flex items-center gap-1.5" title={`直接支出 ${formatYen(g.directExpenseTotal)} のうち、次の支出先へ ${formatYen(onwardShare(g).amount)}`}>
             <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-mirai-surface-light">
               <div className={cn('h-full rounded-full', pct >= 50 ? 'bg-status-warn' : 'bg-primary')} style={{ width: `${pct}%` }} />
             </div>
