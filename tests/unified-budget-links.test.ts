@@ -20,7 +20,7 @@ test('事業・名前絞り込みのリンクは RSのみ プリセットで統�
   assert.equal(u.searchParams.get('year'), '2024');
   assert.equal(u.searchParams.get('cols'), 'mi,pr,ps,re');
   assert.equal(u.searchParams.get('sel'), 'project-budget-2826');
-  assert.equal(u.searchParams.get('fr'), '1');
+  assert.equal(u.searchParams.get('fr'), null); // 事業の位置が分かるよう周辺も表示
   assert.equal(new URL(unifiedProjectNameFilterUrl('基礎年金', 2025), 'http://x').searchParams.get('fpq'), '基礎年金');
   assert.equal(new URL(unifiedRecipientNameFilterUrl('年金受給者', 2025), 'http://x').searchParams.get('frq'), '年金受給者');
 });
@@ -41,7 +41,7 @@ test('旧 /sankey-svg のクエリを統合ビューへ写す', () => {
   assert.equal(q.get('year'), '2024');
   assert.equal(q.get('b'), 'ministry'); // 旧サンキー図と同じ RS府省庁の紐づけで開く
   assert.equal(q.get('sel'), 'project-budget-7');
-  assert.equal(q.get('fr'), '1');
+  assert.equal(q.get('fr'), null);
   assert.equal(q.get('tpr'), '60');
   assert.equal(q.get('tps'), '60');
   assert.equal(q.get('tre'), '80');

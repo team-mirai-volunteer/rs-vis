@@ -28,7 +28,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { readShiftJISCSV, parseAmount } from '@/scripts/csv-reader';
+import { readShiftJISCSV, parseAmount, parseOptionalAmount } from '@/scripts/csv-reader';
 import { resolveRecipientKey } from '@/app/lib/recipient-key';
 import type { RecipientResolution } from '@/app/lib/recipient-key';
 import type { CSVRow } from '@/types/rs-system';
@@ -257,9 +257,9 @@ function main() {
     if (fiscalYear !== TARGET_BUDGET_YEAR) continue;
 
     budgetItemTargetRows++;
-    const amount = parseAmount(row['予算額(歳出予算項目ごと)']);
-    const nextYearRequestAmount = parseAmount(row['翌年度要求額(歳出予算項目ごと)']);
-    budgetItemAmountTotal += amount;
+    const amount = parseOptionalAmount(row['予算額(歳出予算項目ごと)']);
+    const nextYearRequestAmount = parseOptionalAmount(row['翌年度要求額(歳出予算項目ごと)']);
+    budgetItemAmountTotal += amount ?? 0;
 
     const item: BudgetBreakdownItem = {
       fiscalYear,
@@ -280,7 +280,7 @@ function main() {
     budgetBreakdownMap.get(pid)!.push(item);
   }
   for (const entries of budgetBreakdownMap.values()) {
-    entries.sort((a, b) => b.amount - a.amount);
+    entries.sort((a, b) => (b.amount ?? -Infinity) - (a.amount ?? -Infinity));
   }
   console.log(`  予算内訳データ: ${budgetBreakdownMap.size.toLocaleString()} 事業 / ${budgetItemTargetRows.toLocaleString()} 行 / ${(budgetItemAmountTotal / 1e12).toFixed(2)} 兆円`);
 

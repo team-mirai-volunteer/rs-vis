@@ -2813,7 +2813,7 @@ function SubcontractDetailPageInner() {
                 ) : bud ? (
                   <>
                     <div>予算額 <b className="text-mirai-text">{formatYen(bud.amount)}</b>
-                      {bud.nextYearRequestAmount > 0 && <> ・ 翌年度要求 <b className="text-mirai-text">{formatYen(bud.nextYearRequestAmount)}</b></>}
+                      {bud.nextYearRequestAmount != null && bud.nextYearRequestAmount > 0 && <> ・ 翌年度要求 <b className="text-mirai-text">{formatYen(bud.nextYearRequestAmount)}</b></>}
                     </div>
                     {(bud.item.trim() || bud.subItem.trim()) && (
                       <div className="text-mirai-text-muted">

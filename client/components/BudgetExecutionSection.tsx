@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import React, { type CSSProperties } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { BudgetSummary, BudgetBreakdownItem } from '@/types/sankey-svg';
@@ -61,7 +61,7 @@ export function BudgetExecutionSection({
     }, new Map<string, number>())
     : breakdown.reduce((m, item) => {
       const label = item.accountCategory === '一般会計' ? '一般' : item.accountCategory === '特別会計' ? '特別' : '';
-      if (label) m.set(label, (m.get(label) ?? 0) + item.amount);
+      if (label && item.amount !== null) m.set(label, (m.get(label) ?? 0) + item.amount);
       return m;
     }, new Map<string, number>());
   const renderAccountBadge = (value: string) => {
@@ -80,7 +80,8 @@ export function BudgetExecutionSection({
   const accountBadges = (['一般', '特別'] as const)
     .map(label => ({ label, amount: accountTotals.get(label) ?? 0 }))
     .filter(item => item.amount > 0);
-  const totalBreakdownAmount = breakdown.reduce((s, item) => s + item.amount, 0);
+  const totalBreakdownAmount = breakdown.reduce((s, item) => s + (item.amount ?? 0), 0);
+  const hasMissingAmount = breakdown.some(item => item.amount === null);
   const metaGridStyle: CSSProperties = { fontSize: META_PX };
   const renderMeta = (label: string, value: string) => (
     <div className="min-w-0">
@@ -120,7 +121,7 @@ export function BudgetExecutionSection({
       )}
       {(isTab || expanded) && (
         <div className={`${isTab ? '' : 'px-3.5 '}pb-2.5 text-mirai-text-secondary`} style={{ fontSize: PANEL_META_PX }}>
-          {breakdown.length > 0 && summary && totalBreakdownAmount !== summary.totalBudget && (
+          {breakdown.length > 0 && !hasMissingAmount && summary && totalBreakdownAmount !== summary.totalBudget && (
             <div className="mb-2 rounded-md border border-mirai-border bg-mirai-badge-yellow p-1.5 leading-[1.45] text-mirai-text-secondary">
               2-1合計と2-2内訳合計に差があります: {formatYen((summary?.totalBudget ?? 0) - totalBreakdownAmount)}
             </div>
@@ -143,7 +144,10 @@ export function BudgetExecutionSection({
                         {renderAccountBadge(item.accountCategory)}
                         <span className="font-medium text-mirai-text-muted">{renderText(item.budgetType)}</span>
                       </div>
-                      <div className={`whitespace-nowrap tabular-nums ${isTab ? 'text-mirai-text-muted' : 'font-bold text-mirai-text'}`} style={{ fontSize: PANEL_LIST_VALUE_PX }}>{formatYen(item.amount)}</div>
+                      <div className={`text-right tabular-nums ${isTab ? 'text-mirai-text-muted' : 'font-bold text-mirai-text'}`} style={{ fontSize: PANEL_LIST_VALUE_PX }}>
+                        <div>{item.fiscalYear}年度予算：{item.amount === null ? '記載なし' : formatYen(item.amount)}</div>
+                        {item.nextYearRequestAmount != null && <div className="font-medium text-mirai-text-muted">{item.fiscalYear + 1}年度要求：{formatYen(item.nextYearRequestAmount)}</div>}
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-x-2.5 gap-y-[5px] leading-[1.45]" style={metaGridStyle}>
                       {renderMeta('会計', item.account)}

@@ -12,7 +12,8 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { computeMOFSankeyLayout, mofRibbonPath, type MOFLayoutLink, type MOFLayoutNode } from '@/app/lib/mof-sankey-layout';
 import { MAJOR_EXPENSE_NAMES, PURPOSE_NAMES, UNIFIED_LAYOUT, unifiedNodeColor } from '@/app/lib/unified-budget/constants';
-import { ancestorsByColumn, descendantsByColumn, focusGraph, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
+import { ancestorsByColumn, descendantsByColumn, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
+import { selectionPan, type SelectionAnchor } from '@/app/lib/unified-budget/selection-viewport';
 import { columnIndex } from '@/app/lib/unified-budget/transform';
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, UNIFIED_PROGRAM_KIND_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { hasActiveUnifiedFilter, UNIFIED_FILTER_DEFAULT, type UnifiedViewDetails, type UnifiedViewFilter, type UnifiedViewNode } from '@/types/unified-budget-view';
@@ -75,7 +76,6 @@ export function UnifiedSankeyChart({
   ministries,
   selectedId,
   onSelect,
-  focusRelated = true,
   filter,
   onFilterChange,
   filterOpen,
@@ -106,7 +106,6 @@ export function UnifiedSankeyChart({
   ministries: string[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  focusRelated?: boolean;
   filter: UnifiedViewFilter;
   onFilterChange: (next: UnifiedViewFilter) => void;
   filterOpen: boolean;
@@ -188,12 +187,9 @@ export function UnifiedSankeyChart({
     return relatedThroughAggregates({ nodes, links }, browse, selectedId);
   }, [selectedId, links, nodes, browse]);
 
-  const hoveredRelated = useMemo(() => (hovered && (!selectedId || focusRelated) ? relatedThroughAggregates({ nodes, links }, browse, hovered.id) : null), [hovered, selectedId, focusRelated, links, nodes, browse]);
+  const hoveredRelated = useMemo(() => (hovered && !selectedId ? relatedThroughAggregates({ nodes, links }, browse, hovered.id) : null), [hovered, selectedId, links, nodes, browse]);
 
-  const visible = useMemo(() => {
-    if (!focusRelated || !selectedId || !related) return { nodes, links };
-    return focusGraph(nodes, links, selectedId, related);
-  }, [nodes, links, related, focusRelated, selectedId]);
+  const visible = useMemo(() => ({ nodes, links }), [nodes, links]);
 
   const layout = useMemo(
     () =>
@@ -414,7 +410,6 @@ export function UnifiedSankeyChart({
     || !!selectedDetails.aggregated
     || !!selectedDetails.aggregatedTop?.length
     || (selectedDetails.column === 'recipient' && !selectedDetails.aggregated && contractSheetYear !== null)
-    || focusRelated
   );
   const hasBlocksTab = isIndividualProject && hasSpending;
   const [blockSelection, setBlockSelection] = useState<{ projectId: number; year: number; blockId: string } | null>(null);
@@ -514,15 +509,15 @@ export function UnifiedSankeyChart({
   );
   const zoomFromButton = useCallback((factor: number) => zoomAt(factor, (containerRef.current?.clientWidth ?? 0) / 2, (containerRef.current?.clientHeight ?? 0) / 2), [zoomAt]);
 
+  const selectionAnchor = useMemo<SelectionAnchor | null>(() => selectedNode ? ({
+    id: selectedNode.id, x: selectedNode.x + selectedNode.width / 2,
+    y: selectedNode.y + selectedNode.height / 2,
+  }) : null, [selectedNode]);
   useLayoutEffect(() => {
-    if (!selectedNode || viewport.height <= 0) return;
-    setPan(p => {
-      const screenY = selectedNode.y * zoomRef.current + p.y;
-      const edge = 80;
-      if (screenY >= edge && screenY <= viewport.height - edge) return p;
-      return { ...p, y: viewport.height / 2 - selectedNode.y * zoomRef.current };
-    });
-  }, [selectedNode, viewport.height]);
+    if (!selectionAnchor || viewport.height <= 0) return;
+    setPan(p => selectionPan({ pan: p, zoom: zoomRef.current, current: selectionAnchor,
+      width: viewport.width, height: viewport.height, panelWidth: panelOpenWidth }));
+  }, [selectionAnchor, viewport.width, viewport.height, panelOpenWidth]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -664,7 +659,7 @@ export function UnifiedSankeyChart({
 
         <g>
           {layout.links.map((link, i) => {
-            const offSelection = !focusRelated && related !== null && !(related.has(link.source.id) && related.has(link.target.id));
+            const offSelection = related !== null && !(related.has(link.source.id) && related.has(link.target.id));
             const offHover = hoveredRelated !== null && !(hoveredRelated.has(link.source.id) && hoveredRelated.has(link.target.id));
             const dim = offSelection || offHover;
             const isHovered = hoveredLink === link;
@@ -698,7 +693,7 @@ export function UnifiedSankeyChart({
             const labelLeft = false;
             const labelX = node.x + node.width + 6;
             const centerY = node.y + node.height / 2;
-            const offSelection = !focusRelated && related !== null && !related.has(node.id);
+            const offSelection = related !== null && !related.has(node.id);
             const offHover = hoveredRelated !== null && !hoveredRelated.has(node.id);
             const dim = offSelection || offHover;
             const isSelected = selectedId === node.id;
@@ -707,6 +702,7 @@ export function UnifiedSankeyChart({
               <g
                 key={node.id}
                 data-testid={testId('unified-node')}
+                data-selected={isSelected ? 'true' : undefined}
                 data-column={testId(details?.column ?? '')}
                 onMouseEnter={e => {
                   setHovered(node);
@@ -724,6 +720,12 @@ export function UnifiedSankeyChart({
                 }}
                 style={{ cursor: 'pointer' }}
               >
+                {isSelected && <rect
+                  x={node.x - 4} y={centerY - Math.max(node.height + 8, fontPx * 1.6) / 2}
+                  width={node.width + 8} height={Math.max(node.height + 8, fontPx * 1.6)}
+                  rx={4} fill="none" stroke="var(--primary)" strokeWidth={2}
+                  vectorEffect="non-scaling-stroke" pointerEvents="none"
+                />}
                 <rect
                   x={node.x}
                   y={node.y}
@@ -962,9 +964,8 @@ export function UnifiedSankeyChart({
                     )}
                   </div>
                 )}
-                {focusRelated && <div className="mt-2 text-[11px] text-mirai-text-muted">この筋に連なるノードだけを表示しています</div>}
                 {/* 下端の余白（pb-0 の代わり）。事業のセクション群で終わるときは、最後の推移セクションが自前で余白を持つので付けない */}
-                {!(isIndividualProject && selectedDetails.projectId !== undefined && !provisional && !focusRelated
+                {!(isIndividualProject && selectedDetails.projectId !== undefined && !provisional
                   && !selectedDetails.aggregated && !selectedDetails.aggregatedTop?.length) && <div className="h-3" />}
               </div>
               </>}

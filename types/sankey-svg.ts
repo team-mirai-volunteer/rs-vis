@@ -78,8 +78,9 @@ export interface BudgetBreakdownItem {
   item: string;
   subItem: string;
   note: string;
-  amount: number;
-  nextYearRequestAmount: number;
+  /** 円。原資料の空欄は null（明記された0円とは区別）。 */
+  amount: number | null;
+  nextYearRequestAmount: number | null;
 }
 
 export interface RawEdge {

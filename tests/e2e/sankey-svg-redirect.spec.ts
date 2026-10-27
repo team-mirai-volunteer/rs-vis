@@ -24,7 +24,7 @@ test.describe('sankey-svg redirect', () => {
     const q = new URL(page.url()).searchParams;
     expect(q.get('year')).toBe('2024');
     expect(q.get('sel')).toBe('project-budget-2826');
-    expect(q.get('fr')).toBe('1');
+    expect(q.get('fr')).toBeNull();
     expect(q.get('tpr')).toBe('60');
     expect(q.get('tps')).toBe('60');
     expect(q.get('tre')).toBe('80');

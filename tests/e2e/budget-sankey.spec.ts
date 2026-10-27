@@ -12,6 +12,63 @@ import { UNIFIED_BASES_BY_YEAR, unifiedGraphFileName } from '../../types/unified
 const CANVAS = '[data-testid="unified-canvas"]';
 const RENDER_TIMEOUT = 60_000;
 
+test('selected project survives year changes, including cached years and years without spending', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const errors = await openPage(page, 'year=2024&b=initial&cols=mi,pr,ps,re&sel=project-spending-20464');
+  await expect(page.locator('[data-selected="true"]')).toContainText('芸術家等の尊厳');
+  for (const year of ['2025', '2024', '2025', '2024']) {
+    await page.getByLabel('年度', { exact: true }).selectOption(year);
+    await expect(page).toHaveURL(new RegExp(`year=${year}`), { timeout: RENDER_TIMEOUT });
+    await expect(page).toHaveURL(/sel=project-budget-20464/);
+    const selected = page.locator('[data-selected="true"]');
+    await expect(selected).toContainText('芸術家等の尊厳');
+    const panel = page.getByTestId('unified-side-panel');
+    await expect(panel).toContainText('芸術家等の尊厳');
+    await expect.poll(async () => (await selected.locator('rect').first().boundingBox())!.x)
+      .toBeGreaterThan((await panel.boundingBox())!.width);
+    const marker = (await selected.locator('rect').first().boundingBox())!;
+    expect(marker.y).toBeGreaterThan(0);
+    expect(marker.y).toBeLessThan(1000);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('year without the selected project clears selection and the previous display offset', async ({ page }) => {
+  const errors = await openPage(page, 'year=2024&b=initial&cols=mi,pr,ps,re&opr=4248&sel=project-budget-20464');
+  await expect(page.locator('[data-selected="true"]')).toContainText('芸術家等の尊厳');
+  await page.getByLabel('年度', { exact: true }).selectOption('2023');
+  await expect(page).toHaveURL(/year=2023/, { timeout: RENDER_TIMEOUT });
+  await expect(page).not.toHaveURL(/[?&](sel|opr)=/);
+  await expect(page.locator('[data-selected="true"]')).toHaveCount(0);
+  await expect(page.getByTestId('unified-node').first()).toBeAttached();
+  await page.getByLabel('年度', { exact: true }).selectOption('2024');
+  await expect(page).toHaveURL(/year=2024/);
+  await expect(page).not.toHaveURL(/[?&](sel|opr)=/);
+  expect(errors).toEqual([]);
+});
+
+test('既存の fr=1 URLでも周辺と選択位置が見え、再読込後も保つ', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const errors = await openPage(page, 'year=2024&b=initial&cols=mi,pr,ps,re&opr=4248&sel=project-budget-20464&fr=1&ld=all&fnrs=0');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const selected = page.locator('[data-testid="unified-node"][data-selected="true"]');
+    await expect(selected).toContainText('芸術家等の尊厳');
+    await expect(page).not.toHaveURL(/[?&]fr=1/);
+    await expect.poll(() => page.locator('[data-testid="unified-node"][data-column="program"]').count()).toBeGreaterThan(1);
+    const panelBox = (await page.getByTestId('unified-side-panel').boundingBox())!;
+    await expect.poll(async () => (await selected.locator('rect').first().boundingBox())!.x).toBeGreaterThan(panelBox.x + panelBox.width);
+    const marker = (await selected.locator('rect').first().boundingBox())!;
+    expect(marker.y).toBeGreaterThan(0);
+    expect(marker.y).toBeLessThan(900);
+    await expect(page.getByRole('button', { name: /周辺も表示|関連する流れだけ表示|選択位置に戻る/ })).toHaveCount(0);
+    await expect(page).toHaveURL(/sel=project-budget-20464/);
+    if (attempt === 0) await page.reload();
+  }
+  await page.getByRole('button', { name: '表示設定を開く' }).click();
+  await expect(page.getByText('選択時に関連ノードのみ表示')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test('入口は2024年度決算で、明示した当初予算も再読込後に保つ', async ({ page }) => {
   await page.goto('/budget-sankey');
   await expect(page.getByLabel('年度', { exact: true })).toHaveValue('2024');
@@ -68,8 +125,8 @@ for (const basis of ['initial', 'ministry']) {
     const errors = await openPage(page, `year=2024&b=${basis}&sel=project-budget-56&fr=1`);
     const panel = page.getByTestId('unified-side-panel');
     await expect(panel).toContainText('マイキープラットフォーム関連システム');
-    await expect(page.locator('[data-testid="unified-node"][data-column="program"]')).toHaveCount(1);
-    await expect(page.locator('[data-testid="unified-node"][data-column="program-spending"]')).toHaveCount(1);
+    await expect.poll(() => page.locator('[data-testid="unified-node"][data-column="program"]').count()).toBeGreaterThan(1);
+    await expect.poll(() => page.locator('[data-testid="unified-node"][data-column="program-spending"]').count()).toBeGreaterThan(1);
     await expect(page.getByTestId('unified-label').filter({ hasText: 'マイキー' }).filter({ hasText: '9.38億円' })).toBeVisible();
     await panel.getByRole('tab', { name: /^支出先/ }).click();
     await expect(panel.getByRole('tabpanel').getByRole('button').first()).toBeVisible();

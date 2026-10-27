@@ -105,3 +105,12 @@ export function parseAmount(amountStr: string): number {
   const value = Number(cleaned);
   return isNaN(value) ? 0 : value;
 }
+
+/** 円単位の任意金額。空欄・ダッシュを0円に変換しない。 */
+export function parseOptionalAmount(value: string | undefined): number | null {
+  const text = (value ?? '').replace(/,/g, '').trim();
+  if (['', '-', '―', '－'].includes(text)) return null;
+  const amount = Number(text);
+  if (!Number.isFinite(amount)) throw new Error(`Invalid amount: ${value}`);
+  return amount;
+}

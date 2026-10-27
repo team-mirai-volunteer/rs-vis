@@ -27,7 +27,7 @@ export interface RibbonBudgetItem {
   item: string;
   subItem: string;
   note: string;
-  nextYearRequestAmount: number;
+  nextYearRequestAmount: number | null;
 }
 
 /**
@@ -284,7 +284,7 @@ export function computeSubcontractRibbonLayout(graph: RibbonLayoutInput): Subcon
   const depthMap = computeDepths(graph.flows); // blockId -> depth(>=1)。root は depth 0 相当（別管理）
   // 予算・執行列（最左）: 歳出予算項目を緑ノードに。並びは本家RSシステムの「予算・執行額」表と
   // 同じくレコード順（データ登録順）を尊重し、金額でのソートはしない。予算総額は事業ノードの予算側の高さになる
-  const budgetBreakdown = (graph.budgetBreakdown ?? []).filter((b) => b.amount > 0);
+  const budgetBreakdown = (graph.budgetBreakdown ?? []).filter((b): b is BudgetBreakdownItem & { amount: number } => b.amount !== null && b.amount > 0);
   // 予算総額は「実際に描画する予算内訳ノードの合計」を採用する（budgetSummary.totalBudget を
   // 優先すると、公式合計と内訳合計がズレる事業で funnel が root.budgetH まで届かず緑側に隙間が
   // できたり、逆にはみ出したりする）。公式合計との差分は側パネル側で別途警告表示している。
