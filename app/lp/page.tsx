@@ -288,14 +288,15 @@ export default function LandingPage() {
         {/* Diet questions */}
         <section id="questions" aria-labelledby="questions-heading" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
-            <div className="max-w-2xl">
+            {/* 説明と試案の注記が続くので、他の節（672px）より少し広く取る */}
+            <div className="max-w-[784px]">
               <p className="text-sm font-bold text-primary-accent">{SECTIONS[3].label}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <h2 id="questions-heading" className="text-2xl/8 font-bold tracking-normal">国会質問の設計（台本つき{scripted}本＋{questions.length - scripted}本）</h2>
                 <AnchorLink id="questions" label="国会質問の試案" />
               </div>
               <p className="mt-2 text-[15px] leading-relaxed text-mirai-text-subtle">
-                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。文体はチームみらいの実際の質疑の型（政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する）に揃えています。
+                「誰に・何を目的に・どの手段で」で中身が変わるので、各問に目的と答弁者のタグを付けています。<br />文体は<span className="cursor-help underline decoration-dotted underline-offset-4" title="政府の取り組みを認めてから事実を示し、仮説で問い、答弁を受け止めて提案し、翌年の検証を宣言する">チームみらいの実際の質疑の型</span>に揃えています。
               </p>
               <p className="mt-3 rounded-xl border border-mirai-border bg-card px-4 py-3 text-sm leading-relaxed">
                 <span className="font-bold">これは試案です。</span>

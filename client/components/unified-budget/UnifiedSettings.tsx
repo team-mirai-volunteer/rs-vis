@@ -2,7 +2,7 @@
 
 /**
  * 表示設定（歯車）。ハンバーガーがヘッダーへ移ったので、コントロールパネル（右上）の右隣に置き、下へ開く。
- * 文字サイズ・ラベル表示・関連フォーカス・事業の並び順・表示する列。
+ * 文字サイズ・ラベル表示・事業の並び順・表示する列。
  */
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
@@ -29,8 +29,6 @@ export function UnifiedSettings({
   onFlowScaleChange,
   labelDensity,
   onLabelDensityChange,
-  focusRelated,
-  onFocusRelatedChange,
   showNonRs = true,
   onShowNonRsChange,
   includeCollapsedAccounts = false,
@@ -51,8 +49,6 @@ export function UnifiedSettings({
   onFlowScaleChange: Dispatch<SetStateAction<number>>;
   labelDensity: LabelDensity;
   onLabelDensityChange: (value: LabelDensity) => void;
-  focusRelated: boolean;
-  onFocusRelatedChange: (value: boolean) => void;
   /** 非事業支出・未突合のノードを出すか（絞り込み状態の showNonRs。渡さなければ項目を出さない） */
   showNonRs?: boolean;
   onShowNonRsChange?: (value: boolean) => void;
@@ -151,10 +147,6 @@ export function UnifiedSettings({
           <label className="flex cursor-pointer items-center gap-2">
             <input type="checkbox" checked={labelDensity === 'all'} onChange={e => onLabelDensityChange(e.target.checked ? 'all' : 'major')} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
             <span>すべてのノードラベルを表示</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" checked={focusRelated} onChange={e => onFocusRelatedChange(e.target.checked)} className="h-3.5 w-3.5 cursor-pointer accent-primary" />
-            <span>選択時に関連ノードのみ表示</span>
           </label>
           {/* 何を図に出すかの表示オプション。絞り込み（条件で事業を残す）ではなく図の既定の見せ方なので、絞り込みパネルではなくここに置く */}
           {onShowNonRsChange && (

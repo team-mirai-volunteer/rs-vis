@@ -28,11 +28,10 @@ function rsMinistryBase(sheetYear: number | string): URLSearchParams {
   return p;
 }
 
-/** 事業を選択し、関連ノードだけを表示した状態で開く（旧 sankeySvgProjectUrl 相当） */
+/** 事業を選択し、周辺も残して位置関係が分かる状態で開く。 */
 export function unifiedProjectUrl(projectId: number | string, sheetYear: number | string): string {
   const p = base(sheetYear);
   p.set('sel', `project-budget-${projectId}`);
-  p.set('fr', '1');
   return `/budget-sankey?${p.toString()}`;
 }
 
@@ -101,7 +100,6 @@ export function sankeySvgSearchToUnified(search: string | URLSearchParams): stri
   copyNum('po', ['opr', 'ops']);
   copyNum('ro', ['ore']);
 
-  if (p.get('fr') === '1') out.set('fr', '1');
   if (p.get('fp') === '1') out.set('ffp', '1');
 
   // 絞り込み。fm（RS の府省庁名）は所管の絞り込み fmi へ（府省庁基準の所管ノードは RS の府省庁名なので一致する）

@@ -57,6 +57,7 @@ import { useAiResultHandler } from '@/client/lib/ai/result-handler';
 import type { SankeyChatResult } from '@/types/sankey-ai-chat';
 import { cn } from '@/lib/utils';
 import { FLOW_SCALE_BASE, FLOW_SCALE_DEFAULT, parseFlowScale } from '@/client/lib/unified-flow-scale';
+import { resolveSelection } from '@/app/lib/unified-budget/selection';
 
 /** 生成済みの予算年度（新しい順）。生成物が増えたらここに足す（decompress-data.sh も） */
 const AVAILABLE_YEARS = [2026, 2025, 2024, 2023] as const;
@@ -145,7 +146,6 @@ function UnifiedBudgetSankeyContent() {
   const [offset, setOffset] = useState<UnifiedOffset>(() => parsePerColumn(searchParams, 'o'));
   const [programSort, setProgramSort] = useState<UnifiedProgramSort>(() => parseProgramSort(searchParams.get('sort')));
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('sel'));
-  const [focusRelated, setFocusRelated] = useState(searchParams.get('fr') === '1');
   /** 利用者が明示した文字サイズ（URL の fs）。null は自動（画面の大きさから決める） */
   const [fontPxOverride, setFontPxOverride] = useState<number | null>(() => Number(searchParams.get('fs')) || null);
   const [autoFontPx, setAutoFontPx] = useState(LABEL_FONT_PX_FULL_HD);
@@ -284,14 +284,21 @@ function UnifiedBudgetSankeyContent() {
     () => (collapsed ? sortForDisplay(applyTopN(collapsed, topN, offset, programRanking), programRanking) : null),
     [collapsed, topN, offset, programRanking]
   );
+  // 読み込み中は選択を維持し、読み込み後は移動先の年度・基準にあるノードへ解決する。
+  // 子の選択解除から古い年度の URL を push しないよう、描画と URL 同期にも解決済み ID を使う。
+  const resolvedSelectedId = base ? resolveSelection(selectedId, [...base.nodes, ...(display?.nodes ?? [])]) : selectedId;
+  useEffect(() => {
+    if (base && resolvedSelectedId !== selectedId) setSelectedId(resolvedSelectedId);
+  }, [base, resolvedSelectedId, selectedId]);
+
   // 選択ノード（一覧のリンク・検索・URL から来る）が TopN の窓から溢れて図に無いときは、
   // その列の表示位置をノードが窓に入るところまで動かす。「図には出ていません」で止まらないようにする
   useEffect(() => {
-    if (!selectedId || !collapsed || !display) return;
-    if (display.nodes.some(n => n.id === selectedId)) return;
-    const patch = offsetToReveal(collapsed, topN, offset, selectedId, programRanking);
+    if (!resolvedSelectedId || !collapsed || !display) return;
+    if (display.nodes.some(n => n.id === resolvedSelectedId)) return;
+    const patch = offsetToReveal(collapsed, topN, offset, resolvedSelectedId, programRanking);
     if (patch) setOffset(o => ({ ...o, ...patch }));
-  }, [selectedId, collapsed, display, topN, offset, programRanking]);
+  }, [resolvedSelectedId, collapsed, display, topN, offset, programRanking]);
   // 絞り込みの選択肢は共管（「内閣府及び厚生労働省」など）を分解した単独の省庁だけ。判定側（applyFilter）が共管を含めて残す
   const ministries = useMemo(() => (base ? atomicMinistryOptions(base.nodes.filter(n => n.details.column === 'ministry').map(n => n.name)) : []), [base]);
 
@@ -309,8 +316,7 @@ function UnifiedBudgetSankeyContent() {
       if (offset[c]) params.set(`o${COL_KEY[c]}`, String(offset[c]));
     }
     if (programSort !== 'amount') params.set('sort', SORT_KEY[programSort]);
-    if (selectedId) params.set('sel', selectedId);
-    if (focusRelated) params.set('fr', '1');
+    if (resolvedSelectedId) params.set('sel', resolvedSelectedId);
     if (fontPxOverride !== null) params.set('fs', String(fontPxOverride));
     if (flowScale !== FLOW_SCALE_DEFAULT) params.set('th', String(Number((flowScale * FLOW_SCALE_BASE).toFixed(8))));
     params.set('ld', labelDensity);
@@ -318,7 +324,7 @@ function UnifiedBudgetSankeyContent() {
     if (filterOpen) params.set('ffp', '1');
     const next = `?${params.toString()}`;
     if (next !== window.location.search) window.history.replaceState(null, '', next);
-  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, programSort, selectedId, focusRelated, fontPxOverride, flowScale, labelDensity, filter, filterOpen]);
+  }, [graph, year, effectiveBasis, effectiveProvisional, visibleColumns, topN, offset, programSort, resolvedSelectedId, fontPxOverride, flowScale, labelDensity, filter, filterOpen]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -333,7 +339,6 @@ function UnifiedBudgetSankeyContent() {
       setOffset(parsePerColumn(params, 'o'));
       setProgramSort(parseProgramSort(params.get('sort')));
       setSelectedId(params.get('sel'));
-      setFocusRelated(params.get('fr') === '1');
       setFontPxOverride(Number(params.get('fs')) || null);
       setFlowScale(parseFlowScale(params.get('th')));
       setLabelDensity(params.get('ld') === 'major' ? 'major' : 'all');
@@ -382,8 +387,6 @@ function UnifiedBudgetSankeyContent() {
       onFlowScaleChange={setFlowScale}
       labelDensity={labelDensity}
       onLabelDensityChange={setLabelDensity}
-      focusRelated={focusRelated}
-      onFocusRelatedChange={setFocusRelated}
       showNonRs={filter.showNonRs}
       onShowNonRsChange={showNonRs => setFilter(f => ({ ...f, showNonRs }))}
       includeCollapsedAccounts={filter.includeCollapsedAccounts}
@@ -421,20 +424,23 @@ function UnifiedBudgetSankeyContent() {
           setFilter(f => ({ ...f, showNonRs: preset !== 'rs' }));
         }}
       />
-      <YearSelect value={String(year)} onChange={y => setYear(Number(y))} years={AVAILABLE_YEARS} />
+      <YearSelect value={String(year)} onChange={y => {
+        setYear(Number(y));
+        setOffset({});
+      }} years={AVAILABLE_YEARS} />
     </AppHeader>
     <h1 className="sr-only">国の予算と支出の流れ</h1>
     <div className="fixed inset-x-0 bottom-0 top-[var(--app-header-h)] overflow-hidden bg-background">
       <UnifiedSankeyChart
+        key={`${year}-${effectiveBasis}-${effectiveProvisional}`}
         nodes={display.nodes}
         links={display.links}
         browseNodes={collapsed.nodes}
         browseLinks={collapsed.links}
         visibleColumns={effectiveColumns}
         ministries={ministries}
-        selectedId={selectedId}
+        selectedId={resolvedSelectedId}
         onSelect={selectNode}
-        focusRelated={focusRelated}
         filter={filter}
         onFilterChange={setFilter}
         filterOpen={filterOpen}
