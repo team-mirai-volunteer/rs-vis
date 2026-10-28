@@ -173,9 +173,13 @@ export default function VendorsView() {
               <thead className="sticky top-0 z-10 bg-mirai-surface text-mirai-text-muted">
                 <tr>{([['事業者・法人番号・主な府省', 'name', 'name'], ['契約額', 'contractAmount', 'contractAmount'], ['1者応札（金額・率）', 'singleAmount', 'single'], ['落札率 1者（複数）', 'bidRate', 'bidRate'],
                   ['競争なし随契', 'soleAmount', 'sole'], ['競争を経ない割合', 'nonCompetitive', 'nonCompetitive'], ['事業・府省', 'projects', 'projects'], ['1者複数年', 'repeatSingle', 'repeat'], ['論点', null, 'signals']] as [string, VendorSortKey | null, string][]).map(([label, key, desc]) =>
-                  <th key={label} title={VENDOR_COLUMN_DESCRIPTIONS[desc]} className={`whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : 'cursor-help'}`}
+                  <th key={label} aria-describedby={`vendors-col-${desc}`} className={`group relative whitespace-nowrap px-2 py-2 font-bold ${key && key !== 'name' ? 'text-right' : 'text-left'} ${key ? 'cursor-pointer hover:text-mirai-text' : 'cursor-help'}`}
                     onClick={key ? () => setSort(s => ({ key, desc: s.key === key ? !s.desc : key !== 'name' })) : undefined}>
-                    {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}</th>)}</tr>
+                    {label}{sort.key === key ? (sort.desc ? ' ▼' : ' ▲') : ''}
+                    {/* ネイティブの title は幅を絞れず横に長くなるため、幅を固定した吹き出しにする */}
+                    <span id={`vendors-col-${desc}`} role="tooltip"
+                      className={`pointer-events-none invisible absolute top-full z-20 mt-1 w-60 whitespace-normal rounded-lg border border-mirai-border bg-card p-2 text-left font-normal leading-relaxed text-mirai-text-secondary opacity-0 shadow-soft transition-opacity group-hover:visible group-hover:opacity-100 ${desc === 'name' ? 'left-0' : 'right-0'}`}>
+                      {VENDOR_COLUMN_DESCRIPTIONS[desc]}</span></th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {pageItems.map(({ v, signals }) => { const t = v.total; return <tr key={v.key} data-vendor={v.key} aria-selected={selectedKey === v.key}
