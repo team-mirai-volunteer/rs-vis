@@ -5,7 +5,8 @@
  * 行を選ぶと右に事業者の詳細（年度別の集計・府省別・複数年度で1者応札の事業・支出先としての説明）を出す。
  * 一覧は契約額の下限以上の事業者だけ（軽い行）。下限未満は検索ボタンでサーバー側を引く。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { AppHeader } from '@/components/navigation/AppHeader';
@@ -195,8 +196,8 @@ export default function VendorsView() {
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{pct(nonCompetitiveShare(t))}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums text-mirai-text-subtle">{t.projects}事業・{t.ministries}府省</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-right tabular-nums">{v.repeatSingleCount > 0 ? `${v.repeatSingleCount}事業` : '—'}</td>
-                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
-                    className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_SHORT[s]}</span>)}</div></td>
+                  <td className="px-2 py-1.5"><div className="flex min-w-[8rem] flex-wrap gap-1">{signals.map(s => <SignalBadge key={s} signal={s}
+                    className="whitespace-nowrap rounded-md bg-status-warn-bg px-1 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_SHORT[s]}</SignalBadge>)}</div></td>
                 </tr>; })}
               </tbody>
             </table>}
@@ -269,8 +270,8 @@ function VendorDetail({ vendorKey, row, signals, onClose, onPrev, onNext, positi
       {sameName.map(r => <Button key={r.key} variant="link" size="xs" onClick={() => onSelect(r.key)} className="h-auto p-0 px-1 text-[11px] text-primary-accent">
         {r.corporateNumber ? `法人番号 ${r.corporateNumber}` : '番号なし'}・契約額 {yen(fromVendorRow(r).total.contractAmount)}</Button>)}
     </p>}
-    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <span key={s} title={vendorSignalTitle(s)}
-      className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_LABELS[s]}</span>)}</div>}
+    {signals.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{signals.map(s => <SignalBadge key={s} signal={s}
+      className="rounded-md bg-status-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-status-warn-fg">{VENDOR_SIGNAL_LABELS[s]}</SignalBadge>)}</div>}
     <dl className="mt-3 grid grid-cols-2 gap-2">
       {([['契約額（全年度）', yen(t.contractAmount)], ['1者応札', `${yen(t.singleAmount)}${t.competitiveWithApplicants ? ` · ${pct(singleBidRatio(t))}` : ''}`],
         ['競争なしの随意契約', yen(t.soleAmount)], ['1者応札の落札率', `${pct(avgSingleBidRate(t), 1)}${t.multiBidRateN ? `（複数 ${pct(avgMultiBidRate(t), 1)}）` : ''}`]] as [string, string][])
@@ -342,4 +343,23 @@ function VendorsHelp() {
       <li>1者応札率は、応札者数の記載がある競争入札に対する件数の割合です。落札率は記載のある契約の単純平均です。</li>
     </ul>
   </HeaderHelp>;
+}
+
+/**
+ * 論点のラベル。説明が長く、ネイティブの title だと横一行に伸びるため、幅を固定した吹き出しを body に出す
+ * （表はスクロール領域の中にあるので、absolute だと端で切れる）。
+ */
+function SignalBadge({ signal, className, children }: { signal: VendorSignal; className: string; children: ReactNode }) {
+  const id = useId();
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const show = (e: MouseEvent<HTMLElement>) => setAnchor(e.currentTarget.getBoundingClientRect());
+  const hide = () => setAnchor(null);
+  return <>
+    <span aria-describedby={anchor ? id : undefined} onMouseEnter={show} onMouseLeave={hide}
+      className={`cursor-help ${className}`}>{children}</span>
+    {anchor && createPortal(<div id={id} role="tooltip"
+      className="pointer-events-none fixed z-[100] w-72 rounded-lg border border-mirai-border bg-card p-2 text-[11px] font-normal leading-relaxed text-mirai-text-secondary shadow-soft"
+      style={{ left: `clamp(8px, ${anchor.right - 288}px, calc(100vw - 296px))`, top: anchor.bottom + 4 }}>
+      {vendorSignalTitle(signal)}</div>, document.body)}
+  </>;
 }
