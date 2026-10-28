@@ -346,20 +346,20 @@ function VendorsHelp() {
 }
 
 /**
- * 論点のラベル。説明が長く、ネイティブの title だと横一行に伸びるため、幅を固定した吹き出しを body に出す
+ * 論点のラベル。説明が長く、ネイティブの title だと横一行に伸びるため、幅を固定した吹き出しをポインタの右下に出す
  * （表はスクロール領域の中にあるので、absolute だと端で切れる）。
  */
 function SignalBadge({ signal, className, children }: { signal: VendorSignal; className: string; children: ReactNode }) {
   const id = useId();
-  const [anchor, setAnchor] = useState<DOMRect | null>(null);
-  const show = (e: MouseEvent<HTMLElement>) => setAnchor(e.currentTarget.getBoundingClientRect());
-  const hide = () => setAnchor(null);
+  const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  const move = (e: MouseEvent<HTMLElement>) => setPointer({ x: e.clientX, y: e.clientY });
+  const hide = () => setPointer(null);
   return <>
-    <span aria-describedby={anchor ? id : undefined} onMouseEnter={show} onMouseLeave={hide}
+    <span aria-describedby={pointer ? id : undefined} onMouseEnter={move} onMouseMove={move} onMouseLeave={hide}
       className={`cursor-help ${className}`}>{children}</span>
-    {anchor && createPortal(<div id={id} role="tooltip"
-      className="pointer-events-none fixed z-[100] w-72 rounded-lg border border-mirai-border bg-card p-2 text-[11px] font-normal leading-relaxed text-mirai-text-secondary shadow-soft"
-      style={{ left: `clamp(8px, ${anchor.right - 288}px, calc(100vw - 296px))`, top: anchor.bottom + 4 }}>
+    {pointer && createPortal(<div id={id} role="tooltip"
+      className="pointer-events-none fixed z-[100] w-[32rem] max-w-[calc(100vw-16px)] rounded-lg border border-mirai-border bg-card p-2 text-[11px] font-normal leading-relaxed text-mirai-text-secondary shadow-soft"
+      style={{ left: `clamp(8px, ${pointer.x + 12}px, calc(100vw - 32rem - 8px))`, top: `min(${pointer.y + 16}px, calc(100vh - 6rem))` }}>
       {vendorSignalTitle(signal)}</div>, document.body)}
   </>;
 }
