@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PRODUCT_NAME } from '@/components/navigation/pages';
 import { SITE_URL } from '@/app/lib/site-url';
-import { LegalDocument, LegalSection } from '@/components/legal/LegalDocument';
+import { ExternalLink, LegalDocument, LegalSection } from '@/components/legal/LegalDocument';
 import { PRIVACY_UPDATED } from '@/app/lib/legal';
 
 export const metadata: Metadata = {
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 /**
  * プライバシーポリシー。まるみえ・みらい議会のポリシーと同じ粒度に揃える
- * （ホスティング等の事業者名は書かない。アクセス解析は Google Analytics と明示する）。
+ * （ホスティング等の事業者名は書かない。アクセス解析は電気通信事業法の外部送信規律に従い、
+ * 送信先 Google LLC・送信する情報・利用目的・オプトアウト先を第5項に公表する）。
  * 実装と食い違わないよう、取り扱いを変えるときは本文も更新する
  * （根拠: app/api/projects/[pid]/comments, app/api/ai, client/lib/ai/api-key-store.ts,
  * components/analytics/SiteGoogleAnalytics.tsx）。
@@ -52,7 +53,7 @@ export default function PrivacyPage() {
             </ul>
           </li>
           <li>投稿された意見は、匿名で本サービス上に公開されるほか、個人を識別できない形で統計化し、または集計し、報告書などで公表することがあります。対話ログは公開せず、次項の委託先を除き第三者に提供しません。</li>
-          <li>本サービスの提供にあたり、ホスティング、データの保管、AI による応答の生成、アクセス解析を外部のサービスに委ねています。AI 機能に入力した内容は、応答の生成のために外部の AI サービスで処理されます。ユーザー自身の API キーを登録して AI 機能を利用する場合、入力した内容はユーザーのブラウザから直接その外部サービスに送られます。公開サイトの利用状況は、アクセス解析のために Google に送信します。</li>
+          <li>本サービスの提供にあたり、ホスティング、データの保管、AI による応答の生成、アクセス解析を外部のサービスに委ねています。AI 機能に入力した内容は、応答の生成のために外部の AI サービスで処理されます。ユーザー自身の API キーを登録して AI 機能を利用する場合、入力した内容はユーザーのブラウザから直接その外部サービスに送られます。公開サイトの利用状況は、アクセス解析のために Google LLC に送信します（第5項）。</li>
         </ol>
       </LegalSection>
 
@@ -62,7 +63,19 @@ export default function PrivacyPage() {
 
       <LegalSection id="cookie" heading="5. Cookie とブラウザ内の保存">
         <ol>
-          <li>本サービスは、公開サイトの利用状況を把握するために Google Analytics を使用します。Google Analytics は Cookie を用いて、閲覧したページ、参照元、おおよその地域、端末の種類などを Google に送信します。この計測は本番の公開サイトでのみ行い、プレビューや開発環境では行いません。Google による情報の利用については「<a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" className="text-primary-accent underline underline-offset-4">Google のサービスを使用するサイトやアプリから収集した情報の Google による使用</a>」をご覧ください。Cookie はブラウザの設定から拒否できます。</li>
+          <li>本サービスは、公開サイトの利用状況を把握するために Google Analytics を使用します。Google Analytics は Cookie を用いて、閲覧したページ、参照元、おおよその地域、端末の種類などを Google LLC に送信します。この計測は本番の公開サイトでのみ行い、プレビューや開発環境では行いません。Google による情報の利用については「<ExternalLink href="https://policies.google.com/technologies/partner-sites">Google のサービスを使用するサイトやアプリから収集した情報の Google による使用</ExternalLink>」をご覧ください。Cookie はブラウザの設定から拒否できます。</li>
+          <li>電気通信事業法に基づき、ユーザーの端末から外部に送信される情報を次のとおり公表します。
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-xl border border-mirai-border p-4 [&_dt]:font-bold">
+              <dt>送信先</dt>
+              <dd>Google LLC（サービス名: Google Analytics）</dd>
+              <dt>送信される情報</dt>
+              <dd>閲覧したページの URL（絞り込み条件などを含む）、参照元、おおよその地域、端末やブラウザの種類、Cookie に保存された識別子、閲覧日時</dd>
+              <dt>利用目的</dt>
+              <dd>本サービスの利用状況の把握と改善。送信先での利用は<ExternalLink href="https://policies.google.com/privacy">Google のプライバシーポリシー</ExternalLink>によります</dd>
+              <dt>オプトアウト</dt>
+              <dd><ExternalLink href="https://tools.google.com/dlpage/gaoptout?hl=ja">Google アナリティクス オプトアウト アドオン</ExternalLink>を導入するか、ブラウザの設定で Cookie を拒否してください</dd>
+            </dl>
+          </li>
           <li>表示の設定や AI 機能の設定（ユーザー自身の API キーを含む）は、ユーザーのブラウザ内に保存します。これらは当団体のサーバーには送信されず、ブラウザの設定や画面の操作で削除できます。</li>
         </ol>
       </LegalSection>
@@ -71,7 +84,7 @@ export default function PrivacyPage() {
         <ol>
           <li>取得した個人情報および対話ログ（意見投稿に至る対話と、AI 機能への入力・応答を含みます）は、利用する必要がなくなったときに、適切な方法で廃棄・削除します。保管する期間は、取得から最長 7 年とします。投稿した本人が意見の削除を希望する場合は、第8項の連絡先までお知らせください。匿名投稿のため、投稿日時や内容を伺って本人を確認し、意見文と対話ログをあわせて削除します。</li>
           <li>公表済みの集計結果や統計など、個人を識別できない形に加工した情報は、削除の対象になりません。</li>
-          <li>アクセス解析のために Google に送った利用状況は、当団体のサーバーには保存しません。</li>
+          <li>アクセス解析のために Google LLC に送った利用状況は、当団体のサーバーには保存しません。</li>
         </ol>
       </LegalSection>
 
