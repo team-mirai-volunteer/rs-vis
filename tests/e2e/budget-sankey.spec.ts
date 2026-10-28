@@ -562,7 +562,8 @@ test.describe('budget-sankey (統合ビュー)', () => {
     await page.getByLabel('事業や支出先を検索').fill('個人A');
     await searchResults(page).filter({ hasText: /^支出先個人A[0-9]/ }).first().click();
     const node = page.locator('[data-column="recipient"]').filter({ hasText: /^個人A \(/ }).first();
-    const box = (await node.locator('rect').first().boundingBox())!;
+    // 選択枠は装飾で pointer-events:none。ホバー対象はノード本体。
+    const box = (await node.getByTestId('unified-node-body').boundingBox())!;
     await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 5));
     await expect(page.getByText('主な契約', { exact: true })).toBeVisible();
     await expect(page.getByText('在外公館施設：', { exact: true })).toBeVisible();

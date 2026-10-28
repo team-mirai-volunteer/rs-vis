@@ -727,6 +727,7 @@ export function UnifiedSankeyChart({
                   vectorEffect="non-scaling-stroke" pointerEvents="none"
                 />}
                 <rect
+                  data-testid={testId('unified-node-body')}
                   x={node.x}
                   y={node.y}
                   width={node.width}
