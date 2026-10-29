@@ -82,6 +82,33 @@ const defSingle = recorded.filter(r => ministryOf(r.pid) === '防衛省');
 check('1者応札: 防衛省 金額（億円）/ 母数金額', '2,482 / 4,333', `${Math.round(oku(defSingle.filter(r => r.ap === 1).reduce((s, r) => s + (r.a ?? 0), 0))).toLocaleString('en-US')} / ${Math.round(oku(defSingle.reduce((s, r) => s + (r.a ?? 0), 0))).toLocaleString('en-US')}`);
 const high = withRate.filter(r => r.ap === 1 && r.br! >= 99);
 check('1者応札かつ落札率99%以上: 件数 / 億円', '2,038 / 2,352', `${high.length.toLocaleString('en-US')} / ${Math.round(oku(high.reduce((s, r) => s + (r.a ?? 0), 0))).toLocaleString('en-US')}`);
+// 国会質問 Q2: 同じ事業で同じ事業者の1者応札が2年度以上（連続とは限らない）記載された事業と、その事業での1者応札（3年度計）。
+// 事業者は法人番号でまとめる（scripts/generate-vendors.ts と同じ）
+const contractsByYear = [2024, 2025, 2026].map(y => [y, must<ContractMethodsByPid>(`contract-methods-${y}.json`)] as const);
+function repeatSingle(cn: string) {
+  const per = new Map<string, Map<number, { amount: number; single: number; recorded: number }>>();
+  for (const [y, file] of contractsByYear) for (const [pid, rs] of Object.entries(file)) for (const r of rs) {
+    if (r.cn?.trim() !== cn || !['open', 'selective'].includes(contractCategory(r.m)) || r.ap === undefined) continue;
+    const m = per.get(pid) ?? new Map(); per.set(pid, m);
+    const v = m.get(y) ?? { amount: 0, single: 0, recorded: 0 }; m.set(y, v);
+    v.recorded++;
+    if (r.ap === 1) { v.single++; v.amount += r.a ?? 0; }
+  }
+  const repeat = [...per].filter(([, m]) => [...m.values()].filter(v => v.single > 0).length >= 2);
+  const sum = (k: 'amount' | 'single' | 'recorded') => repeat.reduce((s, [, m]) => s + [...m.values()].reduce((t, v) => t + v[k], 0), 0);
+  return {
+    projects: repeat.length,
+    allYears: repeat.filter(([, m]) => [...m.values()].filter(v => v.single > 0).length === 3).length,
+    amount: Math.round(oku(sum('amount'))).toLocaleString('en-US'), single: sum('single'), recorded: sum('recorded'),
+    byPid: new Map(repeat.map(([pid, m]) => [pid, Math.round(oku([...m.values()].reduce((s, v) => s + v.amount, 0)))])),
+  };
+}
+const fujitsu = repeatSingle('1020001071491'), nec = repeatSingle('7010401022916'), nttd = repeatSingle('6010601062093'), hitachi = repeatSingle('7010001008844');
+check('Q2 同じ事業で2年度以上1者応札: 事業数 富士通(3年度とも) / NEC / NTTデータ / 日立', '34(18) / 38 / 29 / 19', `${fujitsu.projects}(${fujitsu.allYears}) / ${nec.projects} / ${nttd.projects} / ${hitachi.projects}`);
+check('Q2 その事業での1者応札 億円 富士通 / NEC / NTTデータ / 日立', '1,017 / 654 / 541 / 307', `${fujitsu.amount} / ${nec.amount} / ${nttd.amount} / ${hitachi.amount}`);
+check('Q2 富士通 1者 / 応札者数の記載がある競争入札', '201 / 219', `${fujitsu.single} / ${fujitsu.recorded}`);
+check('Q2 ハローワークシステム運営費（2519）富士通 1者応札の年度計 億円', 316, fujitsu.byPid.get('2519') ?? '—');
+
 const sole = allContracts.filter(r => contractCategory(r.m) === 'negotiated-sole');
 check('随意契約（特命・不落）: 件数 / 兆円', '11,487 / 2.21', `${sole.length.toLocaleString('en-US')} / ${r2(cho(sole.reduce((s, r) => s + (r.a ?? 0), 0)))}`);
 
