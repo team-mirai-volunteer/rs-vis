@@ -74,6 +74,7 @@ import {
   RIBBON_BAR_W,
   RIBBON_LABEL_W,
   truncateRibbonLabelName,
+  describeBudgetBasis,
   type RibbonFlow,
   type RibbonBudgetItem,
 } from '@/app/lib/subcontract-ribbon-layout';
@@ -486,6 +487,8 @@ function SidePane({
   const PANEL_PRIMARY_VALUE_FONT_PX = scaleFont(PANEL_PRIMARY_VALUE_FONT_PX_DEFAULT);
   const PANEL_META_FONT_PX = scaleFont(PANEL_META_FONT_PX_DEFAULT);
   const [expandedRecipients, setExpandedRecipients] = useState<Set<number>>(new Set());
+  // 図の予算（プラスの内訳の計）とパネルの予算額（予算現額）がずれる事業では呼び分けて差額を説明する
+  const budgetBasis = describeBudgetBasis(graph.budgetBreakdown, graph.budget);
   const [overviewOpen, setOverviewOpen] = useState(false); // 既定は折りたたみ＝プレビュー表示（メイン同様）
   // 品質スコア詳細ダイアログ（/quality と共通の ScoreDetailDialog。メイン画面と同型）
   const [scoreDialogItem, setScoreDialogItem] = useState<QualityScoreItem | null>(null);
@@ -605,7 +608,7 @@ function SidePane({
             </div>
             {/* 予算額 / 支出額（メイン画面と同じ2列＋1円単位のサブ表記。予算vs支出で用語統一） */}
             <div className="mt-[5px] flex flex-wrap items-start gap-x-3 gap-y-1">
-              {([['予算額', graph.budget], ['支出額', graph.execution]] as [string, number][]).map(([label, value]) => (
+              {([[budgetBasis.totalLabel, graph.budget], ['支出額', graph.execution]] as [string, number][]).map(([label, value]) => (
                 <div key={label} className="min-w-0" style={{ flex: `1 1 ${scaleFont(112)}px` }}>
                   <span className="mb-px block font-normal text-mirai-text-placeholder" style={{ fontSize: PANEL_META_FONT_PX }}>{label}</span>
                   <span className="block whitespace-nowrap font-bold text-mirai-text" style={{ fontSize: PANEL_PRIMARY_VALUE_FONT_PX }}>
@@ -617,6 +620,14 @@ function SidePane({
                 </div>
               ))}
             </div>
+            {budgetBasis.differs && (
+              <div className="mt-1 text-mirai-text-muted" style={{ fontSize: PANEL_META_FONT_PX }}>
+                図の予算は{budgetBasis.drawnLabel} {formatYen(budgetBasis.drawnTotal)}（予算内訳のうち金額がプラスの行の合計）。
+                {budgetBasis.adjustments.length > 0
+                  ? <>差額は{budgetBasis.adjustments.map(a => `${a.budgetType || '調整'}${a.note ? `（${a.note}）` : ''} ${a.amount < 0 ? '−' : ''}${formatYen(Math.abs(a.amount))}`).join('・')}で、図には描いていません。</>
+                  : <>予算現額との差 {formatYen(Math.abs(graph.budget - budgetBasis.drawnTotal))} は予算内訳に記載がありません。</>}
+              </div>
+            )}
             {/* 支出の内訳。図に現れる分（支出先ブロック）と現れない分（間接経費）を明示する。
                 出典が別（5-1 ブロック支出 / 2-1 執行額）で合計は支出額に一致しないため、
                 式ではなく併記に留める */}
@@ -1660,6 +1671,7 @@ function SubcontractDetailPageInner() {
   const layout = useMemo(() => graph ? computeSubcontractLayout(graph) : null, [graph]);
   // B案（フロー図）のレイアウト。A案とは独立に計算するが computeDepths/mergeParallelFlows は共通利用
   const ribbonLayout = useMemo(() => graph ? computeSubcontractRibbonLayout(graph) : null, [graph]);
+  const budgetBasis = useMemo(() => graph ? describeBudgetBasis((graph as SubcontractGraphWithBudget).budgetBreakdown, graph.budget) : null, [graph]);
   // 間接経費の集計。フロー図（終端ノードのツールチップ）と側パネルで同じ値を使い、
   // マウス移動によるツールチップ再描画のたびに再計算されないよう memo 化する
   const indirectSummary = useMemo(() => summarizeOffFlowIndirectCosts(graph?.indirectCosts), [graph]);
@@ -2146,7 +2158,7 @@ function SubcontractDetailPageInner() {
                 fill={COLOR_CONTEXT_BODY_SUBTLE}
                 style={{ userSelect: 'none' }}
               >
-                <tspan x={safeLayout.root.x + safeLayout.root.w - 14}>予算 {graph.budget > 0 ? formatYen(graph.budget) : '—'}</tspan>
+                <tspan x={safeLayout.root.x + safeLayout.root.w - 14}>{budgetBasis?.differs ? '予算現額' : '予算'} {graph.budget > 0 ? formatYen(graph.budget) : '—'}</tspan>
                 <tspan x={safeLayout.root.x + safeLayout.root.w - 14} dy={scaleFont(12)}>支出 {graph.execution > 0 ? formatYen(graph.execution) : '—'}</tspan>
               </text>
             </g>
@@ -2329,7 +2341,7 @@ function SubcontractDetailPageInner() {
               if (L.budgetItems.length > 0) {
                 // 実際に描画している予算内訳ノードの合計を見出しに出す（レイアウトの funnel と一致）
                 const budgetTotal = L.budgetItems.reduce((sum, b) => sum + b.amount, 0);
-                cols.push({ key: 'budget', label: '予算・執行', amountText: formatYen(budgetTotal), x: L.budgetItems[0].x });
+                cols.push({ key: 'budget', label: budgetBasis?.differs ? `予算・執行（${budgetBasis.drawnLabel}）` : '予算・執行', amountText: formatYen(budgetTotal), x: L.budgetItems[0].x });
               }
               cols.push({
                 key: 'root', label: '事業',
@@ -2579,7 +2591,7 @@ function SubcontractDetailPageInner() {
                   paintOrder="stroke"
                   style={{ userSelect: 'none', pointerEvents: 'none' }}
                 >
-                  予算 {formatYen(safeRibbonLayout.root.budgetAmount)}
+                  {budgetBasis?.differs ? budgetBasis.drawnLabel : '予算'} {formatYen(safeRibbonLayout.root.budgetAmount)}
                 </text>
               )}
             </g>
@@ -2797,7 +2809,7 @@ function SubcontractDetailPageInner() {
                   <>
                     <div>PID {graph.projectId} ・ {graph.ministry}</div>
                     {visibleOrgChain.length > 0 && <div>{visibleOrgChain.join(' / ')}</div>}
-                    <div>予算 <b className="text-mirai-text">{graph.budget > 0 ? formatYen(graph.budget) : '—'}</b> ・ 支出 <b className="text-mirai-text">{graph.execution > 0 ? formatYen(graph.execution) : '—'}</b></div>
+                    <div>{budgetBasis?.differs ? '予算現額' : '予算'} <b className="text-mirai-text">{graph.budget > 0 ? formatYen(graph.budget) : '—'}</b>{budgetBasis?.differs && <>（図は{budgetBasis.drawnLabel} {formatYen(budgetBasis.drawnTotal)}）</>} ・ 支出 <b className="text-mirai-text">{graph.execution > 0 ? formatYen(graph.execution) : '—'}</b></div>
                   </>
                 ) : isIndirect ? (
                   <>

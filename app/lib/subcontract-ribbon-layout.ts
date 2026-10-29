@@ -731,3 +731,38 @@ export function computeSubcontractRibbonLayout(graph: RibbonLayoutInput): Subcon
     sourceOverflowCount,
   };
 }
+
+/**
+ * 図の予算（描画する予算内訳＝金額がプラスの行の合計）と、側パネルの予算額（予算現額）の関係。
+ * 補正減・予備費等・流用などマイナスの行は帯にできず図から落ちるため、両者がずれる事業がある。
+ * ずれるときは図を「当初予算」（プラス行がすべて当初予算のとき）か「予算内訳の計」、パネルを「予算現額」と呼び分ける。
+ */
+export interface BudgetBasis {
+  /** 図に描く予算の合計（プラス行の合計） */
+  drawnTotal: number;
+  /** 図とパネルの金額がずれるか */
+  differs: boolean;
+  /** 図の予算の呼び名 */
+  drawnLabel: string;
+  /** パネルの予算額の呼び名 */
+  totalLabel: string;
+  /** 図から落ちたマイナスの行（差額の内訳） */
+  adjustments: { budgetType: string; note: string; amount: number }[];
+}
+
+export function describeBudgetBasis(budgetBreakdown: readonly BudgetBreakdownItem[] | undefined, totalBudget: number): BudgetBasis {
+  const rows = budgetBreakdown ?? [];
+  const positives = rows.filter(b => b.amount !== null && b.amount > 0);
+  const drawnTotal = positives.reduce((s, b) => s + (b.amount ?? 0), 0);
+  // 円単位の端数で呼び分けが揺れないよう、1円未満は同じとみなす
+  const differs = positives.length > 0 && totalBudget > 0 && Math.abs(drawnTotal - totalBudget) >= 1;
+  return {
+    drawnTotal,
+    differs,
+    drawnLabel: !differs ? '予算' : positives.every(b => b.budgetType === '当初予算') ? '当初予算' : '予算内訳の計',
+    totalLabel: differs ? '予算現額' : '予算額',
+    adjustments: rows
+      .filter(b => b.amount !== null && b.amount < 0)
+      .map(b => ({ budgetType: b.budgetType, note: b.note, amount: b.amount ?? 0 })),
+  };
+}
