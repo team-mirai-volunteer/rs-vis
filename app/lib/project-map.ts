@@ -4,24 +4,28 @@
  * 座標ファイル（project-map-{year}.json）と品質スコアを pid で突き合わせ、
  * バブル描画に必要な最小限のフィールドだけを持つ点列にする。
  *
- * 総合点・推奨判断はここで buildPolicyEvaluations を通して確定させる。
- * /quality と同じ関数を使うので、両ページで同じ事業が同じ点数になる。
- * 判定の閾値が母集団の分位点で決まるため、フィルタ前の全件を渡す必要がある。
+ * 総合点・推奨判断は呼び出し側が渡す評価（loadPolicyEvaluations の結果）をそのまま使う。
+ * ここで buildPolicyEvaluations を呼び直すと、翌年度繰越や前年度の不用率など入力が欠けて
+ * /quality・事業詳細と判定がずれる（2026-10-29 に 2025年版で 370 事業のずれを確認）。
  */
-import { buildPolicyEvaluations, type PolicyQualityInput } from '@/app/lib/policy-evaluation';
+import type { PolicyEvaluation } from '@/app/lib/policy-evaluation';
 import type { ProjectMapFile, ProjectMapPoint, ProjectMapResponse } from '@/types/project-map';
 
 /** 品質スコア側から使うフィールド。project-quality-scores-{year}.json の一部 */
-export type MapQualityRow = PolicyQualityInput & {
+export type MapQualityRow = {
+  pid: string;
   name: string;
   ministry: string;
+  budgetAmount: number;
+  execAmount: number;
+  policyCategory?: string | null;
 };
 
 export interface JoinInput {
   map: ProjectMapFile;
   quality: MapQualityRow[];
-  /** pid → 前年度の執行率。縮小判定に使う。無ければ判定不能扱い */
-  priorExecutionRates?: Record<string, number>;
+  /** pid → 政策評価。/quality・事業詳細と同じもの（全件から閾値を決めた結果） */
+  policies: ReadonlyMap<string, PolicyEvaluation>;
   /** pid → 継続年数。事業詳細の開始年度から算出済みのもの */
   yearsRunning?: Record<string, number>;
 }
@@ -29,21 +33,16 @@ export interface JoinInput {
 export function joinProjectMap({
   map,
   quality,
-  priorExecutionRates,
+  policies,
   yearsRunning,
 }: JoinInput): ProjectMapResponse {
-  const withPrior = priorExecutionRates
-    ? quality.map(q => ({ ...q, priorExecutionRate: priorExecutionRates[q.pid] ?? null }))
-    : quality;
-
-  const policyByPid = new Map(buildPolicyEvaluations(withPrior).map(p => [p.pid, p]));
   const qualityByPid = new Map(quality.map(q => [q.pid, q]));
 
   const points: ProjectMapPoint[] = [];
   for (const p of map.points) {
     const q = qualityByPid.get(p.pid);
     if (!q) continue;   // スコアが無い事業は色も大きさも決まらないので出さない
-    const policy = policyByPid.get(p.pid);
+    const policy = policies.get(p.pid);
     points.push({
       pid: p.pid,
       name: q.name,
