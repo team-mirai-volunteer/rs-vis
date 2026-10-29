@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { API_CACHE_CONTROL, parseYear, serverErrorResponse } from '@/app/lib/api/api-notes';
 import { joinProjectMap, type MapQualityRow } from '@/app/lib/project-map';
 import type { ProjectMapFile, ProjectMapResponse } from '@/types/project-map';
+import type { SupportedYear } from '@/types/rs-year';
 // パス解決は data-file.ts に一元化する（Vercel の関数バンドルは data/server の .gz のみ）
 import { tryReadDataJson as readDataJson } from '@/app/lib/api/data-file';
+import { loadPolicyEvaluations } from '@/app/lib/api/policy-evaluations-loader';
 
 /**
  * 事業の意味的2次元マップ API（/project-map のバブルチャート用）。
@@ -33,25 +35,10 @@ function buildYearsRunning(year: string): Record<string, number> {
   return out;
 }
 
-/** 前年度の執行率。/api/execution-history と同じ算出（縮小判定の材料） */
-function buildPriorExecutionRates(year: string): Record<string, number> {
-  const prior = readDataJson<Array<{ pid: string; budgetAmount: number; execAmount: number }>>(
-    `project-quality-scores-${Number(year) - 1}.json`,
-  );
-  const out: Record<string, number> = {};
-  if (!prior) return out;
-  for (const row of prior) {
-    // 執行実績が無い事業（予備的経費・未着手）は「全額不用」ではなく判定対象外
-    if (!(row.budgetAmount > 0 && row.execAmount > 0)) continue;
-    out[row.pid] = Math.round((row.execAmount / row.budgetAmount) * 1000) / 1000;
-  }
-  return out;
-}
-
 /** 座標ファイルが無い年度を呼び出し側で 404 にするための番兵 */
 class MapNotGenerated extends Error {}
 
-function loadData(year: string): ProjectMapResponse {
+function loadData(year: SupportedYear): ProjectMapResponse {
   const cached = cache.get(year);
   if (cached) return cached;
 
@@ -71,7 +58,7 @@ function loadData(year: string): ProjectMapResponse {
   const result = joinProjectMap({
     map,
     quality,
-    priorExecutionRates: buildPriorExecutionRates(year),
+    policies: loadPolicyEvaluations(year),
     yearsRunning: buildYearsRunning(year),
   });
   cache.set(year, result);
