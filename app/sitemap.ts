@@ -3,7 +3,7 @@ import { SITE_URL } from '@/app/lib/site-url';
 import { SHARE_PAGES } from '@/app/lib/page-metadata';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const pages = [...SHARE_PAGES.map(page => page.href), '/terms', '/privacy'];
+  const pages = [...SHARE_PAGES.map(page => page.href), '/lp', '/terms', '/privacy'];
   return pages.map((path) => ({
     url: `${SITE_URL}${path}`,
     changeFrequency: 'monthly',
