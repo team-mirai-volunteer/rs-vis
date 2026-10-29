@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -64,7 +63,7 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: [new URL('/og/home.png', SITE_URL).href] },
   // 本番では検索エンジンに載せ、dev のプレビュー・ローカルでは載せない。
-  // いまは本番では LandingPage が 404 を返すので、本番公開するときは notFound() の行を消し、sitemap に /lp を足す
+  // サイト内からはリンクせず、URL を直接配る
   robots: process.env.VERCEL_ENV === 'production' ? { index: true, follow: true } : { index: false, follow: false },
 };
 
@@ -118,8 +117,6 @@ const PREVIEW_HREF = '/budget-sankey?year=2024&b=settlement&cols=mi%2Cpr%2Cre&ld
  * ツール本体は各ビューに任せる。数字と文言は insights.ts と policy-cases.ts に集約。
  */
 export default function LandingPage() {
-  // dev ブランチのプレビューとローカルでのみ公開する。本番（main）では 404
-  if (process.env.VERCEL_ENV === 'production') notFound();
   const featured = INSIGHTS.filter(i => i.featured);
   const rest = INSIGHTS.filter(i => !i.featured);
   // 台本つきを先に、残りをその後に（配列の相対順は保つ）
