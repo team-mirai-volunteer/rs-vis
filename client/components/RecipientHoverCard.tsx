@@ -4,6 +4,7 @@
  * 詳細パネルの支出先の行にホバーしたときのカード（支出先名・金額・主な契約）。
  * 行のクリックは選択の移動に使うので、表示はホバーだけ。
  * 常にポインタの上側に出す（行の位置で上下が入れ替わると驚くため。パネルの下の方の行でも見切れない）。
+ * 横は既定でポインタの右、画面右端に置いたパネルでは side="left" で左に出す。
  * 横は画面端で内側へ寄せ、上端に届くほど高いときだけ上端に合わせる。
  */
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -36,7 +37,7 @@ const CARD_W = 288;
 const OFFSET = 14;
 const MARGIN = 8;
 
-export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) {
+export function RecipientHoverCard({ hover, side = 'right' }: { hover: RecipientHover | null; side?: 'left' | 'right' }) {
   const ref = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
   const visible = hover !== null;
@@ -55,7 +56,7 @@ export function RecipientHoverCard({ hover }: { hover: RecipientHover | null }) 
       ref={ref}
       role="tooltip"
       className="pointer-events-none fixed z-[100] rounded-xl border border-mirai-border bg-card p-2.5 text-xs shadow-soft"
-      style={{ width: CARD_W, left: `clamp(${MARGIN}px, ${hover.x + OFFSET}px, calc(100vw - ${CARD_W + MARGIN}px))`, top: Math.max(MARGIN, hover.y - OFFSET - height) }}
+      style={{ width: CARD_W, left: `clamp(${MARGIN}px, ${side === 'left' ? hover.x - OFFSET - CARD_W : hover.x + OFFSET}px, calc(100vw - ${CARD_W + MARGIN}px))`, top: Math.max(MARGIN, hover.y - OFFSET - height) }}
     >
       <p className="font-bold leading-snug text-mirai-text">{hover.title ?? hover.name}</p>
       {hover.subtitle && <p className="text-[11px] text-mirai-text-muted">{hover.subtitle}</p>}

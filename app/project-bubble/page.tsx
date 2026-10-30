@@ -1338,7 +1338,7 @@ function RecipientPanel({
   const [hover, setHover] = useState<RecipientHover | null>(null);
   return (
     <div className="flex min-h-36 flex-col rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
-      <RecipientHoverCard hover={hover} />
+      <RecipientHoverCard hover={hover} side="left" />
       <div className="flex items-start gap-1.5">
         <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
         <h2 className="flex-1 font-bold leading-snug">{recipient.name}</h2>
