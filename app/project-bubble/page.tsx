@@ -836,7 +836,6 @@ export default function ProjectMapPage() {
             onLimit={setSpendLimit}
             kind={spendKind}
             onKind={changeSpendKind}
-            poolSize={spendSource.length}
           />
           {lockedRecipient ? (
             <RecipientPanel
@@ -1233,7 +1232,7 @@ function RecipientTooltip({
 
 /** 支出つながりの絞り込みと凡例（右上）。濃さ＝受取額の段 */
 function SpendingControls({
-  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit, kind, onKind, poolSize,
+  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit, kind, onKind,
 }: {
   data: ProjectMapSpendingResponse | null;
   shown: number;
@@ -1247,8 +1246,6 @@ function SpendingControls({
   onLimit: (n: SpendLimit) => void;
   kind: SpendKind;
   onKind: (k: SpendKind) => void;
-  /** 選んだ種類の支出先の総数 */
-  poolSize: number;
 }) {
   const selectCls = 'h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
   return (
@@ -1314,7 +1311,7 @@ function SpendingControls({
         {data ? (
           <>
             <strong className="font-bold text-mirai-text-secondary">{shown.toLocaleString('ja-JP')}</strong>
-            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${poolSize.toLocaleString('ja-JP')}件）。`}
+            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示。`}
             {kind === 'named'
               ? '「その他」「個人A」のような匿名表記は除く（見たい場合は「種類」から）。'
               : '支出先を具体的に書いていない表記です。名前が同じでも事業ごとに別の相手なので、線は「同じ書き方をしている事業」を結びます。'}
