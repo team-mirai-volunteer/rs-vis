@@ -820,10 +820,10 @@ export default function ProjectMapPage() {
         </Button>
       </div>
 
-      {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない。lg 未満でシートを開いている間も隠す（シートと重なるため） ── */}
+      {/* ── 右フロート: 凡例（右下はズーム操作に空ける。134px = 上端12 + ズーム操作98 + 下端12 + 間隔12）。sm 未満では図を塞ぐので出さない。lg 未満でシートを開いている間も隠す（シートと重なるため） ── */}
       {/* 低い画面では操作カードを縮めず、下の詳細カードの一覧だけを縮めてスクロールさせる（列全体に縦スクロールを出さない） */}
       {data && !loading && isSpending && (
-        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-134px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <SpendingControls
             data={spendData}
             shown={visibleRecipients.length}
@@ -863,7 +863,7 @@ export default function ProjectMapPage() {
       )}
 
       {data && !loading && !isSpending && (
-        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-134px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <Legend
             entries={legend}
             mode={colorMode}
