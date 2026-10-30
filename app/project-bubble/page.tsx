@@ -820,9 +820,10 @@ export default function ProjectMapPage() {
         </Button>
       </div>
 
-      {/* ── 右フロート: 凡例（右下はズーム操作に空ける）。sm 未満では図を塞ぐので出さない。lg 未満でシートを開いている間も隠す（シートと重なるため） ── */}
+      {/* ── 右フロート: 凡例（右下はズーム操作に空ける。134px = 上端12 + ズーム操作98 + 下端12 + 間隔12）。sm 未満では図を塞ぐので出さない。lg 未満でシートを開いている間も隠す（シートと重なるため） ── */}
+      {/* 低い画面では操作カードを縮めず、下の詳細カードの一覧だけを縮めてスクロールさせる（列全体に縦スクロールを出さない） */}
       {data && !loading && isSpending && (
-        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-134px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <SpendingControls
             data={spendData}
             shown={visibleRecipients.length}
@@ -835,7 +836,6 @@ export default function ProjectMapPage() {
             onLimit={setSpendLimit}
             kind={spendKind}
             onKind={changeSpendKind}
-            poolSize={spendSource.length}
           />
           {lockedRecipient ? (
             <RecipientPanel
@@ -862,7 +862,7 @@ export default function ProjectMapPage() {
       )}
 
       {data && !loading && !isSpending && (
-        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-180px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
+        <aside className={cn("pointer-events-none absolute right-3 top-3 z-30 hidden max-h-[calc(100%-134px)] w-72 flex-col gap-2 overflow-y-auto [&>*]:pointer-events-auto sm:flex", (mobilePanelOpen || selected || lockedRecipient) && "max-lg:!hidden")}>
           <Legend
             entries={legend}
             mode={colorMode}
@@ -1232,7 +1232,7 @@ function RecipientTooltip({
 
 /** 支出つながりの絞り込みと凡例（右上）。濃さ＝受取額の段 */
 function SpendingControls({
-  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit, kind, onKind, poolSize,
+  data, shown, matched, query, onQuery, minDegree, onMinDegree, limit, onLimit, kind, onKind,
 }: {
   data: ProjectMapSpendingResponse | null;
   shown: number;
@@ -1246,12 +1246,10 @@ function SpendingControls({
   onLimit: (n: SpendLimit) => void;
   kind: SpendKind;
   onKind: (k: SpendKind) => void;
-  /** 選んだ種類の支出先の総数 */
-  poolSize: number;
 }) {
   const selectCls = 'h-7 w-full cursor-pointer rounded-md border border-mirai-border bg-card px-1.5 text-mirai-text outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40';
   return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+    <div className="shrink-0 rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
       <div className="flex flex-col gap-1.5">
         <input
           type="search"
@@ -1313,9 +1311,9 @@ function SpendingControls({
         {data ? (
           <>
             <strong className="font-bold text-mirai-text-secondary">{shown.toLocaleString('ja-JP')}</strong>
-            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${poolSize.toLocaleString('ja-JP')}件）。`}
+            {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示。`}
             {kind === 'named'
-              ? '「その他」「個人A」「A社」のような匿名・集約表記は除いています（「種類」で切り替え）。'
+              ? '「その他」「個人A」のような匿名表記は除く（見たい場合は「種類」から）。'
               : '支出先を具体的に書いていない表記です。名前が同じでも事業ごとに別の相手なので、線は「同じ書き方をしている事業」を結びます。'}
             菱形をクリックすると、つながる事業だけを前面に出します。
           </>
@@ -1339,8 +1337,8 @@ function RecipientPanel({
 }) {
   const [hover, setHover] = useState<RecipientHover | null>(null);
   return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
-      <RecipientHoverCard hover={hover} />
+    <div className="flex min-h-36 flex-col rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+      <RecipientHoverCard hover={hover} side="left" />
       <div className="flex items-start gap-1.5">
         <span className="mt-0.5"><DiamondSwatch color={spendingColor(recipient.amount)} /></span>
         <h2 className="flex-1 font-bold leading-snug">{recipient.name}</h2>
@@ -1356,7 +1354,7 @@ function RecipientPanel({
         受取額 <strong className="font-bold text-mirai-text">{formatYenShort(recipient.amount)}</strong>
         {' ・ '}{recipient.pids.length.toLocaleString('ja-JP')}事業から
       </p>
-      <ul className="mt-2 max-h-[40dvh] space-y-px overflow-y-auto border-t border-border pt-1.5">
+      <ul className="mt-2 min-h-0 flex-1 space-y-px overflow-y-auto border-t border-border pt-1.5">
         {recipient.pids.map((pid, k) => {
           const p = pointByPid.get(pid);
           if (!p) return null;
@@ -1399,7 +1397,7 @@ function ProjectRecipientsPanel({
   onLock: (r: ProjectMapSpendingRecipient) => void;
 }) {
   return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+    <div className="flex min-h-36 flex-col rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
       <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">
         {placeholderMode ? 'この事業の匿名・集約表記の支出先' : 'この事業の支出先'}
       </h2>
@@ -1418,7 +1416,7 @@ function ProjectRecipientsPanel({
           {placeholderMode ? 'この種類の匿名・集約表記への支出はありません。' : '支出先の記載がありません。'}
         </p>
       ) : (
-        <ul className="mt-2 max-h-[40dvh] space-y-px overflow-y-auto border-t border-border pt-1.5" onMouseLeave={() => onHover(null)}>
+        <ul className="mt-2 min-h-0 flex-1 space-y-px overflow-y-auto border-t border-border pt-1.5" onMouseLeave={() => onHover(null)}>
           {items.map(({ r, amount }) => (
             <li key={r.id}>
               <button
@@ -1486,7 +1484,7 @@ function PlaceholderRankingPanel({
     active ? 'bg-primary/10 font-bold text-primary-accent' : 'text-mirai-text-muted hover:bg-mirai-surface hover:text-mirai-text',
   );
   return (
-    <div className="rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
+    <div className="flex min-h-36 flex-col rounded-xl border border-mirai-border bg-card p-3 text-xs shadow-soft">
       <h2 className="text-[11px] font-bold tracking-wide text-mirai-text-muted">匿名・集約表記への支出が多い事業</h2>
       <div className="mt-1.5 flex items-center gap-1">
         <button type="button" className={tabCls(sort === 'amount')} aria-pressed={sort === 'amount'} onClick={() => setSort('amount')}>金額順</button>
@@ -1506,7 +1504,7 @@ function PlaceholderRankingPanel({
       {sorted.top.length === 0 ? (
         <p className="mt-2 text-mirai-text-muted">該当する事業はありません。</p>
       ) : (
-        <ol className="mt-2 max-h-[45dvh] space-y-px overflow-y-auto border-t border-border pt-1.5">
+        <ol className="mt-2 min-h-0 flex-1 space-y-px overflow-y-auto border-t border-border pt-1.5">
           {sorted.top.map(({ point, amount, share }, i) => (
             <li key={point.pid}>
               <button
