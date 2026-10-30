@@ -1316,7 +1316,7 @@ function SpendingControls({
             <strong className="font-bold text-mirai-text-secondary">{shown.toLocaleString('ja-JP')}</strong>
             {` / 該当 ${matched.toLocaleString('ja-JP')}件を表示（全 ${poolSize.toLocaleString('ja-JP')}件）。`}
             {kind === 'named'
-              ? '「その他」「個人A」「A社」のような匿名・集約表記は除いています（「種類」で切り替え）。'
+              ? '「その他」「個人A」のような匿名表記は除く（見たい場合は「種類」から）。'
               : '支出先を具体的に書いていない表記です。名前が同じでも事業ごとに別の相手なので、線は「同じ書き方をしている事業」を結びます。'}
             菱形をクリックすると、つながる事業だけを前面に出します。
           </>
