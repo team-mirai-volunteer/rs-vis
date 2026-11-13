@@ -15,6 +15,7 @@ import { MAJOR_EXPENSE_NAMES, PURPOSE_NAMES, UNIFIED_LAYOUT, unifiedNodeColor } 
 import { ancestorsByColumn, descendantsByColumn, relatedThroughAggregates } from '@/app/lib/unified-budget/focus';
 import { selectionPan, type SelectionAnchor } from '@/app/lib/unified-budget/selection-viewport';
 import { columnIndex } from '@/app/lib/unified-budget/transform';
+import { twinConnectorPath, twinConnectors, type TwinConnector } from '@/app/lib/unified-budget/twin-connectors';
 import { UNIFIED_COLUMNS, UNIFIED_COLUMN_LABELS, UNIFIED_PROGRAM_KIND_LABELS, type UnifiedColumn } from '@/types/unified-budget';
 import { hasActiveUnifiedFilter, UNIFIED_FILTER_DEFAULT, type UnifiedViewDetails, type UnifiedViewFilter, type UnifiedViewNode } from '@/types/unified-budget-view';
 import type { LabelDensity } from '@/types/mof-hierarchy';
@@ -170,6 +171,7 @@ export function UnifiedSankeyChart({
   const width = Math.max(viewport.width, 1300) * Math.max(1, fontPx / LABEL_FONT_PX_DEFAULT);
   const [hovered, setHovered] = useState<MOFLayoutNode<UnifiedViewDetails> | null>(null);
   const [hoveredLink, setHoveredLink] = useState<MOFLayoutLink<UnifiedViewDetails> | null>(null);
+  const [hoveredTwin, setHoveredTwin] = useState<TwinConnector<MOFLayoutNode<UnifiedViewDetails>> | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const dragged = useRef(false);
 
@@ -273,6 +275,8 @@ export function UnifiedSankeyChart({
     }
     return map;
   }, [columnX, width, fontPx]);
+  /** 金額の帯が引けない 事業 → 事業(支出) の組。同じ事業だと分かるよう金額なしの点線でつなぐ */
+  const twins = useMemo(() => twinConnectors(layout.nodes, layout.links), [layout]);
   const headerY = useMemo(() => Math.min(...layout.nodes.map(n => n.y), Number.POSITIVE_INFINITY) - 10, [layout.nodes]);
   const columnTotal = useMemo(() => {
     const map = new Map<number, number>();
@@ -685,6 +689,33 @@ export function UnifiedSankeyChart({
           })}
         </g>
 
+        <g data-testid={testId('unified-twin-connectors')}>
+          {twins.map(twin => {
+            const { program, spending } = twin;
+            const offSelection = related !== null && !(related.has(program.id) && related.has(spending.id));
+            const offHover = hoveredRelated !== null && !(hoveredRelated.has(program.id) && hoveredRelated.has(spending.id));
+            const dim = offSelection || offHover;
+            const d = twinConnectorPath(program, spending);
+            return (
+              <g key={`twin-${spending.id}`} data-testid={testId('unified-twin-connector')}
+                onMouseEnter={e => {
+                  setHoveredTwin(twin);
+                  setPointer({ x: e.clientX, y: e.clientY });
+                }}
+                onMouseMove={e => setPointer({ x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => {
+                  setHoveredTwin(null);
+                  setPointer(null);
+                }}
+              >
+                <path d={d} fill="none" stroke="transparent" strokeWidth={8} vectorEffect="non-scaling-stroke" />
+                <path d={d} fill="none" stroke="var(--mirai-text-muted)" strokeWidth={hoveredTwin === twin ? 1.5 : 1}
+                  strokeDasharray="4 3" vectorEffect="non-scaling-stroke" opacity={dim ? 0.15 : 0.8} pointerEvents="none" />
+              </g>
+            );
+          })}
+        </g>
+
         <g>
           {layout.nodes.map(node => {
             const details = node.details;
@@ -776,6 +807,7 @@ export function UnifiedSankeyChart({
       {hovered && pointer && <UnifiedTooltip node={hovered} x={pointer.x} y={pointer.y} amountLabel={amountLabel}
         contract={hovered.details?.column === 'recipient' && !hovered.details.aggregated && contractSheetYear !== null
           ? { year: contractSheetYear, pids: contractPidsOf(hovered.id) } : undefined} />}
+      {!hovered && hoveredTwin && pointer && <TwinConnectorTooltip twin={hoveredTwin} x={pointer.x} y={pointer.y} />}
       {!hovered && hoveredLink && pointer && <UnifiedLinkTooltip link={hoveredLink} x={pointer.x} y={pointer.y} contractSheetYear={contractSheetYear} />}
       {/* 要求額の年度は、予算書（成立した当初予算）とRS（翌年度要求額）という基準の違う額をつないでいる。図の近くに常に出す */}
       {rsAmountKind === 'request' && (
@@ -1211,6 +1243,25 @@ function UnifiedLinkTooltip({ link, x, y, contractSheetYear }: { link: MOFLayout
       {contractPid !== undefined && contractSheetYear !== null && (
         <RecipientContractSummary className="mt-1.5 border-t border-border pt-1.5" year={contractSheetYear} name={link.target.name} pids={[contractPid]} />
       )}
+    </div>
+  );
+}
+
+const TWIN_REASON_TEXT = {
+  'no-budget': '予算額の記載がありません（一括計上など）。支出はあるものの、予算から流れた額としては描いていません。',
+  'no-spending': '支出先への支出の記載がありません。',
+  'both-empty': '予算額・支出額とも記載がありません。',
+} as const;
+
+function TwinConnectorTooltip({ twin, x, y }: { twin: TwinConnector<MOFLayoutNode<UnifiedViewDetails>>; x: number; y: number }) {
+  return (
+    <div data-testid={testId('unified-twin-tooltip')} className="pointer-events-none fixed z-20 max-w-md rounded border border-mirai-border bg-card px-3 py-2 shadow-soft" style={{ left: x + 12, top: y + 12 }}>
+      <div className="text-xs text-mirai-text-subtle">{twin.program.name}</div>
+      <div className="text-sm font-bold text-mirai-text">同じ事業（金額の流れなし）</div>
+      <div className="mt-1 text-xs text-mirai-text-subtle">
+        予算額 {formatBudgetFromYen(twin.program.value)} / 支出額 {formatBudgetFromYen(twin.spending.value)}
+      </div>
+      <div className="mt-1 text-xs text-mirai-text-subtle">{TWIN_REASON_TEXT[twin.reason]}</div>
     </div>
   );
 }
