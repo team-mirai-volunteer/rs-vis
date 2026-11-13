@@ -97,7 +97,7 @@
     "lucide-react": "^1.45.0",
     "mcp-handler": "^2.3.0",
     "next": "15.5.28",
-    "re2js": "2.8.6",
+    "re2js": "2.8.8",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^10.1.0",
