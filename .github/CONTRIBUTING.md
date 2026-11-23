@@ -10,10 +10,12 @@
 - Issue テンプレートを使用してください
 
 ### 2. ブランチ作成
+開発は `dev` ブランチで行います。`main` は本番（Vercel）へのデプロイ用で、`dev` → `main` の PR でのみ更新します。
+
 ```bash
-# 最新のmainブランチから作業ブランチを作成
-git checkout main
-git pull origin main
+# 最新のdevブランチから作業ブランチを作成
+git checkout dev
+git pull origin dev
 git checkout -b feature/issue-番号-brief-description
 # または
 git checkout -b fix/issue-番号-brief-description
@@ -63,6 +65,7 @@ Type:
 git push origin feature/issue-番号-brief-description
 ```
 
+- PRの向き先（base）は `dev` にする（`main` に向けない）
 - PRテンプレートに従って記入
 - 関連IssueをリンクするClosesキーワードを使用 (`Closes #123`)
 - レビューを待つ
