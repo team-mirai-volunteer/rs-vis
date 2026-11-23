@@ -10,6 +10,7 @@
  */
 import type { RawNode, RawEdge } from '@/types/sankey-svg';
 import { compileSearchPattern, MAX_REGEX_PATTERN_LENGTH } from './search-pattern';
+import { isExcludedRecipientName, normalizeRecipientName } from './recipient-key';
 import type {
   SankeyQuery,
   SankeyQueryFilter,
@@ -623,8 +624,18 @@ export interface SankeyProjectPresenceEntry {
 
 /** 両年度に存在する支出先の受領額比較（増減上位） */
 export interface SankeyRecipientInflowDiffEntry {
+  /** compare 年度のノードID。ノードIDは年度ごとに受領額順で採番されるため、base 年度では baseId を使う */
   id: string;
+  /** base 年度のノードID */
+  baseId: string;
+  /** compare 年度の支出先名（同じ支出先キーのノードが複数あれば、受領額が最大のノードの名前） */
   name: string;
+  /** name 以外に同じ支出先キーへまとめたノードの名前（両年度分、受領額降順、最大5件）。金額はこれらを含む合計 */
+  otherNames: string[];
+  /** base 年度でまとめたノード数 */
+  nodeCountBase: number;
+  /** compare 年度でまとめたノード数 */
+  nodeCountCompare: number;
   inflowBase: number;
   inflowCompare: number;
   diff: number;
@@ -634,8 +645,14 @@ export interface SankeyRecipientInflowDiffEntry {
 
 /** 片年度のみに存在する支出先（新規/消滅） */
 export interface SankeyRecipientPresenceEntry {
+  /** 存在した年度のノードID */
   id: string;
+  /** 支出先名（同じ支出先キーのノードが複数あれば、受領額が最大のノードの名前） */
   name: string;
+  /** name 以外に同じ支出先キーへまとめたノードの名前（受領額降順、最大5件）。金額はこれらを含む合計 */
+  otherNames: string[];
+  /** まとめたノード数 */
+  nodeCount: number;
   /** 存在した年度の受領額 */
   inflow: number;
 }
@@ -678,6 +695,9 @@ export interface SankeyCompareYearsResult {
   diff: SankeyYearsCompareDiff;
 }
 
+/** 支出先差分の otherNames に載せる名前の上限 */
+const RECIPIENT_OTHER_NAMES_LIMIT = 5;
+
 function calcDiffRate(base: number, compare: number): number | null {
   if (base === 0) return null;
   return Math.round(((compare - base) / base) * 10000) / 10000;
@@ -685,11 +705,17 @@ function calcDiffRate(base: number, compare: number): number | null {
 
 /**
  * 同一フィルタ条件を2年度に適用した summary + 差分をまとめて返す。
- * 突き合わせ（pid・支出先IDでのマッチング）はここで行い、呼び出し側（AIエージェント含む）に
+ * 突き合わせ（pid・支出先キーでのマッチング）はここで行い、呼び出し側（AIエージェント含む）に
  * 手動突合をさせない（20260705_1544 §3-1・§5-1 の推奨案）。
  *
  * - 事業差分は projectId でマッチング。budget（project-budget ノードの value）を比較する
- * - 支出先差分は recipient ノードIDでマッチング。「その他の支出先」等の集計ノード（aggregated）は除外する
+ * - 支出先差分は支出先キー（代表法人番号。無ければ正規化した支出先名）でマッチング。ノードID（r-1, r-2, ...）は
+ *   その年度の受領額順の連番なので、年度をまたぐ照合には使えない。同じキーのノードが年度内に複数あれば受領額を合算し、
+ *   ID・名前は受領額が最大のノードのものを、残りのノードの名前は otherNames に返す
+ *   （本省の法人番号で記載された地方機関は、本省とまとめて1行になる）
+ * - 法人番号の無い支出先は、正規化した名前が一致するときだけ同じ支出先として扱う。片方の年度にだけ法人番号の
+ *   記載がある名前は、その法人番号のキーへ寄せる
+ * - 「その他の支出先」等の集計ノード（aggregated）と、支出先名「その他」（個社として扱えない集約行）は除外する
  * - increased/decreased は差分額の絶対値降順で最大 topN 件、added/removed は存在年度の金額降順で最大 topN 件
  */
 export function compareYearsSummary(
@@ -761,36 +787,77 @@ export function compareYearsSummary(
   const projectsAdded = [...addedProjects].sort((a, b) => b.spending - a.spending).slice(0, topN);
   const projectsRemoved = [...removedProjects].sort((a, b) => b.spending - a.spending).slice(0, topN);
 
-  // ── 支出先差分（受領額ベース、集約ノードは除外） ──
-  const baseRecipientMap = new Map(
-    [...baseData.inflowByRecipient.entries()].filter(([id]) => !baseData.nodeById.get(id)?.aggregated),
-  );
-  const compareRecipientMap = new Map(
-    [...compareData.inflowByRecipient.entries()].filter(([id]) => !compareData.nodeById.get(id)?.aggregated),
-  );
-  const allRecipientIds = new Set([...baseRecipientMap.keys(), ...compareRecipientMap.keys()]);
+  // ── 支出先差分（受領額ベース、支出先キーでマッチング） ──
+  // 片方の年度にしか法人番号の記載が無い支出先を同じキーへ寄せるため、どちらかの年度で法人番号の分かる名前を引けるようにする。
+  // 年度によって法人番号が異なる名前は、番号の無いノードをどちらにも寄せない
+  const corporateNumberByName = new Map<string, string | null>();
+  for (const data of [baseData, compareData]) {
+    for (const id of data.inflowByRecipient.keys()) {
+      const node = data.nodeById.get(id);
+      if (!node?.representativeCorporateNumber || node.aggregated) continue;
+      const name = normalizeRecipientName(node.name);
+      const known = corporateNumberByName.get(name);
+      corporateNumberByName.set(name, known === undefined || known === node.representativeCorporateNumber ? node.representativeCorporateNumber : null);
+    }
+  }
+  const recipientKey = (node: RawNode) => {
+    const name = normalizeRecipientName(node.name);
+    return node.representativeCorporateNumber ?? corporateNumberByName.get(name) ?? `name:${name}`;
+  };
+  type RecipientGroup = { inflow: number; members: Array<{ id: string; name: string; inflow: number }> };
+  const recipientsByKey = (data: CollectedFilteredGraph) => {
+    const byKey = new Map<string, RecipientGroup>();
+    for (const [id, inflow] of data.inflowByRecipient) {
+      const node = data.nodeById.get(id);
+      if (!node || node.aggregated || isExcludedRecipientName(node.name)) continue;
+      const key = recipientKey(node);
+      const group = byKey.get(key) ?? { inflow: 0, members: [] };
+      group.inflow += inflow;
+      group.members.push({ id, name: node.name, inflow });
+      byKey.set(key, group);
+    }
+    for (const group of byKey.values()) group.members.sort((a, b) => b.inflow - a.inflow);
+    return byKey;
+  };
+  /** 代表（先頭）以外のノードの名前。受領額降順、重複なし、最大 RECIPIENT_OTHER_NAMES_LIMIT 件 */
+  const otherNamesOf = (representativeName: string, ...groups: RecipientGroup[]) => {
+    const members = groups.flatMap(g => g.members).sort((a, b) => b.inflow - a.inflow);
+    return [...new Set(members.map(m => m.name))].filter(n => n !== representativeName).slice(0, RECIPIENT_OTHER_NAMES_LIMIT);
+  };
+  const presenceEntry = (group: RecipientGroup): SankeyRecipientPresenceEntry => ({
+    id: group.members[0].id,
+    name: group.members[0].name,
+    otherNames: otherNamesOf(group.members[0].name, group),
+    nodeCount: group.members.length,
+    inflow: group.inflow,
+  });
+  const baseRecipientByKey = recipientsByKey(baseData);
+  const compareRecipientByKey = recipientsByKey(compareData);
+  const allRecipientKeys = new Set([...baseRecipientByKey.keys(), ...compareRecipientByKey.keys()]);
 
   const matchedRecipients: SankeyRecipientInflowDiffEntry[] = [];
   const addedRecipients: SankeyRecipientPresenceEntry[] = [];
   const removedRecipients: SankeyRecipientPresenceEntry[] = [];
-  for (const id of allRecipientIds) {
-    const inBase = baseRecipientMap.has(id);
-    const inCompare = compareRecipientMap.has(id);
-    if (inBase && inCompare) {
-      const inflowBase = baseRecipientMap.get(id)!;
-      const inflowCompare = compareRecipientMap.get(id)!;
+  for (const key of allRecipientKeys) {
+    const b = baseRecipientByKey.get(key);
+    const c = compareRecipientByKey.get(key);
+    if (b && c) {
       matchedRecipients.push({
-        id,
-        name: compareData.nodeById.get(id)?.name ?? baseData.nodeById.get(id)?.name ?? id,
-        inflowBase,
-        inflowCompare,
-        diff: inflowCompare - inflowBase,
-        diffRate: calcDiffRate(inflowBase, inflowCompare),
+        id: c.members[0].id,
+        baseId: b.members[0].id,
+        name: c.members[0].name,
+        otherNames: otherNamesOf(c.members[0].name, c, b),
+        nodeCountBase: b.members.length,
+        nodeCountCompare: c.members.length,
+        inflowBase: b.inflow,
+        inflowCompare: c.inflow,
+        diff: c.inflow - b.inflow,
+        diffRate: calcDiffRate(b.inflow, c.inflow),
       });
-    } else if (inCompare) {
-      addedRecipients.push({ id, name: compareData.nodeById.get(id)?.name ?? id, inflow: compareRecipientMap.get(id)! });
-    } else if (inBase) {
-      removedRecipients.push({ id, name: baseData.nodeById.get(id)?.name ?? id, inflow: baseRecipientMap.get(id)! });
+    } else if (c) {
+      addedRecipients.push(presenceEntry(c));
+    } else if (b) {
+      removedRecipients.push(presenceEntry(b));
     }
   }
   const recipientsIncreased = matchedRecipients.filter(m => m.diff > 0).sort((a, b) => b.diff - a.diff).slice(0, topN);

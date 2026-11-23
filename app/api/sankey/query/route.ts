@@ -29,9 +29,11 @@ const SANKEY_QUERY_NOTES: readonly string[] = [
 /** compareYears 使用時に追加する留意事項 */
 const SANKEY_QUERY_COMPARE_NOTES: readonly string[] = [
   'compareYears の2つの数値は「事業年度」です。事業年度Nのデータは予算年度N-1の執行実績のため、compareYears=2024,2025 は予算年度2023 vs 2024 の執行実績比較を意味します',
-  'diff は同一フィルタを両年度に適用した結果を projectId／支出先ノードIDで突き合わせたものです。手動での再突合はしないでください',
+  'diff は同一フィルタを両年度に適用した結果を projectId／支出先（法人番号。法人番号が無ければ表記ゆれを正規化した支出先名）で突き合わせたものです。手動での再突合はしないでください。支出先のノードIDは年度ごとに採番されるため、diff.recipients の id は compare 年度（removed は base 年度）、baseId は base 年度のものです',
+  'diff.recipients の1行は、同じ法人番号で記載された支出先をまとめた合計です（本省の法人番号で記載された地方機関は本省と1行になります）。name は受領額が最大の支出先の名前で、まとめた他の名前は otherNames、件数は nodeCountBase／nodeCountCompare（added・removed は nodeCount）に入ります。otherNames が空でない行を name 単独の金額として説明しないでください',
+  '法人番号の無い支出先は、年度の間で名称が変わると diff.recipients の removed と added に分かれます。同じ支出先かどうかは名称と金額から個別に判断してください',
   'diff.projects.increased/decreased は支出額（spendingDiff、残存支出先への実支出）でランキングします。budgetDiff（project-budgetノードの予算額差）も同梱しますが、デジタル庁一括計上等で事業単体の予算が0円のまま執行額だけ変動するケースがあるため、budgetDiff だけでは実態を見誤ります',
-  'diff.recipients は残存事業からの受領額（inflow）を比較します。「その他の支出先」等の集計ノードは diff.recipients から除外されます',
+  'diff.recipients は残存事業からの受領額（inflow）を比較します。「その他の支出先」等の集計ノードと、支出先名「その他」（実データの集約行）は diff.recipients から除外されます',
   'diffRate は基準年度（compareYears の1つ目）の値が0の場合 null です',
 ];
 
