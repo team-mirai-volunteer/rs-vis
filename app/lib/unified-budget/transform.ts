@@ -472,6 +472,21 @@ export function relatedSet(links: SankeyLink[], seeds: Set<string>): Set<string>
 }
 
 /**
+ * 同じ辺（source→target）の帯を1本に合流させる。
+ * 推定の印は、合流する帯がすべて同じ推定方法のときだけ残す（確定の帯や別の推定方法が混ざる帯には付けない）。
+ */
+function mergeLink(merged: Map<string, SankeyLink>, source: string, target: string, value: number, inferred: SankeyLink['inferred']): void {
+  const key = `${source}→${target}`;
+  const existing = merged.get(key);
+  if (!existing) {
+    merged.set(key, { source, target, value, ...(inferred ? { inferred } : {}) });
+    return;
+  }
+  existing.value += value;
+  if (existing.inferred !== inferred) delete existing.inferred;
+}
+
+/**
  * 3. 列の畳み込み。
  * 非表示列のノードを左から順に取り除き、流入 s→h と流出 h→t を s→t（vin × vout / Σout）に繋ぎ直す。
  * - 流出の無いノード（終端。RS事業が無い年度の事業、非事業区分など）は落とす。金額は図から消える
@@ -489,8 +504,8 @@ export function collapseColumns(view: UnifiedViewGraph, visible: UnifiedColumn[]
   for (const col of hiddenColumns) {
     const hidden = new Set(nodes.filter(n => n.details.column === col && !n.details.standalone).map(n => n.id));
     if (hidden.size === 0) continue;
-    const inBy = new Map<string, Array<{ s: string; v: number }>>();
-    const outBy = new Map<string, Array<{ t: string; v: number }>>();
+    const inBy = new Map<string, SankeyLink[]>();
+    const outBy = new Map<string, SankeyLink[]>();
     const kept: SankeyLink[] = [];
     for (const l of links) {
       const sh = hidden.has(l.source);
@@ -499,26 +514,23 @@ export function collapseColumns(view: UnifiedViewGraph, visible: UnifiedColumn[]
         kept.push(l);
         continue;
       }
-      if (th) inBy.set(l.target, [...(inBy.get(l.target) ?? []), { s: l.source, v: l.value }]);
-      if (sh) outBy.set(l.source, [...(outBy.get(l.source) ?? []), { t: l.target, v: l.value }]);
+      if (th) inBy.set(l.target, [...(inBy.get(l.target) ?? []), l]);
+      if (sh) outBy.set(l.source, [...(outBy.get(l.source) ?? []), l]);
     }
     const merged = new Map<string, SankeyLink>();
-    const push = (s: string, t: string, v: number) => {
-      if (v <= 0) return;
-      const k = `${s}→${t}`;
-      const e = merged.get(k);
-      if (e) e.value += v;
-      else merged.set(k, { source: s, target: t, value: v });
+    const push = (s: string, t: string, v: number, inferred: SankeyLink['inferred']) => {
+      if (v > 0) mergeLink(merged, s, t, v, inferred);
     };
     for (const h of hidden) {
       const ins = inBy.get(h) ?? [];
       const outs = outBy.get(h) ?? [];
       if (ins.length === 0 || outs.length === 0) continue; // 起点・終端は落とす
-      const total = outs.reduce((s, o) => s + o.v, 0);
-      for (const i of ins) for (const o of outs) push(i.s, o.t, (i.v * o.v) / total);
+      const total = outs.reduce((s, o) => s + o.value, 0);
+      // 繋ぎ直した帯は、流入・流出のどちらかが推定ならその推定方法を引き継ぐ
+      for (const i of ins) for (const o of outs) push(i.source, o.target, (i.value * o.value) / total, i.inferred ?? o.inferred);
     }
     // 同じ辺（s→t）が畳み込み前から存在していれば合流させる
-    for (const l of kept) push(l.source, l.target, l.value);
+    for (const l of kept) push(l.source, l.target, l.value, l.inferred);
     links = [...merged.values()];
     nodes = nodes.filter(n => !hidden.has(n.id));
   }
@@ -586,10 +598,7 @@ export function applyTopN(view: UnifiedViewGraph, topN: UnifiedTopN, offset: Uni
       const s = overflowIds.has(l.source) ? aggId : l.source;
       const t = overflowIds.has(l.target) ? aggId : l.target;
       if (s === t) continue;
-      const k = `${s}→${t}`;
-      const e = merged.get(k);
-      if (e) e.value += l.value;
-      else merged.set(k, { source: s, target: t, value: l.value });
+      mergeLink(merged, s, t, l.value, l.inferred);
     }
     links = [...merged.values()];
     nodes = [...nodes.filter(n => !overflowIds.has(n.id)), aggNode];
